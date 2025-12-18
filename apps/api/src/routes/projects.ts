@@ -154,6 +154,89 @@ router.put("/", authMiddleware, async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/projects/onboarding
+ * Get the onboarding progress for the current user's project
+ * Returns completion status for each setup step
+ */
+router.get("/onboarding", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req as AuthenticatedRequest;
+
+    // Get project
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("id, created_at")
+      .eq("user_id", userId)
+      .limit(1)
+      .single();
+
+    if (projectError || !project) {
+      return res.status(404).json({ error: { code: "NOT_FOUND", message: "No project found" } });
+    }
+
+    // Check all onboarding steps in parallel
+    const [knowledgeResult, playgroundResult, widgetResult] = await Promise.all([
+      // Check if at least 1 knowledge source is ready
+      supabase
+        .from("knowledge_sources")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", project.id)
+        .eq("status", "ready"),
+      // Check if at least 1 chat session from playground
+      supabase
+        .from("chat_sessions")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", project.id)
+        .eq("source", "playground"),
+      // Check if at least 1 chat session from widget
+      supabase
+        .from("chat_sessions")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", project.id)
+        .eq("source", "widget"),
+    ]);
+
+    const steps = {
+      accountCreated: {
+        completed: true,
+        label: "Create account",
+        description: "Sign up for your account",
+      },
+      knowledgeAdded: {
+        completed: (knowledgeResult.count || 0) > 0,
+        label: "Add knowledge",
+        description: "Upload content for your chatbot to learn",
+      },
+      playgroundTested: {
+        completed: (playgroundResult.count || 0) > 0,
+        label: "Test in playground",
+        description: "Try your chatbot in the playground",
+      },
+      widgetEmbedded: {
+        completed: (widgetResult.count || 0) > 0,
+        label: "Embed on website",
+        description: "Add the chat widget to your site",
+      },
+    };
+
+    const completedCount = Object.values(steps).filter((s) => s.completed).length;
+    const totalSteps = Object.keys(steps).length;
+
+    res.json({
+      steps,
+      progress: {
+        completed: completedCount,
+        total: totalSteps,
+        percentage: Math.round((completedCount / totalSteps) * 100),
+      },
+    });
+  } catch (error) {
+    console.error("Error in GET /projects/onboarding:", error);
+    res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
+  }
+});
+
+/**
  * DELETE /api/projects
  * Delete the current user's project (and all associated data via cascade)
  */

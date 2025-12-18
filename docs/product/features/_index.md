@@ -36,6 +36,11 @@ graph TD
         F --> H[mcp-server]
     end
 
+    subgraph Immediate Priority
+        C --> MP[multiple-projects]
+        F --> LC[lead-capture]
+    end
+
     subgraph Enhanced Features V2
         F --> I[chat-analytics]
         F --> J[conversation-history]
@@ -46,7 +51,6 @@ graph TD
     end
 
     subgraph Advanced Features V3
-        C --> O[multiple-chatbots]
         C --> P[team-collaboration]
         F --> Q[human-handoff]
         F --> R[multi-llm-support]
@@ -60,34 +64,37 @@ graph TD
 
 ## Implementation Order
 
-### Phase 1: Infrastructure (Sequential - Must be done in order)
-1. `project-scaffolding` - Monorepo setup with all apps/packages
-2. `database-setup` - Supabase schema, migrations, RLS, pgvector
-3. `auth-system` - Magic link authentication with project auto-creation
+### Phase 1: Infrastructure (Sequential - Must be done in order) ✅
+1. `project-scaffolding` - Monorepo setup with all apps/packages ✅
+2. `database-setup` - Supabase schema, migrations, RLS, pgvector ✅
+3. `auth-system` - Magic link authentication with project auto-creation ✅
 
-### Phase 2: Core Features (V1 MVP - Can parallelize after dependencies met)
-4. `knowledge-base` - Upload and manage knowledge sources (depends on: database-setup, auth-system)
-5. `api-endpoints` - Configure external API tools (depends on: database-setup, auth-system)
-6. `chat-engine` - RAG-based chat with tool calling (depends on: knowledge-base, api-endpoints)
-7. `widget` - Embeddable chat widget (depends on: chat-engine)
-8. `mcp-server` - MCP server for AI platforms (depends on: chat-engine)
+### Phase 2: Core Features (V1 MVP) ✅
+4. `knowledge-base` - Upload and manage knowledge sources ✅
+5. `api-endpoints` - Configure external API tools ✅
+6. `chat-engine` - RAG-based chat with tool calling ✅
+7. `widget` - Embeddable chat widget ✅
+8. `mcp-server` - MCP server for AI platforms ✅
+
+### Phase 2.5: Immediate Priority (Team Decision - Dec 2024)
+9. `chat-analytics` - Message count, popular questions, response quality ✅
+10. `multiple-projects` - Multiple projects per account with switcher (promoted from V3)
+11. `lead-capture` - Capture emails when chatbot can't answer (NEW)
 
 ### Phase 3: Enhanced Features (V2 - Post-MVP)
-9. `chat-analytics` - Message count, popular questions, response quality
-10. `conversation-history` - View past chats in dashboard
-11. `widget-customization` - Colors, position, branding
-12. `url-scraping` - Add knowledge from webpage URL
-13. `docx-support` - Support for .doc/.docx files
-14. `shopify-integration` - Native MCP for Shopify data
+12. `conversation-history` - View past chats in dashboard
+13. `widget-customization` - Colors, position, branding
+14. `url-scraping` - Add knowledge from webpage URL
+15. `docx-support` - Support for .doc/.docx files
+16. `shopify-integration` - Native MCP for Shopify data
 
 ### Phase 4: Advanced Features (V3 - Scale & Enterprise)
-15. `multiple-chatbots` - Multiple projects per account
-16. `team-collaboration` - Invite team members
-17. `human-handoff` - Escalate to live support
-18. `multi-llm-support` - Claude, Llama, etc.
-19. `webhooks` - Notify on events
-20. `white-label` - Remove branding
-21. `advanced-analytics` - Sentiment, topics, trends
+17. `team-collaboration` - Invite team members
+18. `human-handoff` - Escalate to live support
+19. `multi-llm-support` - Claude, Llama, etc.
+20. `webhooks` - Notify on events
+21. `white-label` - Remove branding
+22. `advanced-analytics` - Sentiment, topics, trends
 
 ---
 
@@ -103,13 +110,14 @@ graph TD
 | chat-engine | core | L | completed | knowledge-base, api-endpoints |
 | widget | core | L | completed | chat-engine |
 | mcp-server | core | M | completed | chat-engine |
-| chat-analytics | enhanced | M | pending | chat-engine |
+| chat-analytics | immediate | M | completed | chat-engine |
+| **multiple-projects** | **immediate** | M | **in-progress** | auth-system |
+| **lead-capture** | **immediate** | M | **ready** | chat-engine |
 | conversation-history | enhanced | S | pending | chat-engine |
 | widget-customization | enhanced | M | pending | widget |
 | url-scraping | enhanced | M | pending | knowledge-base |
 | docx-support | enhanced | S | pending | knowledge-base |
 | shopify-integration | enhanced | L | pending | api-endpoints |
-| multiple-chatbots | advanced | M | pending | auth-system |
 | team-collaboration | advanced | L | pending | auth-system |
 | human-handoff | advanced | L | pending | chat-engine |
 | multi-llm-support | advanced | M | pending | chat-engine |
@@ -144,8 +152,12 @@ graph TD
 - [widget](./core/widget/spec.md)
 - [mcp-server](./core/mcp-server/spec.md)
 
+### Immediate Priority (Team Decision - Dec 2024)
+- [chat-analytics](./enhanced/chat-analytics/spec.md) ✅
+- [multiple-projects](./core/multiple-projects/spec.md) ← **NEXT**
+- [lead-capture](./core/lead-capture/spec.md) ← **NEW**
+
 ### Enhanced Features (V2)
-- [chat-analytics](./enhanced/chat-analytics/spec.md)
 - [conversation-history](./enhanced/conversation-history/spec.md)
 - [widget-customization](./enhanced/widget-customization/spec.md)
 - [url-scraping](./enhanced/url-scraping/spec.md)
@@ -153,7 +165,7 @@ graph TD
 - [shopify-integration](./enhanced/shopify-integration/spec.md)
 
 ### Advanced Features (V3)
-- [multiple-chatbots](./advanced/multiple-chatbots/spec.md)
+- [multiple-chatbots](./advanced/multiple-chatbots/spec.md) *(original full vision - see multiple-projects for MVP)*
 - [team-collaboration](./advanced/team-collaboration/spec.md)
 - [human-handoff](./advanced/human-handoff/spec.md)
 - [multi-llm-support](./advanced/multi-llm-support/spec.md)
@@ -182,11 +194,12 @@ graph TD
 
 | Phase | Features | Total Effort |
 |-------|----------|--------------|
-| Infrastructure | 3 features | 7-11 days |
-| Core (V1) | 5 features | 18-23 days |
-| Enhanced (V2) | 6 features | 16-23 days |
-| Advanced (V3) | 7 features | 24-35 days |
-| **Total** | **21 features** | **65-92 days** |
+| Infrastructure | 3 features | 7-11 days ✅ |
+| Core (V1) | 5 features | 18-23 days ✅ |
+| Immediate Priority | 3 features | 8-12 days |
+| Enhanced (V2) | 5 features | 14-20 days |
+| Advanced (V3) | 6 features | 20-30 days |
+| **Total** | **22 features** | **67-96 days** |
 
 *Note: Parallelization can reduce calendar time significantly.*
 
@@ -219,7 +232,17 @@ graph TD
 
 ---
 
-**Document Version**: 1.0
+**Document Version**: 1.1
 **Last Updated**: December 2024
 **Author**: Morgan (Principal PM)
-**Spec Count**: 21 features documented
+**Spec Count**: 22 features documented
+
+---
+
+## Changelog
+
+### v1.1 (December 2024)
+- **Added**: `multiple-projects` - Promoted from V3 to Immediate Priority
+- **Added**: `lead-capture` - New feature for email capture on unanswered questions
+- **Updated**: Implementation order to reflect team priority decisions
+- **Updated**: Dependency graph with new Immediate Priority section

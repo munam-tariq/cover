@@ -47,3 +47,13 @@ export {
   TooltipContent,
   TooltipProvider,
 } from "./components/tooltip";
+export {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  ChartStyle,
+  type ChartConfig,
+} from "./components/chart";
+export { Progress } from "./components/progress";

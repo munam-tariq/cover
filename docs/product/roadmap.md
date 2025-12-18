@@ -1,9 +1,9 @@
 # Product Specification Document
 ## AI Chatbot for Small Business & Vibe Coders
 
-**Version:** 1.0
+**Version:** 1.1
 **Date:** December 2024
-**Status:** Draft
+**Status:** V1 Complete, Immediate Priority In Progress
 
 ---
 
@@ -3128,51 +3128,71 @@ Response 204: No Content
 
 # 15. Product Roadmap
 
-## 15.1 V1 (MVP) - Current Scope
+## 15.1 V1 (MVP) - COMPLETED ✅
 
 **Goal:** Working product that solves core use case
 
 | Feature | Status |
 |---------|--------|
-| Magic link auth | Planned |
-| Knowledge base (text, file, PDF) | Planned |
-| API endpoint configuration | Planned |
-| Embeddable widget | Planned |
-| Chat engine with RAG | Planned |
-| MCP server (5 tools) | Planned |
+| Magic link auth | ✅ Completed |
+| Knowledge base (text, file, PDF) | ✅ Completed |
+| API endpoint configuration | ✅ Completed |
+| Embeddable widget | ✅ Completed |
+| Chat engine with RAG | ✅ Completed |
+| MCP server (10 tools) | ✅ Completed |
 
-**Success criteria:**
-- User can set up working chatbot in <20 min
-- Chatbot answers from knowledge accurately
-- API tools work for real-time data
-- MCP enables vibe coding integration
+**Success criteria:** ✅ All met
+- User can set up working chatbot in <20 min ✅
+- Chatbot answers from knowledge accurately ✅
+- API tools work for real-time data ✅
+- MCP enables vibe coding integration ✅
 
-## 15.2 V2 - Enhanced Features
+## 15.2 Immediate Priority (Team Decision - Dec 2024)
 
-**Goal:** Polish, analytics, integrations
+**Goal:** Multi-project support and lead generation capabilities
+
+These features have been prioritized by the team to be implemented immediately after V1, before other V2 features.
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Chat analytics | Message count, popular questions, response quality | ✅ Completed |
+| **Multiple projects** | Multiple projects per account with header switcher (promoted from V3) | 🔜 Next |
+| **Lead capture** | Capture emails when chatbot can't answer, notify business owners (NEW) | 🔜 Queued |
+
+**Why prioritized:**
+- **Multiple projects**: Agencies and multi-brand businesses need this now. Database already supports it.
+- **Lead capture**: Converts unanswered questions into business opportunities. Key differentiator vs competitors.
+
+**Specs:**
+- [multiple-projects spec](./features/core/multiple-projects/spec.md)
+- [lead-capture spec](./features/core/lead-capture/spec.md)
+
+## 15.3 V2 - Enhanced Features
+
+**Goal:** Polish, integrations, content expansion
 
 | Feature | Description |
 |---------|-------------|
-| Chat analytics | Message count, popular questions, response quality |
 | Conversation history | View past chats in dashboard |
 | Custom widget styling | Colors, position, branding |
 | Shopify integration | Native MCP for Shopify order/product data |
 | URL scraping | Add knowledge from webpage URL |
 | .doc/.docx support | More file types |
 
-## 15.3 V3 - Scale & Enterprise
+## 15.4 V3 - Scale & Enterprise
 
-**Goal:** Multi-user, advanced features
+**Goal:** Team features, advanced capabilities
 
 | Feature | Description |
 |---------|-------------|
-| Multiple chatbots | Multiple projects per account |
 | Team collaboration | Invite team members |
 | Human handoff | Escalate to live support |
 | More LLM options | Claude, Llama, etc. |
 | Webhooks | Notify on events |
 | White-label widget | Remove branding |
 | Advanced analytics | Sentiment, topics, trends |
+
+*Note: "Multiple chatbots" moved to Immediate Priority (15.2)*
 
 ---
 
@@ -3204,9 +3224,9 @@ Response 204: No Content
 
 ## 17.1 Product Questions
 - [ ] What should the product be named?
-- [ ] Should V1 support multiple chatbots per account?
+- [x] ~~Should V1 support multiple chatbots per account?~~ **RESOLVED (Dec 2024):** Yes - promoted to Immediate Priority as `multiple-projects` feature
 - [ ] What's the free tier limit (messages, knowledge size)?
-- [ ] Should we support conversation handoff to email in V1?
+- [x] ~~Should we support conversation handoff to email in V1?~~ **RESOLVED (Dec 2024):** Yes - added as `lead-capture` feature (email capture when chatbot can't answer)
 
 ## 17.2 Technical Questions
 - [ ] Which queue system for background jobs? (BullMQ, Supabase Edge Functions)
@@ -3248,9 +3268,23 @@ Response 204: No Content
 
 ---
 
-**Document Version:** 1.0
+**Document Version:** 1.1
 **Last Updated:** December 2024
 **Author:** Product Team
+
+---
+
+## Changelog
+
+### v1.1 (December 2024)
+- **Section 15.1**: Marked V1 (MVP) as COMPLETED with all features done
+- **Section 15.2**: Added new "Immediate Priority" section with:
+  - `chat-analytics` (completed)
+  - `multiple-projects` (promoted from V3)
+  - `lead-capture` (NEW feature)
+- **Section 15.3**: Renumbered V2 features (removed chat-analytics, now in 15.2)
+- **Section 15.4**: Renumbered V3 features (removed multiple-chatbots, now in 15.2)
+- **Section 17.1**: Resolved two open questions regarding multi-project and email handoff
 
 ---
 

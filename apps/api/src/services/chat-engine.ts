@@ -39,6 +39,11 @@ import {
 } from "./tool-executor";
 
 /**
+ * Valid sources for chat sessions
+ */
+export type ChatSource = "widget" | "playground" | "mcp" | "api";
+
+/**
  * Input for processing a chat message
  */
 export interface ChatInput {
@@ -47,6 +52,7 @@ export interface ChatInput {
   message: string;
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>;
   sessionId?: string;
+  source?: ChatSource;
 }
 
 /**
@@ -175,7 +181,8 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     const sessionId = await getOrCreateSession(
       input.projectId,
       input.visitorId,
-      input.sessionId
+      input.sessionId,
+      input.source || "widget"
     );
 
     // 11. Log conversation asynchronously
@@ -373,7 +380,8 @@ async function getProjectConfig(
 async function getOrCreateSession(
   projectId: string,
   visitorId: string,
-  existingSessionId?: string
+  existingSessionId?: string,
+  source: ChatSource = "widget"
 ): Promise<string> {
   // If session ID provided and valid, use it
   if (existingSessionId) {
@@ -389,12 +397,13 @@ async function getOrCreateSession(
     }
   }
 
-  // Try to find existing session for this visitor
+  // Try to find existing session for this visitor with same source
   const { data: existingSession } = await supabaseAdmin
     .from("chat_sessions")
     .select("id")
     .eq("project_id", projectId)
     .eq("visitor_id", visitorId)
+    .eq("source", source)
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
@@ -403,7 +412,7 @@ async function getOrCreateSession(
     return existingSession.id;
   }
 
-  // Create new session
+  // Create new session with source
   const { data: newSession, error } = await supabaseAdmin
     .from("chat_sessions")
     .insert({
@@ -411,6 +420,7 @@ async function getOrCreateSession(
       visitor_id: visitorId,
       messages: [],
       message_count: 0,
+      source,
     })
     .select("id")
     .single();
@@ -532,6 +542,12 @@ export function validateChatInput(input: unknown): ChatInput {
     (data.visitorId as string) ||
     `anon_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
+  // Validate source if provided
+  const validSources: ChatSource[] = ["widget", "playground", "mcp", "api"];
+  const source = validSources.includes(data.source as ChatSource)
+    ? (data.source as ChatSource)
+    : "widget";
+
   return {
     projectId: data.projectId,
     visitorId,
@@ -546,5 +562,6 @@ export function validateChatInput(input: unknown): ChatInput {
         )
       : [],
     sessionId: typeof data.sessionId === "string" ? data.sessionId : undefined,
+    source,
   };
 }

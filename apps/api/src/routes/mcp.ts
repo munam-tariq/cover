@@ -846,6 +846,7 @@ function createMcpServer(projectId: string, userId: string): McpServer {
           visitorId: `mcp-${userId}`,
           message: question,
           sessionId: undefined, // New session each time for MCP
+          source: "mcp",
         });
 
         return {

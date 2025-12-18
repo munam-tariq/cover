@@ -1,14 +1,31 @@
 # Feature Implementation Progress
 
 ## Overview
-- **Total Features**: 21
-- **Completed**: 8
-- **In Progress**: 0
-- **Remaining**: 13
+- **Total Features**: 22
+- **Completed**: 9
+- **In Progress**: 1
+- **Remaining**: 12
 
 ## Currently In Progress
 
-*No features currently in progress. Ready for #9: chat-analytics*
+### #10: multiple-projects 🔄
+- **Started**: 2025-12-18
+- **Category**: core
+- **Status**: In Progress
+- **Spec**: [multiple-projects/spec.md](./core/multiple-projects/spec.md)
+
+---
+
+## Immediate Priority Queue (Team Decision - Dec 2024)
+
+The following features have been prioritized for immediate implementation:
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 1 | `multiple-projects` | Ready | Promoted from V3 - project switcher, multi-project support |
+| 2 | `lead-capture` | Ready | NEW - capture emails when chatbot can't answer |
+
+These features take priority over the remaining Enhanced (V2) features.
 
 ---
 
@@ -46,7 +63,74 @@
 
 ---
 
+## Dashboard Enhancements (Non-Feature)
+
+### Dashboard Stats & Onboarding Progress ✅
+- **Date**: 2025-12-18
+- **Summary**: Enhanced the dashboard with real-time stats and an onboarding progress tracker to guide new users through setup.
+- **Changes**:
+  1. **Real-time Stats Cards** - Dashboard now fetches actual data:
+     - Total Messages (from analytics API)
+     - Knowledge Sources count
+     - API Endpoints count
+     - Response Rate
+  2. **Setup Progress Card** - Visual onboarding checklist:
+     - Shows "X/4 complete" with progress bar
+     - Four steps: Account created, Knowledge added, Playground tested, Widget embedded
+     - Completed steps show checkmark and strikethrough
+     - Incomplete steps are clickable and link to relevant page
+     - Card hides when setup is 100% complete
+  3. **Source Tracking** - Added `source` column to `chat_sessions` table:
+     - Tracks where chat sessions originate: `widget`, `playground`, `mcp`, `api`
+     - Used to detect if widget is successfully embedded
+- **Key Files**:
+  - `apps/web/app/(dashboard)/page.tsx` - Dashboard with stats and onboarding
+  - `apps/api/src/routes/projects.ts` - Added `/api/projects/onboarding` endpoint
+  - `apps/api/src/services/chat-engine.ts` - Added source parameter support
+  - `packages/ui/src/components/progress.tsx` - New Progress component
+- **Database Migration**: `add_source_to_chat_sessions` - Added source column
+
+---
+
 ## Completed Features
+
+### #9: chat-analytics ✅
+- **Started**: 2025-12-18
+- **Completed**: 2025-12-18
+- **Category**: enhanced
+- **Summary**: Implemented analytics dashboard showing message/conversation counts with trends, messages over time chart, and top questions clustered by semantic similarity using OpenAI embeddings.
+- **Scope**: Must Have items only (ANA-001, ANA-002, ANA-003)
+- **Key Files**:
+  - `apps/api/src/routes/analytics.ts` - Analytics API routes (summary, top-questions, timeline)
+  - `apps/api/src/services/question-clustering.ts` - Question clustering with embeddings and cosine similarity
+  - `apps/web/app/(dashboard)/analytics/page.tsx` - Analytics dashboard page with period selector
+  - `apps/web/components/analytics/messages-chart.tsx` - Line chart for messages over time
+  - `apps/web/components/analytics/top-questions-list.tsx` - Top questions list with clustering
+  - `packages/ui/src/components/chart.tsx` - Recharts wrapper components
+  - `apps/web/components/layout/sidebar.tsx` - Added Analytics nav link
+- **API Routes**:
+  - `GET /api/analytics/summary` - Total messages/conversations with trends vs previous period
+  - `GET /api/analytics/top-questions` - Top 10 questions clustered by similarity
+  - `GET /api/analytics/timeline` - Messages per day for charting
+- **Features**:
+  - Period selector (24h, 7d, 30d)
+  - Stat cards with trend indicators (+/- percentage)
+  - Messages over time line chart (using Recharts)
+  - Top questions with semantic clustering (0.85 cosine similarity threshold)
+  - Similar question examples shown for each cluster
+  - Progress bars showing relative frequency
+- **Architecture**:
+  - Question clustering uses OpenAI embeddings with pgvector
+  - Falls back to simple frequency count if embedding fails
+  - Trends calculated by comparing current vs previous period
+- **Testing**: ✅ Manual testing completed via Playwright browser
+  - Analytics page loads with all components
+  - Displays 21 messages, 7 conversations
+  - Top questions clustered correctly (e.g., 4x "return policy")
+  - Period selector renders properly
+- **Notes**: Ready for conversation-history feature
+
+---
 
 ### #8: mcp-server ✅
 - **Started**: 2025-12-18
@@ -381,4 +465,17 @@
 ---
 
 ## Next Up
-- **#8: mcp-server** - MCP server for AI platforms (depends on chat-engine)
+
+### Immediate Priority
+1. **#10: multiple-projects** - Multiple projects per account with header switcher
+   - Spec: [multiple-projects/spec.md](./core/multiple-projects/spec.md)
+   - Promoted from V3 Advanced features
+   - Dependencies: auth-system ✅
+
+2. **#11: lead-capture** - Capture emails when chatbot can't answer questions
+   - Spec: [lead-capture/spec.md](./core/lead-capture/spec.md)
+   - NEW feature added Dec 2024
+   - Dependencies: chat-engine ✅
+
+### Then Enhanced (V2)
+3. **#12: conversation-history** - View and search past conversations

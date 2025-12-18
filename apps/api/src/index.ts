@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 
+import { analyticsRouter } from "./routes/analytics";
 import { authRouter } from "./routes/auth";
 import { chatRouter } from "./routes/chat";
 import { embedRouter } from "./routes/embed";
@@ -29,7 +30,7 @@ const dashboardCors = cors({
 const widgetCors = cors({
   origin: "*",
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "X-Visitor-Id"],
+  allowedHeaders: ["Content-Type", "X-Visitor-Id", "Authorization"],
 });
 
 // Body parsing
@@ -42,6 +43,7 @@ app.get("/health", (_req, res) => {
 });
 
 // Dashboard API routes (restricted CORS)
+app.use("/api/analytics", dashboardCors, analyticsRouter);
 app.use("/api/auth", dashboardCors, authRouter);
 app.use("/api/projects", dashboardCors, projectsRouter);
 app.use("/api/knowledge", dashboardCors, knowledgeRouter);

@@ -75,6 +75,7 @@ export async function sendMessage(
       visitorId,
       sessionId: sessionId || undefined,
       conversationHistory: conversationHistory || [],
+      source: "widget",
     }),
   });
 

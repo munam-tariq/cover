@@ -106,6 +106,7 @@ export default function PlaygroundPage() {
           sessionId,
           conversationHistory,
           visitorId: `playground-${projectInfo.id}`,
+          source: "playground",
         }),
       });
 
