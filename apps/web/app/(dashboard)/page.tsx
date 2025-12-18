@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Progress } from "@chatbot/ui";
 import { apiClient } from "@/lib/api-client";
-import { createClient } from "@/lib/supabase/client";
+import { useProject } from "@/contexts/project-context";
 import {
   MessageSquare,
   BookOpen,
@@ -44,7 +44,7 @@ interface OnboardingData {
 }
 
 export default function DashboardPage() {
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const { currentProject, isLoading: projectLoading } = useProject();
   const [stats, setStats] = useState<DashboardStats>({
     totalMessages: 0,
     knowledgeSources: 0,
@@ -54,30 +54,9 @@ export default function DashboardPage() {
   const [onboarding, setOnboarding] = useState<OnboardingData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch project ID on mount
+  // Fetch dashboard stats and onboarding when currentProject changes
   useEffect(() => {
-    async function fetchProjectId() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { data: projects } = await supabase
-        .from("projects")
-        .select("id")
-        .eq("user_id", user.id)
-        .limit(1);
-
-      if (projects && projects.length > 0) {
-        setProjectId(projects[0].id);
-      }
-    }
-
-    fetchProjectId();
-  }, []);
-
-  // Fetch dashboard stats and onboarding when projectId is available
-  useEffect(() => {
+    const projectId = currentProject?.id;
     if (!projectId) return;
 
     async function fetchData() {
@@ -94,7 +73,7 @@ export default function DashboardPage() {
           apiClient<{ endpoints: Array<{ id: string }> }>(
             `/api/endpoints?projectId=${projectId}`
           ).catch(() => ({ endpoints: [] })),
-          apiClient<OnboardingData>("/api/projects/onboarding").catch(() => null),
+          apiClient<OnboardingData>(`/api/projects/${projectId}/onboarding`).catch(() => null),
         ]);
 
         setStats({
@@ -113,7 +92,7 @@ export default function DashboardPage() {
     }
 
     fetchData();
-  }, [projectId]);
+  }, [currentProject?.id]);
 
   const statCards = [
     {
@@ -156,12 +135,40 @@ export default function DashboardPage() {
 
   const isSetupComplete = onboarding?.progress.percentage === 100;
 
+  // Show loading if project is still loading
+  if (projectLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 w-16 bg-muted animate-pulse rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">
-          Welcome to your chatbot command center
+          {currentProject ? (
+            <>Welcome to <span className="font-medium">{currentProject.name}</span></>
+          ) : (
+            "Welcome to your chatbot command center"
+          )}
         </p>
       </div>
 

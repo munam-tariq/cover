@@ -25,12 +25,14 @@ interface ViewKnowledgeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sourceId: string | null;
+  projectId: string;
 }
 
 export function ViewKnowledgeModal({
   open,
   onOpenChange,
   sourceId,
+  projectId,
 }: ViewKnowledgeModalProps) {
   const [source, setSource] = useState<KnowledgeSource | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,20 +40,20 @@ export function ViewKnowledgeModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open && sourceId) {
+    if (open && sourceId && projectId) {
       fetchSource(sourceId);
     } else {
       setSource(null);
       setError(null);
     }
-  }, [open, sourceId]);
+  }, [open, sourceId, projectId]);
 
   const fetchSource = async (id: string) => {
     setLoading(true);
     setError(null);
     try {
       const data = await apiClient<{ source: KnowledgeSource }>(
-        `/api/knowledge/${id}`
+        `/api/knowledge/${id}?projectId=${projectId}`
       );
       setSource(data.source);
     } catch (err) {
@@ -63,12 +65,12 @@ export function ViewKnowledgeModal({
   };
 
   const handleDownload = async () => {
-    if (!sourceId) return;
+    if (!sourceId || !projectId) return;
 
     setDownloading(true);
     try {
       const data = await apiClient<{ downloadUrl: string; fileName: string }>(
-        `/api/knowledge/${sourceId}/download`
+        `/api/knowledge/${sourceId}/download?projectId=${projectId}`
       );
 
       // Open the download URL in a new tab/window

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "@/lib/api-client";
+import { useProject } from "@/contexts/project-context";
 import {
   Button,
   Card,
@@ -46,6 +47,7 @@ interface TestResult {
 }
 
 export function EndpointsList() {
+  const { currentProject, isLoading: projectLoading } = useProject();
   const [endpoints, setEndpoints] = useState<ApiEndpoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,9 +58,13 @@ export function EndpointsList() {
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
 
   const fetchEndpoints = useCallback(async () => {
+    if (!currentProject?.id) return;
+
     try {
       setError(null);
-      const data = await apiClient<EndpointListResponse>("/api/endpoints");
+      const data = await apiClient<EndpointListResponse>(
+        `/api/endpoints?projectId=${currentProject.id}`
+      );
       setEndpoints(data.endpoints);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -66,20 +72,28 @@ export function EndpointsList() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentProject?.id]);
 
+  // Fetch endpoints when project changes
   useEffect(() => {
+    if (!currentProject?.id) return;
+
+    setLoading(true);
+    setEndpoints([]); // Clear endpoints when project changes
+    setTestResults({}); // Clear test results when project changes
     fetchEndpoints();
-  }, [fetchEndpoints]);
+  }, [currentProject?.id, fetchEndpoints]);
 
   const handleDelete = async (id: string) => {
+    if (!currentProject?.id) return;
+
     if (!confirm("Are you sure you want to delete this API endpoint? This action cannot be undone.")) {
       return;
     }
 
     setDeleting(id);
     try {
-      await apiClient(`/api/endpoints/${id}`, { method: "DELETE" });
+      await apiClient(`/api/endpoints/${id}?projectId=${currentProject.id}`, { method: "DELETE" });
       setEndpoints((prev) => prev.filter((e) => e.id !== id));
       // Clear test result for deleted endpoint
       setTestResults((prev) => {
@@ -96,6 +110,8 @@ export function EndpointsList() {
   };
 
   const handleTest = async (id: string) => {
+    if (!currentProject?.id) return;
+
     setTesting(id);
     // Clear previous result
     setTestResults((prev) => {
@@ -105,9 +121,10 @@ export function EndpointsList() {
     });
 
     try {
-      const result = await apiClient<TestResult>(`/api/endpoints/${id}/test`, {
-        method: "POST",
-      });
+      const result = await apiClient<TestResult>(
+        `/api/endpoints/${id}/test?projectId=${currentProject.id}`,
+        { method: "POST" }
+      );
       setTestResults((prev) => ({ ...prev, [id]: result }));
     } catch (err) {
       console.error("Test error:", err);
@@ -184,7 +201,7 @@ export function EndpointsList() {
     }
   };
 
-  if (loading) {
+  if (projectLoading || loading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -214,6 +231,19 @@ export function EndpointsList() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentProject) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">API Endpoints</h1>
+            <p className="text-muted-foreground">No project selected</p>
+          </div>
         </div>
       </div>
     );
@@ -358,6 +388,7 @@ export function EndpointsList() {
       <AddEndpointModal
         open={modalOpen}
         onOpenChange={handleModalClose}
+        projectId={currentProject.id}
         editEndpoint={editingEndpoint}
         onSuccess={() => {
           fetchEndpoints();

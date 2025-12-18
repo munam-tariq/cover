@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { ProjectSwitcher } from "./project-switcher";
 
 interface User {
   email?: string;
@@ -11,14 +12,13 @@ interface User {
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
-  const [projectName, setProjectName] = useState<string>("My Chatbot");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClient();
 
-  // Get current user and their project
+  // Get current user
   useEffect(() => {
     const getUser = async () => {
       const {
@@ -26,17 +26,6 @@ export function Header() {
       } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
-
-        // Get the user's project name (limit 1 to handle edge cases)
-        const { data: projects } = await supabase
-          .from("projects")
-          .select("name")
-          .eq("user_id", user.id)
-          .limit(1);
-
-        if (projects && projects.length > 0) {
-          setProjectName(projects[0].name);
-        }
       }
     };
 
@@ -77,10 +66,8 @@ export function Header() {
   return (
     <header className="h-16 border-b bg-card px-6 flex items-center justify-between">
       <div className="flex items-center gap-4">
-        <div className="text-sm text-muted-foreground">
-          Project:{" "}
-          <span className="text-foreground font-medium">{projectName}</span>
-        </div>
+        {/* Project Switcher */}
+        <ProjectSwitcher />
       </div>
 
       <div className="flex items-center gap-4">

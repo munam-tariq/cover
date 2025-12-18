@@ -23,6 +23,7 @@ import { apiClient, apiClientFormData } from "@/lib/api-client";
 interface AddKnowledgeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId: string;
   onSuccess: () => void;
 }
 
@@ -34,6 +35,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 export function AddKnowledgeModal({
   open,
   onOpenChange,
+  projectId,
   onSuccess,
 }: AddKnowledgeModalProps) {
   const [activeTab, setActiveTab] = useState<InputType>("text");
@@ -135,7 +137,7 @@ export function AddKnowledgeModal({
     try {
       if (activeTab === "text") {
         // For text content, use JSON endpoint
-        await apiClient("/api/knowledge", {
+        await apiClient(`/api/knowledge?projectId=${projectId}`, {
           method: "POST",
           body: JSON.stringify({
             name: name.trim(),
@@ -147,7 +149,7 @@ export function AddKnowledgeModal({
         const formData = new FormData();
         formData.append("name", name.trim());
         formData.append("file", selectedFile);
-        await apiClientFormData("/api/knowledge/upload", formData);
+        await apiClientFormData(`/api/knowledge/upload?projectId=${projectId}`, formData);
       }
 
       resetForm();

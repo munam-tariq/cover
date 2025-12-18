@@ -78,7 +78,7 @@ graph TD
 
 ### Phase 2.5: Immediate Priority (Team Decision - Dec 2024)
 9. `chat-analytics` - Message count, popular questions, response quality ✅
-10. `multiple-projects` - Multiple projects per account with switcher (promoted from V3)
+10. `multiple-projects` - Multiple projects per account with switcher (promoted from V3) ✅
 11. `lead-capture` - Capture emails when chatbot can't answer (NEW)
 
 ### Phase 3: Enhanced Features (V2 - Post-MVP)
@@ -111,7 +111,7 @@ graph TD
 | widget | core | L | completed | chat-engine |
 | mcp-server | core | M | completed | chat-engine |
 | chat-analytics | immediate | M | completed | chat-engine |
-| **multiple-projects** | **immediate** | M | **in-progress** | auth-system |
+| **multiple-projects** | **immediate** | M | **completed** | auth-system |
 | **lead-capture** | **immediate** | M | **ready** | chat-engine |
 | conversation-history | enhanced | S | pending | chat-engine |
 | widget-customization | enhanced | M | pending | widget |

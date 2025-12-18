@@ -36,6 +36,7 @@ interface ApiEndpoint {
 interface AddEndpointModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId: string;
   editEndpoint: ApiEndpoint | null;
   onSuccess: () => void;
 }
@@ -54,6 +55,7 @@ const MAX_DESCRIPTION_LENGTH = 500;
 export function AddEndpointModal({
   open,
   onOpenChange,
+  projectId,
   editEndpoint,
   onSuccess,
 }: AddEndpointModalProps) {
@@ -127,7 +129,7 @@ export function AddEndpointModal({
 
     try {
       const result = await apiClient<TestResult>(
-        `/api/endpoints/${editEndpoint.id}/test`,
+        `/api/endpoints/${editEndpoint.id}/test?projectId=${projectId}`,
         { method: "POST" }
       );
       setTestResult(result);
@@ -206,12 +208,12 @@ export function AddEndpointModal({
       }
 
       if (isEditing) {
-        await apiClient(`/api/endpoints/${editEndpoint.id}`, {
+        await apiClient(`/api/endpoints/${editEndpoint.id}?projectId=${projectId}`, {
           method: "PUT",
           body: JSON.stringify(payload),
         });
       } else {
-        await apiClient("/api/endpoints", {
+        await apiClient(`/api/endpoints?projectId=${projectId}`, {
           method: "POST",
           body: JSON.stringify(payload),
         });

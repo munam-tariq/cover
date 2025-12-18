@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@chatbot/ui";
+import { useEffect, useState, useCallback } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from "@chatbot/ui";
 import { apiClient } from "@/lib/api-client";
-import { createClient } from "@/lib/supabase/client";
+import { useProject } from "@/contexts/project-context";
 import { TrendingUp, TrendingDown, MessageSquare, Users, Minus } from "lucide-react";
 import { MessagesChart } from "@/components/analytics/messages-chart";
 import { TopQuestionsList } from "@/components/analytics/top-questions-list";
@@ -35,7 +35,7 @@ interface QuestionCluster {
 type Period = "24h" | "7d" | "30d";
 
 export default function AnalyticsPage() {
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const { currentProject, isLoading: projectLoading } = useProject();
   const [period, setPeriod] = useState<Period>("30d");
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
@@ -43,57 +43,41 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch project ID on mount
-  useEffect(() => {
-    async function fetchProjectId() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+  const fetchAnalytics = useCallback(async () => {
+    if (!currentProject?.id) return;
 
-      if (!user) return;
+    setLoading(true);
+    setError(null);
 
-      const { data: projects } = await supabase
-        .from("projects")
-        .select("id")
-        .eq("user_id", user.id)
-        .limit(1);
+    try {
+      // Fetch all analytics data in parallel
+      const [summaryData, timelineData, questionsData] = await Promise.all([
+        apiClient<AnalyticsSummary>(`/api/analytics/summary?projectId=${currentProject.id}&period=${period}`),
+        apiClient<{ timeline: TimelineEntry[] }>(`/api/analytics/timeline?projectId=${currentProject.id}&days=${period === "24h" ? 1 : period === "7d" ? 7 : 30}`),
+        apiClient<{ questions: QuestionCluster[] }>(`/api/analytics/top-questions?projectId=${currentProject.id}&days=${period === "24h" ? 1 : period === "7d" ? 7 : 30}`),
+      ]);
 
-      if (projects && projects.length > 0) {
-        setProjectId(projects[0].id);
-      }
+      setSummary(summaryData);
+      setTimeline(timelineData.timeline);
+      setTopQuestions(questionsData.questions);
+    } catch (err) {
+      console.error("Failed to fetch analytics:", err);
+      setError("Failed to load analytics data");
+    } finally {
+      setLoading(false);
     }
+  }, [currentProject?.id, period]);
 
-    fetchProjectId();
-  }, []);
-
-  // Fetch analytics data when projectId or period changes
+  // Fetch analytics data when project or period changes
   useEffect(() => {
-    if (!projectId) return;
+    if (!currentProject?.id) return;
 
-    async function fetchAnalytics() {
-      setLoading(true);
-      setError(null);
-
-      try {
-        // Fetch all analytics data in parallel
-        const [summaryData, timelineData, questionsData] = await Promise.all([
-          apiClient<AnalyticsSummary>(`/api/analytics/summary?projectId=${projectId}&period=${period}`),
-          apiClient<{ timeline: TimelineEntry[] }>(`/api/analytics/timeline?projectId=${projectId}&days=${period === "24h" ? 1 : period === "7d" ? 7 : 30}`),
-          apiClient<{ questions: QuestionCluster[] }>(`/api/analytics/top-questions?projectId=${projectId}&days=${period === "24h" ? 1 : period === "7d" ? 7 : 30}`),
-        ]);
-
-        setSummary(summaryData);
-        setTimeline(timelineData.timeline);
-        setTopQuestions(questionsData.questions);
-      } catch (err) {
-        console.error("Failed to fetch analytics:", err);
-        setError("Failed to load analytics data");
-      } finally {
-        setLoading(false);
-      }
-    }
-
+    // Reset state when project changes
+    setSummary(null);
+    setTimeline([]);
+    setTopQuestions([]);
     fetchAnalytics();
-  }, [projectId, period]);
+  }, [currentProject?.id, period, fetchAnalytics]);
 
   const periodLabels: Record<Period, string> = {
     "24h": "Last 24 Hours",
@@ -128,12 +112,38 @@ export default function AnalyticsPage() {
     );
   }
 
-  if (!projectId) {
+  if (projectLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-4 w-64 mt-2" />
+          </div>
+          <Skeleton className="h-10 w-36" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {[1, 2].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentProject) {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Analytics</h1>
-          <p className="text-muted-foreground">Loading project...</p>
+          <p className="text-muted-foreground">No project selected</p>
         </div>
       </div>
     );

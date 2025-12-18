@@ -15,20 +15,15 @@ import {
 import { ChatMessage, type ChatMessageProps } from "@/components/chat/chat-message";
 import { ChatInput } from "@/components/chat/chat-input";
 import { apiClient } from "@/lib/api-client";
+import { useProject } from "@/contexts/project-context";
 
 interface Message extends Omit<ChatMessageProps, "isLoading"> {
   id: string;
 }
 
-interface ProjectInfo {
-  id: string;
-  name: string;
+interface ProjectStats {
   knowledgeCount: number;
   endpointCount: number;
-}
-
-interface ProjectResponse {
-  project: ProjectInfo;
 }
 
 interface ChatResponse {
@@ -40,32 +35,41 @@ interface ChatResponse {
 }
 
 export default function PlaygroundPage() {
+  const { currentProject, isLoading: projectLoading } = useProject();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null);
+  const [stats, setStats] = useState<ProjectStats>({ knowledgeCount: 0, endpointCount: 0 });
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch project info on mount
+  // Fetch project stats when project changes
   useEffect(() => {
-    async function fetchProjectInfo() {
+    const projectId = currentProject?.id;
+    if (!projectId) return;
+
+    async function fetchStats() {
       try {
-        // Use API with include_stats to get knowledge/endpoint counts
-        const data = await apiClient<ProjectResponse>("/api/projects?include_stats=true");
-        setProjectInfo({
-          id: data.project.id,
-          name: data.project.name,
-          knowledgeCount: data.project.knowledgeCount || 0,
-          endpointCount: data.project.endpointCount || 0,
+        const [knowledgeData, endpointsData] = await Promise.all([
+          apiClient<{ sources: Array<{ id: string }> }>(`/api/knowledge?projectId=${projectId}`).catch(() => ({ sources: [] })),
+          apiClient<{ endpoints: Array<{ id: string }> }>(`/api/endpoints?projectId=${projectId}`).catch(() => ({ endpoints: [] })),
+        ]);
+
+        setStats({
+          knowledgeCount: knowledgeData.sources?.length || 0,
+          endpointCount: endpointsData.endpoints?.length || 0,
         });
       } catch (err) {
-        console.error("Failed to fetch project info:", err);
+        console.error("Failed to fetch project stats:", err);
       }
     }
 
-    fetchProjectInfo();
-  }, []);
+    fetchStats();
+    // Reset chat when project changes
+    setMessages([]);
+    setSessionId(null);
+    setError(null);
+  }, [currentProject?.id]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -73,7 +77,7 @@ export default function PlaygroundPage() {
   }, [messages]);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!projectInfo) {
+    if (!currentProject) {
       setError("No project found. Please create a project first.");
       return;
     }
@@ -101,11 +105,11 @@ export default function PlaygroundPage() {
       const response = await apiClient<ChatResponse>("/api/chat/message", {
         method: "POST",
         body: JSON.stringify({
-          projectId: projectInfo.id,
+          projectId: currentProject.id,
           message: content,
           sessionId,
           conversationHistory,
-          visitorId: `playground-${projectInfo.id}`,
+          visitorId: `playground-${currentProject.id}`,
           source: "playground",
         }),
       });
@@ -141,7 +145,7 @@ export default function PlaygroundPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [projectInfo, sessionId, messages]);
+  }, [currentProject, sessionId, messages]);
 
   const clearChat = () => {
     setMessages([]);
@@ -149,7 +153,19 @@ export default function PlaygroundPage() {
     setError(null);
   };
 
-  const hasSetup = projectInfo && (projectInfo.knowledgeCount > 0 || projectInfo.endpointCount > 0);
+  const hasSetup = stats.knowledgeCount > 0 || stats.endpointCount > 0;
+
+  // Show loading state while project is loading
+  if (projectLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <RefreshCw className="h-5 w-5 animate-spin" />
+          <span>Loading project...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>
@@ -187,15 +203,15 @@ export default function PlaygroundPage() {
           {/* Chat area */}
           <Card className="flex-1 flex flex-col overflow-hidden">
             {/* Status bar */}
-            {projectInfo && (
+            {currentProject && (
               <div className="flex items-center gap-4 px-4 py-2 border-b bg-muted/30 text-sm">
                 <div className="flex items-center gap-2">
                   <Database className="h-4 w-4 text-muted-foreground" />
-                  <span>{projectInfo.knowledgeCount} knowledge sources</span>
+                  <span>{stats.knowledgeCount} knowledge sources</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Plug className="h-4 w-4 text-muted-foreground" />
-                  <span>{projectInfo.endpointCount} API endpoints</span>
+                  <span>{stats.endpointCount} API endpoints</span>
                 </div>
               </div>
             )}
@@ -204,7 +220,7 @@ export default function PlaygroundPage() {
             <ScrollArea className="flex-1">
               <div className="p-4">
                 {messages.length === 0 ? (
-                  <EmptyState hasSetup={!!hasSetup} projectName={projectInfo?.name} />
+                  <EmptyState hasSetup={hasSetup} projectName={currentProject?.name} />
                 ) : (
                   <div className="space-y-2">
                     {messages.map((message) => (
@@ -243,9 +259,9 @@ export default function PlaygroundPage() {
             <ChatInput
               onSend={sendMessage}
               isLoading={isLoading}
-              disabled={!projectInfo}
+              disabled={!currentProject}
               placeholder={
-                projectInfo
+                currentProject
                   ? "Ask me anything about your knowledge base..."
                   : "Loading project..."
               }
@@ -291,7 +307,7 @@ export default function PlaygroundPage() {
                   <button
                     key={index}
                     onClick={() => sendMessage(suggestion)}
-                    disabled={isLoading || !projectInfo}
+                    disabled={isLoading || !currentProject}
                     className={cn(
                       "w-full text-left px-3 py-2 rounded-md text-sm",
                       "bg-muted/50 hover:bg-muted transition-colors",

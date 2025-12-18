@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Card, Button, Badge, cn, Input, Label } from "@chatbot/ui";
 import {
   Copy,
@@ -11,20 +11,9 @@ import {
   Smartphone,
   Monitor,
   RefreshCw,
-  Settings2,
   Palette,
 } from "lucide-react";
-import { apiClient } from "@/lib/api-client";
-
-interface ProjectInfo {
-  id: string;
-  name: string;
-  systemPrompt: string;
-}
-
-interface ProjectResponse {
-  project: ProjectInfo;
-}
+import { useProject } from "@/contexts/project-context";
 
 interface WidgetConfig {
   position: "bottom-right" | "bottom-left";
@@ -34,9 +23,8 @@ interface WidgetConfig {
 }
 
 export default function EmbedPage() {
+  const { currentProject, isLoading: loading } = useProject();
   const [copied, setCopied] = useState(false);
-  const [project, setProject] = useState<ProjectInfo | null>(null);
-  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
   const [previewKey, setPreviewKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -49,31 +37,15 @@ export default function EmbedPage() {
     greeting: "Hi! How can I help you today?",
   });
 
-  // Load project info via our API
-  useEffect(() => {
-    async function loadProject() {
-      try {
-        const data = await apiClient<ProjectResponse>("/api/projects");
-        setProject(data.project);
-      } catch (error) {
-        console.error("Failed to load project:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadProject();
-  }, []);
-
   // Build embed code
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
   // Widget hosted on Supabase Storage
   const widgetUrl = "https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets/widget.js";
 
-  const embedCode = project
+  const embedCode = currentProject
     ? `<script
   src="${widgetUrl}"
-  data-project-id="${project.id}"
+  data-project-id="${currentProject.id}"
   data-api-url="${apiUrl}"
   data-position="${config.position}"
   data-primary-color="${config.primaryColor}"
@@ -104,7 +76,7 @@ export default function EmbedPage() {
   };
 
   // Generate preview HTML with the REAL widget
-  const previewHtml = project
+  const previewHtml = currentProject
     ? `
 <!DOCTYPE html>
 <html>
@@ -153,7 +125,7 @@ export default function EmbedPage() {
   <!-- Load the REAL widget with user's project ID and custom config -->
   <script
     src="${widgetUrl}"
-    data-project-id="${project.id}"
+    data-project-id="${currentProject.id}"
     data-api-url="${apiUrl}"
     data-position="${config.position}"
     data-primary-color="${config.primaryColor}"
@@ -177,13 +149,13 @@ export default function EmbedPage() {
     );
   }
 
-  if (!project) {
+  if (!currentProject) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <p className="text-muted-foreground mb-4">No project found.</p>
           <Button asChild>
-            <a href="/settings">Create Project</a>
+            <a href="/projects?create=true">Create Project</a>
           </Button>
         </div>
       </div>
@@ -204,7 +176,7 @@ export default function EmbedPage() {
           </p>
         </div>
         <Badge variant="outline" className="text-xs">
-          Project: {project.name}
+          Project: {currentProject.name}
         </Badge>
       </div>
 

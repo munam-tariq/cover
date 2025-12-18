@@ -54,7 +54,8 @@ export async function authMiddleware(
 
 /**
  * Middleware to verify project access
- * Gets the user's project and attaches it to the request
+ * Gets the projectId from query params or X-Project-ID header
+ * Verifies the user owns the project before attaching it to the request
  */
 export async function projectAuthMiddleware(
   req: AuthenticatedRequest,
@@ -68,21 +69,34 @@ export async function projectAuthMiddleware(
       });
     }
 
-    // Get user's project (for V1, users have one project)
-    // Use .limit(1) instead of .single() to handle edge cases
-    const { data: projects, error } = await supabaseAdmin
-      .from("projects")
-      .select("id")
-      .eq("user_id", req.userId)
-      .limit(1);
+    // Get projectId from query params, header, or body (in order of priority)
+    const projectId =
+      (req.query.projectId as string) ||
+      (req.headers["x-project-id"] as string) ||
+      (req.body?.projectId as string);
 
-    if (error || !projects || projects.length === 0) {
-      return res.status(404).json({
-        error: { code: "PROJECT_NOT_FOUND", message: "No project found" },
+    if (!projectId) {
+      return res.status(400).json({
+        error: { code: "PROJECT_ID_REQUIRED", message: "Project ID is required" },
       });
     }
 
-    req.projectId = projects[0].id;
+    // Verify the user owns this project (exclude soft-deleted projects)
+    const { data: project, error } = await supabaseAdmin
+      .from("projects")
+      .select("id")
+      .eq("id", projectId)
+      .eq("user_id", req.userId)
+      .is("deleted_at", null)
+      .single();
+
+    if (error || !project) {
+      return res.status(404).json({
+        error: { code: "PROJECT_NOT_FOUND", message: "Project not found or access denied" },
+      });
+    }
+
+    req.projectId = project.id;
     next();
   } catch (error) {
     console.error("Project auth error:", error);

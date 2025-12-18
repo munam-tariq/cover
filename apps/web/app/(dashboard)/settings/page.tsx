@@ -3,23 +3,23 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
-import { createClient } from "@/lib/supabase/client";
+import { useProject } from "@/contexts/project-context";
 import { Button, Card, CardContent, Skeleton } from "@chatbot/ui";
 import { Copy, Check, AlertCircle, Loader2, Sparkles } from "lucide-react";
 
-interface Project {
+interface UpdatedProject {
   id: string;
   name: string;
   systemPrompt: string;
+  updatedAt: string;
 }
 
-interface ProjectResponse {
-  project: Project;
+interface ProjectUpdateResponse {
+  project: UpdatedProject;
 }
 
 export default function SettingsPage() {
-  const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { currentProject, isLoading: projectLoading, deleteProject, refreshProjects } = useProject();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,38 +33,23 @@ export default function SettingsPage() {
 
   const router = useRouter();
 
+  // Initialize form when project loads
   useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        const data = await apiClient<ProjectResponse>("/api/projects");
-        setProject(data.project);
-        setName(data.project.name || "");
-        setSystemPrompt(data.project.systemPrompt || "");
-      } catch (err) {
-        console.error("Error fetching project:", err);
-        // Check if unauthorized (will redirect via apiClient)
-        if (err instanceof Error && err.message.includes("401")) {
-          router.push("/login");
-          return;
-        }
-        setError("Failed to load project settings");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProject();
-  }, [router]);
+    if (currentProject) {
+      setName(currentProject.name || "");
+      setSystemPrompt(currentProject.systemPrompt || "");
+    }
+  }, [currentProject]);
 
   const handleSave = async () => {
-    if (!project) return;
+    if (!currentProject) return;
 
     setSaving(true);
     setError(null);
     setSuccess(null);
 
     try {
-      const data = await apiClient<ProjectResponse>("/api/projects", {
+      await apiClient<ProjectUpdateResponse>(`/api/projects/${currentProject.id}`, {
         method: "PUT",
         body: JSON.stringify({
           name: name.trim() || "My Chatbot",
@@ -72,7 +57,9 @@ export default function SettingsPage() {
         }),
       });
 
-      setProject(data.project);
+      // Refresh projects to update context
+      await refreshProjects();
+
       setSuccess("Settings saved successfully");
 
       // Clear success message after 3 seconds
@@ -86,10 +73,10 @@ export default function SettingsPage() {
   };
 
   const handleCopyProjectId = async () => {
-    if (!project) return;
+    if (!currentProject) return;
 
     try {
-      await navigator.clipboard.writeText(project.id);
+      await navigator.clipboard.writeText(currentProject.id);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -98,7 +85,7 @@ export default function SettingsPage() {
   };
 
   const handleCopyMcpConfig = async () => {
-    if (!project) return;
+    if (!currentProject) return;
 
     const mcpConfig = JSON.stringify(
       {
@@ -106,7 +93,7 @@ export default function SettingsPage() {
           type: "http",
           url: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/mcp`,
           headers: {
-            "X-Project-ID": project.id,
+            "X-Project-ID": currentProject.id,
           },
         },
       },
@@ -124,10 +111,10 @@ export default function SettingsPage() {
   };
 
   const handleDeleteProject = async () => {
-    if (!project) return;
+    if (!currentProject) return;
 
     const confirmed = confirm(
-      "Are you sure you want to delete this project? This will permanently delete all your knowledge sources, API endpoints, and chat history. This action cannot be undone."
+      `Are you sure you want to delete "${currentProject.name}"? This will delete all knowledge sources, API endpoints, and chat history for this project. This action cannot be undone.`
     );
 
     if (!confirmed) return;
@@ -136,21 +123,18 @@ export default function SettingsPage() {
     setError(null);
 
     try {
-      await apiClient("/api/projects", { method: "DELETE" });
-
-      // Sign out via Supabase client and redirect to login
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      router.push("/login");
+      // Use the context's deleteProject method (handles switching to another project)
+      await deleteProject(currentProject.id);
+      // The context will redirect to /projects if no projects left
+      // or switch to another project
     } catch (err) {
       console.error("Error deleting project:", err);
       setError("Failed to delete project");
-    } finally {
       setDeleting(false);
     }
   };
 
-  if (loading) {
+  if (projectLoading) {
     return (
       <div className="space-y-6">
         <div>
@@ -170,12 +154,33 @@ export default function SettingsPage() {
     );
   }
 
+  if (!currentProject) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Settings</h1>
+          <p className="text-muted-foreground">No project selected</p>
+        </div>
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground mb-4">
+              Please select or create a project first.
+            </p>
+            <Button onClick={() => router.push("/projects")}>
+              Go to Projects
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground">
-          Manage your chatbot and account settings
+          Manage settings for <span className="font-medium">{currentProject.name}</span>
         </p>
       </div>
 
@@ -207,8 +212,12 @@ export default function SettingsPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="My Chatbot"
+                  maxLength={50}
                   className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {name.length}/50 characters
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
@@ -219,10 +228,12 @@ export default function SettingsPage() {
                   value={systemPrompt}
                   onChange={(e) => setSystemPrompt(e.target.value)}
                   placeholder="You are a helpful assistant that answers questions based on the provided knowledge base..."
+                  maxLength={2000}
                   className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                 />
                 <p className="text-sm text-muted-foreground mt-1">
                   Instructions that define how your chatbot behaves and responds.
+                  ({systemPrompt.length}/2000)
                 </p>
               </div>
               <div className="pt-2">
@@ -246,7 +257,7 @@ export default function SettingsPage() {
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={project?.id || ""}
+                    value={currentProject.id}
                     readOnly
                     className="flex-1 px-3 py-2 border border-input rounded-md bg-muted font-mono text-sm"
                   />
@@ -294,7 +305,7 @@ export default function SettingsPage() {
     "type": "http",
     "url": "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/mcp",
     "headers": {
-      "X-Project-ID": "${project?.id || "your-project-id"}"
+      "X-Project-ID": "${currentProject.id}"
     }
   }
 }`}
@@ -344,7 +355,7 @@ export default function SettingsPage() {
             <div className="p-4 border border-destructive/50 rounded-md">
               <h3 className="font-medium">Delete Project</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Once you delete a project, there is no going back. All knowledge sources, API endpoints, and chat history will be permanently deleted.
+                Once you delete this project, all knowledge sources, API endpoints, and chat history will be removed. This action cannot be undone.
               </p>
               <Button
                 variant="destructive"

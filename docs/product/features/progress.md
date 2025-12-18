@@ -2,17 +2,13 @@
 
 ## Overview
 - **Total Features**: 22
-- **Completed**: 9
-- **In Progress**: 1
+- **Completed**: 10
+- **In Progress**: 0
 - **Remaining**: 12
 
 ## Currently In Progress
 
-### #10: multiple-projects 🔄
-- **Started**: 2025-12-18
-- **Category**: core
-- **Status**: In Progress
-- **Spec**: [multiple-projects/spec.md](./core/multiple-projects/spec.md)
+None
 
 ---
 
@@ -22,7 +18,7 @@ The following features have been prioritized for immediate implementation:
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 1 | `multiple-projects` | Ready | Promoted from V3 - project switcher, multi-project support |
+| 1 | `multiple-projects` | ✅ Completed | Promoted from V3 - project switcher, multi-project support |
 | 2 | `lead-capture` | Ready | NEW - capture emails when chatbot can't answer |
 
 These features take priority over the remaining Enhanced (V2) features.
@@ -55,6 +51,13 @@ These features take priority over the remaining Enhanced (V2) features.
 | API Endpoints - Add Endpoint (API Key) | 2025-12-17 | ✅ Pass |
 | API Endpoints - Test Endpoint (API Key) | 2025-12-17 | ✅ Pass |
 | API Endpoints - Delete Endpoint | 2025-12-17 | ✅ Pass |
+| Multiple Projects - Project Switcher Dropdown | 2025-12-18 | ✅ Pass |
+| Multiple Projects - Switch Projects (Page Refresh) | 2025-12-18 | ✅ Pass |
+| Multiple Projects - Knowledge Data Isolation | 2025-12-18 | ✅ Pass |
+| Multiple Projects - API Endpoints Data Isolation | 2025-12-18 | ✅ Pass |
+| Multiple Projects - Analytics Data Isolation | 2025-12-18 | ✅ Pass |
+| Multiple Projects - Add Knowledge to Specific Project | 2025-12-18 | ✅ Pass |
+| Multiple Projects - localStorage Persistence | 2025-12-18 | ✅ Pass |
 
 ### Not Yet Tested ⚠️
 | Feature | Notes |
@@ -93,6 +96,63 @@ These features take priority over the remaining Enhanced (V2) features.
 ---
 
 ## Completed Features
+
+### #10: multiple-projects ✅
+- **Started**: 2025-12-18
+- **Completed**: 2025-12-18
+- **Category**: core
+- **Summary**: Implemented multiple projects per account with project switcher dropdown, /projects management page, create project modal, and soft delete functionality. Users can now manage multiple chatbot projects from a single account.
+- **Key Files**:
+  - `apps/api/src/routes/projects.ts` - Updated with list, create, soft delete, get by ID endpoints
+  - `apps/api/src/middleware/auth.ts` - Updated projectAuthMiddleware to require explicit projectId
+  - `apps/web/contexts/project-context.tsx` - ProjectContext for state management (page refresh on switch)
+  - `apps/web/components/layout/project-switcher.tsx` - Project switcher dropdown
+  - `apps/web/components/layout/header.tsx` - Updated header with ProjectSwitcher
+  - `apps/web/components/layout/sidebar.tsx` - Added Projects nav link
+  - `apps/web/app/(dashboard)/projects/page.tsx` - Projects management page
+  - `apps/web/components/projects/create-project-modal.tsx` - Create project modal
+  - `apps/web/app/(dashboard)/settings/page.tsx` - Updated for multi-project
+  - `apps/web/app/(dashboard)/page.tsx` - Updated dashboard with context
+  - `apps/web/app/(dashboard)/analytics/page.tsx` - Updated to use ProjectContext
+  - `apps/web/app/(dashboard)/layout.tsx` - Added ProjectProvider wrapper
+  - `apps/web/components/knowledge/knowledge-list.tsx` - Passes projectId in API calls
+  - `apps/web/components/endpoints/endpoints-list.tsx` - Passes projectId in API calls
+  - `packages/ui/src/components/dropdown-menu.tsx` - New dropdown-menu component
+- **API Endpoints**:
+  - `GET /api/projects` - List all active projects
+  - `GET /api/projects/:id` - Get single project by ID
+  - `POST /api/projects` - Create new project
+  - `PUT /api/projects/:id` - Update project settings
+  - `DELETE /api/projects/:id` - Soft delete project
+  - `GET /api/projects/:id/onboarding` - Get onboarding progress
+- **Database Changes**:
+  - Migration: `add_soft_delete_to_projects` - Added `deleted_at` column
+  - Index: `idx_projects_user_active` - Efficient filtering of active projects
+- **Features**:
+  - Project switcher dropdown in header
+  - /projects page with project list
+  - Create project modal with name and optional system prompt
+  - Soft delete (projects marked as deleted, not removed)
+  - localStorage persistence for selected project
+  - Context automatically switches to another project after delete
+  - Dashboard and Settings pages updated to use ProjectContext
+  - **Data Isolation** - Each project's data completely isolated (Knowledge, API Endpoints, Analytics)
+  - **Page Refresh on Switch** - Clear user feedback when switching projects
+- **Data Isolation Bug Fix** (2025-12-18):
+  - Fixed `projectAuthMiddleware` to require explicit projectId from client
+  - Updated all frontend components to pass projectId in API calls
+  - Added page refresh on project switch for clean state
+  - Verified with Playwright: Knowledge, API Endpoints, Analytics all properly isolated
+- **E2E Testing**: ✅ All features tested with Playwright
+  - Project switcher dropdown opens/closes
+  - Switching projects triggers page refresh
+  - Knowledge page shows only current project's sources
+  - API Endpoints page shows only current project's endpoints
+  - Analytics page shows only current project's data
+  - Creating knowledge in one project doesn't appear in another
+- **Notes**: Ready for lead-capture feature
+
+---
 
 ### #9: chat-analytics ✅
 - **Started**: 2025-12-18

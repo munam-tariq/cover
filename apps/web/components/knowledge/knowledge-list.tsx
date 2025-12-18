@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { apiClient } from "@/lib/api-client";
+import { useProject } from "@/contexts/project-context";
 import {
   Button,
   Card,
@@ -29,6 +30,7 @@ interface KnowledgeListResponse {
 }
 
 export function KnowledgeList() {
+  const { currentProject, isLoading: projectLoading } = useProject();
   const [sources, setSources] = useState<KnowledgeSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,9 +46,13 @@ export function KnowledgeList() {
   };
 
   const fetchSources = useCallback(async () => {
+    if (!currentProject?.id) return;
+
     try {
       setError(null);
-      const data = await apiClient<KnowledgeListResponse>("/api/knowledge");
+      const data = await apiClient<KnowledgeListResponse>(
+        `/api/knowledge?projectId=${currentProject.id}`
+      );
       setSources(data.sources);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -54,20 +60,26 @@ export function KnowledgeList() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentProject?.id]);
 
+  // Fetch sources when project changes
   useEffect(() => {
+    if (!currentProject?.id) return;
+
+    setLoading(true);
+    setSources([]); // Clear sources when project changes
     fetchSources();
 
-    // Set up realtime subscription for status updates
+    // Set up realtime subscription for status updates (filtered by project)
     const channel = supabase
-      .channel("knowledge-changes")
+      .channel(`knowledge-changes-${currentProject.id}`)
       .on(
         "postgres_changes",
         {
           event: "UPDATE",
           schema: "public",
           table: "knowledge_sources",
+          filter: `project_id=eq.${currentProject.id}`,
         },
         (payload) => {
           setSources((prev) =>
@@ -89,16 +101,18 @@ export function KnowledgeList() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, fetchSources]);
+  }, [supabase, currentProject?.id, fetchSources]);
 
   const handleDelete = async (id: string) => {
+    if (!currentProject?.id) return;
+
     if (!confirm("Are you sure you want to delete this knowledge source? This action cannot be undone.")) {
       return;
     }
 
     setDeleting(id);
     try {
-      await apiClient(`/api/knowledge/${id}`, { method: "DELETE" });
+      await apiClient(`/api/knowledge/${id}?projectId=${currentProject.id}`, { method: "DELETE" });
       setSources((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
       console.error("Delete error:", err);
@@ -143,7 +157,7 @@ export function KnowledgeList() {
     }
   };
 
-  if (loading) {
+  if (projectLoading || loading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -173,6 +187,19 @@ export function KnowledgeList() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentProject) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Knowledge Base</h1>
+            <p className="text-muted-foreground">No project selected</p>
+          </div>
         </div>
       </div>
     );
@@ -305,6 +332,7 @@ export function KnowledgeList() {
       <AddKnowledgeModal
         open={modalOpen}
         onOpenChange={setModalOpen}
+        projectId={currentProject.id}
         onSuccess={() => {
           fetchSources();
           setModalOpen(false);
@@ -318,6 +346,7 @@ export function KnowledgeList() {
           if (!open) setViewingSourceId(null);
         }}
         sourceId={viewingSourceId}
+        projectId={currentProject.id}
       />
     </div>
   );
