@@ -1,0 +1,79 @@
+# Role Definition Template
+#
+# This template defines the structure for agent role definitions.
+# Roles are organized by category (implementers, verifiers, researchers, etc.)
+
+[CATEGORY]:
+  - id: [AGENT_ID]
+    # Short kebab-case identifier (e.g., database-engineer, security-analyst)
+
+    description: [ONE_LINE_DESCRIPTION]
+    # Brief description of what this agent does (1 sentence)
+
+    your_role: [ROLE_PROMPT]
+    # First-person role description for the agent's prompt
+    # Example: "You are a database engineer. Your role is to..."
+
+    tools: [COMMA_SEPARATED_TOOLS]
+    # Tools this agent needs: Write, Read, Bash, WebFetch, etc.
+
+    model: [MODEL_NAME]
+    # Preferred model (no version): "opus" (reasoning), "sonnet" (coding)
+
+    color: [COLOR]
+    # UI color for this agent type: blue, green, orange, purple, red, etc.
+
+    areas_of_responsibility:
+      # Explicit list of what this agent DOES handle
+      - [RESPONSIBILITY_1]
+      - [RESPONSIBILITY_2]
+      - [RESPONSIBILITY_3]
+      # Add more as needed
+
+    example_areas_outside_of_responsibility:
+      # Explicit list of what this agent DOES NOT handle
+      # This prevents scope creep and ensures proper delegation
+      - [OUT_OF_SCOPE_1]
+      - [OUT_OF_SCOPE_2]
+      - [OUT_OF_SCOPE_3]
+      # Add more as needed
+
+    standards:
+      # Standards this agent must follow (glob patterns)
+      # Example: global/*, backend/*, frontend/*
+      - [STANDARD_PATH_1]
+      - [STANDARD_PATH_2]
+
+    verified_by:
+      # List of verifier agent IDs that check this agent's work
+      - [VERIFIER_ID_1]
+      - [VERIFIER_ID_2]
+
+# Example filled template:
+#
+# implementers:
+#   - id: database-engineer
+#     description: Handles database migrations, models, schemas, and queries
+#     your_role: You are a database engineer. Your role is to implement database migrations, models, schemas, and database queries.
+#     tools: Write, Read, Bash, WebFetch
+#     model: "opus"
+#     color: orange
+#     areas_of_responsibility:
+#       - Create database migrations
+#       - Create database models
+#       - Create database queries
+#       - Create database seed data
+#       - Create database indexes
+#       - Create database associations
+#     example_areas_outside_of_responsibility:
+#       - Create API endpoints
+#       - Create UI components
+#       - Create API responses
+#       - Create frontend components
+#       - Write backend business logic
+#     standards:
+#       - global/*
+#       - backend/*
+#       - testing/*
+#     verified_by:
+#       - backend-verifier

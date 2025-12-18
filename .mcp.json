@@ -1,0 +1,41 @@
+{
+    "mcpServers": {
+      "supabase": {
+        "type": "http",
+        "url": "https://mcp.supabase.com/mcp"
+      },
+      "shadcn": {
+        "command": "npx",
+        "args": [
+          "shadcn@latest",
+          "mcp"
+        ]
+      },
+      "godaddy": {
+            "type": "http",
+            "url": "https://api.godaddy.com/v1/domains/mcp"
+      },
+      "context7": {
+        "type": "http",
+        "url": "https://mcp.context7.com/mcp",
+        "headers": {
+          "CONTEXT7_API_KEY": "ctx7sk-4a43580d-997f-49a7-96e9-2117f3596386"
+        }
+      },
+      "firebase": {
+        "type": "stdio",    
+        "command": "npx",
+        "args": [
+          "-y",
+          "firebase-tools@latest",
+          "mcp"
+        ],
+        "env": {}
+      },
+      "reddit-msp-server": {
+        "type": "http",
+        "url": "http://144.91.76.33:8080/mcp"
+      }
+    }
+  }
+  

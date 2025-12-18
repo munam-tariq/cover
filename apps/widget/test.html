@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Widget Test Page</title>
+  <style>
+    /* Sample website styles to test isolation */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Georgia, serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #fff;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 20px;
+    }
+
+    p {
+      font-size: 1.2rem;
+      line-height: 1.8;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 30px;
+      margin: 30px 0;
+      backdrop-filter: blur(10px);
+    }
+
+    button {
+      background: #fff;
+      color: #764ba2;
+      border: none;
+      padding: 15px 30px;
+      font-size: 1rem;
+      border-radius: 25px;
+      cursor: pointer;
+      font-family: Georgia, serif;
+    }
+
+    button:hover {
+      background: #f0f0f0;
+    }
+
+    /* Test that widget styles don't leak */
+    .chatbot-widget {
+      background: red !important;
+      color: yellow !important;
+    }
+
+    .test-controls {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 15px;
+      border-radius: 10px;
+      z-index: 1000;
+    }
+
+    .test-controls button {
+      margin: 5px;
+      padding: 8px 15px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Widget Test Page</h1>
+    <p>
+      This page tests the chatbot widget in isolation. The widget uses Shadow DOM
+      so these page styles should NOT affect it.
+    </p>
+
+    <div class="card">
+      <h2>Sample Content</h2>
+      <p>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
+        tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.
+      </p>
+      <button>Sample Button</button>
+    </div>
+
+    <div class="card">
+      <h2>Test Cases</h2>
+      <ul style="margin-left: 20px; line-height: 2;">
+        <li>Click the chat bubble (bottom-right)</li>
+        <li>Send a message to test API integration</li>
+        <li>Check that messages persist on page refresh</li>
+        <li>Test on mobile viewport (fullscreen mode)</li>
+        <li>Press Escape to close the chat</li>
+        <li>Test keyboard navigation (Tab through elements)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="test-controls">
+    <div style="color: #fff; margin-bottom: 10px; font-size: 12px;">Widget Controls:</div>
+    <button onclick="openWidget()">Open</button>
+    <button onclick="closeWidget()">Close</button>
+    <button onclick="clearHistory()">Clear History</button>
+  </div>
+
+  <!-- Load the widget -->
+  <script
+    src="./dist/widget.js"
+    data-project-id="e21f746a-0463-4487-87e8-5dbde4dad7b8"
+    data-api-url="http://localhost:3001"
+    data-title="Test Assistant"
+    data-greeting="Hello! I'm a test assistant. How can I help you today?"
+    data-primary-color="#764ba2"
+  ></script>
+
+  <script>
+    // Get widget instance from window
+    function getWidget() {
+      return window.ChatbotWidget;
+    }
+
+    function openWidget() {
+      // For manual control, we'd need to expose the instance
+      // This is just for testing the script API
+      console.log('Widget API available:', typeof window.ChatbotWidget);
+    }
+
+    function closeWidget() {
+      console.log('Use Escape key or click close button');
+    }
+
+    function clearHistory() {
+      // Would need to expose instance or add a global method
+      console.log('Clear chat history in the widget');
+    }
+
+    // Log that widget loaded
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('Page loaded. Widget should be visible.');
+      console.log('To test with a real project, update data-project-id in test.html');
+    });
+  </script>
+</body>
+</html>
