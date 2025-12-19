@@ -74,3 +74,4 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuRadioGroup,
 } from "./components/dropdown-menu";
+export { Switch } from "./components/switch";

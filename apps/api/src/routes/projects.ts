@@ -225,12 +225,16 @@ router.post("/", authMiddleware, async (req: Request, res: Response) => {
 /**
  * PUT /api/projects/:id
  * Update a specific project
+ * Body: { name?: string, systemPrompt?: string, settings?: Record<string, unknown> }
+ *
+ * Note: `settings` is merged with existing settings. Use this to update
+ * lead capture settings, etc. without losing other settings.
  */
 router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
   try {
     const { userId } = req as AuthenticatedRequest;
     const { id } = req.params;
-    const { name, systemPrompt } = req.body;
+    const { name, systemPrompt, settings: newSettings } = req.body;
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -264,6 +268,12 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
       });
     }
 
+    if (newSettings !== undefined && (typeof newSettings !== "object" || newSettings === null)) {
+      return res.status(400).json({
+        error: { code: "INVALID_INPUT", message: "Settings must be an object" }
+      });
+    }
+
     // Get current project
     const { data: currentProject, error: fetchError } = await supabase
       .from("projects")
@@ -284,11 +294,22 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
       updates.name = name.trim() || "My Chatbot";
     }
 
-    if (systemPrompt !== undefined) {
-      updates.settings = {
-        ...currentProject.settings,
-        systemPrompt: systemPrompt.trim(),
-      };
+    // Merge settings - priority: newSettings > systemPrompt > currentProject.settings
+    if (systemPrompt !== undefined || newSettings !== undefined) {
+      const currentSettings = (currentProject.settings as Record<string, unknown>) || {};
+      let mergedSettings = { ...currentSettings };
+
+      // If systemPrompt is provided, update it in settings
+      if (systemPrompt !== undefined) {
+        mergedSettings.systemPrompt = systemPrompt.trim();
+      }
+
+      // If newSettings is provided, merge it (allows updating lead_capture_*, etc.)
+      if (newSettings !== undefined) {
+        mergedSettings = { ...mergedSettings, ...newSettings };
+      }
+
+      updates.settings = mergedSettings;
     }
 
     // Update project
@@ -309,6 +330,7 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
         id: updatedProject.id,
         name: updatedProject.name,
         systemPrompt: updatedProject.settings?.systemPrompt || "",
+        settings: updatedProject.settings || {},
         updatedAt: updatedProject.updated_at,
       },
     });

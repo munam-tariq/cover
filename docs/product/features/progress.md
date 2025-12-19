@@ -2,13 +2,13 @@
 
 ## Overview
 - **Total Features**: 22
-- **Completed**: 10
+- **Completed**: 12
 - **In Progress**: 0
-- **Remaining**: 12
+- **Remaining**: 10 (V2/V3 features)
 
 ## Currently In Progress
 
-None
+(none)
 
 ---
 
@@ -19,7 +19,8 @@ The following features have been prioritized for immediate implementation:
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 1 | `multiple-projects` | ✅ Completed | Promoted from V3 - project switcher, multi-project support |
-| 2 | `lead-capture` | Ready | NEW - capture emails when chatbot can't answer |
+| 2 | `lead-capture` | ✅ Completed | Email capture when chatbot can't answer |
+| 3 | `url-scraping` | ✅ Completed | Import knowledge from website URL via Firecrawl + LLM structuring |
 
 These features take priority over the remaining Enhanced (V2) features.
 
@@ -96,6 +97,85 @@ These features take priority over the remaining Enhanced (V2) features.
 ---
 
 ## Completed Features
+
+### #12: url-scraping ✅
+- **Started**: 2025-12-19
+- **Completed**: 2025-12-19
+- **Category**: immediate (promoted from V2)
+- **Summary**: Implemented URL scraping to import knowledge from website URLs. Uses Firecrawl API for crawling + GPT-4o-mini for content structuring. Users can enter a URL, see progress, preview content, and import multiple pages as knowledge sources.
+- **Key Files**:
+  - `apps/api/src/services/firecrawl.ts` - Firecrawl SDK wrapper for website crawling
+  - `apps/api/src/services/content-structurer.ts` - LLM-based content structuring (GPT-4o-mini)
+  - `apps/api/src/services/scrape-job-manager.ts` - In-memory job management with progress tracking
+  - `apps/api/src/routes/knowledge.ts` - Added scrape endpoints (POST, GET, DELETE, import)
+  - `apps/web/components/knowledge/url-import-flow.tsx` - Multi-step import UI with progress
+  - `apps/web/components/knowledge/add-knowledge-modal.tsx` - Added URL tab
+- **API Endpoints**:
+  - `POST /api/knowledge/scrape` - Start a website scrape job
+  - `GET /api/knowledge/scrape/:jobId` - Get scrape job status (for polling)
+  - `POST /api/knowledge/scrape/:jobId/import` - Confirm and import scraped content
+  - `DELETE /api/knowledge/scrape/:jobId` - Cancel a scrape job
+- **Database Changes**:
+  - Migration: `add_url_scraping_columns` - Added source_url and scraped_at columns to knowledge_sources
+- **Features**:
+  - New "URL" tab in Add Knowledge modal (first position)
+  - URL validation with auto https:// prefix
+  - Real-time crawling progress display
+  - LLM-powered content structuring (removes boilerplate, extracts Q&A pairs)
+  - Preview all pages before import with expandable content
+  - Page-by-page import with progress tracking
+  - One knowledge source per page (better RAG context)
+  - Source limit checking (20 max per project)
+  - Cancel button during crawl/structuring
+  - Success state with "Test in Playground" button
+- **Environment Variables** (new):
+  - `FIRECRAWL_API_KEY` - Firecrawl API key for website crawling
+  - `MAX_CRAWL_PAGES` - Maximum pages to crawl (default: 10)
+- **Architecture**:
+  - Jobs stored in-memory with 30-minute expiry
+  - Background processing for crawl + structure + import
+  - Polling-based status updates from frontend
+  - Reuses existing RAG pipeline (chunking, context, embedding)
+- **Notes**: Requires Firecrawl API key. Content is structured with LLM before import for better RAG retrieval quality.
+
+---
+
+### #11: lead-capture ✅
+- **Started**: 2025-12-18
+- **Completed**: 2025-12-18
+- **Category**: immediate
+- **Summary**: Implemented lead capture functionality that offers to collect visitor emails when the chatbot can't answer a question. Includes settings UI, email detection, session state management, lead storage, and daily digest email notifications.
+- **Key Files**:
+  - `apps/api/src/services/lead-capture.ts` - Lead capture service (email detection, state management, storage)
+  - `apps/api/src/services/chat-engine.ts` - Integrated lead capture flow into chat processing
+  - `apps/api/src/jobs/lead-digest.ts` - Daily digest email job using Resend
+  - `apps/api/src/routes/cron.ts` - Cron endpoints for digest emails
+  - `apps/web/app/(dashboard)/settings/page.tsx` - Lead Capture settings UI section
+  - `packages/ui/src/components/switch.tsx` - New Switch component
+- **API Endpoints**:
+  - `POST /api/cron/lead-digest` - Trigger daily lead digest emails (protected by CRON_SECRET)
+  - `GET /api/cron/health` - Cron service health check
+- **Database Changes**:
+  - Migration: `create_lead_captures_table` - Created lead_captures table with indexes and RLS policies
+  - Migration: `add_lead_capture_fields_to_sessions` - Added awaiting_email, last_message_at, pending_question, email_asked columns to chat_sessions
+- **Features**:
+  - Settings page section to enable/disable lead capture
+  - Notification email configuration for digest recipients
+  - Toggle for email notifications
+  - Detects when chatbot can't answer (RAG + response analysis)
+  - Offers to collect email conversationally
+  - Handles user providing email, declining, or asking different question
+  - Session timeout (30 min) resets state
+  - Only asks for email once per session
+  - Stores leads with or without email for analytics
+  - Daily digest emails via Resend with unanswered questions
+- **Environment Variables** (new):
+  - `RESEND_API_KEY` - For sending digest emails
+  - `EMAIL_FROM_ADDRESS` - Sender address for emails
+  - `CRON_SECRET` - Authentication for cron endpoints
+- **Notes**: Ready for testing. Cron job needs to be configured in production (Vercel Cron or pg_cron).
+
+---
 
 ### #10: multiple-projects ✅
 - **Started**: 2025-12-18
@@ -527,15 +607,17 @@ These features take priority over the remaining Enhanced (V2) features.
 ## Next Up
 
 ### Immediate Priority
-1. **#10: multiple-projects** - Multiple projects per account with header switcher
-   - Spec: [multiple-projects/spec.md](./core/multiple-projects/spec.md)
-   - Promoted from V3 Advanced features
-   - Dependencies: auth-system ✅
+All immediate priority features have been completed! 🎉
 
-2. **#11: lead-capture** - Capture emails when chatbot can't answer questions
-   - Spec: [lead-capture/spec.md](./core/lead-capture/spec.md)
-   - NEW feature added Dec 2024
+### Enhanced (V2) - Next in Queue
+1. **#13: conversation-history** - View and search past conversations
+   - Spec: [conversation-history/spec.md](./enhanced/conversation-history/spec.md)
    - Dependencies: chat-engine ✅
 
-### Then Enhanced (V2)
-3. **#12: conversation-history** - View and search past conversations
+2. **#14: widget-customization** - Colors, position, branding
+   - Spec: [widget-customization/spec.md](./enhanced/widget-customization/spec.md)
+   - Dependencies: widget ✅
+
+3. **#15: docx-support** - Support for .doc/.docx files
+   - Spec: [docx-support/spec.md](./enhanced/docx-support/spec.md)
+   - Dependencies: knowledge-base ✅

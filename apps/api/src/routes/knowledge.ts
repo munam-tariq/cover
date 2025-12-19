@@ -16,6 +16,19 @@ import {
   type ProcessedChunk,
 } from "../services/rag";
 
+// URL Scraping
+import { validateCrawlUrl } from "../services/firecrawl";
+import {
+  createScrapeJob,
+  getJob,
+  deleteJob,
+  executeScrapeJob,
+  getJobStatus,
+  markPageImporting,
+  markPageCompleted,
+  markPageFailed,
+} from "../services/scrape-job-manager";
+
 export const knowledgeRouter = Router();
 
 // Configure multer for file uploads (10MB limit)
@@ -548,5 +561,272 @@ async function processKnowledgeSource(
         error: error instanceof Error ? error.message : "Processing failed",
       })
       .eq("id", sourceId);
+  }
+}
+
+// ============================================================================
+// URL SCRAPING ENDPOINTS
+// ============================================================================
+
+const scrapeUrlSchema = z.object({
+  url: z.string().min(1, "URL is required"),
+});
+
+/**
+ * POST /api/knowledge/scrape
+ * Start a website scrape job
+ */
+knowledgeRouter.post("/scrape", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Validate input
+    const validation = scrapeUrlSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: validation.error.errors[0].message,
+        },
+      });
+    }
+
+    const { url } = validation.data;
+
+    // Validate and normalize URL
+    const urlValidation = validateCrawlUrl(url);
+    if (!urlValidation.valid) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_URL",
+          message: urlValidation.error || "Invalid URL",
+        },
+      });
+    }
+
+    // Check source limit
+    const { count } = await supabaseAdmin
+      .from("knowledge_sources")
+      .select("*", { count: "exact", head: true })
+      .eq("project_id", req.projectId);
+
+    const maxPages = parseInt(process.env.MAX_CRAWL_PAGES || "10", 10);
+    const availableSlots = MAX_SOURCES_PER_PROJECT - (count || 0);
+
+    if (availableSlots <= 0) {
+      return res.status(400).json({
+        error: {
+          code: "LIMIT_REACHED",
+          message: `You have reached the maximum of ${MAX_SOURCES_PER_PROJECT} knowledge sources. Please delete some to import more.`,
+        },
+      });
+    }
+
+    // Create scrape job
+    const job = createScrapeJob(req.projectId!, urlValidation.normalizedUrl!);
+
+    // Start crawling in background
+    executeScrapeJob(job.id).catch((err) => {
+      console.error(`[Scrape] Background job failed: ${err}`);
+    });
+
+    // Return job ID for polling
+    res.status(202).json({
+      jobId: job.id,
+      status: "crawling",
+      message: "Scanning website...",
+    });
+  } catch (error) {
+    console.error("Scrape POST error:", error);
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+    });
+  }
+});
+
+/**
+ * GET /api/knowledge/scrape/:jobId
+ * Get scrape job status
+ */
+knowledgeRouter.get("/scrape/:jobId", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { jobId } = req.params;
+
+    const job = getJob(jobId);
+    if (!job) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Scrape job not found or expired" },
+      });
+    }
+
+    // Verify job belongs to this project
+    if (job.projectId !== req.projectId) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Scrape job not found" },
+      });
+    }
+
+    res.json(getJobStatus(job));
+  } catch (error) {
+    console.error("Scrape GET error:", error);
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+    });
+  }
+});
+
+/**
+ * POST /api/knowledge/scrape/:jobId/import
+ * Import scraped content as knowledge sources
+ */
+knowledgeRouter.post("/scrape/:jobId/import", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { jobId } = req.params;
+
+    const job = getJob(jobId);
+    if (!job) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Scrape job not found or expired" },
+      });
+    }
+
+    // Verify job belongs to this project
+    if (job.projectId !== req.projectId) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Scrape job not found" },
+      });
+    }
+
+    // Verify job is ready for import
+    if (job.status !== "ready") {
+      return res.status(400).json({
+        error: {
+          code: "NOT_READY",
+          message: `Job is not ready for import. Current status: ${job.status}`,
+        },
+      });
+    }
+
+    // Check source limit
+    const { count } = await supabaseAdmin
+      .from("knowledge_sources")
+      .select("*", { count: "exact", head: true })
+      .eq("project_id", req.projectId);
+
+    const availableSlots = MAX_SOURCES_PER_PROJECT - (count || 0);
+    if (job.pages.length > availableSlots) {
+      return res.status(400).json({
+        error: {
+          code: "LIMIT_EXCEEDED",
+          message: `Cannot import ${job.pages.length} pages. You have ${availableSlots} slots available (${MAX_SOURCES_PER_PROJECT} max).`,
+        },
+      });
+    }
+
+    // Mark job as importing
+    job.status = "importing";
+
+    // Import pages in background
+    importScrapeJobPages(job.id, req.projectId!).catch((err) => {
+      console.error(`[Scrape] Import job failed: ${err}`);
+    });
+
+    res.status(202).json({
+      status: "importing",
+      totalPages: job.pages.length,
+    });
+  } catch (error) {
+    console.error("Scrape import error:", error);
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+    });
+  }
+});
+
+/**
+ * DELETE /api/knowledge/scrape/:jobId
+ * Cancel a scrape job
+ */
+knowledgeRouter.delete("/scrape/:jobId", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { jobId } = req.params;
+
+    const job = getJob(jobId);
+    if (!job) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Scrape job not found or expired" },
+      });
+    }
+
+    // Verify job belongs to this project
+    if (job.projectId !== req.projectId) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Scrape job not found" },
+      });
+    }
+
+    // Mark as cancelled and delete
+    job.status = "cancelled";
+    deleteJob(jobId);
+
+    res.json({ status: "cancelled" });
+  } catch (error) {
+    console.error("Scrape DELETE error:", error);
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+    });
+  }
+});
+
+/**
+ * Import pages from a scrape job as knowledge sources
+ */
+async function importScrapeJobPages(jobId: string, projectId: string): Promise<void> {
+  const job = getJob(jobId);
+  if (!job) return;
+
+  for (const page of job.pages) {
+    try {
+      markPageImporting(jobId, page.id);
+
+      // Create knowledge source
+      const { data: source, error: createError } = await supabaseAdmin
+        .from("knowledge_sources")
+        .insert({
+          project_id: projectId,
+          name: `${page.title} - ${job.domain}`,
+          type: "url",
+          content: page.structuredContent,
+          source_url: page.url,
+          scraped_at: new Date().toISOString(),
+          status: "processing",
+        })
+        .select()
+        .single();
+
+      if (createError || !source) {
+        console.error(`[Scrape] Failed to create source for ${page.title}:`, createError);
+        markPageFailed(jobId, page.id, "Failed to create knowledge source");
+        continue;
+      }
+
+      // Process through RAG pipeline
+      await processKnowledgeSource(
+        source.id,
+        source.name,
+        "url",
+        page.structuredContent,
+        null
+      );
+
+      markPageCompleted(jobId, page.id, source.id);
+      console.log(`[Scrape] Imported page: ${page.title}`);
+
+    } catch (error) {
+      console.error(`[Scrape] Error importing page ${page.title}:`, error);
+      markPageFailed(
+        jobId,
+        page.id,
+        error instanceof Error ? error.message : "Import failed"
+      );
+    }
   }
 }

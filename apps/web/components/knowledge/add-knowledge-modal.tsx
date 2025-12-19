@@ -17,8 +17,9 @@ import {
   TabsContent,
   Label,
 } from "@chatbot/ui";
-import { Upload, FileText, File, AlertCircle, Loader2 } from "lucide-react";
+import { Upload, FileText, File, AlertCircle, Loader2, Globe } from "lucide-react";
 import { apiClient, apiClientFormData } from "@/lib/api-client";
+import { UrlImportFlow } from "./url-import-flow";
 
 interface AddKnowledgeModalProps {
   open: boolean;
@@ -27,7 +28,7 @@ interface AddKnowledgeModalProps {
   onSuccess: () => void;
 }
 
-type InputType = "text" | "file" | "pdf";
+type InputType = "text" | "file" | "pdf" | "url";
 
 const MAX_TEXT_LENGTH = 100000;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -239,26 +240,42 @@ export function AddKnowledgeModal({
               setError(null);
             }}
           >
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="url">
+                <Globe className="h-3.5 w-3.5 mr-1.5" />
+                URL
+              </TabsTrigger>
               <TabsTrigger value="text">Paste Text</TabsTrigger>
               <TabsTrigger value="file">Upload TXT</TabsTrigger>
               <TabsTrigger value="pdf">Upload PDF</TabsTrigger>
             </TabsList>
 
             <div className="mt-4 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">
-                  Source Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., FAQ Document, Product Info"
-                  disabled={loading}
-                  maxLength={100}
+              {/* URL Import Tab - Full-screen flow, no name field needed */}
+              <TabsContent value="url" className="mt-0">
+                <UrlImportFlow
+                  projectId={projectId}
+                  onSuccess={onSuccess}
+                  onClose={handleClose}
                 />
-              </div>
+              </TabsContent>
+
+              {/* Name field - only show for non-URL tabs */}
+              {activeTab !== "url" && (
+                <div className="space-y-2">
+                  <Label htmlFor="name">
+                    Source Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g., FAQ Document, Product Info"
+                    disabled={loading}
+                    maxLength={100}
+                  />
+                </div>
+              )}
 
               <TabsContent value="text" className="mt-0">
                 <div className="space-y-2">
@@ -293,7 +310,8 @@ export function AddKnowledgeModal({
             </div>
           </Tabs>
 
-          {error && (
+          {/* Error display - only for non-URL tabs */}
+          {activeTab !== "url" && error && (
             <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <p>{error}</p>
@@ -301,21 +319,24 @@ export function AddKnowledgeModal({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={loading}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Adding...
-              </>
-            ) : (
-              "Add Knowledge"
-            )}
-          </Button>
-        </DialogFooter>
+        {/* Footer - only for non-URL tabs (URL has its own buttons) */}
+        {activeTab !== "url" && (
+          <DialogFooter>
+            <Button variant="outline" onClick={handleClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Knowledge"
+              )}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

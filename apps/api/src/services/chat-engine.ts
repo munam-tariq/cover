@@ -37,6 +37,12 @@ import {
   executeToolById,
   formatToolResultForLLM,
 } from "./tool-executor";
+import {
+  handleLeadCaptureFlow,
+  detectNoAnswer,
+  getLeadCaptureSettings,
+  type LeadCaptureResult,
+} from "./lead-capture";
 
 /**
  * Valid sources for chat sessions
@@ -89,6 +95,10 @@ export interface ChatOutput {
     prompt: number;
     completion: number;
     total: number;
+  };
+  leadCapture?: {
+    type: LeadCaptureResult["type"];
+    emailCaptured?: string;
   };
 }
 
@@ -185,23 +195,69 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       input.source || "widget"
     );
 
-    // 11. Log conversation asynchronously
+    // 11. Lead Capture Flow
+    let finalResponse = response;
+    let leadCaptureResult: LeadCaptureResult | undefined;
+
+    try {
+      // Get lead capture settings
+      const leadSettings = await getLeadCaptureSettings(input.projectId);
+
+      if (leadSettings.lead_capture_enabled) {
+        // Determine if the bot found an answer
+        // - Check if RAG returned relevant chunks
+        // - Check if LLM response indicates it couldn't answer
+        const hasRelevantContext = retrievedChunks.length > 0 &&
+          retrievedChunks.some(c => c.combinedScore > 0.3);
+        const responseIndicatesNoAnswer = detectNoAnswer(response);
+        const foundAnswer = hasRelevantContext && !responseIndicatesNoAnswer;
+
+        // Process lead capture flow
+        leadCaptureResult = await handleLeadCaptureFlow(
+          sessionId,
+          input.projectId,
+          sanitizedMessage,
+          foundAnswer,
+          leadSettings
+        );
+
+        // Append lead capture message to response if needed
+        if (leadCaptureResult.shouldAppendToResponse && leadCaptureResult.responseAppendix) {
+          // If we captured an email, replace the response with confirmation
+          if (leadCaptureResult.type === "email_captured") {
+            finalResponse = leadCaptureResult.responseAppendix;
+          } else {
+            // Otherwise append the email request
+            finalResponse = response + leadCaptureResult.responseAppendix;
+          }
+        }
+      }
+    } catch (leadError) {
+      // Log but don't fail the chat if lead capture has issues
+      console.error("Lead capture error:", leadError);
+    }
+
+    // 12. Log conversation asynchronously
     logConversation(
       input.projectId,
       sessionId,
       sanitizedMessage,
-      response,
+      finalResponse,
       retrievedChunks.length,
       toolCallsInfo.length
     ).catch(console.error);
 
     return {
-      response,
+      response: finalResponse,
       sessionId,
       sources: extractSources(retrievedChunks),
       toolCalls: toolCallsInfo,
       processingTime: Date.now() - metrics.startTime,
       tokensUsed,
+      leadCapture: leadCaptureResult ? {
+        type: leadCaptureResult.type,
+        emailCaptured: leadCaptureResult.email,
+      } : undefined,
     };
   } catch (error) {
     console.error("Chat processing error:", error);

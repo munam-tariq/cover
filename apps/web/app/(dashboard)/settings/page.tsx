@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
-import { Button, Card, CardContent, Skeleton } from "@chatbot/ui";
-import { Copy, Check, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { Button, Card, CardContent, Skeleton, Switch, Label } from "@chatbot/ui";
+import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail } from "lucide-react";
 
 interface UpdatedProject {
   id: string;
@@ -21,6 +21,7 @@ interface ProjectUpdateResponse {
 export default function SettingsPage() {
   const { currentProject, isLoading: projectLoading, deleteProject, refreshProjects } = useProject();
   const [saving, setSaving] = useState(false);
+  const [savingLeadCapture, setSavingLeadCapture] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -31,6 +32,11 @@ export default function SettingsPage() {
   const [name, setName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
 
+  // Lead capture state
+  const [leadCaptureEnabled, setLeadCaptureEnabled] = useState(false);
+  const [leadCaptureEmail, setLeadCaptureEmail] = useState("");
+  const [leadNotificationsEnabled, setLeadNotificationsEnabled] = useState(true);
+
   const router = useRouter();
 
   // Initialize form when project loads
@@ -38,6 +44,12 @@ export default function SettingsPage() {
     if (currentProject) {
       setName(currentProject.name || "");
       setSystemPrompt(currentProject.systemPrompt || "");
+
+      // Load lead capture settings from project.settings
+      const settings = currentProject.settings || {};
+      setLeadCaptureEnabled(settings.lead_capture_enabled === true);
+      setLeadCaptureEmail((settings.lead_capture_email as string) || "");
+      setLeadNotificationsEnabled(settings.lead_notifications_enabled !== false);
     }
   }, [currentProject]);
 
@@ -131,6 +143,58 @@ export default function SettingsPage() {
       console.error("Error deleting project:", err);
       setError("Failed to delete project");
       setDeleting(false);
+    }
+  };
+
+  const handleSaveLeadCapture = async () => {
+    if (!currentProject) return;
+
+    // Validate email if lead capture is enabled
+    if (leadCaptureEnabled && !leadCaptureEmail.trim()) {
+      setError("Please enter a notification email to enable lead capture");
+      return;
+    }
+
+    if (leadCaptureEnabled && leadCaptureEmail) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(leadCaptureEmail.trim())) {
+        setError("Please enter a valid email address");
+        return;
+      }
+    }
+
+    setSavingLeadCapture(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Merge with existing settings
+      const existingSettings = currentProject.settings || {};
+      const updatedSettings = {
+        ...existingSettings,
+        lead_capture_enabled: leadCaptureEnabled,
+        lead_capture_email: leadCaptureEmail.trim() || null,
+        lead_notifications_enabled: leadNotificationsEnabled,
+      };
+
+      await apiClient<ProjectUpdateResponse>(`/api/projects/${currentProject.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: currentProject.name,
+          settings: updatedSettings,
+        }),
+      });
+
+      // Refresh projects to update context
+      await refreshProjects();
+
+      setSuccess("Lead capture settings saved");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Error saving lead capture settings:", err);
+      setError("Failed to save lead capture settings");
+    } finally {
+      setSavingLeadCapture(false);
     }
   };
 
@@ -344,6 +408,80 @@ export default function SettingsPage() {
                 <p className="text-sm text-blue-700 dark:text-blue-300">
                   <strong>Tip:</strong> Try saying &quot;Add FAQ content about returns and shipping to my chatbot&quot; in Cursor or Claude Code!
                 </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Mail className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold">Lead Capture</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              When your chatbot can&apos;t answer a question, it can offer to collect the visitor&apos;s email so you can follow up.
+            </p>
+
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="lead-capture-toggle" className="text-base">
+                    Enable Lead Capture
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Ask for email when chatbot can&apos;t answer
+                  </p>
+                </div>
+                <Switch
+                  id="lead-capture-toggle"
+                  checked={leadCaptureEnabled}
+                  onCheckedChange={setLeadCaptureEnabled}
+                />
+              </div>
+
+              {leadCaptureEnabled && (
+                <div className="pl-0 space-y-4 border-l-2 border-primary/20 ml-0 pt-2">
+                  <div className="pl-4">
+                    <Label htmlFor="lead-capture-email" className="text-sm font-medium">
+                      Notification Email
+                    </Label>
+                    <input
+                      id="lead-capture-email"
+                      type="email"
+                      value={leadCaptureEmail}
+                      onChange={(e) => setLeadCaptureEmail(e.target.value)}
+                      placeholder="support@yourbusiness.com"
+                      className="w-full mt-1.5 px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      We&apos;ll send a daily digest of captured leads to this email
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pl-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="notifications-toggle" className="text-sm">
+                        Send Email Notifications
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive daily digest of unanswered questions
+                      </p>
+                    </div>
+                    <Switch
+                      id="notifications-toggle"
+                      checked={leadNotificationsEnabled}
+                      onCheckedChange={setLeadNotificationsEnabled}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2">
+                <Button onClick={handleSaveLeadCapture} disabled={savingLeadCapture}>
+                  {savingLeadCapture && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {savingLeadCapture ? "Saving..." : "Save Lead Capture Settings"}
+                </Button>
               </div>
             </div>
           </CardContent>

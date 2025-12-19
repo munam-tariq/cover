@@ -39,13 +39,12 @@ graph TD
     subgraph Immediate Priority
         C --> MP[multiple-projects]
         F --> LC[lead-capture]
+        D --> US[url-scraping]
     end
 
     subgraph Enhanced Features V2
-        F --> I[chat-analytics]
         F --> J[conversation-history]
         G --> K[widget-customization]
-        D --> L[url-scraping]
         D --> M[docx-support]
         E --> N[shopify-integration]
     end
@@ -79,12 +78,12 @@ graph TD
 ### Phase 2.5: Immediate Priority (Team Decision - Dec 2024)
 9. `chat-analytics` - Message count, popular questions, response quality ✅
 10. `multiple-projects` - Multiple projects per account with switcher (promoted from V3) ✅
-11. `lead-capture` - Capture emails when chatbot can't answer (NEW)
+11. `lead-capture` - Capture emails when chatbot can't answer ✅
+12. `url-scraping` - Import knowledge from website URL (promoted from V2) 🔥
 
 ### Phase 3: Enhanced Features (V2 - Post-MVP)
-12. `conversation-history` - View past chats in dashboard
-13. `widget-customization` - Colors, position, branding
-14. `url-scraping` - Add knowledge from webpage URL
+13. `conversation-history` - View past chats in dashboard
+14. `widget-customization` - Colors, position, branding
 15. `docx-support` - Support for .doc/.docx files
 16. `shopify-integration` - Native MCP for Shopify data
 
@@ -112,10 +111,10 @@ graph TD
 | mcp-server | core | M | completed | chat-engine |
 | chat-analytics | immediate | M | completed | chat-engine |
 | **multiple-projects** | **immediate** | M | **completed** | auth-system |
-| **lead-capture** | **immediate** | M | **ready** | chat-engine |
+| **lead-capture** | **immediate** | M | **completed** | chat-engine |
+| **url-scraping** | **immediate** | M | **completed** | knowledge-base |
 | conversation-history | enhanced | S | pending | chat-engine |
 | widget-customization | enhanced | M | pending | widget |
-| url-scraping | enhanced | M | pending | knowledge-base |
 | docx-support | enhanced | S | pending | knowledge-base |
 | shopify-integration | enhanced | L | pending | api-endpoints |
 | team-collaboration | advanced | L | pending | auth-system |
@@ -154,13 +153,13 @@ graph TD
 
 ### Immediate Priority (Team Decision - Dec 2024)
 - [chat-analytics](./enhanced/chat-analytics/spec.md) ✅
-- [multiple-projects](./core/multiple-projects/spec.md) ← **NEXT**
-- [lead-capture](./core/lead-capture/spec.md) ← **NEW**
+- [multiple-projects](./core/multiple-projects/spec.md) ✅
+- [lead-capture](./core/lead-capture/spec.md) ✅
+- [url-scraping](./enhanced/url-scraping/spec.md) 🔥 (Promoted from V2)
 
 ### Enhanced Features (V2)
 - [conversation-history](./enhanced/conversation-history/spec.md)
 - [widget-customization](./enhanced/widget-customization/spec.md)
-- [url-scraping](./enhanced/url-scraping/spec.md)
 - [docx-support](./enhanced/docx-support/spec.md)
 - [shopify-integration](./enhanced/shopify-integration/spec.md)
 
@@ -196,10 +195,10 @@ graph TD
 |-------|----------|--------------|
 | Infrastructure | 3 features | 7-11 days ✅ |
 | Core (V1) | 5 features | 18-23 days ✅ |
-| Immediate Priority | 3 features | 8-12 days |
-| Enhanced (V2) | 5 features | 14-20 days |
+| Immediate Priority | 4 features | 12-17 days (3 ✅, 1 pending) |
+| Enhanced (V2) | 4 features | 10-16 days |
 | Advanced (V3) | 6 features | 20-30 days |
-| **Total** | **22 features** | **67-96 days** |
+| **Total** | **22 features** | **67-97 days** |
 
 *Note: Parallelization can reduce calendar time significantly.*
 
@@ -240,6 +239,11 @@ graph TD
 ---
 
 ## Changelog
+
+### v1.2 (December 2024)
+- **Promoted**: `url-scraping` - Moved from Enhanced (V2) to Immediate Priority
+- **Updated**: Spec rewritten with Firecrawl integration, LLM structuring, and multiple sources per page
+- **Rationale**: Research showed URL scraping is #1 requested feature and critical for "15-minute setup" value prop
 
 ### v1.1 (December 2024)
 - **Added**: `multiple-projects` - Promoted from V3 to Immediate Priority

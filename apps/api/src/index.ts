@@ -6,6 +6,7 @@ import helmet from "helmet";
 import { analyticsRouter } from "./routes/analytics";
 import { authRouter } from "./routes/auth";
 import { chatRouter } from "./routes/chat";
+import { cronRouter } from "./routes/cron";
 import { embedRouter } from "./routes/embed";
 import { endpointsRouter } from "./routes/endpoints";
 import { knowledgeRouter } from "./routes/knowledge";
@@ -69,6 +70,10 @@ const mcpCors = cors({
   exposedHeaders: ["Mcp-Session-Id"],
 });
 app.use("/mcp", mcpCors, mcpRouter);
+
+// Cron endpoints (no CORS - server-to-server only)
+// Protected by CRON_SECRET bearer token
+app.use("/api/cron", cronRouter);
 
 // Error handler
 app.use(

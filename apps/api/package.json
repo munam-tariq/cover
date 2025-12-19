@@ -13,6 +13,7 @@
   "dependencies": {
     "@chatbot/db": "workspace:*",
     "@chatbot/shared": "workspace:*",
+    "@mendable/firecrawl-js": "^4.9.3",
     "@modelcontextprotocol/sdk": "^1.25.1",
     "@supabase/supabase-js": "^2.39.0",
     "cors": "^2.8.5",
@@ -22,6 +23,7 @@
     "multer": "^2.0.2",
     "openai": "^4.25.0",
     "pdf-parse": "^1.1.1",
+    "resend": "^6.6.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
