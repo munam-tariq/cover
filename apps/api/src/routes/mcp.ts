@@ -8,11 +8,11 @@
  *   "type": "http",
  *   "url": "https://api.yourproduct.com/mcp",
  *   "headers": {
- *     "X-Project-ID": "your-project-uuid"
+ *     "X-API-Key": "ck_your_api_key_here"
  *   }
  * }
  *
- * The project_id serves as the authentication key (UUID from Settings page).
+ * The API key provides account-level access to all projects.
  */
 import { Router, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
@@ -28,15 +28,15 @@ import {
   type DocumentMetadata,
 } from "../services/rag";
 import { processChat } from "../services/chat-engine";
+import { verifyApiKey, isValidApiKeyFormat } from "../services/api-key";
 
 export const mcpRouter = Router();
 
-// Store active sessions
+// Store active sessions (account-level, not project-level)
 const sessions: Record<
   string,
   {
     transport: StreamableHTTPServerTransport;
-    projectId: string;
     userId: string;
   }
 > = {};
@@ -50,46 +50,116 @@ const MAX_ENDPOINTS_PER_PROJECT = 10;
 const MAX_TEXT_LENGTH = 100000;
 
 /**
- * Validates project_id header and returns project + user info
+ * Validates API key from X-API-Key header and returns user info
  */
-async function validateProjectAuth(
+async function validateApiKeyAuth(
   req: Request
-): Promise<{ projectId: string; userId: string; projectName: string } | null> {
-  const projectId = req.headers["x-project-id"] as string;
+): Promise<{ userId: string } | null> {
+  const apiKey = req.headers["x-api-key"] as string;
 
-  if (!projectId) {
+  if (!apiKey) {
     return null;
   }
 
-  // Validate UUID format
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(projectId)) {
+  // Validate key format
+  if (!isValidApiKeyFormat(apiKey)) {
     return null;
   }
 
-  // Verify project exists and get user_id
-  const { data: project, error } = await supabaseAdmin
-    .from("projects")
-    .select("id, user_id, name")
-    .eq("id", projectId)
+  // Extract prefix for lookup (ck_ + first 8 chars + ...)
+  const prefix = `${apiKey.substring(0, 11)}...`;
+
+  // Find API key by prefix (active keys only)
+  const { data: keyRecord, error: keyError } = await supabaseAdmin
+    .from("api_keys")
+    .select("id, user_id, key_hash")
+    .eq("key_prefix", prefix)
+    .is("revoked_at", null)
     .single();
 
-  if (error || !project) {
+  if (keyError || !keyRecord) {
     return null;
   }
 
+  // Verify the full key against the hash
+  const isValid = await verifyApiKey(apiKey, keyRecord.key_hash);
+  if (!isValid) {
+    return null;
+  }
+
+  // Update last_used_at (fire and forget)
+  void supabaseAdmin
+    .from("api_keys")
+    .update({ last_used_at: new Date().toISOString() })
+    .eq("id", keyRecord.id);
+
   return {
-    projectId: project.id,
-    userId: project.user_id,
-    projectName: project.name,
+    userId: keyRecord.user_id,
   };
 }
 
 /**
- * Create an MCP server with all tools registered
+ * Validates that a user owns a specific project
  */
-function createMcpServer(projectId: string, userId: string): McpServer {
+async function validateProjectOwnership(
+  userId: string,
+  projectId: string
+): Promise<boolean> {
+  // Validate UUID format
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(projectId)) {
+    return false;
+  }
+
+  const { data: project, error } = await supabaseAdmin
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .single();
+
+  return !error && !!project;
+}
+
+/**
+ * Helper to resolve project ID - returns the project ID or an error response
+ */
+async function resolveProjectId(
+  userId: string,
+  projectId: string | undefined
+): Promise<{ projectId: string } | { error: string }> {
+  if (projectId) {
+    // Validate ownership
+    const isOwner = await validateProjectOwnership(userId, projectId);
+    if (!isOwner) {
+      return { error: "Project not found or access denied" };
+    }
+    return { projectId };
+  }
+
+  // No project_id provided - try to find the default (single) project
+  const { data: projects } = await supabaseAdmin
+    .from("projects")
+    .select("id")
+    .eq("user_id", userId)
+    .is("deleted_at", null);
+
+  if (!projects || projects.length === 0) {
+    return { error: "No projects found. Create one first with create_project." };
+  }
+  if (projects.length > 1) {
+    return { error: "Multiple projects found. Please specify project_id. Use list_projects to see available projects." };
+  }
+  return { projectId: projects[0].id };
+}
+
+/**
+ * Create an MCP server with all tools registered
+ * Account-level access - tools that need project context require project_id parameter
+ */
+function createMcpServer(userId: string): McpServer {
   const server = new McpServer({
     name: "chatbot-platform",
     version: "1.0.0",
@@ -99,12 +169,28 @@ function createMcpServer(projectId: string, userId: string): McpServer {
   server.tool(
     "get_project_info",
     "Get information about your chatbot project including name, settings, and statistics.",
-    {},
-    async () => {
+    {
+      project_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe("Project ID. If not specified and you have only one project, that project will be used."),
+    },
+    async ({ project_id }) => {
+      // Resolve project ID
+      const resolved = await resolveProjectId(userId, project_id);
+      if ("error" in resolved) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ error: resolved.error }) }],
+          isError: true,
+        };
+      }
+      const targetProjectId = resolved.projectId;
+
       const { data: project, error } = await supabaseAdmin
         .from("projects")
         .select("id, name, settings, created_at")
-        .eq("id", projectId)
+        .eq("id", targetProjectId)
         .single();
 
       if (error || !project) {
@@ -125,11 +211,11 @@ function createMcpServer(projectId: string, userId: string): McpServer {
           supabaseAdmin
             .from("knowledge_sources")
             .select("*", { count: "exact", head: true })
-            .eq("project_id", projectId),
+            .eq("project_id", targetProjectId),
           supabaseAdmin
             .from("api_endpoints")
             .select("*", { count: "exact", head: true })
-            .eq("project_id", projectId),
+            .eq("project_id", targetProjectId),
         ]);
 
       const settings = (project.settings as Record<string, unknown>) || {};
@@ -162,6 +248,11 @@ function createMcpServer(projectId: string, userId: string): McpServer {
     "update_project_settings",
     "Update your chatbot project name, system prompt, or welcome message.",
     {
+      project_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe("Project ID. If not specified and you have only one project, that project will be used."),
       name: z
         .string()
         .min(1)
@@ -181,12 +272,22 @@ function createMcpServer(projectId: string, userId: string): McpServer {
         .optional()
         .describe("The greeting message shown when users open the chat widget"),
     },
-    async ({ name, system_prompt, welcome_message }) => {
+    async ({ project_id, name, system_prompt, welcome_message }) => {
+      // Resolve project ID
+      const resolved = await resolveProjectId(userId, project_id);
+      if ("error" in resolved) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ error: resolved.error }) }],
+          isError: true,
+        };
+      }
+      const targetProjectId = resolved.projectId;
+
       // Get current settings
       const { data: project, error: fetchError } = await supabaseAdmin
         .from("projects")
         .select("settings")
-        .eq("id", projectId)
+        .eq("id", targetProjectId)
         .single();
 
       if (fetchError) {
@@ -223,7 +324,7 @@ function createMcpServer(projectId: string, userId: string): McpServer {
       const { error: updateError } = await supabaseAdmin
         .from("projects")
         .update(updates)
-        .eq("id", projectId);
+        .eq("id", targetProjectId);
 
       if (updateError) {
         return {
@@ -257,16 +358,184 @@ function createMcpServer(projectId: string, userId: string): McpServer {
     }
   );
 
+  // ===== TOOL: list_projects =====
+  server.tool(
+    "list_projects",
+    "List all chatbot projects for your account. Returns project IDs, names, and stats. Use the project_id parameter in other tools to work with specific projects.",
+    {},
+    async () => {
+      // Fetch all active projects for this user
+      const { data: projects, error } = await supabaseAdmin
+        .from("projects")
+        .select("id, name, settings, created_at")
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ error: "Failed to fetch projects" }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      // Get counts for each project
+      const projectsWithStats = await Promise.all(
+        (projects || []).map(async (project) => {
+          const [{ count: knowledgeCount }, { count: endpointCount }] =
+            await Promise.all([
+              supabaseAdmin
+                .from("knowledge_sources")
+                .select("*", { count: "exact", head: true })
+                .eq("project_id", project.id),
+              supabaseAdmin
+                .from("api_endpoints")
+                .select("*", { count: "exact", head: true })
+                .eq("project_id", project.id),
+            ]);
+
+          const settings = (project.settings as Record<string, unknown>) || {};
+
+          return {
+            id: project.id,
+            name: project.name,
+            system_prompt: settings.systemPrompt || null,
+            knowledge_sources_count: knowledgeCount || 0,
+            api_endpoints_count: endpointCount || 0,
+            created_at: project.created_at,
+          };
+        })
+      );
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                count: projectsWithStats.length,
+                projects: projectsWithStats,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
+
+  // ===== TOOL: create_project =====
+  server.tool(
+    "create_project",
+    "Create a new chatbot project. Use this to set up additional chatbots for different purposes (e.g., sales bot, support bot, etc.).",
+    {
+      name: z
+        .string()
+        .min(1)
+        .max(50)
+        .describe("Name for the new project (e.g., 'Sales Bot', 'Support Bot')"),
+      system_prompt: z
+        .string()
+        .max(2000)
+        .optional()
+        .describe(
+          "Custom system prompt that defines how this chatbot behaves and responds"
+        ),
+    },
+    async ({ name, system_prompt }) => {
+      // Build settings object
+      const settings: Record<string, unknown> = {};
+      if (system_prompt) {
+        settings.systemPrompt = system_prompt.trim();
+      }
+
+      // Create project
+      const { data: project, error: createError } = await supabaseAdmin
+        .from("projects")
+        .insert({
+          user_id: userId,
+          name: name.trim(),
+          settings,
+        })
+        .select("id, name, settings, created_at")
+        .single();
+
+      if (createError || !project) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                error: "Failed to create project",
+                details: createError?.message,
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                success: true,
+                project: {
+                  id: project.id,
+                  name: project.name,
+                  system_prompt: (project.settings as Record<string, unknown>)?.systemPrompt || null,
+                  created_at: project.created_at,
+                },
+                message: "Project created successfully. Use this project_id with other tools to manage this chatbot.",
+                next_steps: [
+                  "Add knowledge sources with upload_knowledge (project_id: " + project.id + ")",
+                  "Configure API endpoints with add_api_endpoint",
+                  "Get embed code with get_embed_code",
+                ],
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
+
   // ===== TOOL: list_knowledge =====
   server.tool(
     "list_knowledge",
     "List all knowledge sources in your chatbot. Knowledge sources contain the information your chatbot uses to answer questions.",
-    {},
-    async () => {
+    {
+      project_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe("Project ID. If not specified and you have only one project, that project will be used."),
+    },
+    async ({ project_id }) => {
+      // Resolve project ID
+      const resolved = await resolveProjectId(userId, project_id);
+      if ("error" in resolved) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ error: resolved.error }) }],
+          isError: true,
+        };
+      }
+      const targetProjectId = resolved.projectId;
+
       const { data: sources, error } = await supabaseAdmin
         .from("knowledge_sources")
         .select("id, name, type, status, chunk_count, error, created_at")
-        .eq("project_id", projectId)
+        .eq("project_id", targetProjectId)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -289,6 +558,7 @@ function createMcpServer(projectId: string, userId: string): McpServer {
             type: "text",
             text: JSON.stringify(
               {
+                project_id: targetProjectId,
                 count: sources?.length || 0,
                 max_allowed: MAX_SOURCES_PER_PROJECT,
                 sources: (sources || []).map((s) => ({
@@ -315,6 +585,11 @@ function createMcpServer(projectId: string, userId: string): McpServer {
     "upload_knowledge",
     "Add text content as a knowledge source. The chatbot will search this content when answering questions. Use for FAQs, product info, policies, documentation, etc.",
     {
+      project_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe("Project ID. If not specified and you have only one project, that project will be used."),
       name: z
         .string()
         .min(1)
@@ -328,12 +603,22 @@ function createMcpServer(projectId: string, userId: string): McpServer {
           "The text content to add. Can be long-form text, Q&A pairs, documentation, etc."
         ),
     },
-    async ({ name, content }) => {
+    async ({ project_id, name, content }) => {
+      // Resolve project ID
+      const resolved = await resolveProjectId(userId, project_id);
+      if ("error" in resolved) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ error: resolved.error }) }],
+          isError: true,
+        };
+      }
+      const targetProjectId = resolved.projectId;
+
       // Check limit
       const { count } = await supabaseAdmin
         .from("knowledge_sources")
         .select("*", { count: "exact", head: true })
-        .eq("project_id", projectId);
+        .eq("project_id", targetProjectId);
 
       if (count !== null && count >= MAX_SOURCES_PER_PROJECT) {
         return {
@@ -353,7 +638,7 @@ function createMcpServer(projectId: string, userId: string): McpServer {
       const { data: source, error: createError } = await supabaseAdmin
         .from("knowledge_sources")
         .insert({
-          project_id: projectId,
+          project_id: targetProjectId,
           name,
           type: "text",
           content,
@@ -406,15 +691,30 @@ function createMcpServer(projectId: string, userId: string): McpServer {
       source_id: z.string().uuid().describe("The ID of the knowledge source to delete"),
     },
     async ({ source_id }) => {
-      // Verify ownership
+      // Get the source and verify ownership through project
       const { data: source, error: fetchError } = await supabaseAdmin
         .from("knowledge_sources")
-        .select("id, file_path")
+        .select("id, file_path, project_id")
         .eq("id", source_id)
-        .eq("project_id", projectId)
         .single();
 
       if (fetchError || !source) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                error: "Knowledge source not found",
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      // Validate ownership of the project
+      const isOwner = await validateProjectOwnership(userId, source.project_id);
+      if (!isOwner) {
         return {
           content: [
             {
@@ -480,12 +780,28 @@ function createMcpServer(projectId: string, userId: string): McpServer {
   server.tool(
     "list_api_endpoints",
     "List all configured API endpoints. These are external APIs that the chatbot can call to fetch real-time data.",
-    {},
-    async () => {
+    {
+      project_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe("Project ID. If not specified and you have only one project, that project will be used."),
+    },
+    async ({ project_id }) => {
+      // Resolve project ID
+      const resolved = await resolveProjectId(userId, project_id);
+      if ("error" in resolved) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ error: resolved.error }) }],
+          isError: true,
+        };
+      }
+      const targetProjectId = resolved.projectId;
+
       const { data: endpoints, error } = await supabaseAdmin
         .from("api_endpoints")
         .select("id, name, description, url, method, auth_type, created_at")
-        .eq("project_id", projectId)
+        .eq("project_id", targetProjectId)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -506,6 +822,7 @@ function createMcpServer(projectId: string, userId: string): McpServer {
             type: "text",
             text: JSON.stringify(
               {
+                project_id: targetProjectId,
                 count: endpoints?.length || 0,
                 max_allowed: MAX_ENDPOINTS_PER_PROJECT,
                 endpoints: (endpoints || []).map((e) => ({
@@ -532,6 +849,11 @@ function createMcpServer(projectId: string, userId: string): McpServer {
     "add_api_endpoint",
     "Configure an external API endpoint that the chatbot can call for real-time data. Use {param} syntax in URL for dynamic values (e.g., /orders/{order_id}).",
     {
+      project_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe("Project ID. If not specified and you have only one project, that project will be used."),
       name: z
         .string()
         .min(1)
@@ -573,6 +895,7 @@ function createMcpServer(projectId: string, userId: string): McpServer {
         .describe("Bearer token value (required if auth_type is bearer)"),
     },
     async ({
+      project_id,
       name,
       description,
       url,
@@ -582,11 +905,21 @@ function createMcpServer(projectId: string, userId: string): McpServer {
       api_key_header,
       bearer_token,
     }) => {
+      // Resolve project ID
+      const resolved = await resolveProjectId(userId, project_id);
+      if ("error" in resolved) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ error: resolved.error }) }],
+          isError: true,
+        };
+      }
+      const targetProjectId = resolved.projectId;
+
       // Check limit
       const { count } = await supabaseAdmin
         .from("api_endpoints")
         .select("*", { count: "exact", head: true })
-        .eq("project_id", projectId);
+        .eq("project_id", targetProjectId);
 
       if (count !== null && count >= MAX_ENDPOINTS_PER_PROJECT) {
         return {
@@ -648,7 +981,7 @@ function createMcpServer(projectId: string, userId: string): McpServer {
       const { data: endpoint, error: createError } = await supabaseAdmin
         .from("api_endpoints")
         .insert({
-          project_id: projectId,
+          project_id: targetProjectId,
           name,
           description,
           url,
@@ -699,15 +1032,30 @@ function createMcpServer(projectId: string, userId: string): McpServer {
       endpoint_id: z.string().uuid().describe("The ID of the endpoint to delete"),
     },
     async ({ endpoint_id }) => {
-      // Verify ownership
+      // Get the endpoint and verify ownership through project
       const { data: endpoint, error: fetchError } = await supabaseAdmin
         .from("api_endpoints")
-        .select("id")
+        .select("id, project_id")
         .eq("id", endpoint_id)
-        .eq("project_id", projectId)
         .single();
 
       if (fetchError || !endpoint) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                error: "API endpoint not found",
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      // Validate ownership of the project
+      const isOwner = await validateProjectOwnership(userId, endpoint.project_id);
+      if (!isOwner) {
         return {
           content: [
             {
@@ -760,6 +1108,11 @@ function createMcpServer(projectId: string, userId: string): McpServer {
     "get_embed_code",
     "Get the embed code to add the chatbot widget to a website. Add this script tag just before the closing </body> tag.",
     {
+      project_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe("Project ID. If not specified and you have only one project, that project will be used."),
       position: z
         .enum(["bottom-right", "bottom-left"])
         .default("bottom-right")
@@ -783,9 +1136,19 @@ function createMcpServer(projectId: string, userId: string): McpServer {
         .optional()
         .describe("Greeting message shown when chat opens"),
     },
-    async ({ position, primary_color, title, greeting }) => {
+    async ({ project_id, position, primary_color, title, greeting }) => {
+      // Resolve project ID
+      const resolved = await resolveProjectId(userId, project_id);
+      if ("error" in resolved) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ error: resolved.error }) }],
+          isError: true,
+        };
+      }
+      const targetProjectId = resolved.projectId;
+
       // Build embed code with optional customizations
-      let embedCode = `<script src="${WIDGET_CDN_URL}/widget.js" data-project-id="${projectId}"`;
+      let embedCode = `<script src="${WIDGET_CDN_URL}/widget.js" data-project-id="${targetProjectId}"`;
 
       if (position && position !== "bottom-right") {
         embedCode += ` data-position="${position}"`;
@@ -832,17 +1195,32 @@ function createMcpServer(projectId: string, userId: string): McpServer {
     "ask_question",
     "Send a question to the chatbot and get an answer. Useful for testing your chatbot's responses.",
     {
+      project_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe("Project ID. If not specified and you have only one project, that project will be used."),
       question: z
         .string()
         .min(1)
         .max(1000)
         .describe("The question to ask the chatbot"),
     },
-    async ({ question }) => {
+    async ({ project_id, question }) => {
+      // Resolve project ID
+      const resolved = await resolveProjectId(userId, project_id);
+      if ("error" in resolved) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ error: resolved.error }) }],
+          isError: true,
+        };
+      }
+      const targetProjectId = resolved.projectId;
+
       try {
         // Use the chat engine to process the question
         const result = await processChat({
-          projectId,
+          projectId: targetProjectId,
           visitorId: `mcp-${userId}`,
           message: question,
           sessionId: undefined, // New session each time for MCP
@@ -993,15 +1371,15 @@ mcpRouter.post("/", async (req: Request, res: Response) => {
     const requestId = (req.body as { id?: string | number | null })?.id ?? null;
 
     if (!sessionId && isInitializeRequest(req.body)) {
-      // Validate project auth
-      const auth = await validateProjectAuth(req);
+      // Validate API key auth
+      const auth = await validateApiKeyAuth(req);
       if (!auth) {
         return res.status(401).json({
           jsonrpc: "2.0",
           error: {
             code: -32001,
             message:
-              "Unauthorized: Invalid or missing X-Project-ID header. Use your project ID from the Settings page.",
+              "Unauthorized: Invalid or missing X-API-Key header. Generate an API key from the Settings page.",
           },
           id: requestId,
         });
@@ -1013,10 +1391,9 @@ mcpRouter.post("/", async (req: Request, res: Response) => {
         onsessioninitialized: (id) => {
           sessions[id] = {
             transport,
-            projectId: auth.projectId,
             userId: auth.userId,
           };
-          console.log(`[MCP] Session initialized: ${id} for project ${auth.projectName}`);
+          console.log(`[MCP] Session initialized: ${id} for user ${auth.userId}`);
         },
       });
 
@@ -1028,8 +1405,8 @@ mcpRouter.post("/", async (req: Request, res: Response) => {
         }
       };
 
-      // Create MCP server with tools
-      const mcpServer = createMcpServer(auth.projectId, auth.userId);
+      // Create MCP server with tools (account-level)
+      const mcpServer = createMcpServer(auth.userId);
       await mcpServer.connect(transport);
 
       // Handle the request

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
 import { Button, Card, CardContent, Skeleton, Switch, Label } from "@chatbot/ui";
-import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail } from "lucide-react";
+import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff } from "lucide-react";
 
 interface UpdatedProject {
   id: string;
@@ -18,6 +18,31 @@ interface ProjectUpdateResponse {
   project: UpdatedProject;
 }
 
+interface ApiKeyInfo {
+  id: string;
+  prefix: string;
+  name: string;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+interface ApiKeyResponse {
+  hasKey: boolean;
+  apiKey: ApiKeyInfo | null;
+}
+
+interface NewApiKeyResponse {
+  success: boolean;
+  message: string;
+  apiKey: {
+    id: string;
+    key: string;
+    prefix: string;
+    name: string;
+    createdAt: string;
+  };
+}
+
 export default function SettingsPage() {
   const { currentProject, isLoading: projectLoading, deleteProject, refreshProjects } = useProject();
   const [saving, setSaving] = useState(false);
@@ -27,6 +52,15 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [mcpCopied, setMcpCopied] = useState(false);
+
+  // API key state
+  const [apiKeyInfo, setApiKeyInfo] = useState<ApiKeyInfo | null>(null);
+  const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [loadingApiKey, setLoadingApiKey] = useState(true);
+  const [generatingKey, setGeneratingKey] = useState(false);
+  const [revokingKey, setRevokingKey] = useState(false);
+  const [apiKeyCopied, setApiKeyCopied] = useState(false);
 
   // Form state
   const [name, setName] = useState("");
@@ -52,6 +86,93 @@ export default function SettingsPage() {
       setLeadNotificationsEnabled(settings.lead_notifications_enabled !== false);
     }
   }, [currentProject]);
+
+  // Fetch API key status on mount
+  useEffect(() => {
+    const fetchApiKey = async () => {
+      try {
+        const response = await apiClient<ApiKeyResponse>("/api/account/api-key");
+        if (response.hasKey && response.apiKey) {
+          setApiKeyInfo(response.apiKey);
+        } else {
+          setApiKeyInfo(null);
+        }
+      } catch (err) {
+        console.error("Failed to fetch API key:", err);
+      } finally {
+        setLoadingApiKey(false);
+      }
+    };
+    fetchApiKey();
+  }, []);
+
+  const handleGenerateApiKey = async () => {
+    const confirmed = apiKeyInfo
+      ? confirm("This will revoke your existing API key and generate a new one. Any integrations using the old key will stop working. Continue?")
+      : true;
+
+    if (!confirmed) return;
+
+    setGeneratingKey(true);
+    setError(null);
+
+    try {
+      const response = await apiClient<NewApiKeyResponse>("/api/account/api-key", {
+        method: "POST",
+        body: JSON.stringify({ name: "MCP API Key" }),
+      });
+
+      setNewApiKey(response.apiKey.key);
+      setShowApiKey(true);
+      setApiKeyInfo({
+        id: response.apiKey.id,
+        prefix: response.apiKey.prefix,
+        name: response.apiKey.name,
+        lastUsedAt: null,
+        createdAt: response.apiKey.createdAt,
+      });
+      setSuccess("API key generated successfully. Copy it now - it won't be shown again!");
+      setTimeout(() => setSuccess(null), 10000);
+    } catch (err) {
+      console.error("Failed to generate API key:", err);
+      setError("Failed to generate API key");
+    } finally {
+      setGeneratingKey(false);
+    }
+  };
+
+  const handleRevokeApiKey = async () => {
+    const confirmed = confirm("Are you sure you want to revoke your API key? Any MCP integrations will stop working.");
+    if (!confirmed) return;
+
+    setRevokingKey(true);
+    setError(null);
+
+    try {
+      await apiClient("/api/account/api-key", { method: "DELETE" });
+      setApiKeyInfo(null);
+      setNewApiKey(null);
+      setShowApiKey(false);
+      setSuccess("API key revoked successfully");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Failed to revoke API key:", err);
+      setError("Failed to revoke API key");
+    } finally {
+      setRevokingKey(false);
+    }
+  };
+
+  const handleCopyApiKey = async () => {
+    if (!newApiKey) return;
+    try {
+      await navigator.clipboard.writeText(newApiKey);
+      setApiKeyCopied(true);
+      setTimeout(() => setApiKeyCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   const handleSave = async () => {
     if (!currentProject) return;
@@ -97,15 +218,19 @@ export default function SettingsPage() {
   };
 
   const handleCopyMcpConfig = async () => {
-    if (!currentProject) return;
+    if (!newApiKey && !apiKeyInfo) {
+      setError("Generate an API key first to copy MCP config");
+      return;
+    }
 
+    const apiKeyValue = newApiKey || "YOUR_API_KEY_HERE";
     const mcpConfig = JSON.stringify(
       {
         "chatbot-platform": {
           type: "http",
           url: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/mcp`,
           headers: {
-            "X-Project-ID": currentProject.id,
+            "X-API-Key": apiKeyValue,
           },
         },
       },
@@ -312,7 +437,7 @@ export default function SettingsPage() {
 
         <Card>
           <CardContent className="p-6">
-            <h2 className="font-semibold mb-4">API Keys</h2>
+            <h2 className="font-semibold mb-4">Widget Project ID</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
@@ -354,12 +479,120 @@ export default function SettingsPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
+              <Key className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold">API Key</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Generate an API key to connect AI tools like Cursor, Claude Code, or Windsurf to manage your chatbot.
+              This key provides access to all your projects.
+            </p>
+
+            {loadingApiKey ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {newApiKey && showApiKey ? (
+                  <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md space-y-3">
+                    <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                      Copy your API key now. It won&apos;t be shown again!
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type={showApiKey ? "text" : "password"}
+                        value={newApiKey}
+                        readOnly
+                        className="flex-1 px-3 py-2 border border-input rounded-md bg-background font-mono text-sm"
+                      />
+                      <Button variant="outline" size="icon" onClick={() => setShowApiKey(!showApiKey)}>
+                        {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                      <Button variant="outline" onClick={handleCopyApiKey}>
+                        {apiKeyCopied ? (
+                          <>
+                            <Check className="h-4 w-4 mr-2" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => { setNewApiKey(null); setShowApiKey(false); }}>
+                      Dismiss
+                    </Button>
+                  </div>
+                ) : apiKeyInfo ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={apiKeyInfo.prefix}
+                        readOnly
+                        className="flex-1 px-3 py-2 border border-input rounded-md bg-muted font-mono text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={handleGenerateApiKey}
+                        disabled={generatingKey}
+                      >
+                        {generatingKey ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                        )}
+                        Regenerate
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleRevokeApiKey}
+                        disabled={revokingKey}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        {revokingKey ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-2" />
+                        )}
+                        Revoke
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Created: {new Date(apiKeyInfo.createdAt).toLocaleDateString()}
+                      {apiKeyInfo.lastUsedAt && (
+                        <> • Last used: {new Date(apiKeyInfo.lastUsedAt).toLocaleDateString()}</>
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <Button onClick={handleGenerateApiKey} disabled={generatingKey}>
+                    {generatingKey ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Key className="h-4 w-4 mr-2" />
+                    )}
+                    Generate API Key
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
               <Sparkles className="h-5 w-5 text-primary" />
               <h2 className="font-semibold">MCP Integration</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
               Connect AI tools like <strong>Cursor</strong>, <strong>Claude Code</strong>, or <strong>Windsurf</strong> to manage your chatbot using natural language.
-              Add this configuration to your MCP settings file.
+              {!apiKeyInfo && " Generate an API key above first."}
             </p>
             <div className="space-y-4">
               <div className="relative">
@@ -369,7 +602,7 @@ export default function SettingsPage() {
     "type": "http",
     "url": "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/mcp",
     "headers": {
-      "X-Project-ID": "${currentProject.id}"
+      "X-API-Key": "${newApiKey || (apiKeyInfo ? apiKeyInfo.prefix : "YOUR_API_KEY_HERE")}"
     }
   }
 }`}
@@ -379,6 +612,7 @@ export default function SettingsPage() {
                   size="sm"
                   onClick={handleCopyMcpConfig}
                   className="absolute top-2 right-2"
+                  disabled={!apiKeyInfo && !newApiKey}
                 >
                   {mcpCopied ? (
                     <>
@@ -393,9 +627,17 @@ export default function SettingsPage() {
                   )}
                 </Button>
               </div>
+              {newApiKey && (
+                <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-md">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                    <strong>Important:</strong> Copy the config now with your full API key included. After dismissing, only the key prefix will be shown.
+                  </p>
+                </div>
+              )}
               <div className="text-sm text-muted-foreground space-y-2">
                 <p><strong>Available Tools:</strong></p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li><code className="text-xs bg-muted px-1 rounded">list_projects</code> / <code className="text-xs bg-muted px-1 rounded">create_project</code> - Manage your projects</li>
                   <li><code className="text-xs bg-muted px-1 rounded">get_project_info</code> - View project details and stats</li>
                   <li><code className="text-xs bg-muted px-1 rounded">update_project_settings</code> - Update name, system prompt, welcome message</li>
                   <li><code className="text-xs bg-muted px-1 rounded">list_knowledge</code> / <code className="text-xs bg-muted px-1 rounded">upload_knowledge</code> - Manage knowledge sources</li>

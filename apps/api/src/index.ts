@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 
+import { accountRouter } from "./routes/account";
 import { analyticsRouter } from "./routes/analytics";
 import { authRouter } from "./routes/auth";
 import { chatRouter } from "./routes/chat";
@@ -44,6 +45,7 @@ app.get("/health", (_req, res) => {
 });
 
 // Dashboard API routes (restricted CORS)
+app.use("/api/account", dashboardCors, accountRouter);
 app.use("/api/analytics", dashboardCors, analyticsRouter);
 app.use("/api/auth", dashboardCors, authRouter);
 app.use("/api/projects", dashboardCors, projectsRouter);
@@ -55,13 +57,13 @@ app.use("/api/embed", dashboardCors, embedRouter);
 app.use("/api/chat", widgetCors, chatRouter);
 
 // MCP endpoint (open CORS - called from AI platforms like Cursor, Claude Code)
-// Uses X-Project-ID header for authentication
+// Uses X-API-Key header for account-level authentication
 const mcpCors = cors({
   origin: "*",
   methods: ["GET", "POST", "DELETE", "OPTIONS"],
   allowedHeaders: [
     "Content-Type",
-    "X-Project-ID",
+    "X-API-Key",
     "Mcp-Session-Id",
     "MCP-Protocol-Version",
     "Accept",

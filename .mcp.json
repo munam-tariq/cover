@@ -36,11 +36,11 @@
         "type": "http",
         "url": "http://144.91.76.33:8080/mcp"
       },
-      "cover-chatbot": {
+      "chatbot-platform": {
         "type": "http",
         "url": "http://localhost:3001/mcp",
         "headers": {
-          "X-Project-ID": "e21f746a-0463-4487-87e8-5dbde4dad7b8"
+          "X-API-Key": "ck_rzc6lhfyeo5aaej4h7jeev0al34sbkua"
         }
       }
     }

@@ -9,7 +9,7 @@
  * - Smooth entrance animation
  */
 
-import { escapeHtml, formatTime } from "../utils/helpers";
+import { escapeHtml, formatTime, parseMarkdown } from "../utils/helpers";
 
 export interface MessageOptions {
   id: string;
@@ -39,8 +39,12 @@ export class Message {
     // Message content
     const content = document.createElement("div");
     content.className = "chatbot-message-content";
-    // Use textContent for XSS safety, but allow line breaks
-    content.innerHTML = escapeHtml(this.options.content);
+    // Parse markdown for assistant messages, escape for user messages
+    if (this.options.role === "assistant") {
+      content.innerHTML = parseMarkdown(this.options.content);
+    } else {
+      content.innerHTML = escapeHtml(this.options.content);
+    }
 
     // Timestamp
     const time = document.createElement("div");
@@ -59,7 +63,12 @@ export class Message {
   updateContent(newContent: string): void {
     const contentEl = this.element.querySelector(".chatbot-message-content");
     if (contentEl) {
-      contentEl.innerHTML = escapeHtml(newContent);
+      // Parse markdown for assistant messages, escape for user messages
+      if (this.options.role === "assistant") {
+        contentEl.innerHTML = parseMarkdown(newContent);
+      } else {
+        contentEl.innerHTML = escapeHtml(newContent);
+      }
     }
   }
 

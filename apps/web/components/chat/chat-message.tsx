@@ -2,6 +2,7 @@
 
 import { cn } from "@chatbot/ui";
 import { Bot, User, Sparkles, Clock, CheckCircle2, XCircle } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 export interface ChatMessageSource {
   id: string;
@@ -79,8 +80,8 @@ export function ChatMessage({
             <TypingIndicator />
           </div>
         ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <p className="whitespace-pre-wrap break-words leading-relaxed">{content}</p>
+          <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-muted prose-pre:text-sm prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
+            <ReactMarkdown>{content}</ReactMarkdown>
           </div>
         )}
 
