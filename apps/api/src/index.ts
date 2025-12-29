@@ -2,6 +2,8 @@ import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
+import { createServer } from "http";
+import { WebSocketServer } from "ws";
 
 import { accountRouter } from "./routes/account";
 import { analyticsRouter } from "./routes/analytics";
@@ -13,9 +15,18 @@ import { endpointsRouter } from "./routes/endpoints";
 import { knowledgeRouter } from "./routes/knowledge";
 import { mcpRouter } from "./routes/mcp";
 import { projectsRouter } from "./routes/projects";
+import { voiceRouter } from "./routes/voice";
+import { setupVoiceWebSocket } from "./routes/voice-ws";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Create HTTP server for WebSocket support
+const httpServer = createServer(app);
+
+// Setup WebSocket server for voice streaming
+const wss = new WebSocketServer({ server: httpServer, path: "/api/voice/stream" });
+setupVoiceWebSocket(wss);
 
 // Security middleware
 app.use(helmet());
@@ -56,6 +67,11 @@ app.use("/api/embed", dashboardCors, embedRouter);
 // Widget/Public API routes (open CORS - can be called from any domain)
 app.use("/api/chat", widgetCors, chatRouter);
 
+// Voice API routes - public endpoints for widget, protected for dashboard
+// Using widgetCors allows the widget to fetch voice config from any domain
+// Protected routes (settings) use authMiddleware in the router
+app.use("/api/voice", widgetCors, voiceRouter);
+
 // MCP endpoint (open CORS - called from AI platforms like Cursor, Claude Code)
 // Uses X-API-Key header for account-level authentication
 const mcpCors = cors({
@@ -93,9 +109,10 @@ app.use(
   }
 );
 
-// Start server
-app.listen(PORT, () => {
+// Start server (using httpServer for WebSocket support)
+httpServer.listen(PORT, () => {
   console.log(`API server running on http://localhost:${PORT}`);
+  console.log(`Voice WebSocket available at ws://localhost:${PORT}/api/voice/stream`);
 });
 
 export default app;

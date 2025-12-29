@@ -2,13 +2,9 @@
 
 ## Overview
 - **Total Features**: 22
-- **Completed**: 12
+- **Completed**: 13
 - **In Progress**: 0
-- **Remaining**: 10 (V2/V3 features)
-
-## Currently In Progress
-
-(none)
+- **Remaining**: 9 (V2/V3 features)
 
 ---
 
@@ -97,6 +93,62 @@ These features take priority over the remaining Enhanced (V2) features.
 ---
 
 ## Completed Features
+
+### #17: voice-chat ✅
+- **Started**: 2025-12-21
+- **Completed**: 2025-12-21
+- **Category**: enhanced (V2)
+- **Summary**: Implemented real-time voice conversations using Deepgram (Nova-3 STT + Aura-2 TTS), WebSocket audio streaming, and voice settings in dashboard. Users can now have voice conversations with their chatbot directly from the widget.
+- **Key Files**:
+  - `apps/api/src/lib/deepgram.ts` - Deepgram client initialization and voice configuration
+  - `apps/api/src/services/deepgram-stt.ts` - Speech-to-text service with streaming support
+  - `apps/api/src/services/deepgram-tts.ts` - Text-to-speech service with streaming support
+  - `apps/api/src/routes/voice-ws.ts` - WebSocket handler for voice streaming
+  - `apps/api/src/routes/voice.ts` - HTTP routes for voice config, preview, settings
+  - `apps/api/src/index.ts` - Added WebSocket server support
+  - `apps/web/app/(dashboard)/settings/page.tsx` - Voice settings UI (toggle, greeting, voice selector)
+  - `apps/widget/src/utils/voice.ts` - VoiceManager class for WebSocket/audio handling
+  - `apps/widget/src/components/voice-button.ts` - Microphone button with state visualization
+  - `apps/widget/src/components/voice-ui.ts` - Voice call overlay UI
+  - `apps/widget/src/components/chat-window.ts` - Integrated voice functionality
+  - `apps/widget/src/styles/widget.css` - Voice-related CSS styles
+- **API Routes**:
+  - `GET /api/voice/config` - Get voice configuration for project (public)
+  - `GET /api/voice/voices` - List available TTS voices
+  - `GET /api/voice/preview` - Preview voice audio sample
+  - `GET /api/voice/settings/:projectId` - Get voice settings (authenticated)
+  - `PATCH /api/voice/settings/:projectId` - Update voice settings (authenticated)
+  - `WS /api/voice/stream` - WebSocket for real-time voice streaming
+- **Database Changes**:
+  - Migration: `add_voice_chat_columns` - Added columns to projects and chat_sessions:
+    - `projects.voice_enabled` - Toggle voice chat on/off
+    - `projects.voice_greeting` - Custom greeting for voice calls
+    - `projects.voice_id` - Selected TTS voice
+    - `chat_sessions.is_voice` - Flag for voice sessions
+    - `chat_sessions.voice_duration_seconds` - Call duration tracking
+- **Features**:
+  - Voice button in widget (microphone icon)
+  - Real-time speech-to-text using Deepgram Nova-3
+  - Text-to-speech using Deepgram Aura-2 (10 voice options)
+  - WebSocket audio streaming (16kHz input, 24kHz output)
+  - Voice UI overlay with transcript display, status indicator
+  - Voice settings in dashboard (enable/disable, greeting, voice selection)
+  - Voice preview in settings
+  - Session integration (voice messages saved to chat history)
+  - Graceful error handling (microphone denied, connection errors)
+- **Environment Variables** (new):
+  - `DEEPGRAM_API_KEY` - Deepgram API key for STT/TTS
+  - `VOICE_CHAT_ENABLED` - Global toggle for voice chat (default: true)
+  - `VOICE_CHAT_MAX_DURATION_SECONDS` - Max call duration (default: 300)
+- **Architecture**:
+  - Express HTTP server upgraded to support WebSocket
+  - WebSocketServer attached at `/api/voice/stream` path
+  - MediaRecorder for browser audio capture (webm/opus format)
+  - Web Audio API for PCM playback in browser
+  - Streaming architecture for low-latency conversations
+- **Notes**: Requires Deepgram API key. Cost is ~$0.035/minute.
+
+---
 
 ### #12: url-scraping ✅
 - **Started**: 2025-12-19

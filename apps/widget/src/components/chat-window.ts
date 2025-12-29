@@ -14,7 +14,10 @@
 import { Message, MessageOptions } from "./message";
 import { Input } from "./input";
 import { TypingIndicator } from "./typing-indicator";
+import { VoiceButton } from "./voice-button";
+import { VoiceUI } from "./voice-ui";
 import { sendMessage, ChatApiError } from "../utils/api";
+import { getVoiceConfig, VoiceManager, type VoiceConfig, type VoiceState } from "../utils/voice";
 import {
   getVisitorId,
   getSessionId,
@@ -39,6 +42,10 @@ export class ChatWindow {
   private messagesContainer: HTMLElement;
   private input: Input;
   private typingIndicator: TypingIndicator;
+  private voiceButton: VoiceButton | null = null;
+  private voiceUI: VoiceUI | null = null;
+  private voiceManager: VoiceManager | null = null;
+  private voiceConfig: VoiceConfig | null = null;
   private messages: StoredMessage[] = [];
   private visitorId: string;
   private sessionId: string | null = null;
@@ -75,6 +82,141 @@ export class ChatWindow {
 
     // Setup keyboard handling
     this.setupKeyboardHandling();
+
+    // Initialize voice if available
+    this.initVoice();
+  }
+
+  /**
+   * Initialize voice chat functionality
+   */
+  private async initVoice(): Promise<void> {
+    try {
+      // Fetch voice configuration
+      this.voiceConfig = await getVoiceConfig(
+        this.options.apiUrl,
+        this.options.projectId
+      );
+
+      if (!this.voiceConfig?.enabled) {
+        return;
+      }
+
+      // Create voice button
+      this.voiceButton = new VoiceButton({
+        onClick: () => this.handleVoiceToggle(),
+        primaryColor: this.options.primaryColor,
+      });
+
+      // Add voice button to input container
+      const inputContainer = this.element.querySelector(".chatbot-input-container");
+      inputContainer?.insertBefore(this.voiceButton.element, this.input.element);
+
+      // Create voice UI overlay
+      this.voiceUI = new VoiceUI({
+        onEndCall: () => this.endVoiceCall(),
+        primaryColor: this.options.primaryColor,
+      });
+
+      // Add voice UI to window (before messages)
+      const window = this.element;
+      window.insertBefore(this.voiceUI.element, this.messagesContainer);
+
+      console.log("[ChatWindow] Voice chat initialized");
+    } catch (error) {
+      console.error("[ChatWindow] Failed to initialize voice:", error);
+    }
+  }
+
+  /**
+   * Handle voice button toggle
+   */
+  private handleVoiceToggle(): void {
+    if (this.voiceButton?.isActive()) {
+      this.endVoiceCall();
+    } else {
+      this.startVoiceCall();
+    }
+  }
+
+  /**
+   * Start a voice call
+   */
+  private startVoiceCall(): void {
+    if (!this.voiceConfig?.enabled) return;
+
+    // Create voice manager
+    this.voiceManager = new VoiceManager({
+      apiUrl: this.options.apiUrl,
+      projectId: this.options.projectId,
+      visitorId: this.visitorId,
+      sessionId: this.sessionId,
+      onConnected: (greeting, sessionId) => {
+        this.sessionId = sessionId;
+        setSessionId(this.options.projectId, sessionId);
+      },
+      onTranscript: (text, isFinal) => {
+        this.voiceUI?.setTranscript(text, isFinal);
+      },
+      onResponse: (text) => {
+        this.voiceUI?.setResponse(text);
+        // Also add to chat history
+        const assistantMessage: StoredMessage = {
+          id: generateId(),
+          content: text,
+          role: "assistant",
+          timestamp: Date.now(),
+        };
+        this.messages.push(assistantMessage);
+        this.addMessageToDOM(assistantMessage);
+        setStoredMessages(this.options.projectId, this.messages);
+        this.scrollToBottom();
+      },
+      onSpeakingStart: () => {
+        // Visual feedback that bot is speaking
+      },
+      onSpeakingEnd: () => {
+        // Bot finished speaking
+      },
+      onNavigation: (url, newTab) => {
+        if (newTab) {
+          window.open(url, "_blank");
+        } else {
+          window.location.href = url;
+        }
+      },
+      onError: (error, code) => {
+        console.error("[VoiceCall] Error:", error, code);
+        this.voiceUI?.showError(error);
+        // Auto-close on critical errors
+        if (code === "MIC_DENIED" || code === "MIC_NOT_FOUND") {
+          setTimeout(() => this.endVoiceCall(), 3000);
+        }
+      },
+      onEnded: (durationSeconds) => {
+        console.log("[VoiceCall] Ended after", durationSeconds, "seconds");
+        this.voiceUI?.hide();
+        this.voiceButton?.setState("idle");
+      },
+      onStateChange: (state) => {
+        this.voiceButton?.setState(state);
+        this.voiceUI?.setState(state);
+      },
+    });
+
+    // Show voice UI and start the call
+    this.voiceUI?.show();
+    this.voiceManager.start();
+  }
+
+  /**
+   * End the voice call
+   */
+  private endVoiceCall(): void {
+    this.voiceManager?.end();
+    this.voiceManager = null;
+    this.voiceUI?.hide();
+    this.voiceButton?.setState("idle");
   }
 
   private createElement(): HTMLElement {

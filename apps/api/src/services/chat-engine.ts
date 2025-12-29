@@ -47,7 +47,7 @@ import {
 /**
  * Valid sources for chat sessions
  */
-export type ChatSource = "widget" | "playground" | "mcp" | "api";
+export type ChatSource = "widget" | "playground" | "mcp" | "api" | "voice";
 
 /**
  * Input for processing a chat message
@@ -599,7 +599,7 @@ export function validateChatInput(input: unknown): ChatInput {
     `anon_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
   // Validate source if provided
-  const validSources: ChatSource[] = ["widget", "playground", "mcp", "api"];
+  const validSources: ChatSource[] = ["widget", "playground", "mcp", "api", "voice"];
   const source = validSources.includes(data.source as ChatSource)
     ? (data.source as ChatSource)
     : "widget";

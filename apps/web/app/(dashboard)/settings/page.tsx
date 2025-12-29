@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
-import { Button, Card, CardContent, Skeleton, Switch, Label } from "@chatbot/ui";
-import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff } from "lucide-react";
+import { Button, Card, CardContent, Skeleton, Switch, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@chatbot/ui";
+import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff, Mic, Volume2 } from "lucide-react";
 
 interface UpdatedProject {
   id: string;
@@ -43,6 +43,20 @@ interface NewApiKeyResponse {
   };
 }
 
+interface VoiceSettings {
+  voice_enabled: boolean;
+  voice_greeting: string;
+  voice_id: string;
+  available_voices: Array<{
+    id: string;
+    name: string;
+    gender: string;
+    accent: string;
+  }>;
+  max_duration_seconds: number;
+  feature_enabled: boolean;
+}
+
 export default function SettingsPage() {
   const { currentProject, isLoading: projectLoading, deleteProject, refreshProjects } = useProject();
   const [saving, setSaving] = useState(false);
@@ -70,6 +84,15 @@ export default function SettingsPage() {
   const [leadCaptureEnabled, setLeadCaptureEnabled] = useState(false);
   const [leadCaptureEmail, setLeadCaptureEmail] = useState("");
   const [leadNotificationsEnabled, setLeadNotificationsEnabled] = useState(true);
+
+  // Voice settings state
+  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings | null>(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceGreeting, setVoiceGreeting] = useState("");
+  const [voiceId, setVoiceId] = useState("");
+  const [loadingVoice, setLoadingVoice] = useState(true);
+  const [savingVoice, setSavingVoice] = useState(false);
+  const [previewingVoice, setPreviewingVoice] = useState(false);
 
   const router = useRouter();
 
@@ -105,6 +128,29 @@ export default function SettingsPage() {
     };
     fetchApiKey();
   }, []);
+
+  // Fetch voice settings when project loads
+  useEffect(() => {
+    const fetchVoiceSettings = async () => {
+      if (!currentProject) return;
+
+      setLoadingVoice(true);
+      try {
+        const response = await apiClient<VoiceSettings>(
+          `/api/voice/settings/${currentProject.id}`
+        );
+        setVoiceSettings(response);
+        setVoiceEnabled(response.voice_enabled);
+        setVoiceGreeting(response.voice_greeting);
+        setVoiceId(response.voice_id);
+      } catch (err) {
+        console.error("Failed to fetch voice settings:", err);
+      } finally {
+        setLoadingVoice(false);
+      }
+    };
+    fetchVoiceSettings();
+  }, [currentProject]);
 
   const handleGenerateApiKey = async () => {
     const confirmed = apiKeyInfo
@@ -320,6 +366,74 @@ export default function SettingsPage() {
       setError("Failed to save lead capture settings");
     } finally {
       setSavingLeadCapture(false);
+    }
+  };
+
+  const handleSaveVoiceSettings = async () => {
+    if (!currentProject) return;
+
+    // Validate greeting length
+    if (voiceGreeting && voiceGreeting.length > 200) {
+      setError("Voice greeting must be 200 characters or less");
+      return;
+    }
+
+    setSavingVoice(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await apiClient(`/api/voice/settings/${currentProject.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          voice_enabled: voiceEnabled,
+          voice_greeting: voiceGreeting,
+          voice_id: voiceId,
+        }),
+      });
+
+      setSuccess("Voice settings saved successfully");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Error saving voice settings:", err);
+      setError("Failed to save voice settings");
+    } finally {
+      setSavingVoice(false);
+    }
+  };
+
+  const handlePreviewVoice = async () => {
+    if (!voiceId || !voiceGreeting) return;
+
+    setPreviewingVoice(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/voice/preview?voiceId=${encodeURIComponent(voiceId)}&text=${encodeURIComponent(voiceGreeting)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${(await apiClient<{ token: string }>("/api/auth/token")).token}`,
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to preview voice");
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audio.onended = () => {
+        setPreviewingVoice(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      audio.onerror = () => {
+        setPreviewingVoice(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      await audio.play();
+    } catch (err) {
+      console.error("Voice preview error:", err);
+      setError("Failed to preview voice");
+      setPreviewingVoice(false);
     }
   };
 
@@ -726,6 +840,118 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Mic className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold">Voice Chat</h2>
+              <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded-full">Beta</span>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Enable voice conversations for your chatbot. Visitors can click a microphone button and speak instead of typing.
+            </p>
+
+            {loadingVoice ? (
+              <div className="space-y-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            ) : !voiceSettings?.feature_enabled ? (
+              <div className="p-4 bg-muted rounded-md text-center">
+                <p className="text-sm text-muted-foreground">
+                  Voice chat is not available. Please configure the DEEPGRAM_API_KEY environment variable.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="voice-toggle" className="text-base">
+                      Enable Voice Chat
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Add a microphone button to your chat widget
+                    </p>
+                  </div>
+                  <Switch
+                    id="voice-toggle"
+                    checked={voiceEnabled}
+                    onCheckedChange={setVoiceEnabled}
+                  />
+                </div>
+
+                {voiceEnabled && (
+                  <div className="pl-0 space-y-4 border-l-2 border-primary/20 ml-0 pt-2">
+                    <div className="pl-4">
+                      <Label htmlFor="voice-greeting" className="text-sm font-medium">
+                        Voice Greeting
+                      </Label>
+                      <input
+                        id="voice-greeting"
+                        type="text"
+                        value={voiceGreeting}
+                        onChange={(e) => setVoiceGreeting(e.target.value)}
+                        placeholder="Hi! How can I help you today?"
+                        maxLength={200}
+                        className="w-full mt-1.5 px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        This message will be spoken when a voice call starts ({voiceGreeting.length}/200)
+                      </p>
+                    </div>
+
+                    <div className="pl-4">
+                      <Label htmlFor="voice-select" className="text-sm font-medium">
+                        Voice
+                      </Label>
+                      <div className="flex gap-2 mt-1.5">
+                        <Select value={voiceId} onValueChange={setVoiceId}>
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Select a voice" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {voiceSettings?.available_voices.map((voice) => (
+                              <SelectItem key={voice.id} value={voice.id}>
+                                {voice.name} - {voice.gender}, {voice.accent}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={handlePreviewVoice}
+                          disabled={previewingVoice || !voiceGreeting}
+                          title="Preview voice"
+                        >
+                          <Volume2 className={`h-4 w-4 ${previewingVoice ? "animate-pulse" : ""}`} />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Choose the voice for your chatbot&apos;s spoken responses
+                      </p>
+                    </div>
+
+                    <div className="pl-4">
+                      <p className="text-xs text-muted-foreground">
+                        Max call duration: {voiceSettings?.max_duration_seconds ? Math.floor(voiceSettings.max_duration_seconds / 60) : 5} minutes
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <Button onClick={handleSaveVoiceSettings} disabled={savingVoice}>
+                    {savingVoice && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {savingVoice ? "Saving..." : "Save Voice Settings"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

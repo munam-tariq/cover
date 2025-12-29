@@ -13,6 +13,7 @@
   "dependencies": {
     "@chatbot/db": "workspace:*",
     "@chatbot/shared": "workspace:*",
+    "@deepgram/sdk": "^4.11.3",
     "@mendable/firecrawl-js": "^4.9.3",
     "@modelcontextprotocol/sdk": "^1.25.1",
     "@supabase/supabase-js": "^2.39.0",
@@ -24,6 +25,7 @@
     "openai": "^4.25.0",
     "pdf-parse": "^1.1.1",
     "resend": "^6.6.0",
+    "ws": "^8.18.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -34,6 +36,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^20.11.0",
     "@types/pdf-parse": "^1.1.5",
+    "@types/ws": "^8.18.1",
     "eslint": "^8.56.0",
     "tsup": "^8.0.1",
     "tsx": "^4.7.0",

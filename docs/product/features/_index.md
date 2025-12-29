@@ -86,14 +86,15 @@ graph TD
 14. `widget-customization` - Colors, position, branding
 15. `docx-support` - Support for .doc/.docx files
 16. `shopify-integration` - Native MCP for Shopify data
+17. `voice-chat` - Real-time voice conversations with smart navigation (Deepgram)
 
 ### Phase 4: Advanced Features (V3 - Scale & Enterprise)
-17. `team-collaboration` - Invite team members
-18. `human-handoff` - Escalate to live support
-19. `multi-llm-support` - Claude, Llama, etc.
-20. `webhooks` - Notify on events
-21. `white-label` - Remove branding
-22. `advanced-analytics` - Sentiment, topics, trends
+18. `team-collaboration` - Invite team members
+19. `human-handoff` - Escalate to live support
+20. `multi-llm-support` - Claude, Llama, etc.
+21. `webhooks` - Notify on events
+22. `white-label` - Remove branding
+23. `advanced-analytics` - Sentiment, topics, trends
 
 ---
 
@@ -117,6 +118,7 @@ graph TD
 | widget-customization | enhanced | M | pending | widget |
 | docx-support | enhanced | S | pending | knowledge-base |
 | shopify-integration | enhanced | L | pending | api-endpoints |
+| **voice-chat** | **enhanced** | L | **completed** | chat-engine, widget |
 | team-collaboration | advanced | L | pending | auth-system |
 | human-handoff | advanced | L | pending | chat-engine |
 | multi-llm-support | advanced | M | pending | chat-engine |
@@ -162,6 +164,7 @@ graph TD
 - [widget-customization](./enhanced/widget-customization/spec.md)
 - [docx-support](./enhanced/docx-support/spec.md)
 - [shopify-integration](./enhanced/shopify-integration/spec.md)
+- [voice-chat](./enhanced/voice-chat/spec.md) - Real-time voice with Deepgram
 
 ### Advanced Features (V3)
 - [multiple-chatbots](./advanced/multiple-chatbots/spec.md) *(original full vision - see multiple-projects for MVP)*
@@ -195,10 +198,10 @@ graph TD
 |-------|----------|--------------|
 | Infrastructure | 3 features | 7-11 days ✅ |
 | Core (V1) | 5 features | 18-23 days ✅ |
-| Immediate Priority | 4 features | 12-17 days (3 ✅, 1 pending) |
-| Enhanced (V2) | 4 features | 10-16 days |
+| Immediate Priority | 4 features | 12-17 days (4 ✅) |
+| Enhanced (V2) | 5 features | 16-24 days |
 | Advanced (V3) | 6 features | 20-30 days |
-| **Total** | **22 features** | **67-97 days** |
+| **Total** | **23 features** | **73-105 days** |
 
 *Note: Parallelization can reduce calendar time significantly.*
 
@@ -231,14 +234,20 @@ graph TD
 
 ---
 
-**Document Version**: 1.1
+**Document Version**: 1.2
 **Last Updated**: December 2024
 **Author**: Morgan (Principal PM)
-**Spec Count**: 22 features documented
+**Spec Count**: 23 features documented
 
 ---
 
 ## Changelog
+
+### v1.3 (December 2024)
+- **Added**: `voice-chat` - Real-time voice conversations with smart navigation
+- **Provider**: Deepgram (Nova-3 STT + Aura-2 TTS) selected after extensive research
+- **Cost**: ~$0.035/minute - aligned with SMB pricing strategy
+- **Features**: Voice button in widget, smart navigation to source URLs, customizable voices
 
 ### v1.2 (December 2024)
 - **Promoted**: `url-scraping` - Moved from Enhanced (V2) to Immediate Priority
