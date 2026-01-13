@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { MessageSquare } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: "home" },
@@ -64,7 +65,12 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-card border-r min-h-screen p-4">
       <div className="mb-8">
-        <h1 className="text-xl font-bold">SupportBase</h1>
+        <Link href="/" className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+            <MessageSquare className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-xl font-bold">SupportBase</span>
+        </Link>
       </div>
 
       <nav className="space-y-1">

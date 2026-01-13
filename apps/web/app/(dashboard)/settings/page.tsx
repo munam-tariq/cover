@@ -634,17 +634,42 @@ export default function SettingsPage() {
                   </p>
                 </div>
               )}
-              <div className="text-sm text-muted-foreground space-y-2">
+              <div className="text-sm text-muted-foreground space-y-3">
                 <p><strong>Available Tools:</strong></p>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li><code className="text-xs bg-muted px-1 rounded">list_projects</code> / <code className="text-xs bg-muted px-1 rounded">create_project</code> - Manage your projects</li>
-                  <li><code className="text-xs bg-muted px-1 rounded">get_project_info</code> - View project details and stats</li>
-                  <li><code className="text-xs bg-muted px-1 rounded">update_project_settings</code> - Update name, system prompt, welcome message</li>
-                  <li><code className="text-xs bg-muted px-1 rounded">list_knowledge</code> / <code className="text-xs bg-muted px-1 rounded">upload_knowledge</code> - Manage knowledge sources</li>
-                  <li><code className="text-xs bg-muted px-1 rounded">list_api_endpoints</code> / <code className="text-xs bg-muted px-1 rounded">add_api_endpoint</code> - Configure API tools</li>
-                  <li><code className="text-xs bg-muted px-1 rounded">get_embed_code</code> - Get widget embed code with customization</li>
-                  <li><code className="text-xs bg-muted px-1 rounded">ask_question</code> - Test your chatbot&apos;s responses</li>
-                </ul>
+                <div className="space-y-3 ml-2">
+                  <div>
+                    <p className="text-xs font-medium text-foreground mb-1">Project Management</p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      <li><code className="text-xs bg-muted px-1 rounded">list_projects</code> - List all your chatbot projects</li>
+                      <li><code className="text-xs bg-muted px-1 rounded">create_project</code> - Create a new chatbot project</li>
+                      <li><code className="text-xs bg-muted px-1 rounded">get_project_info</code> - View project details and stats</li>
+                      <li><code className="text-xs bg-muted px-1 rounded">update_project_settings</code> - Update name, system prompt, welcome message</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-foreground mb-1">Knowledge Base</p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      <li><code className="text-xs bg-muted px-1 rounded">list_knowledge</code> - List all knowledge sources</li>
+                      <li><code className="text-xs bg-muted px-1 rounded">upload_knowledge</code> - Add text content as knowledge</li>
+                      <li><code className="text-xs bg-muted px-1 rounded">delete_knowledge</code> - Remove a knowledge source</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-foreground mb-1">API Endpoints</p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      <li><code className="text-xs bg-muted px-1 rounded">list_api_endpoints</code> - List configured external APIs</li>
+                      <li><code className="text-xs bg-muted px-1 rounded">add_api_endpoint</code> - Configure an external API</li>
+                      <li><code className="text-xs bg-muted px-1 rounded">delete_api_endpoint</code> - Remove an API endpoint</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-foreground mb-1">Chat &amp; Embed</p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      <li><code className="text-xs bg-muted px-1 rounded">ask_question</code> - Test your chatbot&apos;s responses</li>
+                      <li><code className="text-xs bg-muted px-1 rounded">get_embed_code</code> - Get widget embed code with customization</li>
+                    </ul>
+                  </div>
+                </div>
               </div>
               <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
