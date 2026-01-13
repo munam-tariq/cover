@@ -97,46 +97,6 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
-  apps/mcp-server:
-    dependencies:
-      '@chatbot/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@chatbot/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@modelcontextprotocol/sdk':
-        specifier: ^0.5.0
-        version: 0.5.0
-      '@supabase/supabase-js':
-        specifier: ^2.39.0
-        version: 2.88.0
-      zod:
-        specifier: ^3.22.4
-        version: 3.25.76
-    devDependencies:
-      '@chatbot/eslint-config':
-        specifier: workspace:*
-        version: link:../../packages/eslint-config
-      '@chatbot/typescript-config':
-        specifier: workspace:*
-        version: link:../../packages/typescript-config
-      '@types/node':
-        specifier: ^20.11.0
-        version: 20.19.27
-      eslint:
-        specifier: ^8.56.0
-        version: 8.57.1
-      tsup:
-        specifier: ^8.0.1
-        version: 8.5.1(tsx@4.21.0)(typescript@5.9.3)
-      tsx:
-        specifier: ^4.7.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-
   apps/web:
     dependencies:
       '@chatbot/db':
@@ -995,14 +955,6 @@ packages:
       zod-to-json-schema: 3.25.0(zod@3.25.76)
     transitivePeerDependencies:
       - debug
-    dev: false
-
-  /@modelcontextprotocol/sdk@0.5.0:
-    resolution: {integrity: sha512-RXgulUX6ewvxjAG0kOpLMEdXXWkzWgaoCGaA2CwNW7cQCIphjpJhjpHSiaPdVCnisjRF/0Cm9KWHUuIoeiAblQ==}
-    dependencies:
-      content-type: 1.0.5
-      raw-body: 3.0.2
-      zod: 3.25.76
     dev: false
 
   /@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@3.25.76):

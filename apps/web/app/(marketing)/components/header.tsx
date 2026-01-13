@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Menu, X } from "lucide-react";
+import { MessageSquare, Menu, X, ArrowRight } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 const navLinks = [
   { label: "Features", href: "#features" },
@@ -15,6 +16,8 @@ const navLinks = [
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -22,6 +25,21 @@ export function Header() {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsLoggedIn(!!session);
+      } catch (error) {
+        console.error("Error checking auth:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkAuth();
   }, []);
 
   return (
@@ -58,19 +76,22 @@ export function Header() {
         </div>
 
         {/* Desktop CTA */}
-        <div className="hidden md:flex items-center gap-4">
-          <Link
-            href="/login"
-            className="text-slate-600 hover:text-slate-900 transition-colors text-sm font-medium"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/login"
-            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-sm font-medium rounded-lg transition-all shadow-md hover:shadow-lg"
-          >
-            Get Started
-          </Link>
+        <div className="hidden md:flex items-center">
+          {!isLoading && (
+            <Link
+              href={isLoggedIn ? "/dashboard" : "/login"}
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-sm font-medium rounded-lg transition-all shadow-md hover:shadow-lg flex items-center gap-2"
+            >
+              {isLoggedIn ? (
+                <>
+                  Dashboard
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              ) : (
+                "Get Started"
+              )}
+            </Link>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -106,21 +127,23 @@ export function Header() {
                   {link.label}
                 </Link>
               ))}
-              <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
-                <Link
-                  href="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-slate-600 hover:text-slate-900 transition-colors font-medium"
-                >
-                  Log in
-                </Link>
-                <Link
-                  href="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-center font-medium rounded-lg transition-colors"
-                >
-                  Get Started
-                </Link>
+              <div className="pt-4 border-t border-slate-100">
+                {!isLoading && (
+                  <Link
+                    href={isLoggedIn ? "/dashboard" : "/login"}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-center font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    {isLoggedIn ? (
+                      <>
+                        Dashboard
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    ) : (
+                      "Get Started"
+                    )}
+                  </Link>
+                )}
               </div>
             </div>
           </motion.div>

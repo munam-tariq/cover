@@ -25,7 +25,7 @@ function AuthCallbackContent() {
   useEffect(() => {
     const handleCallback = async () => {
       const supabase = createClient();
-      const next = searchParams.get("next") ?? "/";
+      const next = searchParams.get("next") ?? "/dashboard";
 
       // Helper function to set up new user - creates default project if none exists
       const setupNewUser = async (userId: string) => {

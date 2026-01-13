@@ -84,10 +84,10 @@ export async function sendLeadDigests(): Promise<{
         const emailText = buildDigestEmailText(project.name, leads);
 
         const fromAddress =
-          process.env.EMAIL_FROM_ADDRESS || "notifications@chatbot.com";
+          process.env.EMAIL_FROM_ADDRESS || "hello@supportbase.app";
 
         const { error: sendError } = await resend.emails.send({
-          from: `Chatbot Platform <${fromAddress}>`,
+          from: `SupportBase <${fromAddress}>`,
           to: notificationEmail,
           subject: `[${project.name}] ${leads.length} Unanswered Question${leads.length > 1 ? "s" : ""} (${formatDate(new Date())})`,
           html: emailHtml,
