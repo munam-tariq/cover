@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Brain, Mail, BarChart3, Folders, Plug } from "lucide-react";
+import { Brain, Mail, BarChart3, Folders, Plug, Zap } from "lucide-react";
 
 const features = [
   {
@@ -48,6 +48,15 @@ const features = [
     className: "md:col-span-1",
     gradient: "from-pink-500/10 via-pink-500/5 to-transparent",
     iconGradient: "from-pink-500 to-rose-500",
+  },
+  {
+    title: "MCP Integration",
+    description:
+      "Works with Cursor, Claude, and any MCP-compatible AI. Build chatbots from your IDE.",
+    icon: Zap,
+    className: "md:col-span-1",
+    gradient: "from-yellow-500/10 via-yellow-500/5 to-transparent",
+    iconGradient: "from-yellow-500 to-amber-500",
   },
 ];
 
