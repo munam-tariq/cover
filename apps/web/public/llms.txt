@@ -1,0 +1,76 @@
+# SupportBase
+
+> SupportBase is an AI chatbot platform built for developers using AI coding tools like Cursor, Claude Code, and Windsurf. It enables adding customer support chatbots to any website with a single line of code. The platform features MCP (Model Context Protocol) integration, allowing developers to manage chatbots entirely from within their AI editor without context switching.
+
+SupportBase lets you create AI chatbots that answer customer questions using your knowledge base (PDFs, text, URLs). Key differentiators:
+
+- **MCP-First**: Manage everything via AI tools (Cursor, Claude Code, Windsurf) without leaving your editor
+- **One-Line Install**: Single `<script>` tag embeds the chat widget on any website
+- **15-Minute Setup**: From zero to live chatbot in minutes
+- **RAG-Powered**: Semantic chunking, contextual embeddings, and hybrid search for accurate answers
+- **Lead Capture**: Automatically collects emails when the bot can't answer
+
+## Getting Started
+
+- [Sign Up](https://supportbase.app/login): Create a free account with magic link authentication
+- [Dashboard](https://supportbase.app/dashboard): Manage projects, knowledge base, and settings
+- [Embed Guide](https://supportbase.app/embed): Get your widget embed code with customization options
+
+## Features
+
+- [Knowledge Base](https://supportbase.app/knowledge): Upload PDFs, text files, or scrape URLs to train your chatbot
+- [API Endpoints](https://supportbase.app/api-endpoints): Connect external APIs for real-time data (order status, inventory, etc.)
+- [Analytics](https://supportbase.app/analytics): View conversation metrics, top questions, and trends
+- [Playground](https://supportbase.app/playground): Test your chatbot before deploying
+
+## MCP Integration
+
+Connect AI coding tools to manage your chatbot via natural language:
+
+```json
+{
+  "supportbase": {
+    "type": "http",
+    "url": "https://api.supportbase.app/mcp",
+    "headers": {
+      "X-API-Key": "YOUR_API_KEY"
+    }
+  }
+}
+```
+
+Available MCP tools: `list_projects`, `create_project`, `get_project_info`, `update_project_settings`, `list_knowledge`, `upload_knowledge`, `delete_knowledge`, `list_api_endpoints`, `add_api_endpoint`, `delete_api_endpoint`, `ask_question`, `get_embed_code`
+
+## Widget Embed Code
+
+```html
+<script
+  src="https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets/widget.js"
+  data-project-id="YOUR_PROJECT_ID"
+  data-position="bottom-right"
+  data-primary-color="#2563eb"
+  async>
+</script>
+```
+
+Configuration options: `data-project-id` (required), `data-api-url`, `data-position` (bottom-right/bottom-left), `data-primary-color`, `data-title`, `data-greeting`
+
+## Technical Details
+
+- **Frontend**: Next.js 14, React 18, Tailwind CSS, shadcn/ui
+- **Backend**: Node.js/Express, OpenAI GPT-4o-mini, text-embedding-3-small
+- **Database**: Supabase PostgreSQL with pgvector for vector search
+- **Widget**: Vanilla JS with Shadow DOM for style isolation
+- **Auth**: Supabase Auth with magic links
+
+## API Reference
+
+- `POST /api/chat/message`: Send messages to chatbot (public, rate-limited)
+- `GET /api/projects`: List user's chatbot projects (auth required)
+- `POST /api/knowledge`: Upload knowledge sources (auth required)
+- `POST /mcp`: MCP server endpoint (API key auth)
+
+## Contact
+
+- Website: https://supportbase.app
+- Support: hello@supportbase.app
