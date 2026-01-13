@@ -64,7 +64,7 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-card border-r min-h-screen p-4">
       <div className="mb-8">
-        <h1 className="text-xl font-bold">Chatbot Platform</h1>
+        <h1 className="text-xl font-bold">SupportBase</h1>
       </div>
 
       <nav className="space-y-1">
