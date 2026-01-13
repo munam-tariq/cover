@@ -122,7 +122,7 @@ export function VibeDemo() {
     <section
       id="demo"
       ref={sectionRef}
-      className="py-32 bg-[#050505] border-t border-white/5"
+      className="py-32 bg-gradient-to-b from-white to-slate-50 border-t border-slate-100"
     >
       <div className="max-w-6xl mx-auto px-6">
         {/* Header */}
@@ -132,10 +132,10 @@ export function VibeDemo() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
             Just ask your AI to add a chatbot.
           </h2>
-          <p className="text-xl text-gray-400">
+          <p className="text-xl text-slate-600">
             SupportBase is the first chatbot platform built for vibe coding.
           </p>
         </motion.div>
@@ -150,14 +150,14 @@ export function VibeDemo() {
         >
           {/* Left Panel: Terminal */}
           <div className="relative">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl opacity-50" />
-            <div className="relative bg-[#0d1117] border border-white/10 rounded-2xl overflow-hidden">
+            <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-2xl">
               {/* Terminal Header */}
-              <div className="flex items-center gap-2 px-4 py-3 bg-white/5 border-b border-white/10">
-                <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                <span className="ml-3 text-sm text-gray-500 font-mono">
+              <div className="flex items-center gap-2 px-4 py-3 bg-slate-800 border-b border-slate-700">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <span className="ml-3 text-sm text-slate-400 font-mono">
                   Claude
                 </span>
               </div>
@@ -167,7 +167,7 @@ export function VibeDemo() {
                 {/* User Message */}
                 <div className="mb-6">
                   <span className="text-blue-400">You: </span>
-                  <span className="text-gray-300">{userMessage}</span>
+                  <span className="text-slate-300">{userMessage}</span>
                   <span className="inline-block w-2 h-4 bg-blue-400 ml-0.5 animate-pulse" />
                 </div>
 
@@ -175,7 +175,7 @@ export function VibeDemo() {
                 {claudeResponse && (
                   <div className="mb-6">
                     <span className="text-purple-400">Claude: </span>
-                    <span className="text-gray-300">{claudeResponse}</span>
+                    <span className="text-slate-300">{claudeResponse}</span>
                   </div>
                 )}
 
@@ -197,7 +197,7 @@ export function VibeDemo() {
                       {step.status === "done" && (
                         <Check className="w-4 h-4 text-green-400" />
                       )}
-                      <span className="text-gray-400">{step.text}</span>
+                      <span className="text-slate-400">{step.text}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -218,29 +218,29 @@ export function VibeDemo() {
 
           {/* Right Panel: Preview */}
           <div className="relative">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl blur-xl opacity-50" />
-            <div className="relative bg-[#1a1a1a] border border-white/10 rounded-2xl overflow-hidden min-h-[350px]">
+            <div className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-blue-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-white border border-slate-200 rounded-2xl overflow-hidden min-h-[350px] shadow-2xl">
               {/* Browser Header */}
-              <div className="flex items-center gap-2 px-4 py-3 bg-white/5 border-b border-white/10">
-                <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                <div className="w-3 h-3 rounded-full bg-green-500/80" />
+              <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                <div className="w-3 h-3 rounded-full bg-green-500" />
                 <div className="flex-1 mx-4">
-                  <div className="bg-white/5 rounded-md px-3 py-1.5 text-sm text-gray-400 text-center">
+                  <div className="bg-white border border-slate-200 rounded-md px-3 py-1.5 text-sm text-slate-500 text-center">
                     your-app.com
                   </div>
                 </div>
               </div>
 
               {/* Website Preview */}
-              <div className="relative p-8 h-[calc(100%-48px)]">
+              <div className="relative p-8 h-[calc(100%-48px)] bg-slate-50">
                 {/* Mock Content */}
                 <div className="space-y-4">
-                  <div className="h-8 w-32 bg-white/10 rounded" />
-                  <div className="h-4 w-full bg-white/5 rounded" />
-                  <div className="h-4 w-3/4 bg-white/5 rounded" />
-                  <div className="h-4 w-5/6 bg-white/5 rounded" />
-                  <div className="h-32 w-full bg-white/5 rounded-lg mt-6" />
+                  <div className="h-8 w-32 bg-slate-200 rounded" />
+                  <div className="h-4 w-full bg-slate-100 rounded" />
+                  <div className="h-4 w-3/4 bg-slate-100 rounded" />
+                  <div className="h-4 w-5/6 bg-slate-100 rounded" />
+                  <div className="h-32 w-full bg-slate-100 rounded-lg mt-6" />
                 </div>
 
                 {/* Chat Widget */}
@@ -254,30 +254,30 @@ export function VibeDemo() {
                   className="absolute bottom-6 right-6"
                 >
                   {!widgetExpanded ? (
-                    <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <div className="w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30">
                       <MessageCircle className="w-6 h-6 text-white" />
                     </div>
                   ) : (
                     <motion.div
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      className="w-72 bg-white rounded-2xl shadow-2xl overflow-hidden"
+                      className="w-72 bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200"
                     >
                       {/* Widget Header */}
-                      <div className="bg-blue-600 px-4 py-3">
+                      <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-3">
                         <p className="text-white font-medium text-sm">
                           App Support
                         </p>
                       </div>
                       {/* Widget Body */}
-                      <div className="p-4 bg-gray-50">
-                        <div className="bg-white rounded-lg p-3 shadow-sm text-sm text-gray-700">
+                      <div className="p-4 bg-slate-50">
+                        <div className="bg-white rounded-lg p-3 shadow-sm text-sm text-slate-700 border border-slate-100">
                           Hi! How can I help you today?
                         </div>
                       </div>
                       {/* Widget Input */}
-                      <div className="px-4 pb-4 bg-gray-50">
-                        <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-400">
+                      <div className="px-4 pb-4 bg-slate-50">
+                        <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-400">
                           Type a message...
                         </div>
                       </div>

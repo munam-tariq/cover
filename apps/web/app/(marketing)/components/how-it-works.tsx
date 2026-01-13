@@ -10,6 +10,7 @@ const steps = [
     description:
       "PDFs, text files, or just paste your FAQ. We'll train your chatbot automatically.",
     icon: Upload,
+    gradient: "from-blue-500 to-cyan-500",
   },
   {
     number: "02",
@@ -17,6 +18,7 @@ const steps = [
     description:
       "One script tag. Works on any website—React, Next.js, plain HTML, anywhere.",
     icon: Code2,
+    gradient: "from-purple-500 to-pink-500",
   },
   {
     number: "03",
@@ -24,6 +26,7 @@ const steps = [
     description:
       "Your AI chatbot goes live instantly. Answering questions 24/7 while you sleep.",
     icon: Rocket,
+    gradient: "from-orange-500 to-red-500",
   },
 ];
 
@@ -44,7 +47,7 @@ const item = {
 
 export function HowItWorks() {
   return (
-    <section className="py-32 bg-[#050505] border-t border-white/5">
+    <section className="py-32 bg-white border-t border-slate-100">
       <div className="max-w-6xl mx-auto px-6">
         {/* Header */}
         <motion.div
@@ -53,10 +56,10 @@ export function HowItWorks() {
           viewport={{ once: true }}
           className="text-center mb-20"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
             Live in 15 minutes. Seriously.
           </h2>
-          <p className="text-xl text-gray-400">
+          <p className="text-xl text-slate-600">
             Three steps. No complexity. Just results.
           </p>
         </motion.div>
@@ -70,7 +73,7 @@ export function HowItWorks() {
           className="relative grid md:grid-cols-3 gap-8"
         >
           {/* Connecting Line (desktop only) */}
-          <div className="hidden md:block absolute top-24 left-[16%] right-[16%] h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          <div className="hidden md:block absolute top-24 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-blue-200 via-purple-200 to-orange-200" />
 
           {steps.map((step, index) => (
             <motion.div
@@ -81,21 +84,21 @@ export function HowItWorks() {
               <div className="flex flex-col items-center text-center">
                 {/* Icon Container */}
                 <div className="relative mb-6">
-                  <div className="absolute -inset-4 bg-blue-500/10 rounded-full blur-xl" />
-                  <div className="relative w-20 h-20 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center">
-                    <step.icon className="w-8 h-8 text-blue-400" />
+                  <div className={`absolute -inset-4 bg-gradient-to-r ${step.gradient} rounded-full blur-xl opacity-20`} />
+                  <div className="relative w-20 h-20 bg-white border-2 border-slate-100 rounded-2xl flex items-center justify-center shadow-lg">
+                    <step.icon className="w-8 h-8 text-slate-700" />
                   </div>
                   {/* Step Number */}
-                  <span className="absolute -top-2 -right-2 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
+                  <span className={`absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r ${step.gradient} rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg`}>
                     {index + 1}
                   </span>
                 </div>
 
                 {/* Content */}
-                <h3 className="text-xl font-semibold text-white mb-3">
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">
                   {step.title}
                 </h3>
-                <p className="text-gray-400 leading-relaxed max-w-xs">
+                <p className="text-slate-600 leading-relaxed max-w-xs">
                   {step.description}
                 </p>
               </div>

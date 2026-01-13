@@ -26,7 +26,7 @@ const integrations = [
     description: "Chat Intelligence",
     logo: (
       <svg viewBox="0 0 24 24" className="w-8 h-8" fill="currentColor">
-        <path d="M22.28 9.84c.41-1.24.23-2.6-.49-3.69a4.17 4.17 0 0 0-3.54-1.93c-.95.01-1.87.35-2.6.94a4.21 4.21 0 0 0-3.3-1.61c-1.4 0-2.7.7-3.47 1.87a4.19 4.19 0 0 0-2.71-1.01 4.2 4.2 0 0 0-3.86 2.6 4.21 4.21 0 0 0 .59 4.65A4.21 4.21 0 0 0 2.4 15c-.01 1.13.44 2.21 1.24 3.01a4.17 4.17 0 0 0 3.31 1.34c.95-.01 1.87-.35 2.6-.94.78 1.04 2 1.65 3.3 1.64 1.4 0 2.7-.7 3.47-1.87.78.64 1.76 1 2.78 1.01a4.2 4.2 0 0 0 3.86-2.6 4.21 4.21 0 0 0-.59-4.65 4.2 4.2 0 0 0-.09-4.1zm-6.13 10.43a2.8 2.8 0 0 1-1.96-.76l.1-.05 3.24-1.87c.16-.1.26-.28.26-.46V11l1.37.79v6.23a2.8 2.8 0 0 1-3.01 2.25zM5.1 17.4a2.79 2.79 0 0 1-.34-1.87l.1.06 3.24 1.87c.17.1.37.1.54 0l3.96-2.29v1.58l-3.28 1.9a2.8 2.8 0 0 1-4.22-1.25zm-.89-6.34c.39-.67.99-1.17 1.7-1.44v3.85c0 .19.1.36.27.46l3.95 2.28-1.37.79-3.28-1.89a2.8 2.8 0 0 1-1.27-3.05zm13.27 3.09l-3.96 2.29-1.37-.79 3.28-1.89a.53.53 0 0 0 .27-.46V7.45l1.37.79v6.23a2.8 2.8 0 0 1 .41-.32zm1.86-3.55l-.1-.06-3.24-1.87a.53.53 0 0 0-.54 0L11.5 11V9.42l3.28-1.9a2.8 2.8 0 0 1 4.56 3.08zm-8.57 2.82L9.4 12.63v-1.58l3.28-1.89c.17-.1.26-.28.26-.46V5l1.37.79v3.86c0 .18-.1.36-.26.46l-3.28 2.31z"/>
+        <path d="M22.28 9.84c.41-1.24.23-2.6-.49-3.69a4.17 4.17 0 0 0-3.54-1.93c-.95.01-1.87.35-2.6.94a4.21 4.21 0 0 0-3.3-1.61c-1.4 0-2.7.7-3.47 1.87a4.19 4.19 0 0 0-2.71-1.01 4.2 4.2 0 0 0-3.86 2.6 4.21 4.21 0 0 0 .59 4.65A4.21 4.21 0 0 0 2.4 15c-.01 1.13.44 2.21 1.24 3.01a4.17 4.17 0 0 0 3.31 1.34c.95-.01 1.87-.35 2.6-.94.78 1.04 2 1.65 3.3 1.64 1.4 0 2.7-.7 3.47-1.87.78.64 1.76 1 2.78 1.01a4.2 4.2 0 0 0 3.86-2.6 4.21 4.21 0 0 0-.59-4.65 4.2 4.2 0 0 0-.09-4.1z"/>
       </svg>
     ),
   },
@@ -58,13 +58,13 @@ const item = {
 
 export function WorksWith() {
   return (
-    <section className="py-24 bg-[#050505] border-t border-white/5">
+    <section className="py-24 bg-white border-t border-slate-100">
       <div className="max-w-5xl mx-auto px-6">
         <motion.p
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="text-center text-gray-500 mb-12"
+          className="text-center text-slate-500 mb-12"
         >
           Works with your favorite AI tools
         </motion.p>
@@ -80,12 +80,12 @@ export function WorksWith() {
             <motion.div
               key={integration.name}
               variants={item}
-              className="flex flex-col items-center gap-3 p-6 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors"
+              className="flex flex-col items-center gap-3 p-6 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 hover:shadow-lg transition-all duration-300"
             >
-              <div className="text-gray-400">{integration.logo}</div>
+              <div className="text-slate-700">{integration.logo}</div>
               <div className="text-center">
-                <p className="text-white font-medium">{integration.name}</p>
-                <p className="text-sm text-gray-500">{integration.description}</p>
+                <p className="text-slate-900 font-medium">{integration.name}</p>
+                <p className="text-sm text-slate-500">{integration.description}</p>
               </div>
             </motion.div>
           ))}

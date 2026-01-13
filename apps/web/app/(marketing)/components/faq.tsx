@@ -47,17 +47,17 @@ function FAQItem({
   onClick: () => void;
 }) {
   return (
-    <div className="border-b border-white/5 last:border-b-0">
+    <div className="border-b border-slate-100 last:border-b-0">
       <button
         onClick={onClick}
         className="w-full py-6 flex items-center justify-between text-left group"
       >
-        <span className="text-lg font-medium text-white group-hover:text-blue-400 transition-colors pr-8">
+        <span className="text-lg font-medium text-slate-900 group-hover:text-blue-600 transition-colors pr-8">
           {faq.question}
         </span>
         <ChevronDown
-          className={`w-5 h-5 text-gray-500 transition-transform duration-200 flex-shrink-0 ${
-            isOpen ? "rotate-180" : ""
+          className={`w-5 h-5 text-slate-400 transition-transform duration-200 flex-shrink-0 ${
+            isOpen ? "rotate-180 text-blue-600" : ""
           }`}
         />
       </button>
@@ -70,7 +70,7 @@ function FAQItem({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <p className="pb-6 text-gray-400 leading-relaxed">{faq.answer}</p>
+            <p className="pb-6 text-slate-600 leading-relaxed">{faq.answer}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -82,7 +82,7 @@ export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section className="py-32 bg-[#050505] border-t border-white/5">
+    <section className="py-32 bg-white border-t border-slate-100">
       <div className="max-w-3xl mx-auto px-6">
         {/* Header */}
         <motion.div
@@ -91,10 +91,10 @@ export function FAQ() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
             Questions? We've got answers.
           </h2>
-          <p className="text-xl text-gray-400">
+          <p className="text-xl text-slate-600">
             Everything you need to know about SupportBase.
           </p>
         </motion.div>
@@ -105,7 +105,7 @@ export function FAQ() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.1 }}
-          className="bg-white/[0.02] border border-white/5 rounded-2xl px-6"
+          className="bg-slate-50 border border-slate-100 rounded-2xl px-6"
         >
           {faqs.map((faq, index) => (
             <FAQItem

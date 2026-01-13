@@ -4,7 +4,7 @@ import { WorksWith } from "./components/works-with";
 import { VibeDemo } from "./components/vibe-demo";
 import { HowItWorks } from "./components/how-it-works";
 import { FeaturesBento } from "./components/features-bento";
-import { BuiltWith } from "./components/built-with";
+import { Pricing } from "./components/pricing";
 import { FAQ } from "./components/faq";
 import { FinalCTA } from "./components/final-cta";
 import { Footer } from "./components/footer";
@@ -49,7 +49,7 @@ export default function LandingPage() {
       <section id="features">
         <FeaturesBento />
       </section>
-      <BuiltWith />
+      <Pricing />
       <section id="faq">
         <FAQ />
       </section>
