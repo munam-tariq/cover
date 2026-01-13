@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsup src/index.ts --format esm",
-    "start": "node dist/index.js",
+    "start": "node dist/index.mjs",
     "lint": "eslint src/",
     "type-check": "tsc --noEmit",
     "reprocess-knowledge": "tsx scripts/reprocess-knowledge.ts"
