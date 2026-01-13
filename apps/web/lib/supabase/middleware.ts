@@ -46,8 +46,8 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protected routes that require authentication
-  const protectedPaths = ["/", "/knowledge", "/api-endpoints", "/embed", "/settings"];
+  // Protected routes that require authentication (dashboard routes)
+  const protectedPaths = ["/dashboard", "/knowledge", "/api-endpoints", "/embed", "/settings", "/playground", "/analytics", "/projects"];
   const isProtectedPath = protectedPaths.some(
     (path) =>
       request.nextUrl.pathname === path ||
@@ -70,7 +70,7 @@ export async function updateSession(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages to dashboard
   if (isAuthPath && user) {
-    const redirectUrl = new URL("/", request.url);
+    const redirectUrl = new URL("/dashboard", request.url);
     return NextResponse.redirect(redirectUrl);
   }
 

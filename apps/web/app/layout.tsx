@@ -6,8 +6,12 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Chatbot Platform",
-  description: "AI chatbot that installs in one line and works in 15 minutes",
+  metadataBase: new URL("https://supportbase.app"),
+  title: {
+    default: "SupportBase - AI Chatbot for Vibe Coders",
+    template: "%s | SupportBase",
+  },
+  description: "Add an AI chatbot to your app in one line. Works with Cursor, Claude, and your favorite AI tools.",
 };
 
 export default function RootLayout({
