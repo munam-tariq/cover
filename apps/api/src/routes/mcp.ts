@@ -45,6 +45,7 @@ const sessions: Record<
 const WIDGET_CDN_URL =
   process.env.CDN_URL ||
   "https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets";
+const API_URL = process.env.API_URL || "https://api.supportbase.app";
 const MAX_SOURCES_PER_PROJECT = 20;
 const MAX_ENDPOINTS_PER_PROJECT = 10;
 const MAX_TEXT_LENGTH = 100000;
@@ -1148,7 +1149,7 @@ function createMcpServer(userId: string): McpServer {
       const targetProjectId = resolved.projectId;
 
       // Build embed code with optional customizations
-      let embedCode = `<script src="${WIDGET_CDN_URL}/widget.js" data-project-id="${targetProjectId}"`;
+      let embedCode = `<script src="${WIDGET_CDN_URL}/widget.js" data-project-id="${targetProjectId}" data-api-url="${API_URL}"`;
 
       if (position && position !== "bottom-right") {
         embedCode += ` data-position="${position}"`;

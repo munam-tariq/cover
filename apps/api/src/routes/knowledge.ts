@@ -118,8 +118,9 @@ knowledgeRouter.get("/:id", async (req: AuthenticatedRequest, res: Response) => 
         chunkCount: source.chunk_count || 0,
         error: source.error,
         createdAt: source.created_at,
-        content: source.content, // Include content for text type
+        content: source.content, // Include content for text/url type
         filePath: source.file_path, // Include file path for download
+        sourceUrl: source.source_url, // Include source URL for url type
       },
     });
   } catch (error) {

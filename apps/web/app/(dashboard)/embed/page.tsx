@@ -38,7 +38,7 @@ export default function EmbedPage() {
   });
 
   // Build embed code
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://api.supportbase.app";
   // Widget hosted on Supabase Storage
   const widgetUrl = "https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets/widget.js";
 

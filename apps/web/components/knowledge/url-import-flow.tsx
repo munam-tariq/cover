@@ -78,15 +78,15 @@ export function UrlImportFlow({
 
           if (response.status === "crawling") {
             setStep("crawling");
-            setTimeout(poll, 1500);
+            setTimeout(poll, 5000);
           } else if (response.status === "structuring") {
             setStep("structuring");
-            setTimeout(poll, 1500);
+            setTimeout(poll, 5000);
           } else if (response.status === "ready") {
             setStep("preview");
           } else if (response.status === "importing") {
             setStep("importing");
-            setTimeout(poll, 1000);
+            setTimeout(poll, 5000);
           } else if (response.status === "completed") {
             setStep("success");
           } else if (response.status === "failed") {
@@ -290,7 +290,7 @@ export function UrlImportFlow({
 
       case "preview":
         return (
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-hidden">
             <div className="text-center space-y-1">
               <h3 className="font-semibold text-lg">Review imported content</h3>
               <p className="text-sm text-muted-foreground">
@@ -304,24 +304,24 @@ export function UrlImportFlow({
                 {job?.pages?.map((page) => (
                   <div
                     key={page.id}
-                    className="border rounded-lg p-3 bg-muted/30"
+                    className="border rounded-lg p-3 bg-muted/30 overflow-hidden"
                   >
                     <div
-                      className="flex items-center justify-between cursor-pointer"
+                      className="flex items-center justify-between gap-2 cursor-pointer"
                       onClick={() =>
                         setExpandedPage(
                           expandedPage === page.id ? null : page.id
                         )
                       }
                     >
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
                         <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
                         <span className="font-medium truncate">
                           {page.title}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground flex-shrink-0">
-                        <span>{page.wordCount.toLocaleString()} words</span>
+                        <span className="whitespace-nowrap">{page.wordCount.toLocaleString()} words</span>
                         {expandedPage === page.id ? (
                           <ChevronUp className="h-4 w-4" />
                         ) : (
@@ -331,7 +331,7 @@ export function UrlImportFlow({
                     </div>
                     {expandedPage === page.id && (
                       <div className="mt-2 pt-2 border-t">
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-6">
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-6 break-words">
                           {page.preview}
                         </p>
                         <a

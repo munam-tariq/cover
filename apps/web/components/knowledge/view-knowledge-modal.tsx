@@ -9,16 +9,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@chatbot/ui";
-import { Loader2, Download, FileText, File } from "lucide-react";
+import { Loader2, Download, FileText, File, Globe, ExternalLink } from "lucide-react";
 import { Button } from "@chatbot/ui";
 
 interface KnowledgeSource {
   id: string;
   name: string;
-  type: "text" | "file" | "pdf";
+  type: "text" | "file" | "pdf" | "url";
   status: string;
   content?: string;
   filePath?: string;
+  sourceUrl?: string;
 }
 
 interface ViewKnowledgeModalProps {
@@ -90,10 +91,14 @@ export function ViewKnowledgeModal({
   };
 
   const getTypeIcon = () => {
-    if (source?.type === "pdf") {
-      return <File className="h-5 w-5 text-red-500" />;
+    switch (source?.type) {
+      case "pdf":
+        return <File className="h-5 w-5 text-red-500" />;
+      case "url":
+        return <Globe className="h-5 w-5 text-green-500" />;
+      default:
+        return <FileText className="h-5 w-5 text-blue-500" />;
     }
-    return <FileText className="h-5 w-5 text-blue-500" />;
   };
 
   const getTypeLabel = () => {
@@ -104,6 +109,8 @@ export function ViewKnowledgeModal({
         return "Text File";
       case "text":
         return "Text Content";
+      case "url":
+        return "Web Page";
       default:
         return "Knowledge Source";
     }
@@ -129,9 +136,25 @@ export function ViewKnowledgeModal({
             <div className="text-center py-12 text-destructive">
               <p>{error}</p>
             </div>
-          ) : source?.type === "text" ? (
-            // Text content - show in scrollable textarea
+          ) : source?.type === "text" || source?.type === "url" ? (
+            // Text/URL content - show in scrollable textarea
             <div className="flex-1 overflow-hidden flex flex-col">
+              {source?.type === "url" && source?.sourceUrl && (
+                <div className="mb-3 p-3 bg-muted/50 rounded-md flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+                    <Globe className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{source.sourceUrl}</span>
+                  </div>
+                  <a
+                    href={source.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-sm text-primary hover:underline flex-shrink-0 ml-2"
+                  >
+                    View original <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
               <textarea
                 readOnly
                 value={source.content || "No content available"}

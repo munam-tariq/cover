@@ -228,7 +228,7 @@ export default function SettingsPage() {
       {
         "supportbase": {
           type: "http",
-          url: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/mcp`,
+          url: `${process.env.NEXT_PUBLIC_API_URL || "https://api.supportbase.app"}/mcp`,
           headers: {
             "X-API-Key": apiKeyValue,
           },
@@ -600,7 +600,7 @@ export default function SettingsPage() {
 {`{
   "supportbase": {
     "type": "http",
-    "url": "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/mcp",
+    "url": "${process.env.NEXT_PUBLIC_API_URL || "https://api.supportbase.app"}/mcp",
     "headers": {
       "X-API-Key": "${newApiKey || (apiKeyInfo ? apiKeyInfo.prefix : "YOUR_API_KEY_HERE")}"
     }
