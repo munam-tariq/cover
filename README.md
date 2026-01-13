@@ -1,4 +1,4 @@
-# Chatbot Platform
+# SupportBase
 
 AI chatbot that installs in one line and works in 15 minutes.
 

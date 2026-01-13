@@ -226,7 +226,7 @@ export default function SettingsPage() {
     const apiKeyValue = newApiKey || "YOUR_API_KEY_HERE";
     const mcpConfig = JSON.stringify(
       {
-        "chatbot-platform": {
+        "supportbase": {
           type: "http",
           url: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/mcp`,
           headers: {
@@ -598,7 +598,7 @@ export default function SettingsPage() {
               <div className="relative">
                 <pre className="p-4 bg-muted rounded-md overflow-x-auto text-sm font-mono">
 {`{
-  "chatbot-platform": {
+  "supportbase": {
     "type": "http",
     "url": "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/mcp",
     "headers": {

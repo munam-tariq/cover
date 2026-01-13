@@ -36,7 +36,7 @@
         "type": "http",
         "url": "http://144.91.76.33:8080/mcp"
       },
-      "chatbot-platform": {
+      "supportbase": {
         "type": "http",
         "url": "http://localhost:3001/mcp",
         "headers": {

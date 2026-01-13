@@ -9,7 +9,7 @@ const navItems = [
   { href: "/projects", label: "Projects", icon: "folder" },
   { href: "/analytics", label: "Analytics", icon: "bar-chart" },
   { href: "/playground", label: "Playground", icon: "sparkles" },
-  { href: "/knowledge", label: "Knowledge", icon: "book" },
+  { href: "/knowledge", label: "Knowledge Base", icon: "book" },
   { href: "/api-endpoints", label: "API Endpoints", icon: "code" },
   { href: "/embed", label: "Embed", icon: "code-2" },
   { href: "/settings", label: "Settings", icon: "settings" },
@@ -65,7 +65,7 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-card border-r min-h-screen p-4">
       <div className="mb-8">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
             <MessageSquare className="w-4 h-4 text-white" />
           </div>

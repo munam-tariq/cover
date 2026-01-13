@@ -1,5 +1,5 @@
 {
-  "name": "chatbot-platform",
+  "name": "supportbase",
   "private": true,
   "scripts": {
     "dev": "turbo dev",

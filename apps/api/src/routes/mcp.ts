@@ -161,7 +161,7 @@ async function resolveProjectId(
  */
 function createMcpServer(userId: string): McpServer {
   const server = new McpServer({
-    name: "chatbot-platform",
+    name: "supportbase",
     version: "1.0.0",
   });
 
