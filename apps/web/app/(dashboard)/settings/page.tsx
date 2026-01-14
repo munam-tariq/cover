@@ -476,7 +476,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="onboarding-api-key">
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
               <Key className="h-5 w-5 text-primary" />
@@ -570,7 +570,11 @@ export default function SettingsPage() {
                     </p>
                   </div>
                 ) : (
-                  <Button onClick={handleGenerateApiKey} disabled={generatingKey}>
+                  <Button
+                    id="onboarding-generate-btn"
+                    onClick={handleGenerateApiKey}
+                    disabled={generatingKey}
+                  >
                     {generatingKey ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
@@ -584,7 +588,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="onboarding-mcp-config">
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="h-5 w-5 text-primary" />
