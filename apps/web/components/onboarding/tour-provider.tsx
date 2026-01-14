@@ -41,10 +41,23 @@ function TourStarter({ children }: { children: React.ReactNode }) {
 
     // Only show tour on dashboard page and if not completed
     if (!hasCompleted && pathname === "/dashboard") {
-      // Small delay to let the page render first
-      const timer = setTimeout(() => {
+      // Wait for DOM to be fully ready
+      const startTour = () => {
         startOnborda("mcp-setup");
-      }, 800);
+        // Dispatch resize events after starting to fix Onborda positioning
+        const dispatchResize = () => window.dispatchEvent(new Event("resize"));
+        setTimeout(dispatchResize, 100);
+        setTimeout(dispatchResize, 300);
+        setTimeout(dispatchResize, 500);
+      };
+
+      // Use requestAnimationFrame + timeout to ensure DOM is ready
+      const timer = setTimeout(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(startTour);
+        });
+      }, 1000);
+
       return () => clearTimeout(timer);
     }
   }, [pathname, mounted, startOnborda]);
@@ -58,6 +71,7 @@ function TourStarter({ children }: { children: React.ReactNode }) {
         setTimeout(dispatchResize, 50),
         setTimeout(dispatchResize, 150),
         setTimeout(dispatchResize, 300),
+        setTimeout(dispatchResize, 600),
       ];
       return () => timers.forEach(clearTimeout);
     }
