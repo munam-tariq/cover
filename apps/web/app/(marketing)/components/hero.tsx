@@ -1,55 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
-
-const codeSnippet = `<script src="https://supportbase.app/widget.js"
-        data-project-id="your-project" async>
-</script>`;
-
-function TypewriterCode() {
-  const [displayedCode, setDisplayedCode] = useState("");
-  const [showCursor, setShowCursor] = useState(true);
-
-  useEffect(() => {
-    let index = 0;
-    const interval = setInterval(() => {
-      if (index < codeSnippet.length) {
-        setDisplayedCode(codeSnippet.slice(0, index + 1));
-        index++;
-      } else {
-        clearInterval(interval);
-      }
-    }, 30);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const cursorInterval = setInterval(() => {
-      setShowCursor((prev) => !prev);
-    }, 530);
-    return () => clearInterval(cursorInterval);
-  }, []);
-
-  return (
-    <div className="relative">
-      <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-xl blur-xl" />
-      <pre className="relative bg-slate-900 border border-slate-700 rounded-xl p-6 font-mono text-sm overflow-x-auto shadow-2xl">
-        <code className="text-slate-300">
-          {displayedCode}
-          <span
-            className={`inline-block w-2 h-5 bg-blue-400 ml-0.5 -mb-1 ${
-              showCursor ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        </code>
-      </pre>
-    </div>
-  );
-}
+import { VibeCodeShowcase } from "./vibe-code-showcase";
 
 // Floating particles component
 function FloatingParticles() {
@@ -158,13 +112,13 @@ function GridPattern() {
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
+    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
       {/* Animated Background */}
       <GradientMesh />
       <GridPattern />
       <FloatingParticles />
 
-      <div className="relative z-10 max-w-5xl mx-auto px-6 py-24 text-center">
+      <div className="relative z-10 max-w-5xl mx-auto px-6 pt-32 pb-12 text-center">
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -223,26 +177,19 @@ export function Hero() {
           </Link>
         </motion.div>
 
-        {/* Code Block */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.5 }}
-          className="max-w-2xl mx-auto"
-        >
-          <TypewriterCode />
-        </motion.div>
-
         {/* Trust Indicator */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 1.5 }}
-          className="mt-8 text-sm text-slate-500"
+          transition={{ duration: 0.5, delay: 0.5 }}
+          className="text-sm text-slate-500"
         >
           No credit card required • Setup in under 5 minutes
         </motion.p>
       </div>
+
+      {/* Vibe Code Demo */}
+      <VibeCodeShowcase />
     </section>
   );
 }

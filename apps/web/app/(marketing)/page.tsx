@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import { Hero } from "./components/hero";
 import { WorksWith } from "./components/works-with";
-import { VibeDemo } from "./components/vibe-demo";
 import { HowItWorks } from "./components/how-it-works";
 import { FeaturesBento } from "./components/features-bento";
 import { Pricing } from "./components/pricing";
@@ -40,9 +39,6 @@ export default function LandingPage() {
     <main>
       <Hero />
       <WorksWith />
-      <section id="demo">
-        <VibeDemo />
-      </section>
       <section id="how-it-works">
         <HowItWorks />
       </section>
