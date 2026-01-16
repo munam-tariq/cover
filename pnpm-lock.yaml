@@ -193,6 +193,9 @@ importers:
       '@chatbot/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@supabase/realtime-js':
+        specifier: ^2.90.1
+        version: 2.90.1
     devDependencies:
       '@chatbot/eslint-config':
         specifier: workspace:*
@@ -2175,6 +2178,19 @@ packages:
 
   /@supabase/realtime-js@2.88.0:
     resolution: {integrity: sha512-4yMVLLq6I2KSzINlBK22vGJJYzJo9FAbfKZl7ZuarvzAClq48skgLWF7dlBCC3B/9wQckKhCfPfvyT0JVz3SXg==}
+    engines: {node: '>=20.0.0'}
+    dependencies:
+      '@types/phoenix': 1.6.7
+      '@types/ws': 8.18.1
+      tslib: 2.8.1
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+    dev: false
+
+  /@supabase/realtime-js@2.90.1:
+    resolution: {integrity: sha512-PWbnEMkcQRuor8jhObp4+Snufkq8C6fBp+MchVp2qBPY1NXk/c3Iv3YyiFYVzo0Dzuw4nAlT4+ahuPggy4r32w==}
     engines: {node: '>=20.0.0'}
     dependencies:
       '@types/phoenix': 1.6.7

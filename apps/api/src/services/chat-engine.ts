@@ -43,6 +43,18 @@ import {
   getLeadCaptureSettings,
   type LeadCaptureResult,
 } from "./lead-capture";
+import {
+  getOrCreateConversation,
+  logConversationMessages,
+  checkFeatureFlag,
+} from "./conversation";
+import {
+  checkHandoffTrigger,
+  checkLowConfidenceHandoff,
+  getHandoffSettings,
+  type HandoffTriggerResult,
+} from "./handoff-trigger";
+import { broadcastNewMessage } from "./realtime";
 
 /**
  * Valid sources for chat sessions
@@ -100,6 +112,13 @@ export interface ChatOutput {
     type: LeadCaptureResult["type"];
     emailCaptured?: string;
   };
+  handoff?: {
+    triggered: boolean;
+    reason?: string;
+    queuePosition?: number;
+    estimatedWait?: string;
+    conversationId?: string;
+  };
 }
 
 /**
@@ -116,6 +135,10 @@ const MAX_TOOL_CALL_ITERATIONS = 3; // Prevent infinite tool call loops
 const LLM_TIMEOUT = 30000; // 30 seconds
 const MODEL = "gpt-4o-mini";
 
+// Cache for project config to avoid repeated DB calls
+const projectConfigCache = new Map<string, { data: ProjectConfig | null; timestamp: number }>();
+const CACHE_TTL = 60000; // 1 minute cache
+
 /**
  * Main entry point: Process a chat message and return a response
  */
@@ -131,10 +154,75 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       throw new ChatError("EMPTY_MESSAGE", "Message cannot be empty");
     }
 
+    // 1.5. Check if conversation is in handoff state (agent_active or waiting)
+    // If so, just store the message and don't process with AI
+    if (input.sessionId) {
+      const handoffState = await checkConversationHandoffState(input.sessionId);
+      if (handoffState.isInHandoff) {
+        // Store the customer message in the messages table
+        await storeCustomerMessageOnly(input.sessionId, sanitizedMessage);
+
+        return {
+          response: "", // No AI response - agent will respond
+          sessionId: input.sessionId,
+          sources: [],
+          toolCalls: [],
+          processingTime: Date.now() - metrics.startTime,
+          handoff: {
+            triggered: false, // Already in handoff, not a new trigger
+            reason: handoffState.status === "waiting" ? "in_queue" : "agent_handling",
+          },
+        };
+      }
+    }
+
     // 2. Get project configuration
     const project = await getProjectConfig(input.projectId);
     if (!project) {
       throw new ChatError("PROJECT_NOT_FOUND", "Chatbot not found");
+    }
+
+    // 2.5. Check for handoff trigger BEFORE processing with AI
+    const handoffResult = await checkHandoffTrigger(
+      input.projectId,
+      sanitizedMessage,
+      input.visitorId,
+      input.sessionId
+    );
+
+    if (handoffResult.triggered) {
+      // Get or create session for the handoff
+      const sessionId = await getOrCreateSession(
+        input.projectId,
+        input.visitorId,
+        input.sessionId,
+        input.source || "widget"
+      );
+
+      // Log the user message that triggered handoff
+      logConversation(
+        input.projectId,
+        sessionId,
+        sanitizedMessage,
+        handoffResult.message,
+        0,
+        0
+      ).catch(console.error);
+
+      return {
+        response: handoffResult.message,
+        sessionId,
+        sources: [],
+        toolCalls: [],
+        processingTime: Date.now() - metrics.startTime,
+        handoff: {
+          triggered: true,
+          reason: handoffResult.reason,
+          queuePosition: handoffResult.queuePosition,
+          estimatedWait: handoffResult.estimatedWait,
+          conversationId: handoffResult.conversationId,
+        },
+      };
     }
 
     // 3. RAG v2: Hybrid search with contextual embeddings
@@ -148,6 +236,49 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     metrics.ragTime = Date.now() - ragStart;
 
     console.log(`[RAG v2] Found ${ragResult.totalFound} chunks via ${ragResult.searchType} search in ${ragResult.processingTimeMs}ms`);
+
+    // 3.5. Check for low confidence handoff trigger AFTER RAG
+    const lowConfidenceResult = await checkLowConfidenceHandoff(
+      input.projectId,
+      input.visitorId,
+      retrievedChunks,
+      input.sessionId
+    );
+
+    if (lowConfidenceResult.triggered) {
+      // Get or create session for the low confidence handoff
+      const sessionId = await getOrCreateSession(
+        input.projectId,
+        input.visitorId,
+        input.sessionId,
+        input.source || "widget"
+      );
+
+      // Log the user message that triggered low confidence handoff
+      logConversation(
+        input.projectId,
+        sessionId,
+        sanitizedMessage,
+        lowConfidenceResult.message,
+        retrievedChunks.length,
+        0
+      ).catch(console.error);
+
+      return {
+        response: lowConfidenceResult.message,
+        sessionId,
+        sources: extractSources(retrievedChunks),
+        toolCalls: [],
+        processingTime: Date.now() - metrics.startTime,
+        handoff: {
+          triggered: true,
+          reason: lowConfidenceResult.reason,
+          queuePosition: lowConfidenceResult.queuePosition,
+          estimatedWait: lowConfidenceResult.estimatedWait,
+          conversationId: lowConfidenceResult.conversationId,
+        },
+      };
+    }
 
     // 4. Format knowledge context
     const knowledgeContext = formatAsContext(retrievedChunks);
@@ -405,11 +536,17 @@ async function callLLMWithTools(
 }
 
 /**
- * Get project configuration from database
+ * Get project configuration from database (with caching)
  */
 async function getProjectConfig(
   projectId: string
 ): Promise<ProjectConfig | null> {
+  // Check cache first
+  const cached = projectConfigCache.get(projectId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+
   const { data: project, error } = await supabaseAdmin
     .from("projects")
     .select("id, name, settings")
@@ -417,21 +554,29 @@ async function getProjectConfig(
     .single();
 
   if (error || !project) {
+    // Cache null result to avoid repeated failed queries
+    projectConfigCache.set(projectId, { data: null, timestamp: Date.now() });
     return null;
   }
 
   const settings = (project.settings as Record<string, unknown>) || {};
 
-  return {
+  const config: ProjectConfig = {
     name: project.name,
     systemPrompt: (settings.system_prompt as string) || null,
     supportEmail: (settings.support_email as string) || undefined,
     supportUrl: (settings.support_url as string) || undefined,
   };
+
+  // Cache the result
+  projectConfigCache.set(projectId, { data: config, timestamp: Date.now() });
+
+  return config;
 }
 
 /**
  * Get or create a chat session
+ * Supports dual-write: creates in both legacy and new tables when feature enabled
  */
 async function getOrCreateSession(
   projectId: string,
@@ -468,7 +613,7 @@ async function getOrCreateSession(
     return existingSession.id;
   }
 
-  // Create new session with source
+  // Create new session with source in legacy table
   const { data: newSession, error } = await supabaseAdmin
     .from("chat_sessions")
     .insert({
@@ -486,11 +631,23 @@ async function getOrCreateSession(
     return generateSessionId();
   }
 
+  // Dual-write: Also create in new conversations table if feature enabled
+  try {
+    const useNewSystem = await checkFeatureFlag(projectId);
+    if (useNewSystem) {
+      await getOrCreateConversation(projectId, visitorId, newSession.id, source);
+    }
+  } catch (dualWriteError) {
+    console.error("Failed to dual-write to conversations table:", dualWriteError);
+    // Don't fail the request, just log the error
+  }
+
   return newSession.id;
 }
 
 /**
  * Log conversation for analytics (async, non-blocking)
+ * Supports dual-write to both old chat_sessions and new conversations/messages tables
  */
 async function logConversation(
   projectId: string,
@@ -501,7 +658,7 @@ async function logConversation(
   toolCallsCount: number
 ): Promise<void> {
   try {
-    // Get current session
+    // Write to legacy chat_sessions table
     const { data: session } = await supabaseAdmin
       .from("chat_sessions")
       .select("messages, message_count")
@@ -526,7 +683,7 @@ async function logConversation(
       },
     ];
 
-    // Update session
+    // Update legacy session
     await supabaseAdmin
       .from("chat_sessions")
       .update({
@@ -535,6 +692,25 @@ async function logConversation(
         updated_at: new Date().toISOString(),
       })
       .eq("id", sessionId);
+
+    // Dual-write: Also write to new conversations/messages tables if feature enabled
+    const useNewSystem = await checkFeatureFlag(projectId);
+    if (useNewSystem) {
+      // Check if conversation exists in new table (might have been created by migration or new system)
+      const { data: conversation } = await supabaseAdmin
+        .from("conversations")
+        .select("id")
+        .eq("id", sessionId)
+        .single();
+
+      if (conversation) {
+        await logConversationMessages(sessionId, userMessage, assistantResponse, {
+          sourcesUsed,
+          toolCallsCount,
+          model: MODEL,
+        });
+      }
+    }
   } catch (error) {
     console.error("Failed to log conversation:", error);
   }
@@ -566,6 +742,115 @@ export class ChatError extends Error {
     super(message);
     this.code = code;
     this.name = "ChatError";
+  }
+}
+
+/**
+ * Check if a conversation is in handoff state (agent_active or waiting)
+ */
+async function checkConversationHandoffState(
+  sessionId: string
+): Promise<{ isInHandoff: boolean; status: string | null }> {
+  try {
+    // Check in new conversations table first
+    const { data: conversation } = await supabaseAdmin
+      .from("conversations")
+      .select("id, status")
+      .eq("id", sessionId)
+      .single();
+
+    if (conversation) {
+      const isInHandoff = conversation.status === "agent_active" || conversation.status === "waiting";
+      return { isInHandoff, status: conversation.status };
+    }
+
+    // Not found in conversations table
+    return { isInHandoff: false, status: null };
+  } catch (error) {
+    console.error("Error checking handoff state:", error);
+    return { isInHandoff: false, status: null };
+  }
+}
+
+/**
+ * Store only the customer message (when in handoff mode, no AI response)
+ */
+async function storeCustomerMessageOnly(
+  conversationId: string,
+  message: string
+): Promise<void> {
+  try {
+    // Insert customer message into messages table and get the inserted record
+    const { data: insertedMessage, error: insertError } = await supabaseAdmin
+      .from("messages")
+      .insert({
+        conversation_id: conversationId,
+        sender_type: "customer",
+        content: message,
+      })
+      .select("id, created_at")
+      .single();
+
+    if (insertError) {
+      console.error("Error inserting message:", insertError);
+      throw insertError;
+    }
+
+    // Broadcast message to real-time channel so agent sees it instantly (fire-and-forget)
+    if (insertedMessage) {
+      broadcastNewMessage(conversationId, {
+        id: insertedMessage.id,
+        senderType: "customer",
+        content: message,
+        createdAt: insertedMessage.created_at,
+      }).catch((err) => console.error("[Realtime] Broadcast error:", err));
+    }
+
+    // Update conversation's last_message_at and message_count
+    const { data: conv } = await supabaseAdmin
+      .from("conversations")
+      .select("message_count")
+      .eq("id", conversationId)
+      .single();
+
+    await supabaseAdmin
+      .from("conversations")
+      .update({
+        last_message_at: new Date().toISOString(),
+        message_count: (conv?.message_count || 0) + 1,
+        customer_last_seen_at: new Date().toISOString(),
+        customer_presence: "online",
+      })
+      .eq("id", conversationId);
+
+    // Also update legacy chat_sessions table for consistency
+    const { data: session } = await supabaseAdmin
+      .from("chat_sessions")
+      .select("messages, message_count")
+      .eq("id", conversationId)
+      .single();
+
+    if (session) {
+      const currentMessages = (session.messages as unknown[]) || [];
+      await supabaseAdmin
+        .from("chat_sessions")
+        .update({
+          messages: [
+            ...currentMessages,
+            {
+              role: "user",
+              content: message,
+              timestamp: new Date().toISOString(),
+            },
+          ],
+          message_count: (session.message_count || 0) + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", conversationId);
+    }
+  } catch (error) {
+    console.error("Error storing customer message:", error);
+    throw error;
   }
 }
 

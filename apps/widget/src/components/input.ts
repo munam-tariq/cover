@@ -17,6 +17,7 @@ export interface InputOptions {
   onSend: (message: string) => void;
   primaryColor: string;
   placeholder?: string;
+  onInput?: () => void; // Called when user types (for typing indicators)
 }
 
 export class Input {
@@ -112,6 +113,8 @@ export class Input {
     this.textarea.addEventListener("input", () => {
       this.autoResize();
       this.updateCharCount();
+      // Notify about typing for typing indicators
+      this.options.onInput?.();
     });
 
     // Handle paste - ensure we don't exceed max length

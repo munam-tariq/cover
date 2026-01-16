@@ -16,6 +16,8 @@ export interface Project {
   updatedAt: string;
   knowledgeCount?: number;
   endpointCount?: number;
+  role?: "owner" | "admin" | "agent";
+  isOwner?: boolean;
 }
 
 interface CreateProjectData {

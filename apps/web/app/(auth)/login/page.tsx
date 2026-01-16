@@ -28,10 +28,16 @@ function LoginForm() {
     }
 
     try {
+      // Preserve returnUrl so user is redirected back after login
+      const returnUrl = searchParams.get("returnUrl");
+      const callbackUrl = returnUrl
+        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnUrl)}`
+        : `${window.location.origin}/auth/callback`;
+
       const { error: authError } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: callbackUrl,
         },
       });
 

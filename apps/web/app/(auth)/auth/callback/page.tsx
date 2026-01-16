@@ -27,8 +27,18 @@ function AuthCallbackContent() {
       const supabase = createClient();
       const next = searchParams.get("next") ?? "/dashboard";
 
+      // Check if user is coming from invitation flow - don't create default project for invited users
+      const isInvitationFlow = next.includes("/invite/");
+
       // Helper function to set up new user - creates default project if none exists
+      // Skip for invited users since they're joining someone else's project
       const setupNewUser = async (userId: string) => {
+        // Don't create default project for users signing up via invitation
+        if (isInvitationFlow) {
+          console.log("Invitation flow detected, skipping default project creation");
+          return;
+        }
+
         // Use .limit(1) instead of .single() to avoid errors when multiple projects exist
         const { data: existingProjects, error: fetchError } = await supabase
           .from("projects")

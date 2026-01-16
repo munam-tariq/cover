@@ -19,7 +19,7 @@ embedRouter.get("/code/:projectId", async (req, res) => {
 embedRouter.get("/config/:projectId", async (req, res) => {
   const { projectId } = req.params;
 
-  // TODO: Implement widget customization in widget-customization feature
+  // Return widget config including Supabase credentials for realtime
   res.json({
     projectId,
     config: {
@@ -27,6 +27,11 @@ embedRouter.get("/config/:projectId", async (req, res) => {
       position: "bottom-right",
       greeting: "Hello! How can I help you today?",
       placeholder: "Type a message...",
+    },
+    // Supabase credentials for realtime (public anon key is safe to expose)
+    realtime: {
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "",
+      supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
     },
   });
 });

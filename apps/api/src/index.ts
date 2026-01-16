@@ -4,15 +4,21 @@ import express from "express";
 import helmet from "helmet";
 
 import { accountRouter } from "./routes/account";
+import { agentRouter } from "./routes/agent";
 import { analyticsRouter } from "./routes/analytics";
 import { authRouter } from "./routes/auth";
 import { chatRouter } from "./routes/chat";
+import { conversationsRouter } from "./routes/conversations";
 import { cronRouter } from "./routes/cron";
+import { customersRouter } from "./routes/customers";
 import { embedRouter } from "./routes/embed";
 import { endpointsRouter } from "./routes/endpoints";
+import { handoffRouter } from "./routes/handoff";
+import { handoffSettingsRouter } from "./routes/handoff-settings";
 import { knowledgeRouter } from "./routes/knowledge";
 import { mcpRouter } from "./routes/mcp";
 import { projectsRouter } from "./routes/projects";
+import { teamRouter } from "./routes/team";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,9 +27,21 @@ const PORT = process.env.PORT || 3001;
 app.use(helmet());
 
 // CORS Configuration
-// Dashboard endpoints: Restricted to specific origin (your web app)
+// Dashboard endpoints: Restricted to specific origins (web app + local widget testing)
+const allowedOrigins = [
+  process.env.CORS_ORIGIN || "http://localhost:3000",
+  "http://localhost:7001", // Local widget testing
+];
 const dashboardCors = cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
   credentials: true,
 });
 
@@ -44,17 +62,32 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Dashboard API routes (restricted CORS)
+// Dashboard API routes with specific paths (must come BEFORE generic widget routes)
+// These use restricted CORS and may need PUT/DELETE methods
 app.use("/api/account", dashboardCors, accountRouter);
 app.use("/api/analytics", dashboardCors, analyticsRouter);
 app.use("/api/auth", dashboardCors, authRouter);
-app.use("/api/projects", dashboardCors, projectsRouter);
+app.use("/api/agent", dashboardCors, agentRouter); // Agent routes: /api/agent/*
+app.use("/api/conversations", dashboardCors, conversationsRouter); // Dashboard conversation routes
 app.use("/api/knowledge", dashboardCors, knowledgeRouter);
 app.use("/api/endpoints", dashboardCors, endpointsRouter);
-app.use("/api/embed", dashboardCors, embedRouter);
+app.use("/api/embed", widgetCors, embedRouter); // Widget config (open CORS for widget embedding)
+app.use("/api/projects", dashboardCors, projectsRouter);
+app.use("/api/projects", dashboardCors, handoffSettingsRouter); // Handoff settings routes: /api/projects/:id/handoff-settings
+app.use("/api/projects", dashboardCors, teamRouter); // Team routes: /api/projects/:id/members/*
 
 // Widget/Public API routes (open CORS - can be called from any domain)
+// These come AFTER specific dashboard routes to avoid blocking PUT/DELETE
 app.use("/api/chat", widgetCors, chatRouter);
+app.use("/api/widget/conversations", widgetCors, conversationsRouter); // Widget conversation routes (POST to create)
+app.use("/api", widgetCors, handoffRouter); // Widget handoff routes: handoff-availability, trigger handoff
+app.use("/api/customers", widgetCors, customersRouter); // Widget customer routes: identify
+
+// Additional dashboard routes that use generic /api paths
+app.use("/api", dashboardCors, teamRouter); // Invitation routes: /api/invitations/:token/*
+app.use("/api", dashboardCors, agentRouter); // Agent project routes: /api/projects/:id/agents
+app.use("/api/customers", dashboardCors, customersRouter); // Customer routes: get, update
+app.use("/api", dashboardCors, customersRouter); // Customer routes nested under projects/conversations
 
 // MCP endpoint (open CORS - called from AI platforms like Cursor, Claude Code)
 // Uses X-API-Key header for account-level authentication

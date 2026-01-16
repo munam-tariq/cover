@@ -572,6 +572,97 @@
 }
 
 /* ============================================
+   Human Button (Talk to Human)
+   ============================================ */
+.chatbot-human-button-container {
+  padding: 0 16px;
+  margin-bottom: 8px;
+  display: none;
+}
+
+.chatbot-human-button-container.visible {
+  display: block;
+}
+
+.chatbot-human-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid var(--widget-border);
+  border-radius: 20px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--widget-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chatbot-human-button:hover:not(:disabled) {
+  background: var(--widget-border-light);
+  border-color: var(--widget-text-muted);
+}
+
+.chatbot-human-button:focus-visible {
+  outline: 2px solid var(--widget-primary);
+  outline-offset: 2px;
+}
+
+.chatbot-human-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.chatbot-human-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.chatbot-human-button svg {
+  flex-shrink: 0;
+}
+
+.chatbot-human-button-text {
+  flex: 1;
+  text-align: left;
+}
+
+.chatbot-human-button-arrow {
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.chatbot-human-button:hover .chatbot-human-button-arrow {
+  transform: translateX(2px);
+  opacity: 1;
+}
+
+/* Loading spinner */
+.chatbot-human-button-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--widget-border);
+  border-top-color: var(--widget-primary);
+  border-radius: 50%;
+  animation: human-button-spin 0.8s linear infinite;
+}
+
+@keyframes human-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Loading state */
+.chatbot-human-button-container.loading .chatbot-human-button {
+  pointer-events: none;
+}
+
+/* ============================================
    Input Area
    ============================================ */
 .chatbot-input-container {
@@ -844,4 +935,168 @@
   .chatbot-message-content {
     border: 1px solid currentColor;
   }
+}
+
+/* ============================================
+   Offline Form
+   ============================================ */
+.chatbot-offline-form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+.offline-form-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.offline-form-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  background: var(--widget-border-light);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--widget-text-muted);
+}
+
+.offline-form-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--widget-text);
+  margin-bottom: 8px;
+}
+
+.offline-form-description {
+  font-size: 14px;
+  color: var(--widget-text-muted);
+  line-height: 1.5;
+}
+
+.offline-form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.offline-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.offline-form-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--widget-text);
+}
+
+.offline-form-field input,
+.offline-form-field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  font-family: var(--widget-font);
+  font-size: 14px;
+  border: 1px solid var(--widget-border);
+  border-radius: var(--widget-radius-sm);
+  background: var(--widget-background);
+  color: var(--widget-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.offline-form-field input:focus,
+.offline-form-field textarea:focus {
+  outline: none;
+  border-color: var(--widget-primary);
+  box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.1);
+}
+
+.offline-form-field input.error,
+.offline-form-field textarea.error {
+  border-color: var(--widget-error-text);
+}
+
+.offline-form-field input::placeholder,
+.offline-form-field textarea::placeholder {
+  color: var(--widget-text-muted);
+}
+
+.offline-form-field textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.offline-form-error {
+  padding: 10px 14px;
+  background: var(--widget-error-bg);
+  color: var(--widget-error-text);
+  font-size: 13px;
+  border-radius: var(--widget-radius-sm);
+}
+
+.offline-form-submit {
+  width: 100%;
+  padding: 14px 20px;
+  font-family: var(--widget-font);
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+  border: none;
+  border-radius: var(--widget-radius-sm);
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.offline-form-submit:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.offline-form-submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.offline-form-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.offline-form-body.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Success state */
+.offline-form-success {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+  flex: 1;
+}
+
+.offline-form-success-icon {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 20px;
+  color: #16a34a;
+}
+
+.offline-form-success h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--widget-text);
+  margin-bottom: 8px;
+}
+
+.offline-form-success p {
+  font-size: 14px;
+  color: var(--widget-text-muted);
+  line-height: 1.5;
 }

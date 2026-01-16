@@ -84,12 +84,15 @@ class ChatbotWidget {
   /**
    * Initialize the widget
    */
-  private init(): void {
+  private async init(): Promise<void> {
     // Prevent double initialization
     if (this.container) {
       console.warn("[Chatbot Widget] Widget already initialized");
       return;
     }
+
+    // Fetch realtime config from API
+    await this.fetchRealtimeConfig();
 
     // Create container with Shadow DOM for style isolation
     this.container = document.createElement("div");
@@ -132,7 +135,40 @@ class ChatbotWidget {
       console.log("[Chatbot Widget] Initialized", {
         projectId: this.config.projectId,
         apiUrl: this.config.apiUrl,
+        realtimeEnabled: !!(window as Record<string, unknown>).__WIDGET_CONFIG__,
       });
+    }
+  }
+
+  /**
+   * Fetch realtime config from API and store in global config
+   */
+  private async fetchRealtimeConfig(): Promise<void> {
+    try {
+      const response = await fetch(
+        `${this.config.apiUrl}/api/embed/config/${this.config.projectId}`
+      );
+
+      if (!response.ok) {
+        console.warn("[Chatbot Widget] Failed to fetch realtime config");
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.realtime?.supabaseUrl && data.realtime?.supabaseAnonKey) {
+        // Store in global config for realtime.ts to use
+        (window as Record<string, unknown>).__WIDGET_CONFIG__ = {
+          supabaseUrl: data.realtime.supabaseUrl,
+          supabaseAnonKey: data.realtime.supabaseAnonKey,
+        };
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Chatbot Widget] Realtime config loaded:", data.realtime.supabaseUrl);
+        }
+      }
+    } catch (error) {
+      console.warn("[Chatbot Widget] Failed to fetch realtime config:", error);
     }
   }
 

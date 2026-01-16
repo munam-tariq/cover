@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
 import { Button, Card, CardContent, Skeleton, Switch, Label } from "@chatbot/ui";
-import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff } from "lucide-react";
+import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff, Users, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
 interface UpdatedProject {
   id: string;
@@ -755,6 +756,25 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <Link href="/settings/handoff" className="flex items-center justify-between group">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-lg bg-primary/10">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="font-semibold group-hover:text-primary transition-colors">Human Handoff</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Allow customers to connect with human agents when AI can&apos;t help
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+            </Link>
           </CardContent>
         </Card>
 

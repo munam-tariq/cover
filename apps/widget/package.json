@@ -9,7 +9,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@chatbot/shared": "workspace:*"
+    "@chatbot/shared": "workspace:*",
+    "@supabase/realtime-js": "^2.90.1"
   },
   "devDependencies": {
     "@chatbot/eslint-config": "workspace:*",

@@ -11,6 +11,10 @@
 
 import { supabaseAdmin } from "../lib/supabase";
 
+// Cache for lead capture settings to avoid repeated DB calls
+const leadSettingsCache = new Map<string, { data: LeadCaptureSettings; timestamp: number }>();
+const CACHE_TTL = 60000; // 1 minute cache
+
 /**
  * Settings for lead capture from project.settings JSON
  */
@@ -257,11 +261,17 @@ export async function markLeadsAsNotified(leadIds: string[]): Promise<void> {
 }
 
 /**
- * Get lead capture settings for a project
+ * Get lead capture settings for a project (with caching)
  */
 export async function getLeadCaptureSettings(
   projectId: string
 ): Promise<LeadCaptureSettings> {
+  // Check cache first
+  const cached = leadSettingsCache.get(projectId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+
   const { data: project, error } = await supabaseAdmin
     .from("projects")
     .select("settings")
@@ -269,11 +279,13 @@ export async function getLeadCaptureSettings(
     .single();
 
   if (error || !project) {
-    return {};
+    const emptySettings: LeadCaptureSettings = {};
+    leadSettingsCache.set(projectId, { data: emptySettings, timestamp: Date.now() });
+    return emptySettings;
   }
 
   const settings = (project.settings as Record<string, unknown>) || {};
-  return {
+  const leadSettings: LeadCaptureSettings = {
     lead_capture_enabled: settings.lead_capture_enabled as boolean | undefined,
     lead_capture_email: settings.lead_capture_email as string | undefined,
     lead_notifications_enabled: settings.lead_notifications_enabled as
@@ -281,6 +293,11 @@ export async function getLeadCaptureSettings(
       | undefined,
     last_lead_digest_at: settings.last_lead_digest_at as string | undefined,
   };
+
+  // Cache the result
+  leadSettingsCache.set(projectId, { data: leadSettings, timestamp: Date.now() });
+
+  return leadSettings;
 }
 
 /**

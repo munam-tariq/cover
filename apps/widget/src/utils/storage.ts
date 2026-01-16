@@ -47,11 +47,12 @@ export function getVisitorId(): string {
 }
 
 /**
- * Get session ID for a project (persists during page session)
+ * Get session ID for a project (persists across page refreshes)
+ * Uses localStorage to maintain conversation across refreshes
  */
 export function getSessionId(projectId: string): string | null {
   try {
-    return sessionStorage.getItem(`${SESSION_PREFIX}${projectId}`);
+    return localStorage.getItem(`${SESSION_PREFIX}${projectId}`);
   } catch {
     return null;
   }
@@ -59,21 +60,22 @@ export function getSessionId(projectId: string): string | null {
 
 /**
  * Save session ID for a project
+ * Uses localStorage to persist across page refreshes
  */
 export function setSessionId(projectId: string, sessionId: string): void {
   try {
-    sessionStorage.setItem(`${SESSION_PREFIX}${projectId}`, sessionId);
+    localStorage.setItem(`${SESSION_PREFIX}${projectId}`, sessionId);
   } catch {
-    // sessionStorage not available
+    // localStorage not available
   }
 }
 
 /**
- * Get stored messages for a project (persists during page session)
+ * Get stored messages for a project (persists across page refreshes)
  */
 export function getStoredMessages(projectId: string): StoredMessage[] {
   try {
-    const data = sessionStorage.getItem(`${MESSAGES_PREFIX}${projectId}`);
+    const data = localStorage.getItem(`${MESSAGES_PREFIX}${projectId}`);
     if (!data) return [];
     return JSON.parse(data);
   } catch {
@@ -88,9 +90,9 @@ export function setStoredMessages(projectId: string, messages: StoredMessage[]):
   try {
     // Keep only the last 50 messages to avoid storage limits
     const messagesToStore = messages.slice(-50);
-    sessionStorage.setItem(`${MESSAGES_PREFIX}${projectId}`, JSON.stringify(messagesToStore));
+    localStorage.setItem(`${MESSAGES_PREFIX}${projectId}`, JSON.stringify(messagesToStore));
   } catch {
-    // sessionStorage not available or quota exceeded
+    // localStorage not available or quota exceeded
   }
 }
 
@@ -99,8 +101,8 @@ export function setStoredMessages(projectId: string, messages: StoredMessage[]):
  */
 export function clearProjectData(projectId: string): void {
   try {
-    sessionStorage.removeItem(`${SESSION_PREFIX}${projectId}`);
-    sessionStorage.removeItem(`${MESSAGES_PREFIX}${projectId}`);
+    localStorage.removeItem(`${SESSION_PREFIX}${projectId}`);
+    localStorage.removeItem(`${MESSAGES_PREFIX}${projectId}`);
   } catch {
     // Storage not available
   }

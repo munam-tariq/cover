@@ -60,6 +60,10 @@ chatRouter.post(
           duration: tc.duration,
         })),
         processingTime: result.processingTime,
+        // Include handoff info if triggered
+        ...(result.handoff && {
+          handoff: result.handoff,
+        }),
       });
     } catch (error) {
       console.error("Chat error:", error);

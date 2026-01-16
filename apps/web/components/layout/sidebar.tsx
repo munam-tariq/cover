@@ -2,17 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Inbox, Users } from "lucide-react";
+import { useAgent } from "@/contexts/agent-context";
+import { useProject } from "@/contexts/project-context";
 
-const navItems = [
-  { href: "/", label: "Dashboard", icon: "home" },
-  { href: "/projects", label: "Projects", icon: "folder" },
-  { href: "/analytics", label: "Analytics", icon: "bar-chart" },
-  { href: "/playground", label: "Playground", icon: "sparkles" },
-  { href: "/knowledge", label: "Knowledge Base", icon: "book" },
-  { href: "/api-endpoints", label: "API Endpoints", icon: "code" },
-  { href: "/embed", label: "Embed", icon: "code-2" },
-  { href: "/settings", label: "Settings", icon: "settings" },
+// Navigation items with role requirements
+// roles: undefined = all, "owner" = owner only, "owner_admin" = owner or admin, "agent_only" = agents (not owners viewing their own project)
+const allNavItems = [
+  { href: "/", label: "Dashboard", icon: "home", roles: undefined },
+  { href: "/inbox", label: "Inbox", icon: "inbox", roles: undefined },
+  { href: "/team", label: "Team", icon: "users", roles: undefined },
+  { href: "/projects", label: "Projects", icon: "folder", roles: "owner" as const },
+  { href: "/analytics", label: "Analytics", icon: "bar-chart", roles: "owner" as const },
+  { href: "/playground", label: "Playground", icon: "sparkles", roles: "owner_admin" as const },
+  { href: "/knowledge", label: "Knowledge Base", icon: "book", roles: "owner_admin" as const },
+  { href: "/api-endpoints", label: "API Endpoints", icon: "code", roles: "owner" as const },
+  { href: "/embed", label: "Embed", icon: "code-2", roles: "owner" as const },
+  { href: "/settings", label: "Settings", icon: "settings", roles: "owner_admin" as const },
 ];
 
 const icons: Record<string, React.FC<{ className?: string }>> = {
@@ -57,10 +63,50 @@ const icons: Record<string, React.FC<{ className?: string }>> = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
+  inbox: ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+    </svg>
+  ),
+  users: ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  ),
 };
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { role, availability, isLoading } = useAgent();
+  const { currentProject, isLoading: isProjectLoading } = useProject();
+
+  // Get the effective role for the current project
+  // Priority: project.role > agent context role
+  // Default to restricted view (false) while loading to prevent flash of full menu
+  const projectRole = currentProject?.role || role?.role || "agent";
+  const isOwner = currentProject?.isOwner ?? role?.isOwner ?? false;
+  const isAdmin = projectRole === "admin";
+
+  // Build navigation items based on role
+  const getNavItems = () => {
+    return allNavItems.filter((item) => {
+      // No role restriction - show to everyone
+      if (!item.roles) return true;
+
+      // Owner only
+      if (item.roles === "owner") return isOwner;
+
+      // Owner or admin
+      if (item.roles === "owner_admin") return isOwner || isAdmin;
+
+      return true;
+    });
+  };
+
+  const navItems = getNavItems();
+
+  // Calculate unread/queue count for inbox badge
+  const showInboxBadge = availability?.currentChatCount && availability.currentChatCount > 0;
 
   return (
     <aside className="w-64 bg-card border-r min-h-screen p-4">
@@ -75,7 +121,7 @@ export function Sidebar() {
 
       <nav className="space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
           const Icon = icons[item.icon];
 
           return (
@@ -89,11 +135,43 @@ export function Sidebar() {
               }`}
             >
               <Icon className="w-5 h-5" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {/* Badge for Inbox */}
+              {item.href === "/inbox" && showInboxBadge && (
+                <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {availability?.currentChatCount}
+                </span>
+              )}
             </Link>
           );
         })}
       </nav>
+
+      {/* Agent Status Summary (bottom of sidebar) */}
+      {!isLoading && (
+        <div className="mt-auto pt-4 border-t">
+          <div className="px-3 py-2 text-xs text-muted-foreground">
+            <p>Agent Status</p>
+            <div className="flex items-center gap-2 mt-1">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  availability?.status === "online"
+                    ? "bg-green-500"
+                    : availability?.status === "away"
+                    ? "bg-yellow-500"
+                    : "bg-gray-400"
+                }`}
+              />
+              <span className="capitalize">{availability?.status || "offline"}</span>
+              {availability?.status === "online" && (
+                <span className="text-muted-foreground">
+                  ({availability?.currentChatCount || 0}/{availability?.maxConcurrentChats || 5})
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

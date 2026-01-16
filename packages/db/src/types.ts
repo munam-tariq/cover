@@ -14,6 +14,69 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      agent_availability: {
+        Row: {
+          id: string;
+          user_id: string;
+          project_id: string;
+          status: "online" | "away" | "offline";
+          max_concurrent_chats: number;
+          current_chat_count: number;
+          last_seen_at: string;
+          last_assigned_at: string | null;
+          status_changed_at: string;
+          auto_offline_enabled: boolean;
+          auto_offline_minutes: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          project_id: string;
+          status?: "online" | "away" | "offline";
+          max_concurrent_chats?: number;
+          current_chat_count?: number;
+          last_seen_at?: string;
+          last_assigned_at?: string | null;
+          status_changed_at?: string;
+          auto_offline_enabled?: boolean;
+          auto_offline_minutes?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          project_id?: string;
+          status?: "online" | "away" | "offline";
+          max_concurrent_chats?: number;
+          current_chat_count?: number;
+          last_seen_at?: string;
+          last_assigned_at?: string | null;
+          status_changed_at?: string;
+          auto_offline_enabled?: boolean;
+          auto_offline_minutes?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agent_availability_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "agent_availability_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       api_endpoints: {
         Row: {
           auth_config: Json | null;
@@ -135,6 +198,291 @@ export type Database = {
           }
         ];
       };
+      conversations: {
+        Row: {
+          id: string;
+          project_id: string;
+          customer_id: string | null;
+          visitor_id: string;
+          customer_email: string | null;
+          customer_name: string | null;
+          customer_presence: "online" | "idle" | "offline" | "typing";
+          customer_last_seen_at: string | null;
+          auto_close_warning_sent_at: string | null;
+          status: "ai_active" | "waiting" | "agent_active" | "resolved" | "closed";
+          assigned_agent_id: string | null;
+          handoff_reason: "low_confidence" | "keyword" | "customer_request" | "button_click" | null;
+          handoff_triggered_at: string | null;
+          handoff_requested_at: string | null;
+          ai_confidence_at_handoff: number | null;
+          trigger_keyword: string | null;
+          queue_entered_at: string | null;
+          queue_position: number | null;
+          claimed_at: string | null;
+          first_response_at: string | null;
+          resolved_at: string | null;
+          satisfaction_rating: number | null;
+          satisfaction_feedback: string | null;
+          source: "widget" | "playground" | "mcp" | "api" | "voice";
+          metadata: Json;
+          awaiting_email: boolean;
+          pending_question: string | null;
+          email_asked: boolean;
+          is_voice: boolean;
+          voice_duration_seconds: number;
+          message_count: number;
+          created_at: string;
+          updated_at: string;
+          last_message_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          customer_id?: string | null;
+          visitor_id: string;
+          customer_email?: string | null;
+          customer_name?: string | null;
+          customer_presence?: "online" | "idle" | "offline" | "typing";
+          customer_last_seen_at?: string | null;
+          auto_close_warning_sent_at?: string | null;
+          status?: "ai_active" | "waiting" | "agent_active" | "resolved" | "closed";
+          assigned_agent_id?: string | null;
+          handoff_reason?: "low_confidence" | "keyword" | "customer_request" | "button_click" | null;
+          handoff_triggered_at?: string | null;
+          handoff_requested_at?: string | null;
+          ai_confidence_at_handoff?: number | null;
+          trigger_keyword?: string | null;
+          queue_entered_at?: string | null;
+          queue_position?: number | null;
+          claimed_at?: string | null;
+          first_response_at?: string | null;
+          resolved_at?: string | null;
+          satisfaction_rating?: number | null;
+          satisfaction_feedback?: string | null;
+          source?: "widget" | "playground" | "mcp" | "api" | "voice";
+          metadata?: Json;
+          awaiting_email?: boolean;
+          pending_question?: string | null;
+          email_asked?: boolean;
+          is_voice?: boolean;
+          voice_duration_seconds?: number;
+          message_count?: number;
+          created_at?: string;
+          updated_at?: string;
+          last_message_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          customer_id?: string | null;
+          visitor_id?: string;
+          customer_email?: string | null;
+          customer_name?: string | null;
+          customer_presence?: "online" | "idle" | "offline" | "typing";
+          customer_last_seen_at?: string | null;
+          auto_close_warning_sent_at?: string | null;
+          status?: "ai_active" | "waiting" | "agent_active" | "resolved" | "closed";
+          assigned_agent_id?: string | null;
+          handoff_reason?: "low_confidence" | "keyword" | "customer_request" | "button_click" | null;
+          handoff_triggered_at?: string | null;
+          handoff_requested_at?: string | null;
+          ai_confidence_at_handoff?: number | null;
+          trigger_keyword?: string | null;
+          queue_entered_at?: string | null;
+          queue_position?: number | null;
+          claimed_at?: string | null;
+          first_response_at?: string | null;
+          resolved_at?: string | null;
+          satisfaction_rating?: number | null;
+          satisfaction_feedback?: string | null;
+          source?: "widget" | "playground" | "mcp" | "api" | "voice";
+          metadata?: Json;
+          awaiting_email?: boolean;
+          pending_question?: string | null;
+          email_asked?: boolean;
+          is_voice?: boolean;
+          voice_duration_seconds?: number;
+          message_count?: number;
+          created_at?: string;
+          updated_at?: string;
+          last_message_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "conversations_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "conversations_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "conversations_assigned_agent_id_fkey";
+            columns: ["assigned_agent_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      customers: {
+        Row: {
+          id: string;
+          project_id: string;
+          visitor_id: string;
+          email: string | null;
+          name: string | null;
+          merged_visitor_ids: string[];
+          first_seen_at: string;
+          last_seen_at: string;
+          total_conversations: number;
+          last_browser: string | null;
+          last_device: string | null;
+          last_os: string | null;
+          last_page_url: string | null;
+          last_location: string | null;
+          is_flagged: boolean;
+          flag_reason: string | null;
+          flagged_at: string | null;
+          flagged_by: string | null;
+          internal_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          visitor_id: string;
+          email?: string | null;
+          name?: string | null;
+          merged_visitor_ids?: string[];
+          first_seen_at?: string;
+          last_seen_at?: string;
+          total_conversations?: number;
+          last_browser?: string | null;
+          last_device?: string | null;
+          last_os?: string | null;
+          last_page_url?: string | null;
+          last_location?: string | null;
+          is_flagged?: boolean;
+          flag_reason?: string | null;
+          flagged_at?: string | null;
+          flagged_by?: string | null;
+          internal_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          visitor_id?: string;
+          email?: string | null;
+          name?: string | null;
+          merged_visitor_ids?: string[];
+          first_seen_at?: string;
+          last_seen_at?: string;
+          total_conversations?: number;
+          last_browser?: string | null;
+          last_device?: string | null;
+          last_os?: string | null;
+          last_page_url?: string | null;
+          last_location?: string | null;
+          is_flagged?: boolean;
+          flag_reason?: string | null;
+          flagged_at?: string | null;
+          flagged_by?: string | null;
+          internal_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "customers_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "customers_flagged_by_fkey";
+            columns: ["flagged_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      handoff_settings: {
+        Row: {
+          id: string;
+          project_id: string;
+          enabled: boolean;
+          trigger_mode: "auto" | "manual" | "both";
+          show_human_button: boolean;
+          auto_triggers: Json;
+          business_hours_enabled: boolean;
+          timezone: string;
+          business_hours: Json;
+          default_max_concurrent_chats: number;
+          inactivity_timeout_minutes: number;
+          auto_close_after_warning_minutes: number;
+          session_keep_alive_minutes: number;
+          send_inactivity_warning: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          enabled?: boolean;
+          trigger_mode?: "auto" | "manual" | "both";
+          show_human_button?: boolean;
+          auto_triggers?: Json;
+          business_hours_enabled?: boolean;
+          timezone?: string;
+          business_hours?: Json;
+          default_max_concurrent_chats?: number;
+          inactivity_timeout_minutes?: number;
+          auto_close_after_warning_minutes?: number;
+          session_keep_alive_minutes?: number;
+          send_inactivity_warning?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          enabled?: boolean;
+          trigger_mode?: "auto" | "manual" | "both";
+          show_human_button?: boolean;
+          auto_triggers?: Json;
+          business_hours_enabled?: boolean;
+          timezone?: string;
+          business_hours?: Json;
+          default_max_concurrent_chats?: number;
+          inactivity_timeout_minutes?: number;
+          auto_close_after_warning_minutes?: number;
+          session_keep_alive_minutes?: number;
+          send_inactivity_warning?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "handoff_settings_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       knowledge_chunks: {
         Row: {
           content: string;
@@ -213,6 +561,127 @@ export type Database = {
             columns: ["project_id"];
             isOneToOne: false;
             referencedRelation: "projects";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          sender_type: "customer" | "ai" | "agent" | "system";
+          sender_id: string | null;
+          content: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          sender_type: "customer" | "ai" | "agent" | "system";
+          sender_id?: string | null;
+          content: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          conversation_id?: string;
+          sender_type?: "customer" | "ai" | "agent" | "system";
+          sender_id?: string | null;
+          content?: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey";
+            columns: ["conversation_id"];
+            isOneToOne: false;
+            referencedRelation: "conversations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey";
+            columns: ["sender_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      project_members: {
+        Row: {
+          id: string;
+          project_id: string;
+          user_id: string | null;
+          email: string;
+          name: string | null;
+          role: "agent" | "admin";
+          status: "pending" | "active" | "removed";
+          invitation_token: string | null;
+          invited_by: string;
+          invited_at: string;
+          expires_at: string;
+          accepted_at: string | null;
+          max_concurrent_chats: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          user_id?: string | null;
+          email: string;
+          name?: string | null;
+          role?: "agent" | "admin";
+          status?: "pending" | "active" | "removed";
+          invitation_token?: string | null;
+          invited_by: string;
+          invited_at?: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+          max_concurrent_chats?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          user_id?: string | null;
+          email?: string;
+          name?: string | null;
+          role?: "agent" | "admin";
+          status?: "pending" | "active" | "removed";
+          invitation_token?: string | null;
+          invited_by?: string;
+          invited_at?: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+          max_concurrent_chats?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_members_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_members_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_members_invited_by_fkey";
+            columns: ["invited_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
             referencedColumns: ["id"];
           }
         ];
@@ -315,6 +784,93 @@ export type ChatSessionUpdate =
 export type ApiKey = Database["public"]["Tables"]["api_keys"]["Row"];
 export type ApiKeyInsert = Database["public"]["Tables"]["api_keys"]["Insert"];
 export type ApiKeyUpdate = Database["public"]["Tables"]["api_keys"]["Update"];
+
+// Human Agent Handoff types
+export type HandoffSettings =
+  Database["public"]["Tables"]["handoff_settings"]["Row"];
+export type HandoffSettingsInsert =
+  Database["public"]["Tables"]["handoff_settings"]["Insert"];
+export type HandoffSettingsUpdate =
+  Database["public"]["Tables"]["handoff_settings"]["Update"];
+
+export type AgentAvailability =
+  Database["public"]["Tables"]["agent_availability"]["Row"];
+export type AgentAvailabilityInsert =
+  Database["public"]["Tables"]["agent_availability"]["Insert"];
+export type AgentAvailabilityUpdate =
+  Database["public"]["Tables"]["agent_availability"]["Update"];
+
+export type Conversation =
+  Database["public"]["Tables"]["conversations"]["Row"];
+export type ConversationInsert =
+  Database["public"]["Tables"]["conversations"]["Insert"];
+export type ConversationUpdate =
+  Database["public"]["Tables"]["conversations"]["Update"];
+
+export type Message = Database["public"]["Tables"]["messages"]["Row"];
+export type MessageInsert = Database["public"]["Tables"]["messages"]["Insert"];
+export type MessageUpdate = Database["public"]["Tables"]["messages"]["Update"];
+
+export type Customer = Database["public"]["Tables"]["customers"]["Row"];
+export type CustomerInsert = Database["public"]["Tables"]["customers"]["Insert"];
+export type CustomerUpdate = Database["public"]["Tables"]["customers"]["Update"];
+
+export type ProjectMember =
+  Database["public"]["Tables"]["project_members"]["Row"];
+export type ProjectMemberInsert =
+  Database["public"]["Tables"]["project_members"]["Insert"];
+export type ProjectMemberUpdate =
+  Database["public"]["Tables"]["project_members"]["Update"];
+
+// Human Agent Handoff enums
+export type AgentStatus = "online" | "away" | "offline";
+export type ConversationStatus =
+  | "ai_active"
+  | "waiting"
+  | "agent_active"
+  | "resolved"
+  | "closed";
+export type CustomerPresence = "online" | "idle" | "offline" | "typing";
+export type HandoffReason =
+  | "low_confidence"
+  | "keyword"
+  | "customer_request"
+  | "button_click";
+export type TriggerMode = "auto" | "manual" | "both";
+export type MessageSenderType = "customer" | "ai" | "agent" | "system";
+export type ProjectMemberRole = "agent" | "admin";
+export type ProjectMemberStatus = "pending" | "active" | "removed";
+export type ConversationSource =
+  | "widget"
+  | "playground"
+  | "mcp"
+  | "api"
+  | "voice";
+
+// Auto triggers configuration type
+export interface AutoTriggersConfig {
+  low_confidence_enabled: boolean;
+  low_confidence_threshold: number;
+  keywords_enabled: boolean;
+  keywords: string[];
+}
+
+// Business hours configuration type
+export interface BusinessHoursDay {
+  start: string;
+  end: string;
+  enabled: boolean;
+}
+
+export interface BusinessHoursConfig {
+  monday: BusinessHoursDay;
+  tuesday: BusinessHoursDay;
+  wednesday: BusinessHoursDay;
+  thursday: BusinessHoursDay;
+  friday: BusinessHoursDay;
+  saturday: BusinessHoursDay;
+  sunday: BusinessHoursDay;
+}
 
 // Knowledge source types
 export type KnowledgeSourceType = "text" | "file" | "pdf" | "url";

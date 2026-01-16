@@ -24,7 +24,7 @@ const supabase = createClient(
 
 /**
  * GET /api/projects
- * List all active projects for the current user
+ * List all active projects for the current user (owned + member)
  * Query params:
  *   - include_stats: boolean - Include knowledge/endpoint counts
  */
@@ -33,22 +33,70 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
     const { userId } = req as AuthenticatedRequest;
     const includeStats = req.query.include_stats === "true";
 
-    // Fetch all active projects (deleted_at is null)
-    const { data: projects, error } = await supabase
+    // Fetch owned projects
+    const { data: ownedProjects, error: ownedError } = await supabase
       .from("projects")
-      .select("id, name, settings, created_at, updated_at")
+      .select("id, name, settings, created_at, updated_at, user_id")
       .eq("user_id", userId)
       .is("deleted_at", null)
       .order("created_at", { ascending: true });
 
-    if (error) {
-      console.error("Error fetching projects:", error);
+    if (ownedError) {
+      console.error("Error fetching owned projects:", ownedError);
       return res.status(500).json({ error: { code: "FETCH_ERROR", message: "Failed to fetch projects" } });
     }
 
+    // Fetch projects where user is an active member
+    const { data: memberships, error: memberError } = await supabase
+      .from("project_members")
+      .select("project_id, role, projects!inner(id, name, settings, created_at, updated_at, user_id, deleted_at)")
+      .eq("user_id", userId)
+      .eq("status", "active");
+
+    if (memberError) {
+      console.error("Error fetching member projects:", memberError);
+      // Don't fail, just continue with owned projects
+    }
+
+    // Filter out deleted member projects and build combined list
+    // Note: Supabase returns joined data - projects is the joined project object
+    const memberProjects = (memberships || [])
+      .filter((m) => {
+        const proj = m.projects as unknown as { deleted_at: string | null } | null;
+        return proj && !proj.deleted_at;
+      })
+      .map((m) => {
+        const proj = m.projects as unknown as {
+          id: string;
+          name: string;
+          settings: Record<string, unknown> | null;
+          created_at: string;
+          updated_at: string;
+          user_id: string;
+        };
+        return {
+          id: proj.id,
+          name: proj.name,
+          settings: proj.settings,
+          created_at: proj.created_at,
+          updated_at: proj.updated_at,
+          user_id: proj.user_id,
+          memberRole: m.role,
+        };
+      });
+
+    // Combine owned and member projects (avoid duplicates)
+    const ownedIds = new Set((ownedProjects || []).map((p) => p.id));
+    const allProjects = [
+      ...(ownedProjects || []).map((p) => ({ ...p, role: "owner" as const })),
+      ...memberProjects
+        .filter((p) => !ownedIds.has(p.id))
+        .map((p) => ({ ...p, role: p.memberRole as "admin" | "agent" })),
+    ];
+
     // Build response with optional stats
     const projectsResponse = await Promise.all(
-      (projects || []).map(async (project) => {
+      allProjects.map(async (project) => {
         const projectData: Record<string, unknown> = {
           id: project.id,
           name: project.name,
@@ -56,6 +104,8 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
           settings: project.settings || {},
           createdAt: project.created_at,
           updatedAt: project.updated_at,
+          role: project.role,
+          isOwner: project.role === "owner",
         };
 
         if (includeStats) {
@@ -88,7 +138,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
 
 /**
  * GET /api/projects/:id
- * Get a specific project by ID
+ * Get a specific project by ID (for owners and members)
  * Query params:
  *   - include_stats: boolean - Include knowledge/endpoint counts
  */
@@ -104,16 +154,37 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
       return res.status(400).json({ error: { code: "INVALID_ID", message: "Invalid project ID format" } });
     }
 
+    // Fetch project (without user_id filter - we'll check access separately)
     const { data: project, error } = await supabase
       .from("projects")
-      .select("id, name, settings, created_at, updated_at")
+      .select("id, name, settings, created_at, updated_at, user_id")
       .eq("id", id)
-      .eq("user_id", userId)
       .is("deleted_at", null)
       .single();
 
     if (error || !project) {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Project not found" } });
+    }
+
+    // Check access: is user owner or active member?
+    const isOwner = project.user_id === userId;
+    let role: "owner" | "admin" | "agent" = "owner";
+
+    if (!isOwner) {
+      // Check if user is an active member
+      const { data: membership } = await supabase
+        .from("project_members")
+        .select("role")
+        .eq("project_id", id)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .single();
+
+      if (!membership) {
+        return res.status(404).json({ error: { code: "NOT_FOUND", message: "Project not found" } });
+      }
+
+      role = membership.role as "admin" | "agent";
     }
 
     const projectResponse: Record<string, unknown> = {
@@ -123,6 +194,9 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
       settings: project.settings || {},
       createdAt: project.created_at,
       updatedAt: project.updated_at,
+      user_id: project.user_id,
+      role,
+      isOwner,
     };
 
     if (includeStats) {
