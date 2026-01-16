@@ -230,7 +230,7 @@ export async function getConversationStatus(
 } | null> {
   try {
     const response = await fetch(
-      `${apiUrl}/api/conversations/${conversationId}/status`,
+      `${apiUrl}/api/widget/conversations/${conversationId}/status`,
       {
         method: "GET",
         headers: {
@@ -265,7 +265,7 @@ export async function fetchNewMessages(
   createdAt: string;
 }>> {
   try {
-    let url = `${apiUrl}/api/conversations/${conversationId}/messages/public`;
+    let url = `${apiUrl}/api/widget/conversations/${conversationId}/messages/public`;
     if (afterTimestamp) {
       url += `?after=${encodeURIComponent(afterTimestamp)}`;
     }
@@ -301,7 +301,7 @@ export async function sendTypingIndicator(
   isTyping: boolean
 ): Promise<void> {
   try {
-    await fetch(`${apiUrl}/api/conversations/${conversationId}/typing`, {
+    await fetch(`${apiUrl}/api/widget/conversations/${conversationId}/typing`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -331,13 +331,13 @@ export async function sendPresenceUpdate(
   try {
     // Use sendBeacon for offline status to ensure delivery
     if (status === "offline" && navigator.sendBeacon) {
-      const url = `${apiUrl}/api/conversations/${conversationId}/presence`;
+      const url = `${apiUrl}/api/widget/conversations/${conversationId}/presence`;
       const data = JSON.stringify({ status, visitorId });
       navigator.sendBeacon(url, data);
       return;
     }
 
-    await fetch(`${apiUrl}/api/conversations/${conversationId}/presence`, {
+    await fetch(`${apiUrl}/api/widget/conversations/${conversationId}/presence`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

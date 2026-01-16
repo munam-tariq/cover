@@ -315,14 +315,57 @@ router.post("/conversations/:id/handoff", async (req: Request, res: Response) =>
 
     const { reason, confidence, triggerKeyword, customerEmail, customerName } = validation.data;
 
-    // Get conversation
-    const { data: conversation, error: convError } = await supabaseAdmin
+    // Get conversation - first try conversations table, then chat_sessions
+    let conversation = null;
+    let fromChatSessions = false;
+
+    const { data: convData, error: convError } = await supabaseAdmin
       .from("conversations")
       .select("*")
       .eq("id", id)
       .single();
 
-    if (convError || !conversation) {
+    if (convData) {
+      conversation = convData;
+    } else {
+      // Try chat_sessions table (legacy/widget creates sessions here)
+      const { data: sessionData, error: sessionError } = await supabaseAdmin
+        .from("chat_sessions")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (sessionData) {
+        fromChatSessions = true;
+        // Create a conversation record from the chat session
+        const { data: newConv, error: createError } = await supabaseAdmin
+          .from("conversations")
+          .insert({
+            id: sessionData.id, // Use same ID for consistency
+            project_id: sessionData.project_id,
+            visitor_id: sessionData.visitor_id,
+            status: "ai_active",
+            source: "widget",
+            message_count: sessionData.message_count || 0,
+            created_at: sessionData.created_at,
+            metadata: sessionData.metadata || {},
+          })
+          .select("*")
+          .single();
+
+        if (createError) {
+          console.error("Error creating conversation from chat_session:", createError);
+          return res.status(500).json({
+            error: { code: "CREATE_ERROR", message: "Failed to initialize handoff" },
+          });
+        }
+
+        conversation = newConv;
+        console.log(`[Handoff] Created conversation ${id} from chat_session`);
+      }
+    }
+
+    if (!conversation) {
       return res.status(404).json({
         error: { code: "NOT_FOUND", message: "Conversation not found" },
       });
