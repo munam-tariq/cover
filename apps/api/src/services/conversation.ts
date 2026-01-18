@@ -374,28 +374,8 @@ export async function updateConversationStatus(
   }
 }
 
-/**
- * Check if project has new conversations feature enabled
- */
-export async function checkFeatureFlag(projectId: string): Promise<boolean> {
-  const { data } = await supabaseAdmin
-    .from("projects")
-    .select("use_new_conversations")
-    .eq("id", projectId)
-    .single();
-
-  return data?.use_new_conversations === true;
-}
-
-/**
- * Enable new conversations feature for a project
- */
-export async function enableNewConversations(projectId: string): Promise<void> {
-  await supabaseAdmin
-    .from("projects")
-    .update({ use_new_conversations: true })
-    .eq("id", projectId);
-}
+// Feature flag functions removed - new conversations system is now always enabled
+// The use_new_conversations column in projects table is deprecated
 
 /**
  * Get conversation history in the format expected by chat engine

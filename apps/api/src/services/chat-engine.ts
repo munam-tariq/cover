@@ -46,7 +46,6 @@ import {
 import {
   getOrCreateConversation,
   logConversationMessages,
-  checkFeatureFlag,
 } from "./conversation";
 import {
   checkHandoffTrigger,
@@ -631,14 +630,11 @@ async function getOrCreateSession(
     return generateSessionId();
   }
 
-  // Dual-write: Also create in new conversations table if feature enabled
+  // Always create in new conversations table (required for widget status/handoff)
   try {
-    const useNewSystem = await checkFeatureFlag(projectId);
-    if (useNewSystem) {
-      await getOrCreateConversation(projectId, visitorId, newSession.id, source);
-    }
+    await getOrCreateConversation(projectId, visitorId, newSession.id, source);
   } catch (dualWriteError) {
-    console.error("Failed to dual-write to conversations table:", dualWriteError);
+    console.error("Failed to create conversation in new table:", dualWriteError);
     // Don't fail the request, just log the error
   }
 
@@ -693,23 +689,20 @@ async function logConversation(
       })
       .eq("id", sessionId);
 
-    // Dual-write: Also write to new conversations/messages tables if feature enabled
-    const useNewSystem = await checkFeatureFlag(projectId);
-    if (useNewSystem) {
-      // Check if conversation exists in new table (might have been created by migration or new system)
-      const { data: conversation } = await supabaseAdmin
-        .from("conversations")
-        .select("id")
-        .eq("id", sessionId)
-        .single();
+    // Always write to new conversations/messages tables (required for widget status/handoff)
+    // Check if conversation exists in new table (might have been created by migration or new system)
+    const { data: conversation } = await supabaseAdmin
+      .from("conversations")
+      .select("id")
+      .eq("id", sessionId)
+      .single();
 
-      if (conversation) {
-        await logConversationMessages(sessionId, userMessage, assistantResponse, {
-          sourcesUsed,
-          toolCallsCount,
-          model: MODEL,
-        });
-      }
+    if (conversation) {
+      await logConversationMessages(sessionId, userMessage, assistantResponse, {
+        sourcesUsed,
+        toolCallsCount,
+        model: MODEL,
+      });
     }
   } catch (error) {
     console.error("Failed to log conversation:", error);

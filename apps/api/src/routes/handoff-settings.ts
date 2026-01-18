@@ -452,13 +452,7 @@ router.put("/:id/handoff-settings", authMiddleware, async (req: Request, res: Re
       settings = updatedSettings;
     }
 
-    // Auto-enable new conversations feature when handoff is enabled
-    if (updates.enabled === true) {
-      await supabaseAdmin
-        .from("projects")
-        .update({ use_new_conversations: true })
-        .eq("id", projectId);
-    }
+    // Note: use_new_conversations feature flag is deprecated - new system is always enabled
 
     // Get agent count for warning
     const { count: agentCount } = await supabaseAdmin
