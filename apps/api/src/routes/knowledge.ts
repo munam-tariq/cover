@@ -21,7 +21,8 @@ import { validateCrawlUrl } from "../services/firecrawl";
 import {
   createScrapeJob,
   getJob,
-  deleteJob,
+  getJobFromDb,
+  cancelJob,
   executeScrapeJob,
   getJobStatus,
   markPageImporting,
@@ -621,8 +622,12 @@ knowledgeRouter.post("/scrape", async (req: AuthenticatedRequest, res: Response)
       });
     }
 
-    // Create scrape job
-    const job = createScrapeJob(req.projectId!, urlValidation.normalizedUrl!);
+    // Create scrape job (now saves to database)
+    const job = await createScrapeJob(
+      req.projectId!,
+      req.userId!,
+      urlValidation.normalizedUrl!
+    );
 
     // Start crawling in background
     executeScrapeJob(job.id).catch((err) => {
@@ -632,7 +637,7 @@ knowledgeRouter.post("/scrape", async (req: AuthenticatedRequest, res: Response)
     // Return job ID for polling
     res.status(202).json({
       jobId: job.id,
-      status: "crawling",
+      status: "pending",
       message: "Scanning website...",
     });
   } catch (error) {
@@ -651,21 +656,39 @@ knowledgeRouter.get("/scrape/:jobId", async (req: AuthenticatedRequest, res: Res
   try {
     const { jobId } = req.params;
 
+    // First try to get from in-memory cache (for active jobs)
     const job = getJob(jobId);
-    if (!job) {
-      return res.status(404).json({
-        error: { code: "NOT_FOUND", message: "Scrape job not found or expired" },
-      });
+    if (job) {
+      // Verify job belongs to this project
+      if (job.projectId !== req.projectId) {
+        return res.status(404).json({
+          error: { code: "NOT_FOUND", message: "Scrape job not found" },
+        });
+      }
+      return res.json(getJobStatus(job));
     }
 
-    // Verify job belongs to this project
-    if (job.projectId !== req.projectId) {
+    // If not in memory, check database (for historical/expired jobs)
+    const dbJob = await getJobFromDb(jobId);
+    if (!dbJob) {
       return res.status(404).json({
         error: { code: "NOT_FOUND", message: "Scrape job not found" },
       });
     }
 
-    res.json(getJobStatus(job));
+    // Return minimal status from database
+    res.json({
+      jobId: dbJob.id,
+      status: dbJob.status,
+      domain: dbJob.domain,
+      error: dbJob.error ? { code: 'SCRAPE_ERROR', message: dbJob.error } : undefined,
+      // For completed/failed jobs from DB, show final metrics
+      totals: ['completed', 'failed'].includes(dbJob.status) ? {
+        pages: dbJob.pagesFound,
+        imported: dbJob.pagesImported,
+        failed: dbJob.pagesFailed,
+      } : undefined,
+    });
   } catch (error) {
     console.error("Scrape GET error:", error);
     res.status(500).json({
@@ -764,9 +787,8 @@ knowledgeRouter.delete("/scrape/:jobId", async (req: AuthenticatedRequest, res: 
       });
     }
 
-    // Mark as cancelled and delete
-    job.status = "cancelled";
-    deleteJob(jobId);
+    // Cancel job (updates database and removes from memory)
+    await cancelJob(jobId);
 
     res.json({ status: "cancelled" });
   } catch (error) {
@@ -786,9 +808,9 @@ async function importScrapeJobPages(jobId: string, projectId: string): Promise<v
 
   for (const page of job.pages) {
     try {
-      markPageImporting(jobId, page.id);
+      await markPageImporting(jobId, page.id);
 
-      // Create knowledge source
+      // Create knowledge source with crawl_job_id for tracking
       const { data: source, error: createError } = await supabaseAdmin
         .from("knowledge_sources")
         .insert({
@@ -799,13 +821,14 @@ async function importScrapeJobPages(jobId: string, projectId: string): Promise<v
           source_url: page.url,
           scraped_at: new Date().toISOString(),
           status: "processing",
+          crawl_job_id: jobId, // Link to crawl job for tracking
         })
         .select()
         .single();
 
       if (createError || !source) {
         console.error(`[Scrape] Failed to create source for ${page.title}:`, createError);
-        markPageFailed(jobId, page.id, "Failed to create knowledge source");
+        await markPageFailed(jobId, page.id, "Failed to create knowledge source");
         continue;
       }
 
@@ -818,12 +841,12 @@ async function importScrapeJobPages(jobId: string, projectId: string): Promise<v
         null
       );
 
-      markPageCompleted(jobId, page.id, source.id);
+      await markPageCompleted(jobId, page.id, source.id);
       console.log(`[Scrape] Imported page: ${page.title}`);
 
     } catch (error) {
       console.error(`[Scrape] Error importing page ${page.title}:`, error);
-      markPageFailed(
+      await markPageFailed(
         jobId,
         page.id,
         error instanceof Error ? error.message : "Import failed"

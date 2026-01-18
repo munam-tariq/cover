@@ -299,35 +299,31 @@ export function UrlImportFlow({
               </p>
             </div>
 
-            <ScrollArea className="h-[280px] border rounded-lg">
+            <div className="h-[280px] border rounded-lg overflow-y-auto">
               <div className="p-2 space-y-2">
                 {job?.pages?.map((page) => (
                   <div
                     key={page.id}
-                    className="border rounded-lg p-3 bg-muted/30 overflow-hidden"
+                    className="border rounded-lg p-3 bg-muted/30 cursor-pointer"
+                    onClick={() =>
+                      setExpandedPage(
+                        expandedPage === page.id ? null : page.id
+                      )
+                    }
                   >
-                    <div
-                      className="flex items-center justify-between gap-2 cursor-pointer"
-                      onClick={() =>
-                        setExpandedPage(
-                          expandedPage === page.id ? null : page.id
-                        )
-                      }
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        <span className="font-medium truncate">
-                          {page.title}
-                        </span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 min-w-0">
+                        <Check className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="font-medium leading-tight">{page.title}</p>
+                          <p className="text-sm text-muted-foreground">{page.wordCount.toLocaleString()} words</p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground flex-shrink-0">
-                        <span className="whitespace-nowrap">{page.wordCount.toLocaleString()} words</span>
-                        {expandedPage === page.id ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" />
-                        )}
-                      </div>
+                      {expandedPage === page.id ? (
+                        <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
+                      )}
                     </div>
                     {expandedPage === page.id && (
                       <div className="mt-2 pt-2 border-t">
@@ -347,7 +343,7 @@ export function UrlImportFlow({
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
 
             <p className="text-sm text-center text-muted-foreground">
               This will create {job?.totals?.pages} knowledge sources (~

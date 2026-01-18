@@ -223,7 +223,7 @@ export function AddKnowledgeModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add Knowledge</DialogTitle>
           <DialogDescription>
