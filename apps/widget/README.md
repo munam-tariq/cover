@@ -35,7 +35,7 @@ Make sure the API server is running (`npm run dev` from root).
 After making changes, rebuild and re-upload:
 
 ```bash
-# 1. Build the widget
+# 1. Build the widget (generates widget.js + widget-loader.js)
 npm run build
 
 # 2. Upload to Supabase Storage
@@ -44,12 +44,27 @@ SUPABASE_SERVICE_KEY=your-service-key npx tsx upload-to-supabase.ts
 
 The service key can be found in `apps/api/.env` or the Supabase dashboard.
 
-**Current hosted URL:**
+**Current hosted URLs:**
 ```
-https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets/widget.js
+Loader: https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets/widget.js
+Widget: https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets/widget-app.js
 ```
 
+## Cache Busting Strategy
+
+The widget uses a **loader pattern** for automatic cache busting:
+
+1. **widget.js** - Tiny loader (~500 bytes), cached for 5 minutes (backward compatible embed URL)
+2. **widget-app.js?v=<version>** - Main widget, loaded by loader with version param
+
+When you deploy updates:
+- The loader is re-fetched within 5 minutes
+- The loader loads the new widget version automatically
+- **No hard refresh needed by end users!**
+
 ## Embed Code
+
+Existing integrations continue to work - no changes needed!
 
 ```html
 <script

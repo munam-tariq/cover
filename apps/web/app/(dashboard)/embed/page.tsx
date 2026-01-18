@@ -39,7 +39,8 @@ export default function EmbedPage() {
 
   // Build embed code
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://api.supportbase.app";
-  // Widget hosted on Supabase Storage
+  // Widget loader hosted on Supabase Storage (auto cache-busting)
+  // Note: widget.js is now a tiny loader that loads widget-app.js with version param
   const widgetUrl = "https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets/widget.js";
 
   const embedCode = currentProject
