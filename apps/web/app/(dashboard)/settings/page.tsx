@@ -387,14 +387,33 @@ export default function SettingsPage() {
     setSavingDomains(true);
     setDomainError(null);
 
+    // Include any domain typed in the input but not yet added
+    let domainsToSave = [...allowedDomains];
+    if (newDomain.trim()) {
+      const domain = newDomain.trim().toLowerCase();
+      const domainRegex = /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/;
+
+      if (!domainRegex.test(domain)) {
+        setDomainError("Invalid domain format. Example: example.com or *.example.com");
+        setSavingDomains(false);
+        return;
+      }
+
+      if (!domainsToSave.includes(domain)) {
+        domainsToSave.push(domain);
+        setAllowedDomains(domainsToSave);
+        setNewDomain("");
+      }
+    }
+
     try {
       await apiClient(`/api/projects/${currentProject.id}/allowed-domains`, {
         method: "PUT",
-        body: JSON.stringify({ domains: allowedDomains }),
+        body: JSON.stringify({ domains: domainsToSave }),
       });
       setSuccess(
-        allowedDomains.length > 0
-          ? "Domain whitelist updated"
+        domainsToSave.length > 0
+          ? `Domain whitelist updated (${domainsToSave.length} domain${domainsToSave.length !== 1 ? "s" : ""})`
           : "Domain whitelist disabled"
       );
       setTimeout(() => setSuccess(null), 3000);
