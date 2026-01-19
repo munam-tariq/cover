@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { domainWhitelistMiddleware } from "../middleware/domain-whitelist";
 
 export const embedRouter = Router();
 
@@ -16,7 +17,10 @@ embedRouter.get("/code/:projectId", async (req, res) => {
 });
 
 // Get widget configuration
-embedRouter.get("/config/:projectId", async (req, res) => {
+embedRouter.get(
+  "/config/:projectId",
+  domainWhitelistMiddleware({ requireDomain: false, projectIdSource: 'params' }),
+  async (req, res) => {
   const { projectId } = req.params;
 
   // Return widget config including Supabase credentials for realtime

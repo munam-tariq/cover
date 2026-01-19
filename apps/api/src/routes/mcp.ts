@@ -23,6 +23,7 @@ import { z } from "zod";
 
 import { supabaseAdmin } from "../lib/supabase";
 import { encryptAuthConfig } from "../services/encryption";
+import { clearDomainCache } from "../middleware/domain-whitelist";
 import {
   createProcessingPipeline,
   type DocumentMetadata,
@@ -190,7 +191,7 @@ function createMcpServer(userId: string): McpServer {
 
       const { data: project, error } = await supabaseAdmin
         .from("projects")
-        .select("id, name, settings, created_at")
+        .select("id, name, settings, allowed_domains, created_at")
         .eq("id", targetProjectId)
         .single();
 
@@ -220,6 +221,7 @@ function createMcpServer(userId: string): McpServer {
         ]);
 
       const settings = (project.settings as Record<string, unknown>) || {};
+      const allowedDomains = (project.allowed_domains as string[]) || [];
 
       return {
         content: [
@@ -231,6 +233,8 @@ function createMcpServer(userId: string): McpServer {
                 name: project.name,
                 system_prompt: settings.systemPrompt || null,
                 welcome_message: settings.welcomeMessage || null,
+                allowed_domains: allowedDomains,
+                domain_whitelist_enabled: allowedDomains.length > 0,
                 knowledge_sources_count: knowledgeCount || 0,
                 api_endpoints_count: endpointCount || 0,
                 created_at: project.created_at,
@@ -448,12 +452,32 @@ function createMcpServer(userId: string): McpServer {
         .describe(
           "Custom system prompt that defines how this chatbot behaves and responds"
         ),
+      allowed_domains: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Domains where this chatbot can be embedded. Example: ['example.com', '*.example.com']. " +
+          "Leave empty to allow all domains (less secure). Use wildcards for subdomains."
+        ),
     },
-    async ({ name, system_prompt }) => {
+    async ({ name, system_prompt, allowed_domains }) => {
       // Build settings object
       const settings: Record<string, unknown> = {};
       if (system_prompt) {
         settings.systemPrompt = system_prompt.trim();
+      }
+
+      // Validate and normalize allowed domains
+      let normalizedDomains: string[] = [];
+      if (allowed_domains && allowed_domains.length > 0) {
+        const domainRegex = /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i;
+        for (const domain of allowed_domains) {
+          const trimmed = domain.trim().toLowerCase();
+          if (trimmed && domainRegex.test(trimmed)) {
+            normalizedDomains.push(trimmed);
+          }
+        }
+        normalizedDomains = [...new Set(normalizedDomains)]; // Remove duplicates
       }
 
       // Create project
@@ -463,8 +487,9 @@ function createMcpServer(userId: string): McpServer {
           user_id: userId,
           name: name.trim(),
           settings,
+          allowed_domains: normalizedDomains,
         })
-        .select("id, name, settings, created_at")
+        .select("id, name, settings, allowed_domains, created_at")
         .single();
 
       if (createError || !project) {
@@ -482,6 +507,8 @@ function createMcpServer(userId: string): McpServer {
         };
       }
 
+      const projectDomains = (project.allowed_domains as string[]) || [];
+
       return {
         content: [
           {
@@ -493,14 +520,128 @@ function createMcpServer(userId: string): McpServer {
                   id: project.id,
                   name: project.name,
                   system_prompt: (project.settings as Record<string, unknown>)?.systemPrompt || null,
+                  allowed_domains: projectDomains,
+                  domain_whitelist_enabled: projectDomains.length > 0,
                   created_at: project.created_at,
                 },
                 message: "Project created successfully. Use this project_id with other tools to manage this chatbot.",
+                security_note: projectDomains.length === 0
+                  ? "No domain whitelist configured. Widget can be used on any site. Use set_allowed_domains to restrict."
+                  : `Widget restricted to: ${projectDomains.join(', ')}`,
                 next_steps: [
                   "Add knowledge sources with upload_knowledge (project_id: " + project.id + ")",
                   "Configure API endpoints with add_api_endpoint",
                   "Get embed code with get_embed_code",
                 ],
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
+
+  // ===== TOOL: set_allowed_domains =====
+  server.tool(
+    "set_allowed_domains",
+    "Configure which domains can embed the chatbot widget. This is a security feature to prevent unauthorized usage of your chatbot on other websites.",
+    {
+      project_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe("Project ID. If not specified and you have only one project, that project will be used."),
+      domains: z
+        .array(z.string())
+        .describe(
+          "List of allowed domains. Examples: " +
+          "['mysite.com'] - only mysite.com and www.mysite.com, " +
+          "['*.mysite.com'] - all subdomains, " +
+          "[] - allow ALL domains (removes restriction, less secure)"
+        ),
+    },
+    async ({ project_id, domains }) => {
+      // Resolve project ID
+      const resolved = await resolveProjectId(userId, project_id);
+      if ("error" in resolved) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ error: resolved.error }) }],
+          isError: true,
+        };
+      }
+      const targetProjectId = resolved.projectId;
+
+      // Validate and normalize domains
+      const domainRegex = /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i;
+      const validatedDomains: string[] = [];
+
+      for (const domain of domains) {
+        if (typeof domain !== 'string') continue;
+        const trimmed = domain.trim().toLowerCase();
+        if (!trimmed) continue;
+
+        if (!domainRegex.test(trimmed)) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  error: `Invalid domain format: ${domain}. Use format like 'example.com' or '*.example.com'`,
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
+        validatedDomains.push(trimmed);
+      }
+
+      // Remove duplicates
+      const uniqueDomains = [...new Set(validatedDomains)];
+
+      // Update project
+      const { data: project, error: updateError } = await supabaseAdmin
+        .from("projects")
+        .update({ allowed_domains: uniqueDomains })
+        .eq("id", targetProjectId)
+        .select("id, allowed_domains")
+        .single();
+
+      if (updateError || !project) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                error: "Failed to update allowed domains",
+                details: updateError?.message,
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      const updatedDomains = (project.allowed_domains as string[]) || [];
+
+      // Clear the domain cache for this project
+      clearDomainCache(targetProjectId);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                success: true,
+                allowed_domains: updatedDomains,
+                domain_whitelist_enabled: updatedDomains.length > 0,
+                message: updatedDomains.length > 0
+                  ? `Domain whitelist updated. Widget restricted to: ${updatedDomains.join(', ')}`
+                  : 'Domain whitelist disabled. Widget can now be embedded on any domain.',
+                note: "Only localhost is always allowed for development. Add preview domains (e.g., *.vercel.app) explicitly if needed.",
               },
               null,
               2
@@ -1148,6 +1289,15 @@ function createMcpServer(userId: string): McpServer {
       }
       const targetProjectId = resolved.projectId;
 
+      // Fetch project to get allowed_domains
+      const { data: project } = await supabaseAdmin
+        .from("projects")
+        .select("allowed_domains")
+        .eq("id", targetProjectId)
+        .single();
+
+      const allowedDomains = (project?.allowed_domains as string[]) || [];
+
       // Build embed code with optional customizations
       let embedCode = `<script src="${WIDGET_CDN_URL}/widget.js" data-project-id="${targetProjectId}" data-api-url="${API_URL}"`;
 
@@ -1175,6 +1325,9 @@ function createMcpServer(userId: string): McpServer {
                 embed_code: embedCode,
                 instructions:
                   "Add this script tag to your HTML just before the closing </body> tag. The chat widget will appear on your page.",
+                security_note: allowedDomains.length === 0
+                  ? "No domain whitelist configured. Widget can be embedded on any site. Use set_allowed_domains to restrict access."
+                  : `Widget restricted to: ${allowedDomains.join(', ')}. Use set_allowed_domains to update.`,
                 customization_options: {
                   position: "bottom-right or bottom-left",
                   color: "Any hex color (e.g., #ff5733)",

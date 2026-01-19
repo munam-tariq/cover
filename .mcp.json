@@ -42,6 +42,14 @@
         "headers": {
           "X-API-Key": "ck_rzc6lhfyeo5aaej4h7jeev0al34sbkua"
         }
+      },
+      "toplayer": {
+        "type": "http",
+        "url": "https://api.toplayer.app/mcp",
+        "headers": {
+          "X-API-Key": "tl_wf9kC8pBont4cjea-Rsb8G5pWZZ1Bbc9",
+          "X-Project-ID": "supportbase"
+        }
       }
     }
   }

@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
-import { Button, Card, CardContent, Skeleton, Switch, Label } from "@chatbot/ui";
-import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff, Users, ChevronRight } from "lucide-react";
+import { Button, Card, CardContent, Skeleton, Switch, Label, Badge, Input } from "@chatbot/ui";
+import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff, Users, ChevronRight, Shield, ShieldCheck, ShieldAlert, Plus, X } from "lucide-react";
 import Link from "next/link";
 
 interface UpdatedProject {
@@ -72,6 +72,13 @@ export default function SettingsPage() {
   const [leadCaptureEmail, setLeadCaptureEmail] = useState("");
   const [leadNotificationsEnabled, setLeadNotificationsEnabled] = useState(true);
 
+  // Domain whitelist state
+  const [allowedDomains, setAllowedDomains] = useState<string[]>([]);
+  const [newDomain, setNewDomain] = useState("");
+  const [domainError, setDomainError] = useState<string | null>(null);
+  const [savingDomains, setSavingDomains] = useState(false);
+  const [loadingDomains, setLoadingDomains] = useState(true);
+
   const router = useRouter();
 
   // Initialize form when project loads
@@ -86,6 +93,29 @@ export default function SettingsPage() {
       setLeadCaptureEmail((settings.lead_capture_email as string) || "");
       setLeadNotificationsEnabled(settings.lead_notifications_enabled !== false);
     }
+  }, [currentProject]);
+
+  // Fetch allowed domains when project changes
+  useEffect(() => {
+    const fetchAllowedDomains = async () => {
+      if (!currentProject) {
+        setLoadingDomains(false);
+        return;
+      }
+      setLoadingDomains(true);
+      try {
+        const response = await apiClient<{ domains: string[]; enabled: boolean }>(
+          `/api/projects/${currentProject.id}/allowed-domains`
+        );
+        setAllowedDomains(response.domains || []);
+      } catch (err) {
+        console.error("Failed to fetch allowed domains:", err);
+        setAllowedDomains([]);
+      } finally {
+        setLoadingDomains(false);
+      }
+    };
+    fetchAllowedDomains();
   }, [currentProject]);
 
   // Fetch API key status on mount
@@ -321,6 +351,58 @@ export default function SettingsPage() {
       setError("Failed to save lead capture settings");
     } finally {
       setSavingLeadCapture(false);
+    }
+  };
+
+  // Domain whitelist handlers
+  const handleAddDomain = () => {
+    const domain = newDomain.trim().toLowerCase();
+
+    if (!domain) return;
+
+    // Basic validation - allows wildcards like *.example.com
+    const domainRegex = /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/;
+    if (!domainRegex.test(domain)) {
+      setDomainError("Invalid domain format. Example: example.com or *.example.com");
+      return;
+    }
+
+    if (allowedDomains.includes(domain)) {
+      setDomainError("Domain already added");
+      return;
+    }
+
+    setAllowedDomains([...allowedDomains, domain]);
+    setNewDomain("");
+    setDomainError(null);
+  };
+
+  const handleRemoveDomain = (domain: string) => {
+    setAllowedDomains(allowedDomains.filter((d) => d !== domain));
+  };
+
+  const handleSaveDomains = async () => {
+    if (!currentProject) return;
+
+    setSavingDomains(true);
+    setDomainError(null);
+
+    try {
+      await apiClient(`/api/projects/${currentProject.id}/allowed-domains`, {
+        method: "PUT",
+        body: JSON.stringify({ domains: allowedDomains }),
+      });
+      setSuccess(
+        allowedDomains.length > 0
+          ? "Domain whitelist updated"
+          : "Domain whitelist disabled"
+      );
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save domains";
+      setDomainError(message);
+    } finally {
+      setSavingDomains(false);
     }
   };
 
@@ -775,6 +857,108 @@ export default function SettingsPage() {
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
             </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold">Domain Whitelist</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Restrict which websites can embed your chat widget. Leave empty to allow all domains.
+            </p>
+
+            {loadingDomains ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Current Domains */}
+                {allowedDomains.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Allowed Domains</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {allowedDomains.map((domain) => (
+                        <Badge
+                          key={domain}
+                          variant="secondary"
+                          className="flex items-center gap-1 px-3 py-1"
+                        >
+                          {domain}
+                          <button
+                            onClick={() => handleRemoveDomain(domain)}
+                            className="ml-1 hover:text-destructive"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add Domain Input */}
+                <div className="space-y-2">
+                  <Label htmlFor="new-domain">Add Domain</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="new-domain"
+                      value={newDomain}
+                      onChange={(e) => {
+                        setNewDomain(e.target.value);
+                        setDomainError(null);
+                      }}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddDomain()}
+                      placeholder="example.com or *.example.com"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={handleAddDomain}
+                      disabled={!newDomain.trim()}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {domainError && (
+                    <p className="text-sm text-destructive">{domainError}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Use *.example.com to allow all subdomains. Only localhost is always allowed.
+                  </p>
+                </div>
+
+                {/* Status Indicator */}
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                  {allowedDomains.length > 0 ? (
+                    <>
+                      <ShieldCheck className="h-4 w-4 text-green-500" />
+                      <span className="text-sm">
+                        Widget restricted to {allowedDomains.length} domain{allowedDomains.length !== 1 ? "s" : ""}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldAlert className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">
+                        Widget can be embedded on any domain
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                <div className="pt-2">
+                  <Button onClick={handleSaveDomains} disabled={savingDomains}>
+                    {savingDomains && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {savingDomains ? "Saving..." : "Save Domain Settings"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -8,11 +8,14 @@
  * - PUT /api/projects/:id - Update a project
  * - DELETE /api/projects/:id - Soft delete a project
  * - GET /api/projects/:id/onboarding - Get onboarding progress for a project
+ * - GET /api/projects/:id/allowed-domains - Get allowed domains for widget embedding
+ * - PUT /api/projects/:id/allowed-domains - Update allowed domains for widget embedding
  */
 
 import { Router, Request, Response } from "express";
 import { createClient } from "@supabase/supabase-js";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
+import { clearDomainCache } from "../middleware/domain-whitelist";
 
 const router = Router();
 
@@ -543,6 +546,137 @@ router.get("/:id/onboarding", authMiddleware, async (req: Request, res: Response
     });
   } catch (error) {
     console.error("Error in GET /projects/:id/onboarding:", error);
+    res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
+  }
+});
+
+/**
+ * GET /api/projects/:id/allowed-domains
+ * Get allowed domains for a project (domain whitelisting)
+ */
+router.get("/:id/allowed-domains", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req as AuthenticatedRequest;
+    const { id } = req.params;
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: { code: "INVALID_ID", message: "Invalid project ID format" } });
+    }
+
+    // Check access: user must be owner or member
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("id, allowed_domains, user_id")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .single();
+
+    if (projectError || !project) {
+      return res.status(404).json({ error: { code: "NOT_FOUND", message: "Project not found" } });
+    }
+
+    // Verify ownership or membership
+    const isOwner = project.user_id === userId;
+    if (!isOwner) {
+      const { data: membership } = await supabase
+        .from("project_members")
+        .select("role")
+        .eq("project_id", id)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .single();
+
+      if (!membership) {
+        return res.status(404).json({ error: { code: "NOT_FOUND", message: "Project not found" } });
+      }
+    }
+
+    const domains = project.allowed_domains || [];
+
+    res.json({
+      domains,
+      enabled: domains.length > 0,
+    });
+  } catch (error) {
+    console.error("Error in GET /projects/:id/allowed-domains:", error);
+    res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
+  }
+});
+
+/**
+ * PUT /api/projects/:id/allowed-domains
+ * Update allowed domains for a project (domain whitelisting)
+ * Body: { domains: string[] }
+ */
+router.put("/:id/allowed-domains", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req as AuthenticatedRequest;
+    const { id } = req.params;
+    const { domains } = req.body;
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: { code: "INVALID_ID", message: "Invalid project ID format" } });
+    }
+
+    // Validate domains input
+    if (!Array.isArray(domains)) {
+      return res.status(400).json({
+        error: { code: "INVALID_INPUT", message: "domains must be an array" }
+      });
+    }
+
+    // Validate each domain
+    const validatedDomains: string[] = [];
+    const domainRegex = /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i;
+
+    for (const domain of domains) {
+      if (typeof domain !== 'string') continue;
+
+      const trimmed = domain.trim().toLowerCase();
+      if (!trimmed) continue;
+
+      if (!domainRegex.test(trimmed)) {
+        return res.status(400).json({
+          error: { code: "INVALID_INPUT", message: `Invalid domain format: ${domain}` }
+        });
+      }
+
+      validatedDomains.push(trimmed);
+    }
+
+    // Remove duplicates
+    const uniqueDomains = [...new Set(validatedDomains)];
+
+    // Check access and update project (owner only for security settings)
+    const { data: project, error: updateError } = await supabase
+      .from("projects")
+      .update({ allowed_domains: uniqueDomains })
+      .eq("id", id)
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .select("id, allowed_domains")
+      .single();
+
+    if (updateError || !project) {
+      return res.status(404).json({ error: { code: "NOT_FOUND", message: "Project not found or you don't have permission" } });
+    }
+
+    // Clear the domain cache for this project
+    clearDomainCache(id);
+
+    res.json({
+      domains: project.allowed_domains || [],
+      enabled: (project.allowed_domains || []).length > 0,
+      message: uniqueDomains.length > 0
+        ? `Domain whitelist updated with ${uniqueDomains.length} domain(s)`
+        : 'Domain whitelist disabled (all domains allowed)',
+    });
+  } catch (error) {
+    console.error("Error in PUT /projects/:id/allowed-domains:", error);
     res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
   }
 });

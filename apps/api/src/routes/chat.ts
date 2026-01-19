@@ -7,6 +7,7 @@
 
 import { Router, Request, Response } from "express";
 import { chatRateLimiter, getRateLimitStatus } from "../middleware/rate-limit";
+import { domainWhitelistMiddleware } from "../middleware/domain-whitelist";
 import {
   processChat,
   validateChatInput,
@@ -38,6 +39,7 @@ export const chatRouter = Router();
  */
 chatRouter.post(
   "/message",
+  domainWhitelistMiddleware({ requireDomain: true, projectIdSource: 'body' }),
   chatRateLimiter,
   async (req: Request, res: Response) => {
     const startTime = Date.now();

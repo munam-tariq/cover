@@ -44,6 +44,7 @@ export interface ApiError {
 export class ChatApiError extends Error {
   code: string;
   isRateLimited: boolean;
+  isDomainBlocked: boolean;
   retryAfter?: number;
 
   constructor(code: string, message: string, retryAfter?: number) {
@@ -51,6 +52,7 @@ export class ChatApiError extends Error {
     this.code = code;
     this.name = "ChatApiError";
     this.isRateLimited = code === "RATE_LIMITED" || code === "TOO_MANY_REQUESTS";
+    this.isDomainBlocked = code === "DOMAIN_NOT_ALLOWED";
     this.retryAfter = retryAfter;
   }
 }
@@ -86,6 +88,24 @@ export async function sendMessage(
       "RATE_LIMITED",
       "Too many messages. Please wait a moment and try again.",
       retryAfter
+    );
+  }
+
+  // Handle domain not allowed (403)
+  if (response.status === 403) {
+    const errorData = await response.json().catch(() => ({}));
+    const error = errorData.error as ApiError | undefined;
+
+    if (error?.code === "DOMAIN_NOT_ALLOWED") {
+      throw new ChatApiError(
+        "DOMAIN_NOT_ALLOWED",
+        "This chat widget is not authorized for this website."
+      );
+    }
+
+    throw new ChatApiError(
+      error?.code || "FORBIDDEN",
+      error?.message || "Access denied."
     );
   }
 
