@@ -1,11 +1,11 @@
 # Feature Implementation Progress
 
 ## Overview
-- **Total Features**: 23
-- **Completed**: 13
+- **Total Features**: 26
+- **Completed**: 14
 - **In Progress**: 0
-- **Planned**: 1 (Quick Questions)
-- **Remaining**: 9 (V2/V3 features)
+- **Planned**: 4 (Quick Questions, Micro-Surveys, Smart Lead Capture, Message Analytics)
+- **Remaining**: 8 (V2/V3 features)
 
 ## Currently In Progress
 
@@ -13,11 +13,50 @@
 
 ## Planned Features
 
+### Message Analytics Metadata ✅ IMPLEMENTED
+- **Status**: Implemented (Jan 2025)
+- **Spec**: [message-analytics/spec.md](./message-analytics/spec.md)
+- **Summary**: Capture contextual metadata with each chat message for analytics, reporting, and user insights. Includes device info (browser, OS, device type), page context (URL, title, referrer), and geolocation (country, city from IP).
+- **Implementation**:
+  - Widget: `device-info.ts` collects browser, OS, device, page context
+  - API: `ip-geo.ts` service for IP geolocation via ip-api.com
+  - Storage: `messages.metadata` JSONB and `customers` table fields (last_browser, last_device, last_os, last_page_url, last_location)
+- **Dependencies**: widget ✅, chat-engine ✅
+
+---
+
 ### Quick Questions / Suggested Starters
 - **Status**: Spec Complete, Ready for Implementation
 - **Spec**: [quick-questions/spec.md](./quick-questions/spec.md)
 - **Summary**: Display clickable question suggestions near chat bubble and inside chat window to help users start conversations with one click. Supports static (manual), analytics (auto from top questions), and hybrid modes.
 - **Dependencies**: widget ✅, chat-analytics ✅
+
+---
+
+### Micro-Surveys (Delightful Feedback)
+- **Status**: Spec Complete, Ready for Implementation
+- **Spec**: [micro-surveys/spec.md](./micro-surveys/spec.md)
+- **Summary**: Floating popup surveys with delightful illustrated shapes (happy blob, cool sunglasses, meh face, sad drop, angry spike, etc.) for collecting user feedback. Triggers based on events (conversation end, page exit, time-based). Lightweight alternative to traditional surveys.
+- **Key Features**:
+  - 10 illustrated SVG mood shapes with animations
+  - Question types: mood selection, star rating, NPS, text feedback
+  - Smart triggers: after conversation, on page exit, time-based
+  - Dashboard for creating/managing surveys and viewing responses
+- **Dependencies**: widget ✅
+
+---
+
+### Smart Lead Capture (Pre-Chat vs In-Chat)
+- **Status**: Research Complete, Spec Ready
+- **Spec**: [lead-capture/spec.md](./lead-capture/spec.md)
+- **Summary**: Research and recommendations on email collection strategy. Industry consensus: DON'T gate conversations with pre-chat forms. Recommends smart in-chat email capture triggered contextually (after value delivered, when bot can't answer, before handoff).
+- **Key Findings**:
+  - Pre-chat forms cause 40%+ abandonment
+  - Chatbots convert 3x better than forms
+  - Progressive profiling (ask during chat) is best practice
+  - All major competitors make pre-chat forms optional
+- **Recommendation**: Implement smart contextual email capture, NOT mandatory pre-chat forms
+- **Dependencies**: lead-capture (existing) ✅, widget ✅
 
 ---
 
@@ -106,6 +145,41 @@ These features take priority over the remaining Enhanced (V2) features.
 ---
 
 ## Completed Features
+
+### #14: message-analytics ✅
+- **Started**: 2025-01-22
+- **Completed**: 2025-01-22
+- **Category**: enhanced
+- **Summary**: Capture contextual metadata with each chat message for analytics, reporting, and user insights. Collects device info, page context, and geolocation to help businesses understand their customers better.
+- **Key Files**:
+  - `apps/widget/src/utils/device-info.ts` - NEW: Device detection utility (browser, OS, device type, page context)
+  - `apps/widget/src/utils/api.ts` - MODIFIED: Added context to message payload
+  - `apps/api/src/services/ip-geo.ts` - NEW: IP geolocation service using ip-api.com
+  - `apps/api/src/routes/chat.ts` - MODIFIED: Captures IP, calls geolocation, merges context
+  - `apps/api/src/services/chat-engine.ts` - MODIFIED: Added MessageContext type, passes context through
+  - `apps/api/src/services/conversation.ts` - MODIFIED: Updates customers table and stores context in message metadata
+  - `docs/product/features/message-analytics/spec.md` - Full product specification
+- **Data Captured**:
+  - **Per Message** (in `messages.metadata` JSONB):
+    - pageUrl, pageTitle, referrer
+    - browser, os, device
+    - country, city, timezone
+  - **Per Customer** (in `customers` table):
+    - last_browser (e.g., "Chrome 120")
+    - last_device ("desktop" | "mobile" | "tablet")
+    - last_os (e.g., "macOS 14.2")
+    - last_page_url
+    - last_location (e.g., "San Francisco, United States")
+- **Features**:
+  - Browser detection (Chrome, Firefox, Edge, Safari, Opera)
+  - OS detection (Windows, macOS, Linux, Android, iOS)
+  - Device type detection (desktop, mobile, tablet)
+  - Page context (URL, title, referrer)
+  - IP geolocation via free ip-api.com service (no API key needed)
+  - Privacy-conscious: skips localhost/private IPs, strips sensitive URL params
+- **Notes**: Geolocation only works for public IPs. Dashboard UI for viewing this data is a future enhancement.
+
+---
 
 ### #13: human-handoff ✅
 - **Started**: 2025-01-15
@@ -675,21 +749,36 @@ These features take priority over the remaining Enhanced (V2) features.
 ### Immediate Priority
 All immediate priority features have been completed! 🎉
 
+### Recently Completed
+1. **#14: message-analytics** - Contextual metadata with messages ✅
+   - Spec: [message-analytics/spec.md](./message-analytics/spec.md)
+   - Captures: browser, OS, device type, page URL, geolocation
+
 ### Planned Features - Ready for Implementation
-1. **#14: quick-questions** - Suggested conversation starters
+1. **#15: quick-questions** - Suggested conversation starters
    - Spec: [quick-questions/spec.md](./quick-questions/spec.md)
    - Dependencies: widget ✅, chat-analytics ✅
    - Summary: Clickable question suggestions near chat bubble and in chat window
 
+2. **#16: micro-surveys** - Delightful feedback collection
+   - Spec: [micro-surveys/spec.md](./micro-surveys/spec.md)
+   - Dependencies: widget ✅
+   - Summary: Floating popup surveys with illustrated mood shapes
+
+3. **#17: smart-lead-capture** - Contextual email collection
+   - Spec: [lead-capture/spec.md](./lead-capture/spec.md)
+   - Dependencies: lead-capture ✅, widget ✅
+   - Summary: Smart in-chat email capture (NOT pre-chat gates)
+
 ### Enhanced (V2) - Next in Queue
-1. **#15: conversation-history** - View and search past conversations
+1. **#18: conversation-history** - View and search past conversations
    - Spec: [conversation-history/spec.md](./enhanced/conversation-history/spec.md)
    - Dependencies: chat-engine ✅
 
-2. **#16: widget-customization** - Colors, position, branding
+2. **#19: widget-customization** - Colors, position, branding
    - Spec: [widget-customization/spec.md](./enhanced/widget-customization/spec.md)
    - Dependencies: widget ✅
 
-3. **#17: docx-support** - Support for .doc/.docx files
+3. **#20: docx-support** - Support for .doc/.docx files
    - Spec: [docx-support/spec.md](./enhanced/docx-support/spec.md)
    - Dependencies: knowledge-base ✅

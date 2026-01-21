@@ -61,6 +61,28 @@ import { broadcastNewMessage } from "./realtime";
 export type ChatSource = "widget" | "playground" | "mcp" | "api";
 
 /**
+ * Context metadata from the widget/client for analytics
+ */
+export interface MessageContext {
+  pageUrl?: string;
+  pageTitle?: string;
+  referrer?: string;
+  browser?: string;
+  browserVersion?: string;
+  os?: string;
+  osVersion?: string;
+  device?: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  timezone?: string;
+  language?: string;
+  ipAddress?: string;
+  country?: string;
+  city?: string;
+  countryCode?: string;
+}
+
+/**
  * Input for processing a chat message
  */
 export interface ChatInput {
@@ -70,6 +92,7 @@ export interface ChatInput {
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>;
   sessionId?: string;
   source?: ChatSource;
+  context?: MessageContext;
 }
 
 /**
@@ -195,7 +218,8 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
         input.projectId,
         input.visitorId,
         input.sessionId,
-        input.source || "widget"
+        input.source || "widget",
+        input.context
       );
 
       // Log the user message that triggered handoff
@@ -205,7 +229,8 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
         sanitizedMessage,
         handoffResult.message,
         0,
-        0
+        0,
+        input.context
       ).catch(console.error);
 
       return {
@@ -250,7 +275,8 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
         input.projectId,
         input.visitorId,
         input.sessionId,
-        input.source || "widget"
+        input.source || "widget",
+        input.context
       );
 
       // Log the user message that triggered low confidence handoff
@@ -260,7 +286,8 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
         sanitizedMessage,
         lowConfidenceResult.message,
         retrievedChunks.length,
-        0
+        0,
+        input.context
       ).catch(console.error);
 
       return {
@@ -322,7 +349,8 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       input.projectId,
       input.visitorId,
       input.sessionId,
-      input.source || "widget"
+      input.source || "widget",
+      input.context
     );
 
     // 11. Lead Capture Flow
@@ -374,7 +402,8 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       sanitizedMessage,
       finalResponse,
       retrievedChunks.length,
-      toolCallsInfo.length
+      toolCallsInfo.length,
+      input.context
     ).catch(console.error);
 
     return {
@@ -581,7 +610,8 @@ async function getOrCreateSession(
   projectId: string,
   visitorId: string,
   existingSessionId?: string,
-  source: ChatSource = "widget"
+  source: ChatSource = "widget",
+  context?: MessageContext
 ): Promise<string> {
   // If session ID provided and valid, use it
   if (existingSessionId) {
@@ -593,6 +623,12 @@ async function getOrCreateSession(
       .single();
 
     if (existing) {
+      // Update customer with latest context
+      try {
+        await getOrCreateConversation(projectId, visitorId, existingSessionId, source, context);
+      } catch {
+        // Ignore errors - just ensure customer context is updated
+      }
       return existing.id;
     }
   }
@@ -609,6 +645,12 @@ async function getOrCreateSession(
     .single();
 
   if (existingSession) {
+    // Update customer with latest context
+    try {
+      await getOrCreateConversation(projectId, visitorId, existingSession.id, source, context);
+    } catch {
+      // Ignore errors - just ensure customer context is updated
+    }
     return existingSession.id;
   }
 
@@ -632,7 +674,7 @@ async function getOrCreateSession(
 
   // Always create in new conversations table (required for widget status/handoff)
   try {
-    await getOrCreateConversation(projectId, visitorId, newSession.id, source);
+    await getOrCreateConversation(projectId, visitorId, newSession.id, source, context);
   } catch (dualWriteError) {
     console.error("Failed to create conversation in new table:", dualWriteError);
     // Don't fail the request, just log the error
@@ -651,7 +693,8 @@ async function logConversation(
   userMessage: string,
   assistantResponse: string,
   sourcesUsed: number,
-  toolCallsCount: number
+  toolCallsCount: number,
+  context?: MessageContext
 ): Promise<void> {
   try {
     // Write to legacy chat_sessions table
@@ -702,7 +745,7 @@ async function logConversation(
         sourcesUsed,
         toolCallsCount,
         model: MODEL,
-      });
+      }, context);
     }
   } catch (error) {
     console.error("Failed to log conversation:", error);

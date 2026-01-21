@@ -7,6 +7,8 @@
  * - Error handling and retry logic
  */
 
+import { getDeviceInfo } from "./device-info";
+
 export interface SendMessageOptions {
   apiUrl: string;
   projectId: string;
@@ -65,6 +67,9 @@ export async function sendMessage(
 ): Promise<SendMessageResponse> {
   const { apiUrl, projectId, message, visitorId, sessionId, conversationHistory } = options;
 
+  // Collect device and page context for analytics
+  const deviceInfo = getDeviceInfo();
+
   const response = await fetch(`${apiUrl}/api/chat/message`, {
     method: "POST",
     headers: {
@@ -78,6 +83,21 @@ export async function sendMessage(
       sessionId: sessionId || undefined,
       conversationHistory: conversationHistory || [],
       source: "widget",
+      // Device and page context for analytics
+      context: {
+        pageUrl: deviceInfo.pageUrl,
+        pageTitle: deviceInfo.pageTitle,
+        referrer: deviceInfo.referrer,
+        browser: deviceInfo.browser,
+        browserVersion: deviceInfo.browserVersion,
+        os: deviceInfo.os,
+        osVersion: deviceInfo.osVersion,
+        device: deviceInfo.device,
+        screenWidth: deviceInfo.screenWidth,
+        screenHeight: deviceInfo.screenHeight,
+        timezone: deviceInfo.timezone,
+        language: deviceInfo.language,
+      },
     }),
   });
 

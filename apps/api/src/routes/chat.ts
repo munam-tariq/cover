@@ -14,6 +14,7 @@ import {
   ChatError,
 } from "../services/chat-engine";
 import { supabaseAdmin } from "../lib/supabase";
+import { getGeoFromIP } from "../services/ip-geo";
 
 export const chatRouter = Router();
 
@@ -48,8 +49,28 @@ chatRouter.post(
       // Validate input
       const input = validateChatInput(req.body);
 
-      // Process the chat message
-      const result = await processChat(input);
+      // Capture IP address (handle proxies)
+      const forwardedFor = req.headers["x-forwarded-for"];
+      const ipAddress =
+        typeof forwardedFor === "string"
+          ? forwardedFor.split(",")[0].trim()
+          : req.ip || "";
+
+      // Get geolocation from IP (non-blocking - use cached or fetched)
+      const geo = await getGeoFromIP(ipAddress);
+
+      // Merge context from widget with server-side data
+      const context = req.body.context || {};
+      const fullContext = {
+        ...context,
+        ipAddress,
+        country: geo?.country || context.country,
+        city: geo?.city || context.city,
+        countryCode: geo?.countryCode,
+      };
+
+      // Process the chat message with full context
+      const result = await processChat({ ...input, context: fullContext });
 
       // Return successful response
       res.json({

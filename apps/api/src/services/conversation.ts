@@ -6,7 +6,7 @@
  */
 
 import { supabaseAdmin } from "../lib/supabase";
-import type { ChatSource } from "./chat-engine";
+import type { ChatSource, MessageContext } from "./chat-engine";
 
 export interface ConversationData {
   id: string;
@@ -41,7 +41,8 @@ export async function getOrCreateConversation(
   projectId: string,
   visitorId: string,
   existingConversationId?: string,
-  source: ChatSource = "widget"
+  source: ChatSource = "widget",
+  context?: MessageContext
 ): Promise<string> {
   // If conversation ID provided, try to use it or create with that ID
   if (existingConversationId) {
@@ -53,11 +54,13 @@ export async function getOrCreateConversation(
       .single();
 
     if (existing) {
+      // Update customer with latest context
+      await getOrCreateCustomer(projectId, visitorId, context);
       return existing.id;
     }
 
     // Conversation doesn't exist with this ID, create it with the specified ID
-    const customerId = await getOrCreateCustomer(projectId, visitorId);
+    const customerId = await getOrCreateCustomer(projectId, visitorId, context);
 
     const { data: newConv, error: insertError } = await supabaseAdmin
       .from("conversations")
@@ -91,8 +94,8 @@ export async function getOrCreateConversation(
     return newConv.id;
   }
 
-  // Find or create customer
-  const customerId = await getOrCreateCustomer(projectId, visitorId);
+  // Find or create customer with context
+  const customerId = await getOrCreateCustomer(projectId, visitorId, context);
 
   // Try to find existing active conversation for this visitor
   const { data: existingConversation } = await supabaseAdmin
@@ -133,12 +136,43 @@ export async function getOrCreateConversation(
 }
 
 /**
- * Get or create a customer record
+ * Get or create a customer record and update device/location context
  */
 async function getOrCreateCustomer(
   projectId: string,
-  visitorId: string
+  visitorId: string,
+  context?: MessageContext
 ): Promise<string> {
+  // Build customer update data with context
+  const customerUpdate: Record<string, unknown> = {
+    last_seen_at: new Date().toISOString(),
+  };
+
+  // Add device context if provided
+  if (context) {
+    if (context.browser) {
+      customerUpdate.last_browser = context.browserVersion
+        ? `${context.browser} ${context.browserVersion}`
+        : context.browser;
+    }
+    if (context.device) {
+      customerUpdate.last_device = context.device;
+    }
+    if (context.os) {
+      customerUpdate.last_os = context.osVersion
+        ? `${context.os} ${context.osVersion}`
+        : context.os;
+    }
+    if (context.pageUrl) {
+      customerUpdate.last_page_url = context.pageUrl;
+    }
+    if (context.city && context.country) {
+      customerUpdate.last_location = `${context.city}, ${context.country}`;
+    } else if (context.country) {
+      customerUpdate.last_location = context.country;
+    }
+  }
+
   // Try to find existing customer
   const { data: existing } = await supabaseAdmin
     .from("customers")
@@ -148,20 +182,21 @@ async function getOrCreateCustomer(
     .single();
 
   if (existing) {
-    // Update last seen
+    // Update last seen and device context
     await supabaseAdmin
       .from("customers")
-      .update({ last_seen_at: new Date().toISOString() })
+      .update(customerUpdate)
       .eq("id", existing.id);
     return existing.id;
   }
 
-  // Create new customer
+  // Create new customer with context
   const { data: newCustomer, error } = await supabaseAdmin
     .from("customers")
     .insert({
       project_id: projectId,
       visitor_id: visitorId,
+      ...customerUpdate,
     })
     .select("id")
     .single();
@@ -215,15 +250,29 @@ export async function logConversationMessages(
     sourcesUsed?: number;
     toolCallsCount?: number;
     model?: string;
-  }
+  },
+  context?: MessageContext
 ): Promise<void> {
   try {
-    // Add user message
+    // Build customer message metadata with context
+    const customerMetadata: Record<string, unknown> = {};
+    if (context) {
+      if (context.pageUrl) customerMetadata.pageUrl = context.pageUrl;
+      if (context.pageTitle) customerMetadata.pageTitle = context.pageTitle;
+      if (context.browser) customerMetadata.browser = context.browser;
+      if (context.os) customerMetadata.os = context.os;
+      if (context.device) customerMetadata.device = context.device;
+      if (context.country) customerMetadata.country = context.country;
+      if (context.city) customerMetadata.city = context.city;
+      if (context.timezone) customerMetadata.timezone = context.timezone;
+    }
+
+    // Add user message with context metadata
     await supabaseAdmin.from("messages").insert({
       conversation_id: conversationId,
       sender_type: "customer",
       content: userMessage,
-      metadata: {},
+      metadata: customerMetadata,
     });
 
     // Add assistant message with metadata
