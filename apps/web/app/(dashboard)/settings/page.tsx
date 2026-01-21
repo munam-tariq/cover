@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
 import { Button, Card, CardContent, Skeleton, Switch, Label, Badge, Input } from "@chatbot/ui";
-import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff, Users, ChevronRight, Shield, ShieldCheck, ShieldAlert, Plus, X } from "lucide-react";
+import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff, Users, ChevronRight, Shield, ShieldCheck, ShieldAlert, Plus, X, ChevronDown } from "lucide-react";
 import Link from "next/link";
 
 interface UpdatedProject {
@@ -80,6 +80,23 @@ export default function SettingsPage() {
   const [loadingDomains, setLoadingDomains] = useState(true);
 
   const router = useRouter();
+
+  // System prompt presets
+  const systemPromptPresets = [
+    {
+      name: "Customer Support",
+      prompt: "You are a helpful customer support agent. Answer support questions, help troubleshoot issues, and guide customers through common problems. Be friendly, patient, and thorough in your responses. If you don't know the answer, offer to connect the customer with a human agent."
+    },
+    {
+      name: "Sales",
+      prompt: "You are a knowledgeable sales assistant. Help potential customers understand our products and services, answer questions about pricing and features, and guide them toward solutions that fit their needs. Be persuasive but honest, and focus on understanding customer requirements before making recommendations."
+    },
+    {
+      name: "Shopping Assistant",
+      prompt: "You are a friendly shopping assistant. Help customers find products, compare options, check availability, and answer questions about orders and shipping. Provide personalized recommendations based on customer preferences and help them make informed purchasing decisions."
+    }
+  ];
+  const [showPresets, setShowPresets] = useState(false);
 
   // Initialize form when project loads
   useEffect(() => {
@@ -512,18 +529,48 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  System Prompt
+                  Describe what you want your agent to do
                 </label>
-                <textarea
-                  rows={4}
-                  value={systemPrompt}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
-                  placeholder="You are a helpful assistant that answers questions based on the provided knowledge base..."
-                  maxLength={2000}
-                  className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                />
+                <div className="relative">
+                  <textarea
+                    rows={4}
+                    value={systemPrompt}
+                    onChange={(e) => setSystemPrompt(e.target.value)}
+                    placeholder="Answer support questions, help troubleshoot issues, and guide customers through common problems"
+                    maxLength={2000}
+                    className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  />
+                  <div className="absolute bottom-2 right-2">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowPresets(!showPresets)}
+                        className="flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground bg-background border border-input rounded-md hover:bg-muted transition-colors"
+                      >
+                        Presets
+                        <ChevronDown className="h-4 w-4" />
+                      </button>
+                      {showPresets && (
+                        <div className="absolute bottom-full right-0 mb-1 w-48 bg-background border border-input rounded-md shadow-lg z-10">
+                          {systemPromptPresets.map((preset) => (
+                            <button
+                              key={preset.name}
+                              type="button"
+                              onClick={() => {
+                                setSystemPrompt(preset.prompt);
+                                setShowPresets(false);
+                              }}
+                              className="block w-full px-4 py-2 text-left text-sm hover:bg-muted first:rounded-t-md last:rounded-b-md"
+                            >
+                              {preset.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Instructions that define how your chatbot behaves and responds.
                   ({systemPrompt.length}/2000)
                 </p>
               </div>
