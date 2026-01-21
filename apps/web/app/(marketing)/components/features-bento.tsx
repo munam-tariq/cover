@@ -1,59 +1,59 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Brain, Mail, BarChart3, Folders, Plug, Zap } from "lucide-react";
+import { Users, Brain, Mail, BarChart3, Plug, Globe } from "lucide-react";
 
 const features = [
   {
-    title: "RAG-Powered Intelligence",
+    title: "Human Handoff",
     description:
-      "Your chatbot answers from YOUR documentation. Semantic search finds the right info every time. No hallucinations, just accurate answers.",
-    icon: Brain,
+      "AI handles the easy stuff. Your team handles the hard stuff. When questions get complex, customers connect to a real person instantly—with built-in queue management, agent assignment, and business hours. No one falls through the cracks.",
+    icon: Users,
     className: "md:col-span-2 md:row-span-2",
     gradient: "from-blue-500/10 via-blue-500/5 to-transparent",
     iconGradient: "from-blue-500 to-cyan-500",
   },
   {
-    title: "Lead Capture",
+    title: "Answers From Your Docs",
     description:
-      "When the chatbot can't answer, it captures emails. Never lose a potential customer.",
-    icon: Mail,
+      "Upload your FAQ, policies, product info. AI answers accurately from YOUR knowledge—no making things up.",
+    icon: Brain,
     className: "md:col-span-1",
     gradient: "from-green-500/10 via-green-500/5 to-transparent",
     iconGradient: "from-green-500 to-emerald-500",
   },
   {
-    title: "API Tool Calling",
+    title: "Never Miss a Lead",
     description:
-      "Connect your APIs. Let the chatbot check order status, look up accounts, fetch real-time data.",
-    icon: Plug,
+      "When AI can't answer, it captures customer emails so you can follow up. No lead left behind.",
+    icon: Mail,
     className: "md:col-span-1",
     gradient: "from-purple-500/10 via-purple-500/5 to-transparent",
     iconGradient: "from-purple-500 to-pink-500",
   },
   {
-    title: "Analytics Dashboard",
+    title: "See What Customers Ask",
     description:
-      "See what customers ask. Find gaps in your docs. Improve over time.",
+      "Analytics show common questions, gaps in your docs, and customer satisfaction. Improve over time.",
     icon: BarChart3,
     className: "md:col-span-1",
     gradient: "from-orange-500/10 via-orange-500/5 to-transparent",
     iconGradient: "from-orange-500 to-red-500",
   },
   {
-    title: "Multi-Project Support",
+    title: "Connect Your Tools",
     description:
-      "One account, unlimited chatbots. Perfect for agencies and multi-product companies.",
-    icon: Folders,
+      "Check order status, look up accounts, pull live data. Your chatbot can do more than just answer.",
+    icon: Plug,
     className: "md:col-span-1",
     gradient: "from-pink-500/10 via-pink-500/5 to-transparent",
     iconGradient: "from-pink-500 to-rose-500",
   },
   {
-    title: "MCP Integration",
+    title: "Works on Any Website",
     description:
-      "Works with Cursor, Claude, and any MCP-compatible AI. Build chatbots from your IDE.",
-    icon: Zap,
+      "Shopify, WordPress, Wix, custom sites—one line of code and you're live.",
+    icon: Globe,
     className: "md:col-span-1",
     gradient: "from-yellow-500/10 via-yellow-500/5 to-transparent",
     iconGradient: "from-yellow-500 to-amber-500",
@@ -87,7 +87,7 @@ export function FeaturesBento() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-            Everything you need. Nothing you don't.
+            Everything you need to stop answering the same questions
           </h2>
           <p className="text-xl text-slate-600">
             Powerful features without the enterprise complexity.
@@ -127,22 +127,22 @@ export function FeaturesBento() {
                   {feature.description}
                 </p>
 
-                {/* Large Card Extra Visual (RAG) */}
+                {/* Large Card Extra Visual (Human Handoff) */}
                 {index === 0 && (
                   <div className="mt-6 pt-6 border-t border-slate-100">
                     <div className="flex items-center gap-3">
                       <div className="flex -space-x-2">
-                        {[1, 2, 3].map((i) => (
+                        {["S", "M", "A"].map((initial, i) => (
                           <div
                             key={i}
-                            className="w-8 h-8 rounded-lg bg-slate-100 border-2 border-white flex items-center justify-center shadow-sm"
+                            className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 border-2 border-white flex items-center justify-center shadow-sm text-white text-xs font-bold"
                           >
-                            <div className="w-4 h-4 bg-gradient-to-r from-blue-400 to-cyan-400 rounded" />
+                            {initial}
                           </div>
                         ))}
                       </div>
                       <div className="text-sm text-slate-500">
-                        Chunks retrieved from your docs
+                        Your team standing by to help
                       </div>
                     </div>
                   </div>

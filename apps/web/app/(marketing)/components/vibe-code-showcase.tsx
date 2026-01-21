@@ -4,56 +4,30 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import {
   Check,
-  Loader2,
   MessageCircle,
-  Terminal,
   ArrowRight,
-  Code2,
-  Zap,
+  BarChart3,
+  FileText,
+  Users,
+  TrendingUp,
+  Clock,
 } from "lucide-react";
 
-// Typing animation hook
-function useTypewriter(text: string, speed: number = 30, startDelay: number = 0, shouldStart: boolean = false) {
-  const [displayedText, setDisplayedText] = useState("");
-  const [isComplete, setIsComplete] = useState(false);
-
-  useEffect(() => {
-    if (!shouldStart) {
-      setDisplayedText("");
-      setIsComplete(false);
-      return;
-    }
-
-    const startTimeout = setTimeout(() => {
-      let index = 0;
-      const interval = setInterval(() => {
-        if (index < text.length) {
-          setDisplayedText(text.slice(0, index + 1));
-          index++;
-        } else {
-          setIsComplete(true);
-          clearInterval(interval);
-        }
-      }, speed);
-
-      return () => clearInterval(interval);
-    }, startDelay);
-
-    return () => clearTimeout(startTimeout);
-  }, [text, speed, startDelay, shouldStart]);
-
-  return { displayedText, isComplete };
-}
-
-// Chat message component
-function ChatMessage({
-  role,
-  children,
+// Dashboard stat card
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  subtext,
+  color,
   delay,
   isVisible,
 }: {
-  role: "user" | "assistant";
-  children: React.ReactNode;
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  subtext: string;
+  color: string;
   delay: number;
   isVisible: boolean;
 }) {
@@ -64,89 +38,16 @@ function ChatMessage({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: delay * 0.001, duration: 0.3 }}
-          className="mb-3"
+          className="bg-white rounded-lg border border-slate-200 p-4"
         >
-          <div className={`flex items-start gap-3 ${role === "user" ? "" : ""}`}>
-            <span
-              className={`text-xs font-medium px-2 py-0.5 rounded ${
-                role === "user"
-                  ? "bg-blue-500/20 text-blue-400"
-                  : "bg-purple-500/20 text-purple-400"
-              }`}
-            >
-              {role === "user" ? "You" : "Claude"}
-            </span>
-          </div>
-          <div className="mt-1 text-slate-300 text-sm leading-relaxed pl-1">
-            {children}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// Progress step component
-function ProgressStep({
-  text,
-  status,
-  delay,
-}: {
-  text: string;
-  status: "pending" | "loading" | "done";
-  delay: number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: delay * 0.001, duration: 0.2 }}
-      className="flex items-center gap-2 text-sm"
-    >
-      {status === "loading" && (
-        <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-      )}
-      {status === "done" && <Check className="w-4 h-4 text-green-400" />}
-      {status === "pending" && (
-        <div className="w-4 h-4 rounded-full border border-slate-600" />
-      )}
-      <span
-        className={
-          status === "done"
-            ? "text-green-400"
-            : status === "loading"
-              ? "text-blue-400"
-              : "text-slate-500"
-        }
-      >
-        {text}
-      </span>
-    </motion.div>
-  );
-}
-
-// Code block component
-function CodeBlock({ code, isVisible }: { code: string; isVisible: boolean }) {
-  return (
-    <AnimatePresence>
-      {isVisible && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-          className="mt-3 max-w-full overflow-hidden"
-        >
-          <div className="bg-slate-950 rounded-lg border border-slate-700 overflow-hidden">
-            <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 border-b border-slate-700">
-              <Code2 className="w-3 h-3 text-green-400" />
-              <span className="text-xs text-green-400 font-medium">
-                embed code
-              </span>
+          <div className="flex items-center gap-3 mb-2">
+            <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center`}>
+              <Icon className="w-4 h-4 text-white" />
             </div>
-            <pre className="p-3 text-xs text-slate-300 font-mono whitespace-pre-wrap break-all overflow-hidden">
-              <code>{code}</code>
-            </pre>
+            <span className="text-sm text-slate-500">{label}</span>
           </div>
+          <p className="text-2xl font-bold text-slate-900">{value}</p>
+          <p className="text-xs text-green-600 mt-1">{subtext}</p>
         </motion.div>
       )}
     </AnimatePresence>
@@ -162,21 +63,20 @@ function LiveChatWidget({
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const chatMessages = [
-    { role: "bot", text: "Hi! I'm your AI assistant. How can I help you today?" },
-    { role: "user", text: "What pricing plans do you offer?" },
-    { role: "bot", text: "We have three plans:\n\n• Starter - $29/mo\n• Pro - $79/mo\n• Enterprise - Custom\n\nAll include a 14-day free trial!" },
-    { role: "user", text: "Can I integrate with Slack?" },
-    { role: "bot", text: "Yes! Native Slack integration included. Get notifications, respond from Slack, and set up alerts." },
-    { role: "user", text: "Do you support custom AI models?" },
-    { role: "bot", text: "I don't have information about custom AI models in my knowledge base.\n\nI'd love to connect you with our team who can help! Could you share your email?" },
-    { role: "user", text: "Sure, it's hello@example.com" },
-    { role: "bot", text: "Thanks! I've captured your email. Our team will reach out shortly to discuss custom AI model support. Is there anything else I can help with?" },
+    { role: "bot", text: "Hi! How can I help you today?" },
+    { role: "user", text: "What's your return policy?" },
+    { role: "bot", text: "We offer 30-day hassle-free returns. Simply email us at returns@store.com with your order number, and we'll send a prepaid shipping label within 24 hours." },
+    { role: "user", text: "How long does shipping take?" },
+    { role: "bot", text: "Standard shipping is 3-5 business days. Express shipping is 1-2 business days and costs $9.99. Free shipping on orders over $50!" },
+    { role: "user", text: "I have a complex issue with my order #12847" },
+    { role: "bot", text: "I'd be happy to connect you with our team to help with your order. Let me get someone who can look into this right away." },
+    { role: "bot", text: "🔄 Connecting you to a support agent...", isHandoff: true },
+    { role: "agent", text: "Hi! I'm Sarah from the support team. I can see your order #12847. Let me look into this for you. What seems to be the issue?" },
   ];
 
   // Auto-scroll chat container only (not the page)
   useEffect(() => {
     if (chatStep > 0 && chatContainerRef.current) {
-      // Small delay to let message render first
       setTimeout(() => {
         chatContainerRef.current?.scrollTo({
           top: chatContainerRef.current.scrollHeight,
@@ -207,7 +107,7 @@ function LiveChatWidget({
             <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
           </div>
           <div className="flex-1 bg-white rounded-md px-3 py-1 text-xs text-slate-500 font-mono truncate">
-            your-app.com/dashboard
+            your-store.com
           </div>
         </div>
 
@@ -228,7 +128,7 @@ function LiveChatWidget({
             </div>
           </div>
 
-          {/* Chat widget floating - larger size */}
+          {/* Chat widget floating */}
           <div className="absolute bottom-3 right-3 left-12 top-20 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden flex flex-col">
             {/* Chat Header */}
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-3 flex items-center gap-3">
@@ -236,8 +136,8 @@ function LiveChatWidget({
                 <MessageCircle className="w-4 h-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-medium text-sm">Your App Support</p>
-                <p className="text-white/70 text-xs">Powered by SupportBase</p>
+                <p className="text-white font-medium text-sm">Support</p>
+                <p className="text-white/70 text-xs">We typically reply instantly</p>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
@@ -259,14 +159,26 @@ function LiveChatWidget({
                       transition={{ delay: 0.1 }}
                       className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                     >
+                      {msg.role === "agent" && (
+                        <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center mr-2 flex-shrink-0 text-white text-xs font-bold">
+                          S
+                        </div>
+                      )}
                       <div
                         className={`max-w-[85%] rounded-xl px-3 py-2 text-sm leading-relaxed ${
                           msg.role === "user"
                             ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-br-sm"
-                            : "bg-white text-slate-700 shadow-sm border border-slate-100 rounded-bl-sm"
+                            : msg.role === "agent"
+                              ? "bg-green-50 text-slate-700 border border-green-200 rounded-bl-sm"
+                              : (msg as { isHandoff?: boolean }).isHandoff
+                                ? "bg-amber-50 text-amber-700 border border-amber-200 rounded-bl-sm"
+                                : "bg-white text-slate-700 shadow-sm border border-slate-100 rounded-bl-sm"
                         }`}
                       >
                         <div className="whitespace-pre-line">{msg.text}</div>
+                        {msg.role === "agent" && (
+                          <div className="text-xs text-green-600 mt-1 font-medium">Sarah - Support Team</div>
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -297,112 +209,34 @@ export function VibeCodeShowcase() {
   const isInView = useInView(sectionRef, { once: true, margin: "-50px" });
 
   // Animation state
-  const [step, setStep] = useState(0);
-  const [progressSteps, setProgressSteps] = useState<
-    { text: string; status: "pending" | "loading" | "done" }[]
-  >([
-    { text: 'Creating project "Your App Support"...', status: "pending" },
-    { text: "Scraping docs.your-app.com (24 pages found)", status: "pending" },
-    { text: "Building knowledge base...", status: "pending" },
-    { text: "Generating embed code...", status: "pending" },
-  ]);
-  const [showCode, setShowCode] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [dashboardStep, setDashboardStep] = useState(0);
   const [showWidget, setShowWidget] = useState(false);
   const [chatStep, setChatStep] = useState(0);
-
-  const embedCode = `<script src="supportbase.app/widget.js" data-project-id="abc123"></script>`;
 
   // Animation timeline
   useEffect(() => {
     if (!isInView) return;
 
     const timeline = [
-      // Step 1: User asks for chatbot
-      { time: 500, action: () => setStep(1) },
-      // Step 2: Claude responds
-      { time: 2500, action: () => setStep(2) },
-      // Step 3: User provides URL
-      { time: 4500, action: () => setStep(3) },
-      // Step 4: Claude starts working
-      { time: 6000, action: () => setStep(4) },
-      // Progress step 1: Creating project
-      {
-        time: 6200,
-        action: () =>
-          setProgressSteps((prev) =>
-            prev.map((s, i) => (i === 0 ? { ...s, status: "loading" } : s))
-          ),
-      },
-      {
-        time: 7000,
-        action: () =>
-          setProgressSteps((prev) =>
-            prev.map((s, i) => (i === 0 ? { ...s, status: "done" } : s))
-          ),
-      },
-      // Progress step 2: Scraping
-      {
-        time: 7100,
-        action: () =>
-          setProgressSteps((prev) =>
-            prev.map((s, i) => (i === 1 ? { ...s, status: "loading" } : s))
-          ),
-      },
-      {
-        time: 8500,
-        action: () =>
-          setProgressSteps((prev) =>
-            prev.map((s, i) => (i === 1 ? { ...s, status: "done" } : s))
-          ),
-      },
-      // Progress step 3: Building KB
-      {
-        time: 8600,
-        action: () =>
-          setProgressSteps((prev) =>
-            prev.map((s, i) => (i === 2 ? { ...s, status: "loading" } : s))
-          ),
-      },
-      {
-        time: 9800,
-        action: () =>
-          setProgressSteps((prev) =>
-            prev.map((s, i) => (i === 2 ? { ...s, status: "done" } : s))
-          ),
-      },
-      // Progress step 4: Generating embed
-      {
-        time: 9900,
-        action: () =>
-          setProgressSteps((prev) =>
-            prev.map((s, i) => (i === 3 ? { ...s, status: "loading" } : s))
-          ),
-      },
-      {
-        time: 10800,
-        action: () =>
-          setProgressSteps((prev) =>
-            prev.map((s, i) => (i === 3 ? { ...s, status: "done" } : s))
-          ),
-      },
-      // Show code
-      { time: 11000, action: () => setShowCode(true) },
-      // Show success message
-      { time: 11500, action: () => setShowSuccess(true) },
+      // Dashboard animations
+      { time: 500, action: () => setDashboardStep(1) },
+      { time: 800, action: () => setDashboardStep(2) },
+      { time: 1100, action: () => setDashboardStep(3) },
+      { time: 1400, action: () => setDashboardStep(4) },
+      { time: 1700, action: () => setDashboardStep(5) },
       // Show widget
-      { time: 12000, action: () => setShowWidget(true) },
+      { time: 2500, action: () => setShowWidget(true) },
       // Chat animation - show messages progressively
-      { time: 12500, action: () => setChatStep(1) },  // Bot: greeting
-      { time: 13500, action: () => setChatStep(2) },  // User: pricing question
-      { time: 14500, action: () => setChatStep(3) },  // Bot: pricing answer
-      { time: 16000, action: () => setChatStep(4) },  // User: Slack question
-      { time: 17000, action: () => setChatStep(5) },  // Bot: Slack answer
-      // Lead capture flow
-      { time: 18500, action: () => setChatStep(6) },  // User: custom AI models question
-      { time: 20000, action: () => setChatStep(7) },  // Bot: doesn't know, asks for email
-      { time: 22000, action: () => setChatStep(8) },  // User: provides email
-      { time: 23500, action: () => setChatStep(9) },  // Bot: confirms email captured
+      { time: 3000, action: () => setChatStep(1) },  // Bot: greeting
+      { time: 4000, action: () => setChatStep(2) },  // User: return policy
+      { time: 5000, action: () => setChatStep(3) },  // Bot: return policy answer
+      { time: 6500, action: () => setChatStep(4) },  // User: shipping
+      { time: 7500, action: () => setChatStep(5) },  // Bot: shipping answer
+      // Human handoff flow
+      { time: 9000, action: () => setChatStep(6) },  // User: complex issue
+      { time: 10500, action: () => setChatStep(7) }, // Bot: will connect
+      { time: 12000, action: () => setChatStep(8) }, // Bot: connecting notification
+      { time: 14000, action: () => setChatStep(9) }, // Agent: takes over
     ];
 
     const timeouts = timeline.map(({ time, action }) =>
@@ -421,7 +255,7 @@ export function VibeCodeShowcase() {
       <div className="max-w-6xl mx-auto px-6">
         {/* Main Demo */}
         <div className="grid lg:grid-cols-2 gap-8 items-stretch">
-          {/* IDE Window */}
+          {/* Dashboard Window */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -431,10 +265,10 @@ export function VibeCodeShowcase() {
             {/* Left Header */}
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                <Terminal className="w-4 h-4 text-blue-600" />
+                <BarChart3 className="w-4 h-4 text-blue-600" />
               </div>
               <h3 className="text-lg font-semibold text-slate-900">
-                Your IDE — Just Ask Claude
+                Your Dashboard — See Everything
               </h3>
             </div>
 
@@ -442,75 +276,127 @@ export function VibeCodeShowcase() {
               {/* Glow effect */}
               <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-2xl blur-xl" />
 
-              {/* Terminal window */}
-              <div className="relative bg-slate-900 rounded-xl border border-slate-700 overflow-hidden shadow-2xl flex-1 flex flex-col">
+              {/* Dashboard window */}
+              <div className="relative bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xl flex-1 flex flex-col">
                 {/* Header */}
-                <div className="flex items-center gap-2 px-4 py-3 bg-slate-800 border-b border-slate-700">
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-500" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                    <div className="w-3 h-3 rounded-full bg-green-500" />
-                  </div>
-                  <div className="flex items-center gap-2 ml-3">
-                    <Terminal className="w-4 h-4 text-slate-400" />
-                    <span className="text-sm text-slate-400 font-medium">
-                      Claude Code
+                <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
+                      <MessageCircle className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-900">
+                      SupportBase Dashboard
                     </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <span className="text-xs text-slate-500">Chatbot Active</span>
                   </div>
                 </div>
 
-                {/* Chat content */}
-                <div className="p-4 font-mono text-sm flex-1">
-                  {/* Message 1: User asks for chatbot */}
-                  <ChatMessage role="user" delay={0} isVisible={step >= 1}>
-                    I need a customer support chatbot for my app. Can you set that up?
-                  </ChatMessage>
+                {/* Dashboard content */}
+                <div className="p-4 flex-1 bg-slate-50">
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <StatCard
+                      icon={MessageCircle}
+                      label="Conversations Today"
+                      value="47"
+                      subtext="+12 from yesterday"
+                      color="bg-blue-500"
+                      delay={0}
+                      isVisible={dashboardStep >= 1}
+                    />
+                    <StatCard
+                      icon={Check}
+                      label="Questions Answered"
+                      value="89%"
+                      subtext="by AI automatically"
+                      color="bg-green-500"
+                      delay={0}
+                      isVisible={dashboardStep >= 2}
+                    />
+                    <StatCard
+                      icon={Users}
+                      label="Human Handoffs"
+                      value="5"
+                      subtext="11% of conversations"
+                      color="bg-purple-500"
+                      delay={0}
+                      isVisible={dashboardStep >= 3}
+                    />
+                    <StatCard
+                      icon={TrendingUp}
+                      label="Leads Captured"
+                      value="12"
+                      subtext="+3 from yesterday"
+                      color="bg-amber-500"
+                      delay={0}
+                      isVisible={dashboardStep >= 4}
+                    />
+                  </div>
 
-                  {/* Message 2: Claude responds */}
-                  <ChatMessage role="assistant" delay={0} isVisible={step >= 2}>
-                    I&apos;ll set up a SupportBase chatbot for you. Give me a URL to scrape, or upload docs.
-                  </ChatMessage>
+                  {/* Knowledge Base Status */}
+                  <AnimatePresence>
+                    {dashboardStep >= 5 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white rounded-lg border border-slate-200 p-4"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-slate-400" />
+                            <span className="text-sm font-medium text-slate-700">Knowledge Base</span>
+                          </div>
+                          <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">Up to date</span>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-500">Pages indexed</span>
+                            <span className="font-medium text-slate-700">24 pages</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-500">Last updated</span>
+                            <span className="font-medium text-slate-700">2 hours ago</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-500">Top question today</span>
+                            <span className="font-medium text-slate-700 truncate ml-2">&quot;Return policy&quot;</span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                  {/* Message 3: User provides URL */}
-                  <ChatMessage role="user" delay={0} isVisible={step >= 3}>
-                    Scrape our documentation site at docs.your-app.com
-                  </ChatMessage>
-
-                  {/* Message 4: Claude working */}
-                  <ChatMessage role="assistant" delay={0} isVisible={step >= 4}>
-                    <div className="mb-3 text-slate-300">On it! Setting up your chatbot...</div>
-                    <div className="space-y-2">
-                      {progressSteps.map((s, i) => (
-                        s.status !== "pending" && (
-                          <ProgressStep
-                            key={i}
-                            text={s.text}
-                            status={s.status}
-                            delay={0}
-                          />
-                        )
-                      ))}
-                    </div>
-
-                    {/* Embed code */}
-                    <CodeBlock code={embedCode} isVisible={showCode} />
-
-                    {/* Success message */}
-                    <AnimatePresence>
-                      {showSuccess && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="mt-4 flex items-center gap-2 text-green-400"
-                        >
-                          <Zap className="w-4 h-4" />
-                          <span>
-                            Done! Paste this in your app and you&apos;re live.
-                          </span>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </ChatMessage>
+                  {/* Active Agents */}
+                  <AnimatePresence>
+                    {dashboardStep >= 5 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="mt-3 bg-white rounded-lg border border-slate-200 p-4"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-slate-400" />
+                            <span className="text-sm font-medium text-slate-700">Support Queue</span>
+                          </div>
+                          <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">1 waiting</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex -space-x-2">
+                            <div className="w-8 h-8 rounded-full bg-green-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">S</div>
+                            <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">M</div>
+                          </div>
+                          <div className="text-sm text-slate-600">
+                            <span className="font-medium">2 agents</span> online
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
             </div>
@@ -530,7 +416,7 @@ export function VibeCodeShowcase() {
                 <Check className="w-4 h-4 text-green-600" />
               </div>
               <h3 className="text-lg font-semibold text-slate-900">
-                The Result — Your Live Chatbot
+                What Your Customers See
               </h3>
             </div>
 
@@ -555,7 +441,7 @@ export function VibeCodeShowcase() {
                           <MessageCircle className="w-8 h-8 text-slate-400" />
                         </div>
                         <p className="text-slate-500 text-lg font-medium mb-2">Your chatbot will appear here</p>
-                        <p className="text-slate-400 text-sm">Watch the magic happen on the left...</p>
+                        <p className="text-slate-400 text-sm">Watch how it handles customer questions...</p>
                       </div>
                     </div>
                   </motion.div>

@@ -127,7 +127,7 @@ export function Hero() {
           className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full border border-blue-200 bg-blue-50 text-sm text-blue-700"
         >
           <Sparkles className="w-4 h-4" />
-          <span>Built for vibe coders</span>
+          <span>5-Minute Setup</span>
         </motion.div>
 
         {/* Headline */}
@@ -137,10 +137,10 @@ export function Hero() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 mb-6"
         >
-          <span className="whitespace-nowrap">Add an AI chatbot to your app.</span>
+          <span>Stop Answering the Same Questions.</span>
           <br />
           <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-            In one line.
+            Let AI Handle It.
           </span>
         </motion.h1>
 
@@ -151,8 +151,8 @@ export function Hero() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-12"
         >
-          SupportBase works with Cursor, Claude, and your favorite AI tools.
-          Upload your docs, get an embed code, ship—all without leaving your editor.
+          Your team is stretched thin. Customers expect instant answers.
+          SupportBase answers 89% of questions automatically—so you can focus on what matters.
         </motion.p>
 
         {/* CTA Buttons */}
@@ -166,14 +166,14 @@ export function Hero() {
             href="/login"
             className="group relative inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105"
           >
-            Get Started Free
+            Start Free - No Credit Card
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
           <Link
             href="#demo"
             className="inline-flex items-center gap-2 px-8 py-4 text-slate-700 hover:text-slate-900 font-medium rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
           >
-            See it in action
+            Watch Demo
           </Link>
         </motion.div>
 
@@ -184,7 +184,7 @@ export function Hero() {
           transition={{ duration: 0.5, delay: 0.5 }}
           className="text-sm text-slate-500"
         >
-          No credit card required • Setup in under 5 minutes
+          No credit card • 5-minute setup • Works on any website
         </motion.p>
       </div>
 

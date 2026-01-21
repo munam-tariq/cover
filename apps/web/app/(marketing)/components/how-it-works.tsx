@@ -8,23 +8,23 @@ const steps = [
     number: "01",
     title: "Upload Your Knowledge",
     description:
-      "PDFs, text files, or just paste your FAQ. We'll train your chatbot automatically.",
+      "Upload your FAQ, policies, product info, or website URL. We train your chatbot automatically.",
     icon: Upload,
     gradient: "from-blue-500 to-cyan-500",
   },
   {
     number: "02",
-    title: "Get Your Embed Code",
+    title: "Add to Your Website",
     description:
-      "One script tag. Works on any website—React, Next.js, plain HTML, anywhere.",
+      "One line of code. Works on Shopify, WordPress, Wix, or any website. We can help you install it.",
     icon: Code2,
     gradient: "from-purple-500 to-pink-500",
   },
   {
     number: "03",
-    title: "Ship Support",
+    title: "Let AI Handle Support",
     description:
-      "Your AI chatbot goes live instantly. Answering questions 24/7 while you sleep.",
+      "Your chatbot answers customers 24/7. When it can't help, it hands off to your team or captures leads.",
     icon: Rocket,
     gradient: "from-orange-500 to-red-500",
   },
@@ -57,7 +57,7 @@ export function HowItWorks() {
           className="text-center mb-20"
         >
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-            Live in 15 minutes. Seriously.
+            From zero to 89% automated in 5 minutes
           </h2>
           <p className="text-xl text-slate-600">
             Three steps. No complexity. Just results.

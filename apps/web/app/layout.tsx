@@ -16,27 +16,27 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://supportbase.app"),
   title: {
-    default: "SupportBase - AI Chatbot for Vibe Coders | Add Support in One Line",
+    default: "SupportBase - AI Customer Support for Small Business | Live in 5 Minutes",
     template: "%s | SupportBase",
   },
   description:
-    "Add an AI chatbot to your app in one line. SupportBase works with Cursor, Claude, and MCP. Upload docs, get embed code, ship 24/7 customer support in 15 minutes. Free during beta.",
+    "Train an AI chatbot on your FAQ and docs. Answer customer questions 24/7. Human handoff when needed. Free to start. Setup in 5 minutes.",
   keywords: [
     "AI chatbot",
     "customer support chatbot",
     "AI customer service",
     "chatbot for website",
-    "vibe coding",
-    "MCP integration",
-    "Cursor AI",
-    "Claude chatbot",
+    "small business chatbot",
+    "customer support automation",
+    "AI support for ecommerce",
+    "shopify chatbot",
     "RAG chatbot",
     "knowledge base chatbot",
     "embed chatbot",
     "chatbot widget",
     "AI support automation",
     "no-code chatbot",
-    "chatbot for developers",
+    "human handoff chatbot",
   ],
   authors: [{ name: "SupportBase Team" }],
   creator: "SupportBase",
@@ -54,9 +54,9 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://supportbase.app",
     siteName: "SupportBase",
-    title: "SupportBase - AI Chatbot for Vibe Coders",
+    title: "SupportBase - AI Customer Support for Small Business",
     description:
-      "Add an AI chatbot to your app in one line. Works with Cursor, Claude, and MCP. Ship 24/7 customer support in 15 minutes.",
+      "Train an AI chatbot on your FAQ and docs. Answer customer questions 24/7. Human handoff when needed. Free to start.",
     images: [
       {
         url: "/og-image.png",
@@ -68,9 +68,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "SupportBase - AI Chatbot for Vibe Coders",
+    title: "SupportBase - AI Customer Support for Small Business",
     description:
-      "Add an AI chatbot to your app in one line. Works with Cursor, Claude, and MCP.",
+      "Train an AI chatbot on your FAQ and docs. Answer customer questions 24/7. Human handoff when needed.",
     images: ["/og-image.png"],
     creator: "@supportbase",
   },
@@ -101,7 +101,7 @@ const organizationSchema = {
   url: "https://supportbase.app",
   logo: "https://supportbase.app/logo.png",
   description:
-    "AI chatbot platform for vibe coders. Add customer support to your app in one line.",
+    "AI customer support for small businesses. Answer questions 24/7 with human handoff when needed.",
   foundingDate: "2025",
   sameAs: [
     "https://twitter.com/supportbase",
@@ -132,11 +132,11 @@ const softwareSchema = {
   featureList: [
     "AI-powered chatbot",
     "RAG knowledge base",
-    "MCP integration",
+    "Human handoff",
     "API tool calling",
     "Lead capture",
     "Analytics dashboard",
-    "Multi-project support",
+    "Works on any website",
   ],
 };
 

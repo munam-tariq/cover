@@ -6,34 +6,34 @@ import { ChevronDown } from "lucide-react";
 
 const faqs = [
   {
-    question: "How does the MCP integration work?",
+    question: "How fast can I set this up?",
     answer:
-      "SupportBase provides an MCP server that works with Cursor, Claude Code, and other AI tools. Your AI assistant can create projects, upload knowledge, and get embed codes—all through conversation. Just add our MCP server to your config and start asking.",
-  },
-  {
-    question: "What file types can I upload?",
-    answer:
-      "PDFs, text files, markdown, and you can paste text directly. We process everything into searchable chunks that your chatbot can use to answer questions accurately.",
-  },
-  {
-    question: "Can the chatbot access real-time data?",
-    answer:
-      "Yes! Configure API endpoints and the chatbot can fetch live data like order status, inventory, account information, or any other data your APIs provide. Authentication via API key or Bearer token is supported.",
-  },
-  {
-    question: "How accurate are the answers?",
-    answer:
-      "We use RAG (Retrieval Augmented Generation) with semantic search. The chatbot only answers from your actual documentation—no hallucinations. When it doesn't know something, it says so honestly.",
+      "5 minutes. Upload your docs, copy one line of code, done. Need help? We'll set it up for you, free.",
   },
   {
     question: "What if the chatbot can't answer a question?",
     answer:
-      "It gracefully says 'I don't know' and can capture the visitor's email so you can follow up. This way you never lose a potential customer or miss important feedback.",
+      "You choose: Lead Capture saves their email for follow-up. Human Handoff connects them to your team instantly. Either way, no customer falls through the cracks.",
   },
   {
-    question: "Is there a free tier?",
+    question: "How accurate are the answers?",
     answer:
-      "Yes! Start free with generous limits. No credit card required. You can upgrade anytime as your needs grow.",
+      "89% accuracy on average. Your chatbot only answers from YOUR docs—zero hallucinations. Not sure? It admits it and hands off to your team.",
+  },
+  {
+    question: "Can it connect to my other tools?",
+    answer:
+      "Yes. API integrations let your chatbot check order status, look up accounts, pull live data. Your chatbot becomes a real support agent, not just a FAQ bot.",
+  },
+  {
+    question: "What file types can I upload?",
+    answer:
+      "PDFs, Word docs, text files, or just a website URL—we crawl it automatically. Most customers are trained and live in under 5 minutes.",
+  },
+  {
+    question: "Is it really free?",
+    answer:
+      "100% free during beta. No credit card. No catch. Beta users get locked-in pricing when we launch paid plans.",
   },
 ];
 

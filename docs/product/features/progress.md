@@ -1,14 +1,23 @@
 # Feature Implementation Progress
 
 ## Overview
-- **Total Features**: 22
-- **Completed**: 12
+- **Total Features**: 23
+- **Completed**: 13
 - **In Progress**: 0
-- **Remaining**: 10 (V2/V3 features)
+- **Planned**: 1 (Quick Questions)
+- **Remaining**: 9 (V2/V3 features)
 
 ## Currently In Progress
 
 (none)
+
+## Planned Features
+
+### Quick Questions / Suggested Starters
+- **Status**: Spec Complete, Ready for Implementation
+- **Spec**: [quick-questions/spec.md](./quick-questions/spec.md)
+- **Summary**: Display clickable question suggestions near chat bubble and inside chat window to help users start conversations with one click. Supports static (manual), analytics (auto from top questions), and hybrid modes.
+- **Dependencies**: widget ✅, chat-analytics ✅
 
 ---
 
@@ -97,6 +106,63 @@ These features take priority over the remaining Enhanced (V2) features.
 ---
 
 ## Completed Features
+
+### #13: human-handoff ✅
+- **Started**: 2025-01-15
+- **Completed**: 2025-01-18
+- **Category**: enhanced
+- **Summary**: Implemented comprehensive human agent handoff system allowing customers to request live agent support when the AI chatbot cannot help. Includes agent management, conversation routing, queue system, business hours, and real-time messaging infrastructure.
+- **Key Files**:
+  - `apps/api/src/routes/handoff.ts` - Handoff API routes (trigger, queue, claim, transfer, resolve)
+  - `apps/api/src/routes/handoff-settings.ts` - Handoff settings API (business hours, triggers, routing)
+  - `apps/api/src/routes/agent.ts` - Agent management routes (status, availability)
+  - `apps/api/src/routes/conversations.ts` - Conversation management routes
+  - `apps/api/src/services/handoff-trigger.ts` - Trigger detection service
+  - `apps/api/src/services/realtime.ts` - Supabase Realtime broadcast functions
+  - `apps/widget/src/utils/handoff.ts` - Widget handoff utilities
+  - `apps/web/app/(dashboard)/inbox/page.tsx` - Agent inbox page
+  - `apps/web/app/(dashboard)/inbox/[id]/page.tsx` - Conversation view
+  - `apps/web/app/(dashboard)/team/page.tsx` - Team management page
+  - `apps/web/app/(dashboard)/settings/handoff/page.tsx` - Handoff settings page
+- **API Endpoints**:
+  - `POST /api/handoff/trigger` - Trigger handoff request
+  - `GET /api/handoff/queue` - Get queue for project
+  - `POST /api/handoff/claim/:id` - Agent claims conversation
+  - `POST /api/handoff/transfer/:id` - Transfer conversation
+  - `POST /api/handoff/resolve/:id` - Resolve/close conversation
+  - `GET/PUT /api/handoff-settings` - Manage handoff settings
+  - `GET/PUT /api/agent/status` - Agent availability status
+  - `GET/POST /api/conversations/:id/messages` - Conversation messages
+- **Features**:
+  - Customer-initiated handoff via button or keyword triggers
+  - AI-detected handoff when bot can't answer
+  - Agent availability management (online/away/offline)
+  - Conversation queue with priority and wait time
+  - Direct assignment or queue-based routing
+  - Conversation transfer between agents
+  - Business hours configuration
+  - Real-time messaging infrastructure (Supabase Realtime)
+  - Agent inbox with queue and active conversations
+  - Team management page
+  - Handoff settings with triggers, routing rules, business hours
+- **Database Changes**:
+  - Tables: `handoff_settings`, `agents`, `agent_invitations`, `conversations` (enhanced)
+  - Added handoff-related columns to `chat_sessions`
+- **Documentation**:
+  - `docs/product/features/human-handoff/HUMAN_AGENT_HANDOFF.md` - Full spec
+  - `docs/product/features/human-handoff/AGENT_MANAGEMENT_FLOW.md` - Agent flow
+  - `docs/product/features/human-handoff/IMPLEMENTATION_PLAN.md` - Pending enhancements
+  - `docs/product/features/human-handoff/TEST_CASES.md` - Test scenarios
+- **Pending Enhancements** (documented in IMPLEMENTATION_PLAN.md):
+  - Phase 1: Backend real-time broadcast integration
+  - Phase 2: Widget real-time connection (replace polling)
+  - Phase 3: Dashboard real-time subscriptions
+  - Phase 4: Typing indicators
+  - Phase 5: Customer presence broadcasting
+  - Phase 6: Offline form
+- **Notes**: Core handoff functionality complete. Backend is ~95% done. Real-time enhancements planned for future iteration.
+
+---
 
 ### #12: url-scraping ✅
 - **Started**: 2025-12-19
@@ -609,15 +675,21 @@ These features take priority over the remaining Enhanced (V2) features.
 ### Immediate Priority
 All immediate priority features have been completed! 🎉
 
+### Planned Features - Ready for Implementation
+1. **#14: quick-questions** - Suggested conversation starters
+   - Spec: [quick-questions/spec.md](./quick-questions/spec.md)
+   - Dependencies: widget ✅, chat-analytics ✅
+   - Summary: Clickable question suggestions near chat bubble and in chat window
+
 ### Enhanced (V2) - Next in Queue
-1. **#13: conversation-history** - View and search past conversations
+1. **#15: conversation-history** - View and search past conversations
    - Spec: [conversation-history/spec.md](./enhanced/conversation-history/spec.md)
    - Dependencies: chat-engine ✅
 
-2. **#14: widget-customization** - Colors, position, branding
+2. **#16: widget-customization** - Colors, position, branding
    - Spec: [widget-customization/spec.md](./enhanced/widget-customization/spec.md)
    - Dependencies: widget ✅
 
-3. **#15: docx-support** - Support for .doc/.docx files
+3. **#17: docx-support** - Support for .doc/.docx files
    - Spec: [docx-support/spec.md](./enhanced/docx-support/spec.md)
    - Dependencies: knowledge-base ✅

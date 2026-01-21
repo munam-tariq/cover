@@ -21,11 +21,11 @@ export function FinalCTA() {
           className="text-center"
         >
           <h2 className="text-4xl md:text-6xl font-bold text-slate-900 mb-6">
-            Ready to ship support?
+            Ready to stop answering the same questions?
           </h2>
           <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
-            Add an AI chatbot to your app in minutes. Free to start, no credit
-            card required.
+            Let AI handle customer support while you focus on your business.
+            Free to start.
           </p>
 
           {/* CTA Button */}
@@ -90,7 +90,7 @@ export function FinalCTA() {
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              Free forever tier
+              Human handoff included
             </span>
           </div>
         </motion.div>

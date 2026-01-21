@@ -7,10 +7,10 @@ import { Check, Sparkles, ArrowRight } from "lucide-react";
 const features = [
   "Unlimited chatbots",
   "Unlimited knowledge sources",
-  "API tool calling",
+  "Connect to your tools",
   "Lead capture",
   "Analytics dashboard",
-  "MCP integration (Cursor, Claude)",
+  "Human handoff to your team",
   "Custom branding",
   "Priority support",
 ];

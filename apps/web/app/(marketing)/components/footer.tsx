@@ -35,8 +35,8 @@ export function Footer() {
               <span className="text-xl font-bold">SupportBase</span>
             </Link>
             <p className="text-slate-400 text-sm max-w-xs">
-              The AI chatbot platform built for vibe coders. Add support to your
-              app in one line.
+              AI customer support for small businesses. Answer questions 24/7
+              while you focus on growing.
             </p>
           </div>
 
@@ -98,7 +98,7 @@ export function Footer() {
             &copy; {new Date().getFullYear()} SupportBase. All rights reserved.
           </p>
           <p className="text-slate-500 text-sm">
-            Built with love for vibe coders
+            Built with love for small businesses
           </p>
         </div>
       </div>
