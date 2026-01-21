@@ -25,9 +25,26 @@
     return;
   }
 
+  // Check if running locally (localhost, 127.0.0.1, or file://)
+  const isLocal = window.location.hostname === 'localhost'
+    || window.location.hostname === '127.0.0.1'
+    || window.location.protocol === 'file:';
+
+  // Determine the widget-app.js URL
+  let widgetAppUrl: string;
+  if (isLocal) {
+    // Load from local dist folder (relative to loader script)
+    const loaderSrc = currentScript.src;
+    const basePath = loaderSrc.substring(0, loaderSrc.lastIndexOf('/'));
+    widgetAppUrl = `${basePath}/widget-app.js?v=${Date.now()}`; // Cache bust with timestamp
+  } else {
+    // Load from Supabase CDN in production
+    widgetAppUrl = `${WIDGET_BASE_URL}/widget-app.js?v=${WIDGET_VERSION}`;
+  }
+
   // Create the actual widget script
   const widgetScript = document.createElement('script');
-  widgetScript.src = `${WIDGET_BASE_URL}/widget-app.js?v=${WIDGET_VERSION}`;
+  widgetScript.src = widgetAppUrl;
   widgetScript.async = true;
 
   // Copy all data attributes from loader to widget script

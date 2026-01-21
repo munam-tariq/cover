@@ -317,6 +317,7 @@
   flex-direction: column;
   gap: 4px;
   animation: message-appear 0.3s ease;
+  position: relative;
 }
 
 @keyframes message-appear {
@@ -343,6 +344,7 @@
   border-radius: 18px;
   word-wrap: break-word;
   white-space: pre-wrap;
+  position: relative;
 }
 
 .chatbot-message.user .chatbot-message-content {
@@ -1099,4 +1101,136 @@
   font-size: 14px;
   color: var(--widget-text-muted);
   line-height: 1.5;
+}
+
+/* ============================================
+   Message Feedback (Thumbs Up/Down)
+   ============================================ */
+.chatbot-message-feedback {
+  position: absolute;
+  bottom: 0;
+  right: 8px;
+  transform: translateY(50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--widget-background);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 1;
+}
+
+/* Show on message hover (desktop) */
+.chatbot-message.assistant:hover .chatbot-message-feedback {
+  opacity: 1;
+}
+
+/* Always show on touch devices after interaction */
+.chatbot-message.assistant:focus-within .chatbot-message-feedback,
+.chatbot-message-feedback--touched {
+  opacity: 1;
+}
+
+/* Always show submitted feedback */
+.chatbot-message-feedback--submitted {
+  opacity: 1;
+}
+
+/* Feedback buttons */
+.chatbot-feedback-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: var(--widget-background);
+  border: 1px solid var(--widget-border);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--widget-text-muted);
+  transition: all 0.15s ease;
+}
+
+.chatbot-feedback-btn:hover {
+  background: var(--widget-border-light);
+}
+
+.chatbot-feedback-btn:focus-visible {
+  outline: 2px solid var(--widget-primary);
+  outline-offset: 1px;
+}
+
+.chatbot-feedback-btn:active {
+  transform: scale(0.95);
+}
+
+/* Thumbs up hover state */
+.chatbot-feedback-btn--up:hover {
+  color: #16a34a;
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+/* Thumbs down hover state */
+.chatbot-feedback-btn--down:hover {
+  color: #dc2626;
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+/* Feedback button icons */
+.chatbot-feedback-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Submitted feedback confirmation */
+.chatbot-feedback-submitted {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--widget-text-muted);
+  animation: feedback-appear 0.3s ease;
+  white-space: nowrap;
+  padding: 2px 6px;
+}
+
+.chatbot-feedback-submitted svg {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+
+@keyframes feedback-appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile: Always show feedback buttons */
+@media (max-width: 640px) {
+  .chatbot-message-feedback {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .chatbot-message-feedback,
+  .chatbot-feedback-btn,
+  .chatbot-feedback-submitted {
+    transition: none;
+    animation: none;
+  }
 }

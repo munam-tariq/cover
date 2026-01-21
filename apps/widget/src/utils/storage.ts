@@ -17,6 +17,8 @@ export interface StoredMessage {
   content: string;
   timestamp: number;
   isError?: boolean;
+  feedback?: "helpful" | "unhelpful" | null;
+  agentName?: string;
 }
 
 /**

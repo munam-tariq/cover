@@ -212,6 +212,9 @@ export class ChatWindow {
           ...(msg.senderType === "agent" && msg.senderName ? { agentName: msg.senderName } : {}),
         }));
 
+        // Fetch feedback for this conversation and merge with messages
+        await this.fetchAndMergeFeedback(convertedMessages);
+
         // Replace all messages with server data (server is source of truth)
         this.messages = convertedMessages;
         // Sort by timestamp to maintain order
@@ -229,6 +232,59 @@ export class ChatWindow {
       }
     } catch (error) {
       console.error("[Widget] Failed to fetch messages on recovery:", error);
+    }
+  }
+
+  /**
+   * Fetch feedback from API and merge into messages
+   */
+  private async fetchAndMergeFeedback(messages: StoredMessage[]): Promise<void> {
+    if (!this.sessionId) return;
+
+    try {
+      const response = await fetch(
+        `${this.options.apiUrl}/api/chat/feedback?conversationId=${this.sessionId}&visitorId=${this.visitorId}`
+      );
+
+      if (!response.ok) {
+        return; // Silently fail - feedback is not critical
+      }
+
+      const data = await response.json();
+      const feedbackList = data.feedback || [];
+
+      // Create lookup maps for quick matching
+      const feedbackByMessageId = new Map<string, string>();
+      const feedbackByContent = new Map<string, string>();
+
+      for (const fb of feedbackList) {
+        if (fb.messageId) {
+          feedbackByMessageId.set(fb.messageId, fb.rating);
+        }
+        if (fb.answerText) {
+          feedbackByContent.set(fb.answerText, fb.rating);
+        }
+      }
+
+      // Merge feedback into messages
+      for (const msg of messages) {
+        if (msg.role !== "assistant") continue;
+
+        // Try to match by message ID first, then by content
+        const rating = feedbackByMessageId.get(msg.id) || feedbackByContent.get(msg.content);
+        if (rating) {
+          msg.feedback = rating as "helpful" | "unhelpful";
+        }
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Widget] Merged feedback:", feedbackList.length);
+      }
+    } catch (error) {
+      // Silently fail - feedback restoration is not critical
+      if (process.env.NODE_ENV === "development") {
+        console.error("[Widget] Failed to fetch feedback:", error);
+      }
     }
   }
 
@@ -308,6 +364,11 @@ export class ChatWindow {
     const messageComponent = new Message({
       ...messageData,
       isError: messageData.isError,
+      feedback: messageData.feedback,
+      // Only add feedback callback for assistant messages
+      onFeedback: messageData.role === "assistant" && !messageData.isError
+        ? (messageId, rating) => this.handleFeedback(messageId, rating)
+        : undefined,
     });
 
     // Insert before typing indicator
@@ -315,6 +376,67 @@ export class ChatWindow {
       messageComponent.element,
       this.typingIndicator.element
     );
+  }
+
+  /**
+   * Handle feedback submission for a message
+   */
+  private async handleFeedback(
+    messageId: string,
+    rating: "helpful" | "unhelpful"
+  ): Promise<void> {
+    // Find the message
+    const messageIndex = this.messages.findIndex((m) => m.id === messageId);
+    if (messageIndex === -1) return;
+
+    const message = this.messages[messageIndex];
+
+    // Find the preceding user message (the question that prompted this response)
+    let questionText: string | null = null;
+    for (let i = messageIndex - 1; i >= 0; i--) {
+      if (this.messages[i].role === "user") {
+        questionText = this.messages[i].content;
+        break;
+      }
+    }
+
+    // Update local message state
+    message.feedback = rating;
+    setStoredMessages(this.options.projectId, this.messages);
+
+    // Submit feedback to API
+    try {
+      const response = await fetch(`${this.options.apiUrl}/api/chat/feedback`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messageId: messageId,
+          conversationId: this.sessionId,
+          projectId: this.options.projectId,
+          rating,
+          visitorId: this.visitorId,
+          questionText,
+          answerText: message.content,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        // Don't revert on duplicate - user already submitted
+        if (error.error?.code !== "DUPLICATE_FEEDBACK") {
+          console.error("[Widget] Failed to submit feedback:", error);
+        }
+      } else {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Widget] Feedback submitted:", { messageId, rating });
+        }
+      }
+    } catch (error) {
+      console.error("[Widget] Failed to submit feedback:", error);
+      // Keep the local state even if API fails - UX is better
+    }
   }
 
   private async handleSend(content: string): Promise<void> {

@@ -239,6 +239,184 @@ chatRouter.get("/rate-limit-status", (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/chat/feedback
+ *
+ * Submit feedback (thumbs up/down) for an AI response.
+ * Public endpoint called by the widget.
+ *
+ * Request body:
+ * - messageId: string (optional) - The message ID if using new messages table
+ * - conversationId: string (required) - The conversation ID
+ * - projectId: string (required) - The project ID
+ * - rating: 'helpful' | 'unhelpful' (required) - The feedback rating
+ * - visitorId: string (required) - Visitor ID for deduplication
+ * - questionText: string (optional) - The user's question that triggered the response
+ * - answerText: string (optional) - The AI response being rated
+ */
+chatRouter.post(
+  "/feedback",
+  domainWhitelistMiddleware({ requireDomain: false, projectIdSource: 'body' }),
+  async (req: Request, res: Response) => {
+  try {
+    const {
+      messageId,
+      conversationId,
+      projectId,
+      rating,
+      visitorId,
+      questionText,
+      answerText,
+    } = req.body;
+
+    // Validate required fields
+    if (!conversationId || !projectId || !rating || !visitorId) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_INPUT",
+          message: "conversationId, projectId, rating, and visitorId are required",
+        },
+      });
+    }
+
+    // Validate rating value
+    if (!["helpful", "unhelpful"].includes(rating)) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_INPUT",
+          message: "rating must be 'helpful' or 'unhelpful'",
+        },
+      });
+    }
+
+    // Check if feedback already exists for this message/visitor
+    let existingQuery = supabaseAdmin
+      .from("message_feedback")
+      .select("id, rating")
+      .eq("visitor_id", visitorId)
+      .eq("conversation_id", conversationId);
+
+    // Match by message_id if provided, otherwise by answer_text
+    if (messageId) {
+      existingQuery = existingQuery.eq("message_id", messageId);
+    } else if (answerText) {
+      existingQuery = existingQuery.eq("answer_text", answerText);
+    }
+
+    const { data: existing } = await existingQuery.maybeSingle();
+
+    let feedbackId: string;
+    let updated = false;
+
+    if (existing) {
+      // Update existing feedback
+      const { data: updatedFeedback, error: updateError } = await supabaseAdmin
+        .from("message_feedback")
+        .update({ rating })
+        .eq("id", existing.id)
+        .select("id")
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      feedbackId = updatedFeedback.id;
+      updated = true;
+    } else {
+      // Insert new feedback
+      const { data: newFeedback, error: insertError } = await supabaseAdmin
+        .from("message_feedback")
+        .insert({
+          message_id: messageId || null,
+          conversation_id: conversationId,
+          project_id: projectId,
+          rating,
+          visitor_id: visitorId,
+          question_text: questionText || null,
+          answer_text: answerText || null,
+        })
+        .select("id")
+        .single();
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      feedbackId = newFeedback.id;
+    }
+
+    res.json({
+      success: true,
+      feedbackId,
+      updated,
+    });
+  } catch (error) {
+    console.error("Feedback submission error:", error);
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to submit feedback",
+      },
+    });
+  }
+});
+
+/**
+ * GET /api/chat/feedback
+ *
+ * Get feedback submitted by a visitor for a conversation.
+ * Used by widget to restore feedback state after page refresh.
+ *
+ * Query params:
+ * - conversationId: string (required) - The conversation ID
+ * - visitorId: string (required) - Visitor ID
+ */
+chatRouter.get("/feedback", async (req: Request, res: Response) => {
+  try {
+    const conversationId = req.query.conversationId as string;
+    const visitorId = req.query.visitorId as string;
+
+    if (!conversationId || !visitorId) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_INPUT",
+          message: "conversationId and visitorId are required",
+        },
+      });
+    }
+
+    // Get all feedback for this conversation by this visitor
+    const { data: feedback, error } = await supabaseAdmin
+      .from("message_feedback")
+      .select("id, message_id, rating, answer_text")
+      .eq("conversation_id", conversationId)
+      .eq("visitor_id", visitorId);
+
+    if (error) {
+      throw error;
+    }
+
+    // Return feedback mapped by message_id or answer_text for easy lookup
+    res.json({
+      feedback: (feedback || []).map((f) => ({
+        id: f.id,
+        messageId: f.message_id,
+        rating: f.rating,
+        answerText: f.answer_text,
+      })),
+    });
+  } catch (error) {
+    console.error("Get feedback error:", error);
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to get feedback",
+      },
+    });
+  }
+});
+
+/**
  * GET /api/chat/health
  *
  * Health check for the chat service.
