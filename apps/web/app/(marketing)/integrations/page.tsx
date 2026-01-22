@@ -5,28 +5,28 @@ import { Footer } from "../components/footer";
 import { Code, ExternalLink } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Integrations | Connect AI Chatbot with Your Tools | SupportBase",
+  title: "Integrations | Works on Any Website | SupportBase",
   description:
-    "Integrate SupportBase with Cursor, Claude, MCP, Slack, Zapier, and more. Connect your AI chatbot with your existing workflow and tools.",
+    "Add SupportBase to Shopify, WordPress, Wix, Squarespace, or any website. One line of code, 5-minute setup. Connect with Slack, HubSpot, and more.",
   keywords: [
-    "AI chatbot integrations",
-    "MCP integration",
-    "Cursor integration",
-    "Claude integration",
+    "Shopify chatbot",
+    "WordPress chatbot",
+    "Wix chatbot",
+    "ecommerce chatbot",
+    "website chatbot integration",
     "Slack chatbot",
-    "Zapier integration",
-    "chatbot API",
+    "HubSpot integration",
   ],
   openGraph: {
     title: "SupportBase Integrations",
-    description: "Connect your AI chatbot with your favorite tools.",
+    description: "Works on any website. Shopify, WordPress, Wix, and more.",
     url: "https://supportbase.app/integrations",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "SupportBase Integrations",
-    description: "Connect your AI chatbot with your favorite tools.",
+    description: "Works on any website. Shopify, WordPress, Wix, and more.",
   },
   alternates: {
     canonical: "https://supportbase.app/integrations",
@@ -35,40 +35,41 @@ export const metadata: Metadata = {
 
 const featuredIntegrations = [
   {
-    name: "MCP Protocol",
+    name: "Shopify",
     description:
-      "Native Model Context Protocol support. Give any MCP-compatible AI assistant access to manage your chatbots.",
-    category: "AI Tools",
+      "Add AI customer support to your Shopify store. Answer product questions, track orders, and handle returns automatically.",
+    category: "Ecommerce",
     status: "Available",
     icon: (
       <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        <path d="M15.5 2.5L14 3l-1 4-2 1v11l6.5-3V5.5l-2-3z" />
+        <path d="M11 8l-4.5 2v10l4.5-2V8z" />
+        <path d="M6.5 10L4 11v8l2.5-1V10z" />
       </svg>
     ),
   },
   {
-    name: "Cursor",
+    name: "WordPress",
     description:
-      "Use natural language in Cursor to create chatbots, upload knowledge, and manage your support - without leaving your IDE.",
-    category: "AI Tools",
-    status: "Available",
-    icon: (
-      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <path d="M7 8h10M7 12h6M7 16h8" stroke="white" strokeWidth="1.5" />
-      </svg>
-    ),
-  },
-  {
-    name: "Claude",
-    description:
-      "Connect Claude to SupportBase via MCP. Ask Claude to help configure your chatbot, analyze conversations, or improve responses.",
-    category: "AI Tools",
+      "Works with any WordPress site. Install with a simple plugin or paste one line of code. Compatible with WooCommerce too.",
+    category: "Website",
     status: "Available",
     icon: (
       <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
         <circle cx="12" cy="12" r="10" />
-        <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" stroke="white" strokeWidth="1.5" />
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.05-7.44 7-7.93v15.86zm2 0V4.07c3.94.49 7 3.85 7 7.93s-3.05 7.44-7 7.93z" stroke="white" strokeWidth="0.5" />
+      </svg>
+    ),
+  },
+  {
+    name: "Wix",
+    description:
+      "Add to your Wix website in minutes. No coding required—just paste the embed code in your site settings.",
+    category: "Website",
+    status: "Available",
+    icon: (
+      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M4 6l4 12 4-8 4 8 4-12" stroke="white" strokeWidth="2" fill="none" />
       </svg>
     ),
   },
@@ -76,9 +77,65 @@ const featuredIntegrations = [
 
 const integrations = [
   {
+    name: "Squarespace",
+    description:
+      "Add to any Squarespace site. Just paste the embed code in your site's code injection settings.",
+    category: "Website",
+    status: "Available",
+  },
+  {
+    name: "Custom Website",
+    description:
+      "Works on any website. Just paste one line of code before the closing body tag.",
+    category: "Website",
+    status: "Available",
+  },
+  {
+    name: "WooCommerce",
+    description:
+      "Full support for WooCommerce stores. Answer product questions and check order status.",
+    category: "Ecommerce",
+    status: "Available",
+  },
+  {
+    name: "Slack",
+    description:
+      "Get notified of new leads and escalations directly in Slack. Reply from Slack threads.",
+    category: "Communication",
+    status: "Coming Soon",
+  },
+  {
+    name: "Email",
+    description:
+      "Receive daily summaries and instant alerts for conversations that need your attention.",
+    category: "Communication",
+    status: "Coming Soon",
+  },
+  {
+    name: "HubSpot",
+    description:
+      "Sync leads directly to HubSpot CRM. Track chatbot-generated leads through your sales pipeline.",
+    category: "CRM",
+    status: "Coming Soon",
+  },
+  {
+    name: "Zapier",
+    description:
+      "Connect SupportBase to 5,000+ apps. Automate lead capture, notifications, and more.",
+    category: "Automation",
+    status: "Coming Soon",
+  },
+  {
+    name: "Google Analytics",
+    description:
+      "Track chatbot engagement in GA4. Understand how AI support impacts your conversion funnel.",
+    category: "Analytics",
+    status: "Coming Soon",
+  },
+  {
     name: "REST API",
     description:
-      "Full-featured REST API for custom integrations. Manage chatbots, knowledge bases, and conversations programmatically.",
+      "Full-featured REST API for custom integrations. Manage chatbots, knowledge bases, and conversations.",
     category: "Developer",
     status: "Available",
   },
@@ -90,78 +147,22 @@ const integrations = [
     status: "Available",
   },
   {
-    name: "JavaScript SDK",
+    name: "MCP Protocol",
     description:
-      "Embed widget with full customization. React, Vue, and vanilla JS support.",
+      "For developers: Native Model Context Protocol support. Works with Cursor, Claude, and other AI tools.",
     category: "Developer",
     status: "Available",
   },
   {
-    name: "Slack",
+    name: "JavaScript SDK",
     description:
-      "Get notified of new leads and escalations directly in Slack. Reply from Slack threads.",
-    category: "Communication",
-    status: "Coming Soon",
-  },
-  {
-    name: "Zapier",
-    description:
-      "Connect SupportBase to 5,000+ apps. Automate lead capture, notifications, and more.",
-    category: "Automation",
-    status: "Coming Soon",
-  },
-  {
-    name: "HubSpot",
-    description:
-      "Sync leads directly to HubSpot CRM. Track chatbot-generated leads through your sales pipeline.",
-    category: "CRM",
-    status: "Coming Soon",
-  },
-  {
-    name: "Salesforce",
-    description:
-      "Enterprise CRM integration. Push leads and conversation data to Salesforce automatically.",
-    category: "CRM",
-    status: "Coming Soon",
-  },
-  {
-    name: "Intercom",
-    description:
-      "Seamless handoff to Intercom for human support. Combine AI efficiency with human empathy.",
-    category: "Support",
-    status: "Coming Soon",
-  },
-  {
-    name: "Zendesk",
-    description:
-      "Create Zendesk tickets from chatbot escalations. Maintain your existing support workflow.",
-    category: "Support",
-    status: "Coming Soon",
-  },
-  {
-    name: "Notion",
-    description:
-      "Import knowledge directly from Notion. Keep your chatbot in sync with your team documentation.",
-    category: "Knowledge",
-    status: "Coming Soon",
-  },
-  {
-    name: "Confluence",
-    description:
-      "Pull knowledge from Confluence spaces. Enterprise documentation made accessible to customers.",
-    category: "Knowledge",
-    status: "Coming Soon",
-  },
-  {
-    name: "Google Analytics",
-    description:
-      "Track chatbot engagement in GA4. Understand how AI support impacts your conversion funnel.",
-    category: "Analytics",
-    status: "Coming Soon",
+      "For developers: Advanced embed customization with React, Vue, and vanilla JS support.",
+    category: "Developer",
+    status: "Available",
   },
 ];
 
-const categories = ["All", "AI Tools", "Developer", "Communication", "CRM", "Support", "Knowledge", "Automation", "Analytics"];
+const categories = ["All", "Website", "Ecommerce", "Communication", "CRM", "Automation", "Analytics", "Developer"];
 
 export default function IntegrationsPage() {
   return (
@@ -174,11 +175,11 @@ export default function IntegrationsPage() {
             Integrations
           </span>
           <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-            Connect With Your Stack
+            Works on Any Website
           </h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            SupportBase works with your existing tools. From AI assistants to
-            CRMs, integrate seamlessly with your workflow.
+            Shopify, WordPress, Wix, Squarespace, or custom site—SupportBase
+            works everywhere. Just paste one line of code and you&apos;re live.
           </p>
         </section>
 
@@ -278,50 +279,48 @@ export default function IntegrationsPage() {
           </div>
         </section>
 
-        {/* API Section */}
+        {/* Easy Setup Section */}
         <section className="max-w-6xl mx-auto px-6 py-20">
           <div className="bg-slate-900 rounded-2xl p-12 md:flex items-center gap-12">
             <div className="md:w-1/2 mb-8 md:mb-0">
               <span className="inline-block px-3 py-1 text-sm font-medium text-blue-400 bg-blue-500/20 rounded-full mb-4">
-                For Developers
+                Simple Setup
               </span>
               <h2 className="text-3xl font-bold text-white mb-4">
-                Build Custom Integrations
+                One Line of Code
               </h2>
               <p className="text-slate-400 leading-relaxed mb-6">
-                Our REST API and MCP server give you complete control. Build
-                custom integrations, automate workflows, and extend SupportBase
-                to fit your exact needs.
+                Adding SupportBase to your website is as simple as copying and
+                pasting one line of code. No technical skills required. Works
+                with any website builder or custom site.
               </p>
               <Link
                 href="/login"
                 className="inline-flex items-center text-blue-400 font-medium hover:text-blue-300 transition-colors"
               >
-                View API Documentation
+                Get Started Free
                 <ExternalLink className="w-4 h-4 ml-2" />
               </Link>
             </div>
             <div className="md:w-1/2">
               <div className="bg-slate-800 rounded-xl p-6 font-mono text-sm">
                 <div className="text-slate-500 mb-2">
-                  # Create a chatbot with MCP
+                  {/* Add this before &lt;/body&gt; */}
                 </div>
                 <div className="text-green-400">
-                  claude &quot;Create a support chatbot
+                  &lt;script
+                </div>
+                <div className="text-green-400 pl-4">
+                  src=&quot;https://supportbase.app/widget.js&quot;
+                </div>
+                <div className="text-green-400 pl-4">
+                  data-id=&quot;your-chatbot-id&quot;
                 </div>
                 <div className="text-green-400">
-                  for my SaaS product using
+                  &gt;&lt;/script&gt;
                 </div>
-                <div className="text-green-400">SupportBase&quot;</div>
-                <div className="text-slate-500 mt-4 mb-2"># Or use the API</div>
-                <div className="text-blue-400">
-                  curl -X POST /api/projects \
-                </div>
-                <div className="text-slate-400 pl-4">
-                  -H &quot;Authorization: Bearer $API_KEY&quot; \
-                </div>
-                <div className="text-slate-400 pl-4">
-                  -d &apos;&#123;&quot;name&quot;: &quot;My Chatbot&quot;&#125;&apos;
+                <div className="text-slate-500 mt-4">
+                  {/* That&apos;s it! Your AI chatbot is live. */}
                 </div>
               </div>
             </div>
@@ -332,11 +331,10 @@ export default function IntegrationsPage() {
         <section className="bg-gradient-to-r from-blue-600 to-purple-600 py-20">
           <div className="max-w-4xl mx-auto px-6 text-center">
             <h2 className="text-3xl font-bold text-white mb-4">
-              Need a Custom Integration?
+              Ready to Add AI Support to Your Website?
             </h2>
             <p className="text-blue-100 mb-8 text-lg">
-              We&apos;re always adding new integrations. Let us know what you
-              need.
+              Works with any website. Setup takes 5 minutes. Free during beta.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link

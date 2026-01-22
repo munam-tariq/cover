@@ -18,28 +18,28 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Features | AI Chatbot Capabilities | SupportBase",
+  title: "Features | AI Customer Support for Small Business | SupportBase",
   description:
-    "Explore SupportBase features: RAG-powered AI, knowledge base upload, API tool calling, lead capture, analytics dashboard, MCP integration, and more.",
+    "SupportBase features: AI that answers from your docs, human handoff when needed, lead capture, and 5-minute setup. Perfect for small businesses, consultants, and ecommerce stores.",
   keywords: [
-    "AI chatbot features",
-    "RAG chatbot",
-    "knowledge base chatbot",
-    "chatbot analytics",
+    "AI chatbot for small business",
+    "customer support automation",
+    "AI FAQ chatbot",
+    "ecommerce chatbot",
+    "Shopify chatbot",
     "lead capture chatbot",
-    "MCP integration",
-    "API tool calling",
+    "human handoff chatbot",
   ],
   openGraph: {
     title: "SupportBase Features",
-    description: "Everything you need to add AI support to your app.",
+    description: "Everything you need to automate customer support for your small business.",
     url: "https://supportbase.app/features",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "SupportBase Features",
-    description: "Everything you need to add AI support to your app.",
+    description: "Everything you need to automate customer support for your small business.",
   },
   alternates: {
     canonical: "https://supportbase.app/features",
@@ -49,52 +49,52 @@ export const metadata: Metadata = {
 const coreFeatures = [
   {
     icon: <Brain className="w-6 h-6" />,
-    title: "RAG-Powered AI",
+    title: "Answers From Your Docs",
     description:
-      "Advanced Retrieval-Augmented Generation ensures responses are accurate and grounded in your actual content. No hallucinations, no made-up answers.",
-    highlight: "Powered by GPT-4",
-  },
-  {
-    icon: <Upload className="w-6 h-6" />,
-    title: "Knowledge Base Upload",
-    description:
-      "Upload documents, paste text, or crawl your website. Your chatbot learns from your content and stays up-to-date automatically.",
-    highlight: "Multiple formats",
-  },
-  {
-    icon: <Workflow className="w-6 h-6" />,
-    title: "API Tool Calling",
-    description:
-      "Connect your chatbot to external APIs. Check order status, fetch real-time data, or trigger actions based on user requests.",
-    highlight: "Unlimited APIs",
+      "Upload your FAQs, policies, and product info. AI answers accurately from YOUR knowledge—no making things up, no wrong information.",
+    highlight: "89% accuracy",
   },
   {
     icon: <Users className="w-6 h-6" />,
-    title: "Lead Capture",
+    title: "Human Handoff",
     description:
-      "Turn conversations into leads. Capture emails, qualify prospects, and integrate with your CRM for seamless follow-up.",
-    highlight: "CRM integration",
+      "When questions get complex, customers connect to a real person instantly. AI handles the routine stuff, you handle what matters.",
+    highlight: "Seamless transition",
+  },
+  {
+    icon: <Upload className="w-6 h-6" />,
+    title: "Upload FAQs & Policies",
+    description:
+      "Add your documents, paste text, or point to your website. Your chatbot learns from your content and stays current automatically.",
+    highlight: "Multiple formats",
+  },
+  {
+    icon: <Sparkles className="w-6 h-6" />,
+    title: "Never Miss a Lead",
+    description:
+      "When AI can't answer, it captures customer emails so you can follow up. Turn every conversation into an opportunity.",
+    highlight: "Lead capture",
   },
 ];
 
 const additionalFeatures = [
   {
+    icon: <Globe className="w-5 h-5" />,
+    title: "Works on Any Website",
+    description:
+      "Shopify, WordPress, Wix, Squarespace, or custom site—just paste one line of code and you're live.",
+  },
+  {
+    icon: <Zap className="w-5 h-5" />,
+    title: "24/7 Availability",
+    description:
+      "Your AI chatbot never sleeps. Customers get instant answers any time of day or night.",
+  },
+  {
     icon: <BarChart3 className="w-5 h-5" />,
     title: "Analytics Dashboard",
     description:
-      "Understand user behavior with conversation analytics, popular questions, and satisfaction metrics.",
-  },
-  {
-    icon: <Code className="w-5 h-5" />,
-    title: "One-Line Embed",
-    description:
-      "Add to any website with a single script tag. No complex setup or development time required.",
-  },
-  {
-    icon: <Globe className="w-5 h-5" />,
-    title: "MCP Integration",
-    description:
-      "Native support for Model Context Protocol. Works seamlessly with Cursor, Claude, and other AI tools.",
+      "See which questions customers ask most, track conversations, and understand what content to improve.",
   },
   {
     icon: <Palette className="w-5 h-5" />,
@@ -103,28 +103,28 @@ const additionalFeatures = [
       "Match your brand with customizable colors, logos, and welcome messages.",
   },
   {
-    icon: <Zap className="w-5 h-5" />,
-    title: "Instant Responses",
-    description:
-      "Sub-second response times ensure your users never wait for answers.",
-  },
-  {
     icon: <Shield className="w-5 h-5" />,
-    title: "Enterprise Security",
+    title: "Secure & Private",
     description:
-      "SOC 2 compliant infrastructure with encrypted data storage and secure API access.",
+      "Your data stays safe with encrypted storage and secure infrastructure.",
   },
   {
     icon: <MessageSquare className="w-5 h-5" />,
-    title: "Multi-Project Support",
+    title: "Conversation History",
     description:
-      "Manage multiple chatbots from a single dashboard. Perfect for agencies and multi-product companies.",
+      "Review all customer conversations. See what's working and where customers need more help.",
   },
   {
-    icon: <Sparkles className="w-5 h-5" />,
-    title: "Human Handoff",
+    icon: <Workflow className="w-5 h-5" />,
+    title: "Order Status Lookup",
     description:
-      "Seamlessly escalate complex issues to human agents when AI can't help.",
+      "Connect to your systems so customers can check order status, appointments, or account info.",
+  },
+  {
+    icon: <Code className="w-5 h-5" />,
+    title: "Developer API",
+    description:
+      "Full REST API for custom integrations. Build exactly what you need.",
   },
 ];
 
@@ -139,12 +139,11 @@ export default function FeaturesPage() {
             Features
           </span>
           <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-            Everything You Need for AI Support
+            Everything You Need to Stop Answering the Same Questions
           </h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            From knowledge base management to advanced analytics, SupportBase
-            gives you the complete toolkit for delivering exceptional customer
-            support.
+            Upload your FAQs, let AI handle 89% of questions automatically, and
+            focus on what matters—growing your business.
           </p>
         </section>
 
@@ -214,30 +213,30 @@ export default function FeaturesPage() {
         {/* How It Works */}
         <section className="max-w-6xl mx-auto px-6 py-20">
           <h2 className="text-3xl font-bold text-slate-900 mb-4 text-center">
-            How It Works
+            Live in 5 Minutes
           </h2>
           <p className="text-slate-600 text-center mb-12 max-w-2xl mx-auto">
-            From sign-up to live chatbot in three simple steps.
+            Three simple steps. No technical skills required.
           </p>
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
                 step: "01",
-                title: "Upload Your Knowledge",
+                title: "Upload Your FAQs",
                 description:
-                  "Add your documentation, FAQs, and product information. We handle the rest.",
+                  "Add your frequently asked questions, policies, and product info. Just paste the text or upload files.",
               },
               {
                 step: "02",
-                title: "Customize & Configure",
+                title: "Customize Your Chatbot",
                 description:
-                  "Set your branding, welcome messages, and lead capture rules.",
+                  "Add your logo, pick your colors, write a welcome message. Make it feel like your brand.",
               },
               {
                 step: "03",
-                title: "Embed & Go Live",
+                title: "Go Live in 5 Minutes",
                 description:
-                  "Copy one line of code to your website. Your AI support is now live.",
+                  "Copy one line of code to your website. Works with Shopify, WordPress, Wix, and any website.",
               },
             ].map((item, index) => (
               <div key={index} className="text-center">

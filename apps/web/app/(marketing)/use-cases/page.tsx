@@ -10,31 +10,31 @@ import {
   GraduationCap,
   HeartPulse,
   ArrowRight,
+  Briefcase,
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Use Cases | AI Chatbot for Every Industry | SupportBase",
+  title: "Use Cases | AI Customer Support for Small Business | SupportBase",
   description:
-    "Discover how SupportBase AI chatbot helps SaaS companies, e-commerce stores, startups, agencies, education platforms, and healthcare providers deliver better support.",
+    "See how consultants, lawyers, ecommerce stores, and small businesses use SupportBase to answer 89% of customer questions automatically.",
   keywords: [
-    "AI chatbot use cases",
-    "SaaS customer support",
+    "AI chatbot for consultants",
+    "chatbot for lawyers",
     "e-commerce chatbot",
-    "startup support",
-    "agency chatbot",
-    "education chatbot",
-    "healthcare chatbot",
+    "small business customer support",
+    "automated FAQ chatbot",
+    "professional services chatbot",
   ],
   openGraph: {
     title: "SupportBase Use Cases",
-    description: "AI chatbot solutions for every industry.",
+    description: "AI customer support for consultants, ecommerce, and small business.",
     url: "https://supportbase.app/use-cases",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "SupportBase Use Cases",
-    description: "AI chatbot solutions for every industry.",
+    description: "AI customer support for consultants, ecommerce, and small business.",
   },
   alternates: {
     canonical: "https://supportbase.app/use-cases",
@@ -42,57 +42,59 @@ export const metadata: Metadata = {
 };
 
 const useCases = [
+  // PRIMARY ICPs
   {
-    icon: <Code2 className="w-8 h-8" />,
-    title: "SaaS Companies",
-    subtitle: "Product Support & Onboarding",
+    icon: <Briefcase className="w-8 h-8" />,
+    title: "Professional Services",
+    subtitle: "Consultants, Lawyers, Accountants",
     description:
-      "Help users navigate your product, answer technical questions, and reduce support ticket volume by up to 70%.",
+      "Stop answering the same 10 questions 50+ times a month. Let AI handle 'What are your fees?', 'How do I get started?', and 'What documents do I need?' so you can focus on billable work.",
     benefits: [
-      "Instant answers to product questions",
-      "Reduce onboarding friction",
-      "Scale support without scaling team",
-      "24/7 technical assistance",
+      "Free up 2+ hours every day",
+      "Never miss a client inquiry",
+      "24/7 availability for prospects",
+      "Capture leads while you sleep",
     ],
-    stats: { value: "70%", label: "ticket deflection" },
-    color: "from-blue-500 to-cyan-500",
+    stats: { value: "2+ hrs", label: "saved daily" },
+    color: "from-blue-500 to-indigo-500",
   },
   {
     icon: <ShoppingCart className="w-8 h-8" />,
-    title: "E-commerce",
-    subtitle: "Sales & Customer Service",
+    title: "E-commerce Stores",
+    subtitle: "Shopify, WooCommerce, Custom Stores",
     description:
-      "Answer product questions, track orders, process returns, and convert visitors into customers with AI-powered shopping assistance.",
+      "Answer 'Where's my order?', 'What's your return policy?', and product questions instantly. Reduce cart abandonment and turn browsers into buyers.",
     benefits: [
+      "Instant order status updates",
+      "Return & refund policy answers",
       "Product recommendations",
-      "Order status tracking",
-      "Return & refund handling",
-      "Upselling & cross-selling",
+      "24/7 customer support",
     ],
-    stats: { value: "35%", label: "conversion lift" },
+    stats: { value: "89%", label: "questions answered" },
     color: "from-green-500 to-emerald-500",
   },
   {
     icon: <Rocket className="w-8 h-8" />,
-    title: "Startups",
-    subtitle: "Ship Fast, Support Better",
+    title: "Small SaaS & Startups",
+    subtitle: "Technical Founders Stretched Thin",
     description:
-      "Deliver enterprise-grade support on a bootstrap budget. Focus on building product while AI handles customer questions.",
+      "You're building product AND doing support. Let AI handle the 'How do I...?' questions so you can ship faster and grow your business.",
     benefits: [
-      "No support team needed initially",
-      "Setup in 15 minutes",
+      "No support team needed yet",
+      "5-minute setup",
       "Free during beta",
-      "Scale as you grow",
+      "Scale support as you grow",
     ],
-    stats: { value: "15 min", label: "time to value" },
+    stats: { value: "5 min", label: "setup time" },
     color: "from-orange-500 to-red-500",
   },
+  // SECONDARY USE CASES
   {
     icon: <Building2 className="w-8 h-8" />,
     title: "Agencies",
     subtitle: "Multi-Client Support",
     description:
-      "Manage support chatbots for multiple clients from a single dashboard. White-label solution for your portfolio.",
+      "Manage support chatbots for multiple clients from a single dashboard. Custom branding for each client.",
     benefits: [
       "Multi-project management",
       "Custom branding per client",
@@ -122,7 +124,7 @@ const useCases = [
     title: "Healthcare",
     subtitle: "Patient Engagement",
     description:
-      "Provide information about services, appointment scheduling, and general health inquiries while maintaining compliance.",
+      "Provide information about services, appointment scheduling, and general health inquiries.",
     benefits: [
       "Appointment booking",
       "Service information",
@@ -145,12 +147,12 @@ export default function UseCasesPage() {
             Use Cases
           </span>
           <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-            AI Support for Every Industry
+            Stop Answering the Same Questions
           </h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            From startups to enterprises, SupportBase adapts to your unique
-            needs. See how businesses like yours are transforming customer
-            support.
+            Whether you&apos;re a consultant, store owner, or founder—SupportBase
+            handles 89% of customer questions automatically so you can focus
+            on what matters.
           </p>
         </section>
 
@@ -251,11 +253,10 @@ export default function UseCasesPage() {
         <section className="bg-gradient-to-r from-blue-600 to-purple-600 py-20">
           <div className="max-w-4xl mx-auto px-6 text-center">
             <h2 className="text-3xl font-bold text-white mb-4">
-              Ready to Transform Your Support?
+              Ready to Stop Answering the Same Questions?
             </h2>
             <p className="text-blue-100 mb-8 text-lg">
-              Join thousands of businesses delivering better customer
-              experiences with AI.
+              5-minute setup. 89% of questions answered automatically. Free during beta.
             </p>
             <Link
               href="/login"

@@ -5,25 +5,25 @@ import { Footer } from "../components/footer";
 import { Target, Users, Zap, Heart } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "About SupportBase | AI Chatbot for Modern Developers",
+  title: "About SupportBase | AI Customer Support for Small Business",
   description:
-    "SupportBase is on a mission to democratize AI customer support. Learn about our story, values, and vision for the future of customer experience.",
+    "SupportBase helps small businesses stop answering the same questions. AI chatbot that answers 89% of customer questions automatically.",
   keywords: [
     "about SupportBase",
     "AI chatbot company",
-    "customer support startup",
-    "vibe coding platform",
+    "small business customer support",
+    "automated customer service",
   ],
   openGraph: {
     title: "About SupportBase",
-    description: "Democratizing AI customer support for developers.",
+    description: "AI customer support for small businesses.",
     url: "https://supportbase.app/about",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "About SupportBase",
-    description: "Democratizing AI customer support for developers.",
+    description: "AI customer support for small businesses.",
   },
   alternates: {
     canonical: "https://supportbase.app/about",
@@ -35,31 +35,31 @@ const values = [
     icon: <Zap className="w-6 h-6" />,
     title: "Speed Over Everything",
     description:
-      "We believe great products should be fast to implement. One line of code, 15 minutes to value. No enterprise sales cycles needed.",
-  },
-  {
-    icon: <Users className="w-6 h-6" />,
-    title: "Developer-First",
-    description:
-      "Built by developers, for developers. Clean APIs, great DX, and tools that work with your existing workflow.",
+      "Your time is valuable. That's why SupportBase takes 5 minutes to set up—not days or weeks. No consultants, no complicated setup.",
   },
   {
     icon: <Target className="w-6 h-6" />,
-    title: "Simplicity Wins",
+    title: "Simple By Design",
     description:
-      "Complex problems deserve simple solutions. We strip away unnecessary features to focus on what actually matters.",
+      "You shouldn't need to be technical to use AI. Upload your FAQs, paste one line of code, and you're live. That's it.",
+  },
+  {
+    icon: <Users className="w-6 h-6" />,
+    title: "Built for Small Business",
+    description:
+      "We know small business owners are stretched thin. SupportBase handles the repetitive questions so you can focus on what you do best.",
   },
   {
     icon: <Heart className="w-6 h-6" />,
     title: "Customer Obsession",
     description:
-      "Every feature we build starts with a customer problem. We use our own product daily and iterate constantly.",
+      "Every feature we build starts with a customer problem. We talk to users constantly and iterate based on real feedback.",
   },
 ];
 
 const stats = [
-  { value: "15 min", label: "Average setup time" },
-  { value: "1 line", label: "Code to integrate" },
+  { value: "5 min", label: "Setup time" },
+  { value: "89%", label: "Questions answered by AI" },
   { value: "24/7", label: "AI availability" },
   { value: "Free", label: "During beta" },
 ];
@@ -75,12 +75,12 @@ export default function AboutPage() {
             About Us
           </span>
           <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-            Democratizing AI Customer Support
+            AI Customer Support for Small Business
           </h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            SupportBase exists because we believe every developer should have
-            access to enterprise-grade AI support tools. No more choosing
-            between great customer experience and shipping speed.
+            SupportBase exists because we believe every small business deserves
+            great customer support—without hiring a team or spending thousands
+            on enterprise software.
           </p>
         </section>
 
@@ -91,25 +91,27 @@ export default function AboutPage() {
           </h2>
           <div className="prose prose-lg prose-slate max-w-none">
             <p className="text-slate-700 leading-relaxed mb-6">
-              SupportBase started with a frustration. As developers building
-              products, we kept facing the same problem: adding customer support
-              was either expensive, complicated, or both.
+              SupportBase started with a simple observation: small business
+              owners spend hours every week answering the same questions over
+              and over. &quot;What are your hours?&quot; &quot;What&apos;s your return policy?&quot;
+              &quot;Where&apos;s my order?&quot;
             </p>
             <p className="text-slate-700 leading-relaxed mb-6">
-              Enterprise solutions cost thousands per month. DIY approaches took
-              months to build. And in the age of AI, why were we still relying
-              on decision trees and keyword matching?
+              For consultants and professionals, every hour spent on basic
+              questions is an hour not spent on billable work. For store owners,
+              slow responses mean lost sales. The problem was clear—but the
+              solutions weren&apos;t.
             </p>
             <p className="text-slate-700 leading-relaxed mb-6">
-              We built SupportBase to solve this. A tool that understands your
-              product, answers questions accurately, and takes 15 minutes to
-              set up. No sales calls. No complex integrations. Just upload
-              your docs and paste one line of code.
+              Enterprise chatbots cost thousands per month. Simple FAQ pages
+              don&apos;t actually answer questions. And hiring support staff
+              isn&apos;t realistic when you&apos;re running a small team.
             </p>
             <p className="text-slate-700 leading-relaxed">
-              Today, we&apos;re building the AI support platform we wished
-              existed. For indie hackers, startups, and growing teams who
-              refuse to compromise on customer experience.
+              We built SupportBase to change that. An AI chatbot that actually
+              learns from YOUR content, answers 89% of questions automatically,
+              and takes just 5 minutes to set up. No technical skills required.
+              No enterprise pricing. Just upload your FAQs and go.
             </p>
           </div>
         </section>
@@ -164,10 +166,10 @@ export default function AboutPage() {
               Our Vision
             </h2>
             <p className="text-xl text-slate-600 leading-relaxed mb-8">
-              We envision a world where every digital product has intelligent,
-              helpful customer support. Where AI augments human teams instead
-              of replacing them. Where great customer experience is accessible
-              to companies of all sizes.
+              We believe small businesses deserve the same quality customer
+              support as the big companies—without the big company budget.
+              AI should handle the routine stuff so you can focus on what
+              actually matters: your customers, your craft, your business.
             </p>
             <p className="text-slate-600 leading-relaxed">
               We&apos;re just getting started. Join us on this journey.
@@ -182,7 +184,7 @@ export default function AboutPage() {
               Ready to Get Started?
             </h2>
             <p className="text-slate-600 mb-8">
-              Join the developers who are shipping AI support in minutes.
+              Join the businesses saving hours every week with AI customer support.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
