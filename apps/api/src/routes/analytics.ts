@@ -9,6 +9,7 @@
 
 import { Router, Request, Response } from "express";
 import { supabaseAdmin } from "../lib/supabase";
+import { logger } from "../lib/logger";
 import { getTopQuestions } from "../services/question-clustering";
 import { authMiddleware } from "../middleware/auth";
 
@@ -22,6 +23,7 @@ analyticsRouter.use(authMiddleware);
  *
  * Returns overview metrics including total messages, conversations,
  * and trend comparisons to previous period.
+ * Uses conversations and messages tables (single source of truth).
  *
  * Query params:
  * - projectId: string (required)
@@ -48,46 +50,64 @@ analyticsRouter.get("/summary", async (req: Request, res: Response) => {
     const previousPeriodEnd = new Date();
     previousPeriodEnd.setDate(previousPeriodEnd.getDate() - periodDays);
 
-    // Get current period stats
-    const { data: currentSessions, error: currentError } = await supabaseAdmin
-      .from("chat_sessions")
-      .select("id, message_count, messages")
+    // Get current period conversation count
+    const { count: currentConversations, error: currentConvError } = await supabaseAdmin
+      .from("conversations")
+      .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .gte("created_at", currentPeriodStart.toISOString());
 
-    if (currentError) throw currentError;
+    if (currentConvError) throw currentConvError;
 
-    // Get previous period stats for trend calculation
-    const { data: previousSessions, error: previousError } = await supabaseAdmin
-      .from("chat_sessions")
-      .select("id, message_count, messages")
+    // Get current period conversation IDs for message count
+    const { data: currentConvIds } = await supabaseAdmin
+      .from("conversations")
+      .select("id")
+      .eq("project_id", projectId)
+      .gte("created_at", currentPeriodStart.toISOString());
+
+    // Get current period user message count
+    let currentMessages = 0;
+    if (currentConvIds && currentConvIds.length > 0) {
+      const { count: msgCount, error: msgError } = await supabaseAdmin
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("sender_type", "customer")
+        .in("conversation_id", currentConvIds.map(c => c.id));
+
+      if (msgError) throw msgError;
+      currentMessages = msgCount || 0;
+    }
+
+    // Get previous period conversation count
+    const { count: previousConversations, error: prevConvError } = await supabaseAdmin
+      .from("conversations")
+      .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .gte("created_at", previousPeriodStart.toISOString())
       .lt("created_at", previousPeriodEnd.toISOString());
 
-    if (previousError) throw previousError;
+    if (prevConvError) throw prevConvError;
 
-    // Calculate metrics for current period
-    const currentConversations = currentSessions?.length || 0;
-    let currentMessages = 0;
-    for (const session of currentSessions || []) {
-      // Count actual user messages (not system/assistant messages)
-      if (session.messages && Array.isArray(session.messages)) {
-        currentMessages += session.messages.filter(
-          (m: any) => m && m.role === "user"
-        ).length;
-      }
-    }
+    // Get previous period conversation IDs for message count
+    const { data: prevConvIds } = await supabaseAdmin
+      .from("conversations")
+      .select("id")
+      .eq("project_id", projectId)
+      .gte("created_at", previousPeriodStart.toISOString())
+      .lt("created_at", previousPeriodEnd.toISOString());
 
-    // Calculate metrics for previous period
-    const previousConversations = previousSessions?.length || 0;
+    // Get previous period user message count
     let previousMessages = 0;
-    for (const session of previousSessions || []) {
-      if (session.messages && Array.isArray(session.messages)) {
-        previousMessages += session.messages.filter(
-          (m: any) => m && m.role === "user"
-        ).length;
-      }
+    if (prevConvIds && prevConvIds.length > 0) {
+      const { count: prevMsgCount, error: prevMsgError } = await supabaseAdmin
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("sender_type", "customer")
+        .in("conversation_id", prevConvIds.map(c => c.id));
+
+      if (prevMsgError) throw prevMsgError;
+      previousMessages = prevMsgCount || 0;
     }
 
     // Calculate trend percentages
@@ -95,13 +115,13 @@ analyticsRouter.get("/summary", async (req: Request, res: Response) => {
       ? Math.round(((currentMessages - previousMessages) / previousMessages) * 100)
       : currentMessages > 0 ? 100 : 0;
 
-    const conversationsChange = previousConversations > 0
-      ? Math.round(((currentConversations - previousConversations) / previousConversations) * 100)
-      : currentConversations > 0 ? 100 : 0;
+    const conversationsChange = (previousConversations || 0) > 0
+      ? Math.round((((currentConversations || 0) - (previousConversations || 0)) / (previousConversations || 1)) * 100)
+      : (currentConversations || 0) > 0 ? 100 : 0;
 
     res.json({
       totalMessages: currentMessages,
-      totalConversations: currentConversations,
+      totalConversations: currentConversations || 0,
       period,
       periodStart: currentPeriodStart.toISOString(),
       periodEnd: new Date().toISOString(),
@@ -111,7 +131,7 @@ analyticsRouter.get("/summary", async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error("Analytics summary error:", error);
+    logger.error("Analytics summary error", error, { requestId: req.requestId });
     res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: "Failed to get analytics summary" },
     });
@@ -148,7 +168,7 @@ analyticsRouter.get("/top-questions", async (req: Request, res: Response) => {
       limit,
     });
   } catch (error) {
-    console.error("Top questions error:", error);
+    logger.error("Top questions error", error, { requestId: req.requestId });
     res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: "Failed to get top questions" },
     });
@@ -249,7 +269,7 @@ analyticsRouter.get("/feedback/summary", async (req: Request, res: Response) => 
       },
     });
   } catch (error) {
-    console.error("Feedback summary error:", error);
+    logger.error("Feedback summary error", error, { requestId: req.requestId });
     res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: "Failed to get feedback summary" },
     });
@@ -323,7 +343,7 @@ analyticsRouter.get("/feedback/timeline", async (req: Request, res: Response) =>
       days,
     });
   } catch (error) {
-    console.error("Feedback timeline error:", error);
+    logger.error("Feedback timeline error", error, { requestId: req.requestId });
     res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: "Failed to get feedback timeline" },
     });
@@ -412,7 +432,7 @@ analyticsRouter.get("/feedback/issues", async (req: Request, res: Response) => {
       totalUnhelpful: unhelpfulFeedback?.length || 0,
     });
   } catch (error) {
-    console.error("Feedback issues error:", error);
+    logger.error("Feedback issues error", error, { requestId: req.requestId });
     res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: "Failed to get feedback issues" },
     });
@@ -423,6 +443,7 @@ analyticsRouter.get("/feedback/issues", async (req: Request, res: Response) => {
  * GET /api/analytics/timeline
  *
  * Returns daily message and conversation counts for charting.
+ * Uses conversations and messages tables (single source of truth).
  *
  * Query params:
  * - projectId: string (required)
@@ -443,15 +464,32 @@ analyticsRouter.get("/timeline", async (req: Request, res: Response) => {
     startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
 
-    // Get all sessions in the date range
-    const { data: sessions, error } = await supabaseAdmin
-      .from("chat_sessions")
-      .select("created_at, messages")
+    // Get all conversations in the date range
+    const { data: conversations, error: convError } = await supabaseAdmin
+      .from("conversations")
+      .select("id, created_at")
       .eq("project_id", projectId)
       .gte("created_at", startDate.toISOString())
       .order("created_at", { ascending: true });
 
-    if (error) throw error;
+    if (convError) throw convError;
+
+    // Get all customer messages in the date range for these conversations
+    const conversationIds = (conversations || []).map(c => c.id);
+    let messages: { conversation_id: string; created_at: string }[] = [];
+
+    if (conversationIds.length > 0) {
+      const { data: msgData, error: msgError } = await supabaseAdmin
+        .from("messages")
+        .select("conversation_id, created_at")
+        .eq("sender_type", "customer")
+        .in("conversation_id", conversationIds)
+        .gte("created_at", startDate.toISOString())
+        .order("created_at", { ascending: true });
+
+      if (msgError) throw msgError;
+      messages = msgData || [];
+    }
 
     // Initialize timeline with all dates in range
     const timeline: Record<string, { messages: number; conversations: number }> = {};
@@ -462,17 +500,19 @@ analyticsRouter.get("/timeline", async (req: Request, res: Response) => {
       timeline[dateStr] = { messages: 0, conversations: 0 };
     }
 
-    // Aggregate data by date
-    for (const session of sessions || []) {
-      const dateStr = new Date(session.created_at).toISOString().split("T")[0];
+    // Aggregate conversations by date
+    for (const conv of conversations || []) {
+      const dateStr = new Date(conv.created_at).toISOString().split("T")[0];
       if (timeline[dateStr]) {
         timeline[dateStr].conversations++;
-        // Count user messages
-        if (session.messages && Array.isArray(session.messages)) {
-          timeline[dateStr].messages += session.messages.filter(
-            (m: any) => m && m.role === "user"
-          ).length;
-        }
+      }
+    }
+
+    // Aggregate messages by date
+    for (const msg of messages) {
+      const dateStr = new Date(msg.created_at).toISOString().split("T")[0];
+      if (timeline[dateStr]) {
+        timeline[dateStr].messages++;
       }
     }
 
@@ -488,7 +528,7 @@ analyticsRouter.get("/timeline", async (req: Request, res: Response) => {
       days,
     });
   } catch (error) {
-    console.error("Timeline error:", error);
+    logger.error("Timeline error", error, { requestId: req.requestId });
     res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: "Failed to get timeline" },
     });

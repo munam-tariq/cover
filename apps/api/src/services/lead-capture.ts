@@ -10,6 +10,7 @@
  */
 
 import { supabaseAdmin } from "../lib/supabase";
+import { logger } from "../lib/logger";
 
 // Cache for lead capture settings to avoid repeated DB calls
 const leadSettingsCache = new Map<string, { data: LeadCaptureSettings; timestamp: number }>();
@@ -122,39 +123,41 @@ export function isNewConversation(lastMessageAt: Date | null): boolean {
 
 /**
  * Get session state for lead capture
+ * Uses conversations table (single source of truth)
  */
 export async function getSessionState(
   sessionId: string
 ): Promise<LeadCaptureSessionState | null> {
-  const { data: session, error } = await supabaseAdmin
-    .from("chat_sessions")
+  const { data: conversation, error } = await supabaseAdmin
+    .from("conversations")
     .select("awaiting_email, last_message_at, pending_question, email_asked")
     .eq("id", sessionId)
     .single();
 
-  if (error || !session) {
+  if (error || !conversation) {
     return null;
   }
 
   return {
-    awaiting_email: session.awaiting_email || false,
-    last_message_at: session.last_message_at
-      ? new Date(session.last_message_at)
+    awaiting_email: conversation.awaiting_email || false,
+    last_message_at: conversation.last_message_at
+      ? new Date(conversation.last_message_at)
       : null,
-    pending_question: session.pending_question || null,
-    email_asked: session.email_asked || false,
+    pending_question: conversation.pending_question || null,
+    email_asked: conversation.email_asked || false,
   };
 }
 
 /**
  * Update session to await email
+ * Uses conversations table (single source of truth)
  */
 export async function setAwaitingEmailState(
   sessionId: string,
   question: string
 ): Promise<void> {
   await supabaseAdmin
-    .from("chat_sessions")
+    .from("conversations")
     .update({
       awaiting_email: true,
       pending_question: question,
@@ -166,10 +169,11 @@ export async function setAwaitingEmailState(
 
 /**
  * Clear awaiting email state
+ * Uses conversations table (single source of truth)
  */
 export async function clearAwaitingEmailState(sessionId: string): Promise<void> {
   await supabaseAdmin
-    .from("chat_sessions")
+    .from("conversations")
     .update({
       awaiting_email: false,
       pending_question: null,
@@ -180,10 +184,11 @@ export async function clearAwaitingEmailState(sessionId: string): Promise<void> 
 
 /**
  * Reset session state (on timeout)
+ * Uses conversations table (single source of truth)
  */
 export async function resetSessionState(sessionId: string): Promise<void> {
   await supabaseAdmin
-    .from("chat_sessions")
+    .from("conversations")
     .update({
       awaiting_email: false,
       pending_question: null,
@@ -195,10 +200,11 @@ export async function resetSessionState(sessionId: string): Promise<void> {
 
 /**
  * Update last message timestamp
+ * Uses conversations table (single source of truth)
  */
 export async function updateLastMessageAt(sessionId: string): Promise<void> {
   await supabaseAdmin
-    .from("chat_sessions")
+    .from("conversations")
     .update({
       last_message_at: new Date().toISOString(),
     })
@@ -222,7 +228,7 @@ export async function storeLead(
   });
 
   if (error) {
-    console.error("Failed to store lead:", error);
+    logger.error("Failed to store lead", error, { projectId, sessionId });
     throw new Error("Failed to store lead capture");
   }
 }
@@ -241,7 +247,7 @@ export async function getPendingLeads(
     .order("created_at", { ascending: true });
 
   if (error) {
-    console.error("Failed to get pending leads:", error);
+    logger.error("Failed to get pending leads", error, { projectId });
     return [];
   }
 

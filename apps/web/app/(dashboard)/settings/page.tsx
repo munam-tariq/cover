@@ -72,6 +72,10 @@ export default function SettingsPage() {
   const [leadCaptureEmail, setLeadCaptureEmail] = useState("");
   const [leadNotificationsEnabled, setLeadNotificationsEnabled] = useState(true);
 
+  // Widget status state (emergency kill switch)
+  const [widgetEnabled, setWidgetEnabled] = useState(true);
+  const [savingWidgetStatus, setSavingWidgetStatus] = useState(false);
+
   // Domain whitelist state
   const [allowedDomains, setAllowedDomains] = useState<string[]>([]);
   const [newDomain, setNewDomain] = useState("");
@@ -109,6 +113,8 @@ export default function SettingsPage() {
       setLeadCaptureEnabled(settings.lead_capture_enabled === true);
       setLeadCaptureEmail((settings.lead_capture_email as string) || "");
       setLeadNotificationsEnabled(settings.lead_notifications_enabled !== false);
+      // Load widget enabled status (default to true)
+      setWidgetEnabled(settings.widget_enabled !== false);
     }
   }, [currentProject]);
 
@@ -316,6 +322,46 @@ export default function SettingsPage() {
       console.error("Error deleting project:", err);
       setError("Failed to delete project");
       setDeleting(false);
+    }
+  };
+
+  // Handle widget status toggle (immediate save for emergency control)
+  const handleWidgetStatusChange = async (enabled: boolean) => {
+    if (!currentProject) return;
+
+    setWidgetEnabled(enabled);
+    setSavingWidgetStatus(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Merge with existing settings
+      const existingSettings = currentProject.settings || {};
+      const updatedSettings = {
+        ...existingSettings,
+        widget_enabled: enabled,
+      };
+
+      await apiClient<ProjectUpdateResponse>(`/api/projects/${currentProject.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: currentProject.name,
+          settings: updatedSettings,
+        }),
+      });
+
+      // Refresh projects to update context
+      await refreshProjects();
+
+      setSuccess(enabled ? "Widget enabled" : "Widget disabled - visitors will not see the chat widget");
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err) {
+      console.error("Error updating widget status:", err);
+      setError("Failed to update widget status");
+      // Revert on error
+      setWidgetEnabled(!enabled);
+    } finally {
+      setSavingWidgetStatus(false);
     }
   };
 
@@ -830,6 +876,54 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Widget Status - Emergency Kill Switch */}
+        <Card className={!widgetEnabled ? "border-destructive/50 bg-destructive/5" : ""}>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              {widgetEnabled ? (
+                <ShieldCheck className="h-5 w-5 text-green-600" />
+              ) : (
+                <ShieldAlert className="h-5 w-5 text-destructive" />
+              )}
+              <h2 className="font-semibold">Widget Status</h2>
+              {savingWidgetStatus && (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Emergency control to instantly hide the chat widget from your website. Use this if you need to quickly disable the chatbot.
+            </p>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="widget-status-toggle" className="text-base">
+                  {widgetEnabled ? "Widget is Active" : "Widget is Disabled"}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {widgetEnabled
+                    ? "Visitors can see and use the chat widget"
+                    : "Widget is hidden from all visitors"}
+                </p>
+              </div>
+              <Switch
+                id="widget-status-toggle"
+                checked={widgetEnabled}
+                onCheckedChange={handleWidgetStatusChange}
+                disabled={savingWidgetStatus}
+              />
+            </div>
+
+            {!widgetEnabled && (
+              <div className="mt-4 p-3 bg-destructive/10 rounded-md">
+                <p className="text-sm text-destructive flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  The chat widget is currently hidden from your website visitors.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

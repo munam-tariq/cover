@@ -91,8 +91,14 @@ class ChatbotWidget {
       return;
     }
 
-    // Fetch realtime config from API
-    await this.fetchRealtimeConfig();
+    // Fetch config from API and check if widget is enabled
+    const isEnabled = await this.fetchConfig();
+    if (!isEnabled) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Chatbot Widget] Widget is disabled for this project");
+      }
+      return;
+    }
 
     // Create container with Shadow DOM for style isolation
     this.container = document.createElement("div");
@@ -141,34 +147,45 @@ class ChatbotWidget {
   }
 
   /**
-   * Fetch realtime config from API and store in global config
+   * Fetch config from API, check if widget is enabled, and store realtime config
+   * Returns true if widget is enabled, false if disabled
    */
-  private async fetchRealtimeConfig(): Promise<void> {
+  private async fetchConfig(): Promise<boolean> {
     try {
       const response = await fetch(
         `${this.config.apiUrl}/api/embed/config/${this.config.projectId}`
       );
 
       if (!response.ok) {
-        console.warn("[Chatbot Widget] Failed to fetch realtime config");
-        return;
+        console.warn("[Chatbot Widget] Failed to fetch config");
+        // On error, default to enabled (fail-open)
+        return true;
       }
 
       const data = await response.json();
 
+      // Check if widget is enabled (default to true if not specified)
+      if (data.enabled === false) {
+        return false;
+      }
+
+      // Store realtime config for realtime.ts to use
       if (data.realtime?.supabaseUrl && data.realtime?.supabaseAnonKey) {
-        // Store in global config for realtime.ts to use
         (window as Record<string, unknown>).__WIDGET_CONFIG__ = {
           supabaseUrl: data.realtime.supabaseUrl,
           supabaseAnonKey: data.realtime.supabaseAnonKey,
         };
 
         if (process.env.NODE_ENV === "development") {
-          console.log("[Chatbot Widget] Realtime config loaded:", data.realtime.supabaseUrl);
+          console.log("[Chatbot Widget] Config loaded:", data.realtime.supabaseUrl);
         }
       }
+
+      return true;
     } catch (error) {
-      console.warn("[Chatbot Widget] Failed to fetch realtime config:", error);
+      console.warn("[Chatbot Widget] Failed to fetch config:", error);
+      // On error, default to enabled (fail-open)
+      return true;
     }
   }
 

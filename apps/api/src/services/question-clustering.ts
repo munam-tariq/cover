@@ -6,6 +6,7 @@
  */
 
 import { supabaseAdmin } from "../lib/supabase";
+import { logger } from "../lib/logger";
 import { embeddingService } from "./embedding";
 
 export interface QuestionCluster {
@@ -15,8 +16,9 @@ export interface QuestionCluster {
 }
 
 /**
- * Get top questions from chat sessions by clustering similar questions
- * Uses embedding similarity to group semantically similar questions
+ * Get top questions from conversations by clustering similar questions
+ * Uses embedding similarity to group semantically similar questions.
+ * Uses conversations and messages tables (single source of truth).
  *
  * @param projectId - The project to analyze
  * @param days - Number of days to look back (default 30)
@@ -30,35 +32,47 @@ export async function getTopQuestions(
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - days);
 
-  // Get all chat sessions for the project within the date range
-  const { data: sessions, error } = await supabaseAdmin
-    .from("chat_sessions")
-    .select("messages")
+  // Get all conversations for the project within the date range
+  const { data: conversations, error: convError } = await supabaseAdmin
+    .from("conversations")
+    .select("id")
     .eq("project_id", projectId)
     .gte("created_at", cutoffDate.toISOString());
 
-  if (error) {
-    console.error("Error fetching chat sessions:", error);
-    throw new Error("Failed to fetch chat sessions");
+  if (convError) {
+    logger.error("Error fetching conversations", convError, { projectId });
+    throw new Error("Failed to fetch conversations");
   }
 
-  if (!sessions || sessions.length === 0) {
+  if (!conversations || conversations.length === 0) {
     return [];
   }
 
-  // Extract all user messages from sessions
+  // Get all customer messages from these conversations
+  const conversationIds = conversations.map(c => c.id);
+  const { data: messages, error: msgError } = await supabaseAdmin
+    .from("messages")
+    .select("content")
+    .eq("sender_type", "customer")
+    .in("conversation_id", conversationIds)
+    .gte("created_at", cutoffDate.toISOString());
+
+  if (msgError) {
+    logger.error("Error fetching messages", msgError, { projectId });
+    throw new Error("Failed to fetch messages");
+  }
+
+  if (!messages || messages.length === 0) {
+    return [];
+  }
+
+  // Extract user messages
   const userMessages: string[] = [];
-  for (const session of sessions) {
-    if (session.messages && Array.isArray(session.messages)) {
-      for (const msg of session.messages) {
-        // Messages are stored as JSONB objects with role and content
-        if (msg && typeof msg === "object" && msg.role === "user" && msg.content) {
-          // Normalize the message (trim, lowercase for comparison)
-          const content = String(msg.content).trim();
-          if (content.length > 0 && content.length <= 500) {
-            userMessages.push(content);
-          }
-        }
+  for (const msg of messages) {
+    if (msg.content) {
+      const content = String(msg.content).trim();
+      if (content.length > 0 && content.length <= 500) {
+        userMessages.push(content);
       }
     }
   }
@@ -76,7 +90,7 @@ export async function getTopQuestions(
   try {
     return await clusterBySimilarity(userMessages, limit);
   } catch (error) {
-    console.error("Embedding clustering failed, falling back to frequency:", error);
+    logger.error("Embedding clustering failed, falling back to frequency", error, { projectId });
     return simpleFrequencyCount(userMessages, limit);
   }
 }

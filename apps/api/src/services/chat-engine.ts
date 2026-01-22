@@ -17,6 +17,7 @@ import type {
 } from "openai/resources/chat/completions";
 import { openai } from "../lib/openai";
 import { supabaseAdmin } from "../lib/supabase";
+import { logger, generateRequestId, type LogContext } from "../lib/logger";
 // RAG v2 - Hybrid Search with Contextual Embeddings
 import {
   retrieve,
@@ -93,6 +94,7 @@ export interface ChatInput {
   sessionId?: string;
   source?: ChatSource;
   context?: MessageContext;
+  requestId?: string; // For request tracing
 }
 
 /**
@@ -125,6 +127,7 @@ export interface ChatOutput {
   sources: SourceReference[];
   toolCalls: ToolCallInfo[];
   processingTime: number;
+  requestId?: string; // For client-side tracing
   tokensUsed?: {
     prompt: number;
     completion: number;
@@ -165,9 +168,18 @@ const CACHE_TTL = 60000; // 1 minute cache
  * Main entry point: Process a chat message and return a response
  */
 export async function processChat(input: ChatInput): Promise<ChatOutput> {
+  const requestId = input.requestId || generateRequestId();
   const metrics: ProcessingMetrics = { startTime: Date.now() };
   const toolCallsInfo: ToolCallInfo[] = [];
   let retrievedChunks: RetrievedChunk[] = [];
+
+  // Create log context for this request
+  const logCtx: LogContext = {
+    requestId,
+    projectId: input.projectId,
+    visitorId: input.visitorId,
+    sessionId: input.sessionId,
+  };
 
   try {
     // 1. Validate and sanitize input
@@ -230,8 +242,9 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
         handoffResult.message,
         0,
         0,
-        input.context
-      ).catch(console.error);
+        input.context,
+        requestId
+      ).catch((err) => logger.error("Failed to log handoff conversation", err, logCtx));
 
       return {
         response: handoffResult.message,
@@ -259,7 +272,14 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     retrievedChunks = ragResult.chunks;
     metrics.ragTime = Date.now() - ragStart;
 
-    console.log(`[RAG v2] Found ${ragResult.totalFound} chunks via ${ragResult.searchType} search in ${ragResult.processingTimeMs}ms`);
+    logger.info("RAG search completed", {
+      ...logCtx,
+      step: "rag_search",
+      chunksFound: ragResult.totalFound,
+      searchType: ragResult.searchType,
+      duration: ragResult.processingTimeMs,
+      maxScore: retrievedChunks[0]?.combinedScore || 0,
+    });
 
     // 3.5. Check for low confidence handoff trigger AFTER RAG
     const lowConfidenceResult = await checkLowConfidenceHandoff(
@@ -287,8 +307,9 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
         lowConfidenceResult.message,
         retrievedChunks.length,
         0,
-        input.context
-      ).catch(console.error);
+        input.context,
+        requestId
+      ).catch((err) => logger.error("Failed to log low confidence conversation", err, logCtx));
 
       return {
         response: lowConfidenceResult.message,
@@ -392,7 +413,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       }
     } catch (leadError) {
       // Log but don't fail the chat if lead capture has issues
-      console.error("Lead capture error:", leadError);
+      logger.error("Lead capture error", leadError, { ...logCtx, step: "lead_capture" });
     }
 
     // 12. Log conversation asynchronously
@@ -403,8 +424,19 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       finalResponse,
       retrievedChunks.length,
       toolCallsInfo.length,
-      input.context
-    ).catch(console.error);
+      input.context,
+      requestId
+    ).catch((err) => logger.error("Failed to log conversation", err, logCtx));
+
+    logger.info("Chat processing completed", {
+      ...logCtx,
+      step: "complete",
+      duration: Date.now() - metrics.startTime,
+      ragTime: metrics.ragTime,
+      llmTime: metrics.llmTime,
+      chunksUsed: retrievedChunks.length,
+      toolCallsCount: toolCallsInfo.length,
+    });
 
     return {
       response: finalResponse,
@@ -412,6 +444,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       sources: extractSources(retrievedChunks),
       toolCalls: toolCallsInfo,
       processingTime: Date.now() - metrics.startTime,
+      requestId,
       tokensUsed,
       leadCapture: leadCaptureResult ? {
         type: leadCaptureResult.type,
@@ -419,7 +452,11 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       } : undefined,
     };
   } catch (error) {
-    console.error("Chat processing error:", error);
+    logger.error("Chat processing error", error, {
+      ...logCtx,
+      step: "error",
+      duration: Date.now() - metrics.startTime,
+    });
 
     // Return a graceful error response
     if (error instanceof ChatError) {
@@ -432,6 +469,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       sources: extractSources(retrievedChunks),
       toolCalls: toolCallsInfo,
       processingTime: Date.now() - metrics.startTime,
+      requestId,
     };
   }
 }
@@ -604,7 +642,7 @@ async function getProjectConfig(
 
 /**
  * Get or create a chat session
- * Supports dual-write: creates in both legacy and new tables when feature enabled
+ * Uses conversations table as single source of truth
  */
 async function getOrCreateSession(
   projectId: string,
@@ -613,79 +651,26 @@ async function getOrCreateSession(
   source: ChatSource = "widget",
   context?: MessageContext
 ): Promise<string> {
-  // If session ID provided and valid, use it
-  if (existingSessionId) {
-    const { data: existing } = await supabaseAdmin
-      .from("chat_sessions")
-      .select("id")
-      .eq("id", existingSessionId)
-      .eq("project_id", projectId)
-      .single();
+  // Use the conversation service which handles all the logic
+  // getOrCreateConversation handles:
+  // - Checking if existing session ID is valid
+  // - Finding existing conversation for visitor
+  // - Creating new conversation if needed
+  // - Updating customer context
+  const conversationId = await getOrCreateConversation(
+    projectId,
+    visitorId,
+    existingSessionId,
+    source,
+    context
+  );
 
-    if (existing) {
-      // Update customer with latest context
-      try {
-        await getOrCreateConversation(projectId, visitorId, existingSessionId, source, context);
-      } catch {
-        // Ignore errors - just ensure customer context is updated
-      }
-      return existing.id;
-    }
-  }
-
-  // Try to find existing session for this visitor with same source
-  const { data: existingSession } = await supabaseAdmin
-    .from("chat_sessions")
-    .select("id")
-    .eq("project_id", projectId)
-    .eq("visitor_id", visitorId)
-    .eq("source", source)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
-
-  if (existingSession) {
-    // Update customer with latest context
-    try {
-      await getOrCreateConversation(projectId, visitorId, existingSession.id, source, context);
-    } catch {
-      // Ignore errors - just ensure customer context is updated
-    }
-    return existingSession.id;
-  }
-
-  // Create new session with source in legacy table
-  const { data: newSession, error } = await supabaseAdmin
-    .from("chat_sessions")
-    .insert({
-      project_id: projectId,
-      visitor_id: visitorId,
-      messages: [],
-      message_count: 0,
-      source,
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    console.error("Failed to create session:", error);
-    return generateSessionId();
-  }
-
-  // Always create in new conversations table (required for widget status/handoff)
-  try {
-    await getOrCreateConversation(projectId, visitorId, newSession.id, source, context);
-  } catch (dualWriteError) {
-    console.error("Failed to create conversation in new table:", dualWriteError);
-    // Don't fail the request, just log the error
-  }
-
-  return newSession.id;
+  return conversationId;
 }
 
 /**
  * Log conversation for analytics (async, non-blocking)
- * Supports dual-write to both old chat_sessions and new conversations/messages tables
+ * Uses conversations/messages tables as single source of truth
  */
 async function logConversation(
   projectId: string,
@@ -694,61 +679,19 @@ async function logConversation(
   assistantResponse: string,
   sourcesUsed: number,
   toolCallsCount: number,
-  context?: MessageContext
+  context?: MessageContext,
+  requestId?: string
 ): Promise<void> {
+  const logCtx: LogContext = { requestId, projectId, sessionId, step: "log_conversation" };
   try {
-    // Write to legacy chat_sessions table
-    const { data: session } = await supabaseAdmin
-      .from("chat_sessions")
-      .select("messages, message_count")
-      .eq("id", sessionId)
-      .single();
-
-    const currentMessages = (session?.messages as unknown[]) || [];
-
-    // Add new messages
-    const newMessages = [
-      ...currentMessages,
-      {
-        role: "user",
-        content: userMessage,
-        timestamp: new Date().toISOString(),
-      },
-      {
-        role: "assistant",
-        content: assistantResponse,
-        timestamp: new Date().toISOString(),
-        metadata: { sourcesUsed, toolCallsCount },
-      },
-    ];
-
-    // Update legacy session
-    await supabaseAdmin
-      .from("chat_sessions")
-      .update({
-        messages: newMessages,
-        message_count: (session?.message_count || 0) + 2,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", sessionId);
-
-    // Always write to new conversations/messages tables (required for widget status/handoff)
-    // Check if conversation exists in new table (might have been created by migration or new system)
-    const { data: conversation } = await supabaseAdmin
-      .from("conversations")
-      .select("id")
-      .eq("id", sessionId)
-      .single();
-
-    if (conversation) {
-      await logConversationMessages(sessionId, userMessage, assistantResponse, {
-        sourcesUsed,
-        toolCallsCount,
-        model: MODEL,
-      }, context);
-    }
+    // Write to conversations/messages tables (single source of truth)
+    await logConversationMessages(sessionId, userMessage, assistantResponse, {
+      sourcesUsed,
+      toolCallsCount,
+      model: MODEL,
+    }, context);
   } catch (error) {
-    console.error("Failed to log conversation:", error);
+    logger.error("Failed to log conversation", error, logCtx);
   }
 }
 
@@ -803,13 +746,14 @@ async function checkConversationHandoffState(
     // Not found in conversations table
     return { isInHandoff: false, status: null };
   } catch (error) {
-    console.error("Error checking handoff state:", error);
+    logger.error("Error checking handoff state", error, { sessionId, step: "check_handoff_state" });
     return { isInHandoff: false, status: null };
   }
 }
 
 /**
  * Store only the customer message (when in handoff mode, no AI response)
+ * Uses conversations/messages tables as single source of truth
  */
 async function storeCustomerMessageOnly(
   conversationId: string,
@@ -828,7 +772,10 @@ async function storeCustomerMessageOnly(
       .single();
 
     if (insertError) {
-      console.error("Error inserting message:", insertError);
+      logger.error("Error inserting message", insertError, {
+        conversationId,
+        step: "store_customer_message",
+      });
       throw insertError;
     }
 
@@ -839,7 +786,12 @@ async function storeCustomerMessageOnly(
         senderType: "customer",
         content: message,
         createdAt: insertedMessage.created_at,
-      }).catch((err) => console.error("[Realtime] Broadcast error:", err));
+      }).catch((err) =>
+        logger.error("Realtime broadcast error", err, {
+          conversationId,
+          step: "realtime_broadcast",
+        })
+      );
     }
 
     // Update conversation's last_message_at and message_count
@@ -858,34 +810,11 @@ async function storeCustomerMessageOnly(
         customer_presence: "online",
       })
       .eq("id", conversationId);
-
-    // Also update legacy chat_sessions table for consistency
-    const { data: session } = await supabaseAdmin
-      .from("chat_sessions")
-      .select("messages, message_count")
-      .eq("id", conversationId)
-      .single();
-
-    if (session) {
-      const currentMessages = (session.messages as unknown[]) || [];
-      await supabaseAdmin
-        .from("chat_sessions")
-        .update({
-          messages: [
-            ...currentMessages,
-            {
-              role: "user",
-              content: message,
-              timestamp: new Date().toISOString(),
-            },
-          ],
-          message_count: (session.message_count || 0) + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", conversationId);
-    }
   } catch (error) {
-    console.error("Error storing customer message:", error);
+    logger.error("Error storing customer message", error, {
+      conversationId,
+      step: "store_customer_message",
+    });
     throw error;
   }
 }

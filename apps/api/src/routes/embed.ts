@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { domainWhitelistMiddleware } from "../middleware/domain-whitelist";
+import { supabaseAdmin } from "../lib/supabase";
+import { logger } from "../lib/logger";
 
 export const embedRouter = Router();
 
@@ -23,21 +25,57 @@ embedRouter.get(
   async (req, res) => {
   const { projectId } = req.params;
 
-  // Return widget config including Supabase credentials for realtime
-  res.json({
-    projectId,
-    config: {
-      primaryColor: "#000000",
-      position: "bottom-right",
-      greeting: "Hello! How can I help you today?",
-      placeholder: "Type a message...",
-    },
-    // Supabase credentials for realtime (public anon key is safe to expose)
-    realtime: {
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "",
-      supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
-    },
-  });
+  try {
+    // Check if widget is enabled for this project
+    const { data: project, error } = await supabaseAdmin
+      .from("projects")
+      .select("settings")
+      .eq("id", projectId)
+      .single();
+
+    if (error) {
+      logger.error("Failed to fetch project settings for widget config", error, { projectId });
+      // On error, default to enabled (fail-open for better UX)
+    }
+
+    // Check widget_enabled setting (default to true if not set)
+    const settings = (project?.settings as Record<string, unknown>) || {};
+    const widgetEnabled = settings.widget_enabled !== false;
+
+    // Return widget config including enabled status
+    res.json({
+      projectId,
+      enabled: widgetEnabled,
+      config: {
+        primaryColor: "#000000",
+        position: "bottom-right",
+        greeting: "Hello! How can I help you today?",
+        placeholder: "Type a message...",
+      },
+      // Supabase credentials for realtime (public anon key is safe to expose)
+      realtime: {
+        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "",
+        supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
+      },
+    });
+  } catch (err) {
+    logger.error("Widget config error", err, { projectId });
+    // On error, return config with enabled=true (fail-open)
+    res.json({
+      projectId,
+      enabled: true,
+      config: {
+        primaryColor: "#000000",
+        position: "bottom-right",
+        greeting: "Hello! How can I help you today?",
+        placeholder: "Type a message...",
+      },
+      realtime: {
+        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "",
+        supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
+      },
+    });
+  }
 });
 
 // Validate project ID (for widget initialization)

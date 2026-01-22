@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 
+import { requestIdMiddleware } from "./middleware/request-id";
 import { accountRouter } from "./routes/account";
 import { agentRouter } from "./routes/agent";
 import { analyticsRouter } from "./routes/analytics";
@@ -25,6 +26,9 @@ const PORT = process.env.PORT || 3001;
 
 // Security middleware
 app.use(helmet());
+
+// Request ID middleware (must be early for tracing)
+app.use(requestIdMiddleware);
 
 // CORS Configuration
 // Dashboard endpoints: Restricted to specific origins (web app + local widget testing)
@@ -114,14 +118,20 @@ app.use("/api/cron", cronRouter);
 app.use(
   (
     err: Error,
-    _req: express.Request,
+    req: express.Request,
     res: express.Response,
     _next: express.NextFunction
   ) => {
-    console.error("Error:", err);
+    const { logger } = require("./lib/logger");
+    logger.error("Unhandled error", err, {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.path,
+    });
     res.status(500).json({
       error: "Internal server error",
       message: process.env.NODE_ENV === "development" ? err.message : undefined,
+      requestId: req.requestId,
     });
   }
 );

@@ -35,6 +35,7 @@ interface Conversation {
   updatedAt: string;
   lastMessageAt: string | null;
   queueEnteredAt: string | null;
+  resolvedAt: string | null;
   lastMessage?: {
     content: string;
     senderType: string;
@@ -58,6 +59,19 @@ function formatTime(dateStr: string | null | undefined): string {
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return "";
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+// Helper to check if a date is today
+function isToday(dateStr: string | null | undefined): boolean {
+  if (!dateStr) return false;
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return false;
+  const today = new Date();
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
 }
 
 // ============================================================================
@@ -450,7 +464,7 @@ export default function InboxPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {conversations.filter((c) => c.status === "resolved").length}
+                  {conversations.filter((c) => c.status === "resolved" && isToday(c.resolvedAt)).length}
                 </p>
                 <p className="text-xs text-muted-foreground">Resolved Today</p>
               </div>

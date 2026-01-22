@@ -15,6 +15,7 @@ import {
 } from "../services/chat-engine";
 import { supabaseAdmin } from "../lib/supabase";
 import { getGeoFromIP } from "../services/ip-geo";
+import { logger } from "../lib/logger";
 
 export const chatRouter = Router();
 
@@ -69,8 +70,12 @@ chatRouter.post(
         countryCode: geo?.countryCode,
       };
 
-      // Process the chat message with full context
-      const result = await processChat({ ...input, context: fullContext });
+      // Process the chat message with full context and request ID for tracing
+      const result = await processChat({
+        ...input,
+        context: fullContext,
+        requestId: req.requestId,
+      });
 
       // Return successful response
       res.json({
@@ -83,13 +88,17 @@ chatRouter.post(
           duration: tc.duration,
         })),
         processingTime: result.processingTime,
+        requestId: result.requestId, // Include for client-side tracing
         // Include handoff info if triggered
         ...(result.handoff && {
           handoff: result.handoff,
         }),
       });
     } catch (error) {
-      console.error("Chat error:", error);
+      logger.error("Chat error", error, {
+        requestId: req.requestId,
+        projectId: req.body?.projectId,
+      });
 
       if (error instanceof ChatError) {
         const statusMap: Record<string, number> = {
@@ -159,7 +168,7 @@ chatRouter.get("/conversations/:id", async (req: Request, res: Response) => {
       updatedAt: session.updated_at,
     });
   } catch (error) {
-    console.error("Get conversation error:", error);
+    logger.error("Get conversation error", error, { requestId: req.requestId });
     res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: "Failed to get conversation" },
     });
@@ -215,7 +224,7 @@ chatRouter.get("/conversations", async (req: Request, res: Response) => {
       offset,
     });
   } catch (error) {
-    console.error("List conversations error:", error);
+    logger.error("List conversations error", error, { requestId: req.requestId });
     res.status(500).json({
       error: {
         code: "INTERNAL_ERROR",
@@ -372,7 +381,7 @@ chatRouter.post(
       updated,
     });
   } catch (error) {
-    console.error("Feedback submission error:", error);
+    logger.error("Feedback submission error", error, { requestId: req.requestId });
     res.status(500).json({
       error: {
         code: "INTERNAL_ERROR",
@@ -427,7 +436,7 @@ chatRouter.get("/feedback", async (req: Request, res: Response) => {
       })),
     });
   } catch (error) {
-    console.error("Get feedback error:", error);
+    logger.error("Get feedback error", error, { requestId: req.requestId });
     res.status(500).json({
       error: {
         code: "INTERNAL_ERROR",

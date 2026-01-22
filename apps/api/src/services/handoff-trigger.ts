@@ -9,6 +9,7 @@
  */
 
 import { supabaseAdmin } from "../lib/supabase";
+import { logger, type LogContext } from "../lib/logger";
 import {
   broadcastNewMessage,
   broadcastConversationAssigned,
@@ -51,6 +52,161 @@ export interface HandoffTriggerResult {
   queuePosition?: number;
   estimatedWait?: string;
   conversationId?: string;
+}
+
+/**
+ * Message templates for different handoff trigger types
+ * This avoids duplicating messages across keyword and low-confidence triggers
+ */
+interface HandoffMessageTemplates {
+  offline: string;
+  unavailable: string;
+  technicalError: string;
+  directAssignment: string;
+  queued: (position: number, estimatedWait: string) => string;
+}
+
+const KEYWORD_MESSAGES: HandoffMessageTemplates = {
+  offline:
+    "Our support team is currently offline. Please leave your message and we'll get back to you during business hours, or try again later.",
+  unavailable:
+    "Our support team is currently unavailable. Please leave your message and we'll get back to you as soon as possible.",
+  technicalError:
+    "I'd like to connect you with a human agent, but we're experiencing technical difficulties. Please try again in a moment or leave your contact information and we'll reach out to you.",
+  directAssignment:
+    "You're now reconnected with your previous support agent. They'll be with you shortly.",
+  queued: (pos, wait) =>
+    `I'm connecting you with a human agent now. ${pos === 1 ? "You're next in line!" : `You're #${pos} in the queue.`} Estimated wait: ${wait}. Please stay on this page.`,
+};
+
+const LOW_CONFIDENCE_MESSAGES: HandoffMessageTemplates = {
+  offline:
+    "I'm not sure I can fully help with this question. Our support team is currently offline, but please leave your message and we'll get back to you during business hours.",
+  unavailable:
+    "I'm not sure I can fully help with this question. Our support team is currently unavailable, but please leave your message and we'll respond as soon as possible.",
+  technicalError:
+    "I'm not confident I can answer this properly. Please try again in a moment or leave your contact information.",
+  directAssignment:
+    "I'm not sure I can fully answer this question. Let me reconnect you with your previous support agent who has the context of your conversation.",
+  queued: (pos, wait) =>
+    `I'm not sure I can fully answer this question. Let me connect you with a human agent who can help better. ${pos === 1 ? "You're next in line!" : `You're #${pos} in the queue.`} Estimated wait: ${wait}.`,
+};
+
+/**
+ * Parameters for executing the handoff flow
+ */
+interface ExecuteHandoffParams {
+  projectId: string;
+  visitorId: string;
+  sessionId?: string;
+  reason: "keyword" | "low_confidence" | "button";
+  messages: HandoffMessageTemplates;
+  settings: HandoffSettings;
+}
+
+/**
+ * Unified handoff execution flow
+ * Used by both keyword and low-confidence triggers to avoid code duplication
+ */
+async function executeHandoffFlow(
+  params: ExecuteHandoffParams
+): Promise<HandoffTriggerResult> {
+  const { projectId, visitorId, sessionId, reason, messages, settings } = params;
+
+  // Step 1: Check business hours
+  const withinBusinessHours = isWithinBusinessHours(settings);
+  if (!withinBusinessHours) {
+    logger.info("Handoff blocked: outside business hours", {
+      projectId,
+      visitorId,
+      sessionId,
+      reason,
+      step: "handoff_business_hours",
+    });
+    return {
+      triggered: true,
+      reason,
+      message: messages.offline,
+    };
+  }
+
+  // Step 2: Check agent availability
+  const availability = await checkAgentAvailability(projectId);
+  if (!availability.available) {
+    logger.info("Handoff blocked: no agents available", {
+      projectId,
+      visitorId,
+      sessionId,
+      reason,
+      step: "handoff_agent_availability",
+    });
+    return {
+      triggered: true,
+      reason,
+      message: messages.unavailable,
+    };
+  }
+
+  // Step 3: Create handoff conversation
+  let handoffResult: HandoffConversationResult;
+  try {
+    handoffResult = await createHandoffConversation(projectId, visitorId, sessionId);
+  } catch (error) {
+    logger.error("Failed to create handoff conversation", error, {
+      projectId,
+      visitorId,
+      sessionId,
+      reason,
+      step: "handoff_create_conversation",
+    });
+    return {
+      triggered: true,
+      reason,
+      message: messages.technicalError,
+    };
+  }
+
+  // Step 4: Format response based on assignment type
+  if (handoffResult.directAssignment) {
+    logger.info("Handoff: direct assignment to previous agent", {
+      projectId,
+      visitorId,
+      sessionId,
+      reason,
+      agentId: handoffResult.assignedAgentId,
+      step: "handoff_direct_assign",
+    });
+    return {
+      triggered: true,
+      reason,
+      message: messages.directAssignment,
+      queuePosition: 1,
+      estimatedWait: "less than a minute",
+      conversationId: handoffResult.conversationId,
+    };
+  }
+
+  // Queued assignment
+  const queuePosition = handoffResult.queuePosition || availability.queuePosition || 1;
+  const estimatedWait = queuePosition === 1 ? "less than a minute" : `about ${queuePosition} minutes`;
+
+  logger.info("Handoff: queued", {
+    projectId,
+    visitorId,
+    sessionId,
+    reason,
+    queuePosition,
+    step: "handoff_queued",
+  });
+
+  return {
+    triggered: true,
+    reason,
+    message: messages.queued(queuePosition, estimatedWait),
+    queuePosition,
+    estimatedWait,
+    conversationId: handoffResult.conversationId,
+  };
 }
 
 /**
@@ -283,78 +439,24 @@ export async function checkLowConfidenceHandoff(
     return { triggered: false, message: "" };
   }
 
-  console.log(
-    `[Handoff] Low confidence trigger: maxScore=${maxScore.toFixed(2)}, threshold=${settings.auto_triggers.low_confidence_threshold}`
-  );
+  logger.info("Handoff low confidence trigger", {
+    projectId,
+    visitorId,
+    sessionId,
+    step: "handoff_low_confidence",
+    maxScore,
+    threshold: settings.auto_triggers.low_confidence_threshold,
+  });
 
-  // Check business hours
-  const withinBusinessHours = isWithinBusinessHours(settings);
-
-  if (!withinBusinessHours) {
-    return {
-      triggered: true,
-      reason: "low_confidence",
-      message:
-        "I'm not sure I can fully help with this question. Our support team is currently offline, but please leave your message and we'll get back to you during business hours.",
-    };
-  }
-
-  // Check agent availability
-  const availability = await checkAgentAvailability(projectId);
-
-  if (!availability.available) {
-    return {
-      triggered: true,
-      reason: "low_confidence",
-      message:
-        "I'm not sure I can fully help with this question. Our support team is currently unavailable, but please leave your message and we'll respond as soon as possible.",
-    };
-  }
-
-  // Create handoff conversation (with same-agent preference)
-  let handoffResult: HandoffConversationResult;
-  try {
-    handoffResult = await createHandoffConversation(
-      projectId,
-      visitorId,
-      sessionId
-    );
-  } catch (error) {
-    console.error("Failed to create handoff conversation:", error);
-    return {
-      triggered: true,
-      reason: "low_confidence",
-      message:
-        "I'm not confident I can answer this properly. Please try again in a moment or leave your contact information.",
-    };
-  }
-
-  // Return with appropriate message based on direct assignment or queue
-  if (handoffResult.directAssignment) {
-    // Direct assignment to previous agent (context continuity)
-    return {
-      triggered: true,
-      reason: "low_confidence",
-      message: "I'm not sure I can fully answer this question. Let me reconnect you with your previous support agent who has the context of your conversation.",
-      queuePosition: 1,
-      estimatedWait: "less than a minute",
-      conversationId: handoffResult.conversationId,
-    };
-  }
-
-  // Queued - return queue info
-  const queuePosition = handoffResult.queuePosition || availability.queuePosition || 1;
-  const estimatedWait =
-    queuePosition === 1 ? "less than a minute" : `about ${queuePosition} minutes`;
-
-  return {
-    triggered: true,
+  // Use unified handoff flow
+  return executeHandoffFlow({
+    projectId,
+    visitorId,
+    sessionId,
     reason: "low_confidence",
-    message: `I'm not sure I can fully answer this question. Let me connect you with a human agent who can help better. ${queuePosition === 1 ? "You're next in line!" : `You're #${queuePosition} in the queue.`} Estimated wait: ${estimatedWait}.`,
-    queuePosition,
-    estimatedWait,
-    conversationId: handoffResult.conversationId,
-  };
+    messages: LOW_CONFIDENCE_MESSAGES,
+    settings,
+  });
 }
 
 /**
@@ -420,9 +522,13 @@ async function createHandoffConversation(
 
         if (agentAvailable) {
           // Assign directly to the same agent (context continuity)
-          console.log(
-            `[Handoff] Re-assigning to previous agent ${existing.assigned_agent_id} for context continuity`
-          );
+          logger.info("Handoff re-assigning to previous agent", {
+            projectId,
+            visitorId,
+            sessionId,
+            agentId: existing.assigned_agent_id,
+            step: "handoff_reassign",
+          });
 
           await supabaseAdmin
             .from("conversations")
@@ -473,7 +579,7 @@ async function createHandoffConversation(
               content: "You're now reconnected with your previous support agent.",
               createdAt: systemMsg.created_at,
               metadata: { event: "handoff_reconnected", agent_id: existing.assigned_agent_id },
-            }).catch((err) => console.error("[Realtime] Broadcast error:", err));
+            }).catch((err) => logger.error("Realtime broadcast error", err, { step: "realtime_broadcast" }));
           }
 
           // Broadcast assignment to channels (fire-and-forget)
@@ -482,7 +588,7 @@ async function createHandoffConversation(
             projectId,
             existing.assigned_agent_id,
             { name: "Support Agent" } // Agent name will be resolved by the dashboard
-          ).catch((err) => console.error("[Realtime] Broadcast error:", err));
+          ).catch((err) => logger.error("Realtime broadcast error", err, { step: "realtime_broadcast" }));
 
           return {
             conversationId: existing.id,
@@ -491,9 +597,13 @@ async function createHandoffConversation(
           };
         } else {
           // Previous agent not available - clear assignment and put in queue
-          console.log(
-            `[Handoff] Previous agent ${existing.assigned_agent_id} not available, putting in queue`
-          );
+          logger.info("Handoff previous agent not available, queueing", {
+            projectId,
+            visitorId,
+            sessionId,
+            previousAgentId: existing.assigned_agent_id,
+            step: "handoff_queue",
+          });
 
           await supabaseAdmin
             .from("conversations")
@@ -522,7 +632,7 @@ async function createHandoffConversation(
             projectId,
             "waiting",
             { queuePosition }
-          ).catch((err) => console.error("[Realtime] Broadcast error:", err));
+          ).catch((err) => logger.error("Realtime broadcast error", err, { step: "realtime_broadcast" }));
 
           return {
             conversationId: existing.id,
@@ -557,7 +667,7 @@ async function createHandoffConversation(
           projectId,
           "waiting",
           { queuePosition }
-        ).catch((err) => console.error("[Realtime] Broadcast error:", err));
+        ).catch((err) => logger.error("Realtime broadcast error", err, { step: "realtime_broadcast" }));
 
         return {
           conversationId: existing.id,
@@ -583,7 +693,11 @@ async function createHandoffConversation(
     .single();
 
   if (error) {
-    console.error("Failed to create handoff conversation:", error);
+    logger.error("Failed to create handoff conversation", error, {
+      projectId,
+      visitorId,
+      step: "handoff_create_conversation",
+    });
     throw error;
   }
 
@@ -603,7 +717,7 @@ async function createHandoffConversation(
     projectId,
     "waiting",
     { queuePosition }
-  ).catch((err) => console.error("[Realtime] Broadcast error:", err));
+  ).catch((err) => logger.error("Realtime broadcast error", err, { step: "realtime_broadcast" }));
 
   return {
     conversationId: conversation.id,
@@ -633,102 +747,37 @@ export async function checkHandoffTrigger(
   }
 
   // 2. Check for keyword trigger (if enabled)
-  let triggered = false;
-  let reason: HandoffTriggerResult["reason"];
-
   if (
-    settings.auto_triggers.keywords_enabled &&
-    settings.auto_triggers.keywords.length > 0
+    !settings.auto_triggers.keywords_enabled ||
+    !settings.auto_triggers.keywords.length
   ) {
-    const keywordResult = checkKeywordTrigger(
-      message,
-      settings.auto_triggers.keywords
-    );
-
-    if (keywordResult.triggered) {
-      triggered = true;
-      reason = "keyword";
-      console.log(
-        `[Handoff] Keyword trigger detected: "${keywordResult.matchedKeyword}"`
-      );
-    }
+    return { triggered: false, message: "" };
   }
 
-  // If no trigger detected, return early
-  if (!triggered) {
-    return {
-      triggered: false,
-      message: "",
-    };
+  const keywordResult = checkKeywordTrigger(
+    message,
+    settings.auto_triggers.keywords
+  );
+
+  if (!keywordResult.triggered) {
+    return { triggered: false, message: "" };
   }
 
-  // 3. Check business hours
-  const withinBusinessHours = isWithinBusinessHours(settings);
+  logger.info("Handoff keyword trigger detected", {
+    projectId,
+    visitorId,
+    sessionId,
+    matchedKeyword: keywordResult.matchedKeyword,
+    step: "handoff_keyword",
+  });
 
-  if (!withinBusinessHours) {
-    return {
-      triggered: true,
-      reason,
-      message:
-        "Our support team is currently offline. Please leave your message and we'll get back to you during business hours, or try again later.",
-    };
-  }
-
-  // 4. Check agent availability
-  const availability = await checkAgentAvailability(projectId);
-
-  if (!availability.available) {
-    return {
-      triggered: true,
-      reason,
-      message:
-        "Our support team is currently unavailable. Please leave your message and we'll get back to you as soon as possible.",
-    };
-  }
-
-  // 5. Create handoff conversation (with same-agent preference)
-  let handoffResult: HandoffConversationResult;
-  try {
-    handoffResult = await createHandoffConversation(
-      projectId,
-      visitorId,
-      sessionId
-    );
-  } catch (error) {
-    console.error("Failed to create handoff conversation:", error);
-    // If we can't create the conversation, inform the user gracefully
-    return {
-      triggered: true,
-      reason,
-      message:
-        "I'd like to connect you with a human agent, but we're experiencing technical difficulties. Please try again in a moment or leave your contact information and we'll reach out to you.",
-    };
-  }
-
-  // 6. Return success with appropriate message based on direct assignment or queue
-  if (handoffResult.directAssignment) {
-    // Direct assignment to previous agent (context continuity)
-    return {
-      triggered: true,
-      reason,
-      message: "You're now reconnected with your previous support agent. They'll be with you shortly.",
-      queuePosition: 1,
-      estimatedWait: "less than a minute",
-      conversationId: handoffResult.conversationId,
-    };
-  }
-
-  // Queued - return queue info
-  const queuePosition = handoffResult.queuePosition || availability.queuePosition || 1;
-  const estimatedWait =
-    queuePosition === 1 ? "less than a minute" : `about ${queuePosition} minutes`;
-
-  return {
-    triggered: true,
-    reason,
-    message: `I'm connecting you with a human agent now. ${queuePosition === 1 ? "You're next in line!" : `You're #${queuePosition} in the queue.`} Estimated wait: ${estimatedWait}. Please stay on this page.`,
-    queuePosition,
-    estimatedWait,
-    conversationId: handoffResult.conversationId,
-  };
+  // Use unified handoff flow
+  return executeHandoffFlow({
+    projectId,
+    visitorId,
+    sessionId,
+    reason: "keyword",
+    messages: KEYWORD_MESSAGES,
+    settings,
+  });
 }
