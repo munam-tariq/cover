@@ -10,8 +10,8 @@ export const RAGConfig = {
    * Chunking Configuration
    */
   chunking: {
-    /** Target chunk size in tokens (smaller = more focused embeddings) */
-    defaultChunkSize: 256,
+    /** Target chunk size in tokens (400-512 optimal for context retention) */
+    defaultChunkSize: 400,
     /** Overlap between chunks in tokens (helps preserve context) */
     defaultOverlap: 50,
     /** Minimum chunk size to keep (avoid tiny chunks) */
@@ -60,8 +60,8 @@ export const RAGConfig = {
     },
     /** Maximum content length to return */
     maxContentLength: 8000,
-    /** Number of candidates to fetch before fusion */
-    candidateMultiplier: 3,
+    /** Number of candidates to fetch before fusion (higher = better fusion quality) */
+    candidateMultiplier: 5,
   },
 
   /**

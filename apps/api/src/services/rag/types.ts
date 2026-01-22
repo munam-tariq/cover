@@ -112,6 +112,22 @@ export interface ContextOptions {
 }
 
 /**
+ * Retrieval metrics for observability
+ */
+export interface RetrievalMetrics {
+  /** Total candidates retrieved before fusion */
+  candidateCount: number;
+  /** Chunks after RRF fusion */
+  fusedCount: number;
+  /** Chunks after threshold filtering */
+  filteredCount: number;
+  /** Average combined score of returned chunks */
+  avgScore: number;
+  /** Time spent on search (ms) */
+  vectorSearchMs?: number;
+}
+
+/**
  * Result from the full RAG pipeline
  */
 export interface RAGResult {
@@ -120,4 +136,6 @@ export interface RAGResult {
   totalFound: number;
   searchType: "hybrid" | "vector" | "fts";
   processingTimeMs: number;
+  /** Detailed retrieval metrics for observability */
+  metrics?: RetrievalMetrics;
 }

@@ -27,6 +27,7 @@ export type {
   ChunkingOptions,
   ContextOptions,
   RAGResult,
+  RetrievalMetrics,
 } from "./types";
 
 // Export configuration

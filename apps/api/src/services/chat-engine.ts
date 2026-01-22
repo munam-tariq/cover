@@ -30,6 +30,7 @@ import {
   buildChatMessages,
   truncateHistoryToFit,
   sanitizeUserInput,
+  sanitizeOutput,
   generateFallbackResponse,
   type ProjectConfig,
 } from "./prompt-builder";
@@ -578,8 +579,16 @@ async function callLLMWithTools(
       };
     }
 
+    // Sanitize output to prevent system prompt leakage
+    const { sanitized: sanitizedResponse, wasFiltered } = sanitizeOutput(responseContent);
+    if (wasFiltered) {
+      logger.warn("Output filtered for potential prompt leak", {
+        step: "output_sanitization",
+      });
+    }
+
     return {
-      response: responseContent,
+      response: sanitizedResponse,
       tokensUsed: {
         prompt: totalPromptTokens,
         completion: totalCompletionTokens,

@@ -12,9 +12,10 @@
  */
 
 import { supabaseAdmin } from "../../lib/supabase";
+import { logger } from "../../lib/logger";
 import { RAGConfig } from "./config";
 import { createEmbedder } from "./embedder";
-import type { RetrievedChunk, RetrievalOptions, RAGResult } from "./types";
+import type { RetrievedChunk, RetrievalOptions, RAGResult, RetrievalMetrics } from "./types";
 
 /**
  * Reciprocal Rank Fusion constant
@@ -58,6 +59,14 @@ export class HybridRetriever {
     const startTime = Date.now();
     const opts = { ...this.options, ...options };
 
+    // Initialize metrics
+    const metrics: RetrievalMetrics = {
+      candidateCount: 0,
+      fusedCount: 0,
+      filteredCount: 0,
+      avgScore: 0,
+    };
+
     // Generate query embedding
     const embedder = createEmbedder();
     const queryEmbedding = await embedder.embedQuery(query);
@@ -67,7 +76,7 @@ export class HybridRetriever {
 
     if (opts.useHybridSearch) {
       // Perform hybrid search
-      chunks = await this.hybridSearch(projectId, query, queryEmbedding, opts);
+      chunks = await this.hybridSearch(projectId, query, queryEmbedding, opts, metrics);
       searchType = "hybrid";
     } else {
       // Vector-only search
@@ -77,6 +86,21 @@ export class HybridRetriever {
 
     // Apply content length limit
     chunks = this.truncateToMaxLength(chunks, opts.maxContentLength);
+    metrics.filteredCount = chunks.length;
+
+    // Calculate average score
+    if (chunks.length > 0) {
+      metrics.avgScore = chunks.reduce((sum, c) => sum + c.combinedScore, 0) / chunks.length;
+    }
+
+    // Log retrieval metrics for observability
+    logger.debug("RAG retrieval completed", {
+      projectId,
+      query: query.substring(0, 100),
+      searchType,
+      ...metrics,
+      processingTimeMs: Date.now() - startTime,
+    });
 
     return {
       chunks,
@@ -84,29 +108,35 @@ export class HybridRetriever {
       totalFound: chunks.length,
       searchType,
       processingTimeMs: Date.now() - startTime,
+      metrics,
     };
   }
 
   /**
-   * Hybrid search combining vector and full-text search
+   * Hybrid search combining vector and full-text search with RRF fusion
    */
   private async hybridSearch(
     projectId: string,
     query: string,
     queryEmbedding: number[],
-    opts: Required<RetrievalOptions>
+    opts: Required<RetrievalOptions>,
+    metrics: RetrievalMetrics
   ): Promise<RetrievedChunk[]> {
-    // Fetch more candidates than needed for better fusion
     const candidateCount = opts.topK * RAGConfig.retrieval.candidateMultiplier;
 
     // Execute both searches in parallel
+    const vectorStart = Date.now();
     const [vectorResults, ftsResults] = await Promise.all([
       this.vectorSearchRaw(projectId, queryEmbedding, candidateCount),
       this.ftsSearchRaw(projectId, query, candidateCount),
     ]);
+    metrics.vectorSearchMs = Date.now() - vectorStart;
+
+    metrics.candidateCount = vectorResults.length + ftsResults.length;
 
     // Apply RRF fusion
     const fused = this.applyRRF(vectorResults, ftsResults, opts.vectorWeight);
+    metrics.fusedCount = fused.length;
 
     // Filter by threshold and limit
     return fused
