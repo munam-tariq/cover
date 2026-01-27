@@ -1,15 +1,64 @@
 # Feature Implementation Progress
 
 ## Overview
-- **Total Features**: 26
+- **Total Features**: 27
 - **Completed**: 14
-- **In Progress**: 0
+- **In Progress**: 1 (Intelligent Handoff)
 - **Planned**: 4 (Quick Questions, Micro-Surveys, Smart Lead Capture, Message Analytics)
 - **Remaining**: 8 (V2/V3 features)
 
+---
+
+## Specs Status
+
+### Ready for Implementation (Pick from here)
+
+| Priority | Feature | Spec | Summary |
+|----------|---------|------|---------|
+| **P0** | Intelligent Handoff | [INTELLIGENT_HANDOFF_SPEC.md](./human-handoff/INTELLIGENT_HANDOFF_SPEC.md) | LLM-powered sentiment/urgency detection replacing keywords |
+| P1 | Quick Questions | [quick-questions/spec.md](./quick-questions/spec.md) | Clickable question suggestions near chat bubble |
+| P1 | Micro-Surveys | [micro-surveys/spec.md](./micro-surveys/spec.md) | Floating popup surveys with mood shapes |
+| P2 | Smart Lead Capture | [lead-capture/spec.md](./lead-capture/spec.md) | Contextual in-chat email collection |
+
+### Enhancement Docs (Research/Planning)
+
+| Date | Enhancement | Doc | Status |
+|------|-------------|-----|--------|
+| 2026-01-23 | Intelligent Handoff | [2026-01-23-intelligent-handoff.md](../enhancements/2026-01-23-intelligent-handoff.md) | Phase 1 Done, Phase 2 Ready |
+| 2026-01-23 | RAG Scalability | [2026-01-23-rag-scalability.md](../enhancements/2026-01-23-rag-scalability.md) | HNSW Index Done |
+| 2026-01-23 | Prompt Injection Security | [2026-01-23-prompt-injection-security.md](../enhancements/2026-01-23-prompt-injection-security.md) | Items 1-4 Done |
+| 2026-01-23 | Chat Engine Deep Audit | [2026-01-23-chat-engine-deep-audit.md](../enhancements/2026-01-23-chat-engine-deep-audit.md) | Reference Doc |
+
+### Pending Implementation Plans
+
+| Feature | Doc | Status |
+|---------|-----|--------|
+| Human Handoff Real-time | [IMPLEMENTATION_PLAN.md](./human-handoff/IMPLEMENTATION_PLAN.md) | Phases 1-6 Pending |
+
+---
+
 ## Currently In Progress
 
-(none)
+### Intelligent Handoff (Sentiment-Based Escalation)
+- **Status**: Spec Complete, Ready for Implementation
+- **Priority**: P0 - Critical
+- **Spec**: [human-handoff/INTELLIGENT_HANDOFF_SPEC.md](./human-handoff/INTELLIGENT_HANDOFF_SPEC.md)
+- **Enhancement Doc**: [enhancements/2026-01-23-intelligent-handoff.md](../enhancements/2026-01-23-intelligent-handoff.md)
+- **Summary**: Replace keyword-based handoff detection with LLM-powered intelligent classification that detects user intent, sentiment, and urgency.
+- **Key Features**:
+  - Detects explicit human requests (even with typos)
+  - Detects frustrated/angry sentiment
+  - Detects high/critical urgency (security, money issues)
+  - Runs in parallel with RAG embedding (0ms added latency)
+  - Cost: ~$0.002 per message
+- **Implementation**:
+  - NEW: `apps/api/src/services/intelligent-handoff.ts` - Classification service
+  - MODIFY: `apps/api/src/services/chat-engine.ts` - Parallel classification + embedding
+  - MODIFY: `apps/api/src/services/handoff-trigger.ts` - Add handleIntelligentHandoff()
+- **Dependencies**: human-handoff ✅, chat-engine ✅
+- **Phase 1 Done**: Fixed keyword detection bug (2026-01-23) - keywords now work for all projects
+
+---
 
 ## Planned Features
 
@@ -234,6 +283,11 @@ These features take priority over the remaining Enhanced (V2) features.
   - Phase 4: Typing indicators
   - Phase 5: Customer presence broadcasting
   - Phase 6: Offline form
+- **New Enhancement - Intelligent Handoff** (2026-01-23):
+  - Spec: [INTELLIGENT_HANDOFF_SPEC.md](./human-handoff/INTELLIGENT_HANDOFF_SPEC.md)
+  - Replace keyword detection with LLM-powered sentiment/urgency classification
+  - Phase 1 DONE: Fixed keyword detection bug
+  - Phase 2 READY: Full intelligent classification implementation
 - **Notes**: Core handoff functionality complete. Backend is ~95% done. Real-time enhancements planned for future iteration.
 
 ---
@@ -747,12 +801,18 @@ These features take priority over the remaining Enhanced (V2) features.
 ## Next Up
 
 ### Immediate Priority
-All immediate priority features have been completed! 🎉
+| # | Feature | Priority | Status | Spec |
+|---|---------|----------|--------|------|
+| 1 | **Intelligent Handoff** | P0 | Spec Complete | [INTELLIGENT_HANDOFF_SPEC.md](./human-handoff/INTELLIGENT_HANDOFF_SPEC.md) |
 
 ### Recently Completed
 1. **#14: message-analytics** - Contextual metadata with messages ✅
    - Spec: [message-analytics/spec.md](./message-analytics/spec.md)
    - Captures: browser, OS, device type, page URL, geolocation
+
+2. **Intelligent Handoff Phase 1** - Fixed keyword detection bug ✅
+   - Keywords now work for all projects (even without handoff_settings row)
+   - Added default keywords for human intent detection
 
 ### Planned Features - Ready for Implementation
 1. **#15: quick-questions** - Suggested conversation starters
