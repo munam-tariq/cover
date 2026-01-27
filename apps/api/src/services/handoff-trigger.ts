@@ -21,6 +21,32 @@ const settingsCache = new Map<string, { data: HandoffSettings | null; timestamp:
 const CACHE_TTL = 60000; // 1 minute cache
 
 /**
+ * Default keywords for detecting human intent
+ * These are used when no handoff settings exist for a project
+ * This ensures users can always express their desire to speak to a human
+ */
+const DEFAULT_HUMAN_INTENT_KEYWORDS = [
+  "human",
+  "agent",
+  "person",
+  "representative",
+  "operator",
+  "speak to someone",
+  "talk to someone",
+  "talk to human",
+  "real person",
+  "live agent",
+  "customer service",
+  "support agent",
+  "human support",
+  "live support",
+  "speak to a human",
+  "talk to a human",
+  "speak with someone",
+  "talk with someone",
+];
+
+/**
  * Handoff settings from database
  */
 export interface HandoffSettings {
@@ -728,6 +754,19 @@ async function createHandoffConversation(
 
 /**
  * Main function: Check if a message should trigger handoff
+ *
+ * IMPORTANT: This function ALWAYS checks for human intent keywords, even if
+ * handoff settings don't exist or are disabled. This ensures users can always
+ * express their desire to speak to a human and receive an appropriate response.
+ *
+ * Flow:
+ * 1. Get handoff settings (may be null)
+ * 2. Determine if keywords are enabled (defaults to true)
+ * 3. Get keywords to check (use defaults if none configured)
+ * 4. Check for human intent
+ * 5. If detected:
+ *    - If handoff enabled: execute full handoff flow
+ *    - If handoff disabled/unavailable: return acknowledgment message
  */
 export async function checkHandoffTrigger(
   projectId: string,
@@ -735,43 +774,54 @@ export async function checkHandoffTrigger(
   visitorId: string,
   sessionId?: string
 ): Promise<HandoffTriggerResult> {
-  // 1. Get handoff settings
+  // 1. Get handoff settings (may be null if not configured)
   const settings = await getHandoffSettings(projectId);
 
-  // If handoff not enabled, don't trigger
-  if (!settings || !settings.enabled) {
-    return {
-      triggered: false,
-      message: "",
-    };
-  }
+  // 2. Determine if keyword checking is enabled
+  // Default to true if no settings exist (always detect human intent)
+  const keywordsEnabled = settings?.auto_triggers?.keywords_enabled ?? true;
 
-  // 2. Check for keyword trigger (if enabled)
-  if (
-    !settings.auto_triggers.keywords_enabled ||
-    !settings.auto_triggers.keywords.length
-  ) {
+  if (!keywordsEnabled) {
+    // Keywords explicitly disabled by project settings
     return { triggered: false, message: "" };
   }
 
-  const keywordResult = checkKeywordTrigger(
-    message,
-    settings.auto_triggers.keywords
-  );
+  // 3. Get keywords to check - use configured keywords or defaults
+  const keywords =
+    settings?.auto_triggers?.keywords?.length
+      ? settings.auto_triggers.keywords
+      : DEFAULT_HUMAN_INTENT_KEYWORDS;
+
+  // 4. Check for human intent
+  const keywordResult = checkKeywordTrigger(message, keywords);
 
   if (!keywordResult.triggered) {
     return { triggered: false, message: "" };
   }
 
+  // Human intent detected!
   logger.info("Handoff keyword trigger detected", {
     projectId,
     visitorId,
     sessionId,
     matchedKeyword: keywordResult.matchedKeyword,
     step: "handoff_keyword",
+    hasSettings: !!settings,
+    handoffEnabled: settings?.enabled ?? false,
   });
 
-  // Use unified handoff flow
+  // 5. Handle based on handoff availability
+  if (!settings || !settings.enabled) {
+    // Handoff not available - acknowledge the request gracefully
+    return {
+      triggered: true,
+      reason: "keyword",
+      message:
+        "I understand you'd like to speak with a human agent. Unfortunately, live support isn't available right now. I'll do my best to help you - what can I assist you with?",
+    };
+  }
+
+  // Handoff is available - execute the full handoff flow
   return executeHandoffFlow({
     projectId,
     visitorId,
