@@ -154,9 +154,9 @@ export default function EmbedPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <p className="text-muted-foreground mb-4">No project found.</p>
+          <p className="text-muted-foreground mb-4">No agent found.</p>
           <Button asChild>
-            <a href="/projects?create=true">Create Project</a>
+            <a href="/projects?create=true">Create Agent</a>
           </Button>
         </div>
       </div>
@@ -177,7 +177,7 @@ export default function EmbedPage() {
           </p>
         </div>
         <Badge variant="outline" className="text-xs">
-          Project: {currentProject.name}
+          Agent: {currentProject.name}
         </Badge>
       </div>
 

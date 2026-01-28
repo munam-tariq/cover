@@ -67,8 +67,8 @@ export function CreateProjectModal({ open, onOpenChange, onSuccess }: CreateProj
       // Call success callback
       onSuccess?.();
     } catch (err) {
-      console.error("Failed to create project:", err);
-      setError(err instanceof Error ? err.message : "Failed to create project");
+      console.error("Failed to create agent:", err);
+      setError(err instanceof Error ? err.message : "Failed to create agent");
     } finally {
       setIsLoading(false);
     }
@@ -92,9 +92,9 @@ export function CreateProjectModal({ open, onOpenChange, onSuccess }: CreateProj
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Create New Project</DialogTitle>
+            <DialogTitle>Create New Agent</DialogTitle>
             <DialogDescription>
-              Create a new chatbot project. You can customize the settings later.
+              Create a new AI agent. You can customize the settings later.
             </DialogDescription>
           </DialogHeader>
 
@@ -102,7 +102,7 @@ export function CreateProjectModal({ open, onOpenChange, onSuccess }: CreateProj
             {/* Name field */}
             <div className="grid gap-2">
               <Label htmlFor="name">
-                Project Name <span className="text-destructive">*</span>
+                Agent Name <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="name"
@@ -113,7 +113,7 @@ export function CreateProjectModal({ open, onOpenChange, onSuccess }: CreateProj
                 autoFocus
               />
               <p className="text-xs text-muted-foreground">
-                Give your chatbot a name ({name.trim().length}/50)
+                Give your agent a name ({name.trim().length}/50)
               </p>
             </div>
 
@@ -176,7 +176,7 @@ export function CreateProjectModal({ open, onOpenChange, onSuccess }: CreateProj
                   Creating...
                 </>
               ) : (
-                "Create Project"
+                "Create Agent"
               )}
             </Button>
           </DialogFooter>

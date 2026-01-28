@@ -42,6 +42,16 @@ embedRouter.get(
     const settings = (project?.settings as Record<string, unknown>) || {};
     const widgetEnabled = settings.widget_enabled !== false;
 
+    // Build lead capture V2 config if enabled
+    const lcV2 = settings.lead_capture_v2 as Record<string, unknown> | undefined;
+    const leadCaptureConfig = lcV2?.enabled ? {
+      enabled: true,
+      formFields: lcV2.form_fields,
+      hasQualifyingQuestions: Array.isArray(lcV2.qualifying_questions)
+        ? (lcV2.qualifying_questions as Array<{ enabled: boolean; question: string }>).some(q => q.enabled && q.question?.trim())
+        : false,
+    } : { enabled: false };
+
     // Return widget config including enabled status
     res.json({
       projectId,
@@ -57,6 +67,8 @@ embedRouter.get(
         supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "",
         supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
       },
+      // Lead capture V2 config
+      leadCapture: leadCaptureConfig,
     });
   } catch (err) {
     logger.error("Widget config error", err, { projectId });
@@ -74,6 +86,7 @@ embedRouter.get(
         supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "",
         supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
       },
+      leadCapture: { enabled: false },
     });
   }
 });

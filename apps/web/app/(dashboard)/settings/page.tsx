@@ -67,10 +67,27 @@ export default function SettingsPage() {
   const [name, setName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
 
-  // Lead capture state
+  // Lead capture state (V1 - kept for backward compatibility)
   const [leadCaptureEnabled, setLeadCaptureEnabled] = useState(false);
   const [leadCaptureEmail, setLeadCaptureEmail] = useState("");
   const [leadNotificationsEnabled, setLeadNotificationsEnabled] = useState(true);
+
+  // Lead capture V2 state
+  const [lcV2Enabled, setLcV2Enabled] = useState(false);
+  const [lcV2Field2Enabled, setLcV2Field2Enabled] = useState(false);
+  const [lcV2Field2Label, setLcV2Field2Label] = useState("Phone Number");
+  const [lcV2Field2Required, setLcV2Field2Required] = useState(false);
+  const [lcV2Field3Enabled, setLcV2Field3Enabled] = useState(false);
+  const [lcV2Field3Label, setLcV2Field3Label] = useState("Company");
+  const [lcV2Field3Required, setLcV2Field3Required] = useState(false);
+  const [lcV2Q1Enabled, setLcV2Q1Enabled] = useState(false);
+  const [lcV2Q1Text, setLcV2Q1Text] = useState("");
+  const [lcV2Q2Enabled, setLcV2Q2Enabled] = useState(false);
+  const [lcV2Q2Text, setLcV2Q2Text] = useState("");
+  const [lcV2Q3Enabled, setLcV2Q3Enabled] = useState(false);
+  const [lcV2Q3Text, setLcV2Q3Text] = useState("");
+  const [lcV2NotifEmail, setLcV2NotifEmail] = useState("");
+  const [lcV2NotifsEnabled, setLcV2NotifsEnabled] = useState(true);
 
   // Widget status state (emergency kill switch)
   const [widgetEnabled, setWidgetEnabled] = useState(true);
@@ -115,6 +132,35 @@ export default function SettingsPage() {
       setLeadNotificationsEnabled(settings.lead_notifications_enabled !== false);
       // Load widget enabled status (default to true)
       setWidgetEnabled(settings.widget_enabled !== false);
+
+      // Load V2 lead capture settings
+      const lcV2 = settings.lead_capture_v2 as Record<string, unknown> | undefined;
+      if (lcV2) {
+        setLcV2Enabled(lcV2.enabled === true);
+        const formFields = lcV2.form_fields as Record<string, unknown> | undefined;
+        if (formFields) {
+          const f2 = formFields.field_2 as Record<string, unknown> | undefined;
+          if (f2) {
+            setLcV2Field2Enabled(f2.enabled === true);
+            setLcV2Field2Label((f2.label as string) || "Phone Number");
+            setLcV2Field2Required(f2.required === true);
+          }
+          const f3 = formFields.field_3 as Record<string, unknown> | undefined;
+          if (f3) {
+            setLcV2Field3Enabled(f3.enabled === true);
+            setLcV2Field3Label((f3.label as string) || "Company");
+            setLcV2Field3Required(f3.required === true);
+          }
+        }
+        const qs = lcV2.qualifying_questions as Array<Record<string, unknown>> | undefined;
+        if (qs) {
+          if (qs[0]) { setLcV2Q1Enabled(qs[0].enabled === true); setLcV2Q1Text((qs[0].question as string) || ""); }
+          if (qs[1]) { setLcV2Q2Enabled(qs[1].enabled === true); setLcV2Q2Text((qs[1].question as string) || ""); }
+          if (qs[2]) { setLcV2Q3Enabled(qs[2].enabled === true); setLcV2Q3Text((qs[2].question as string) || ""); }
+        }
+        setLcV2NotifEmail((lcV2.notification_email as string) || "");
+        setLcV2NotifsEnabled(lcV2.notifications_enabled !== false);
+      }
     }
   }, [currentProject]);
 
@@ -305,7 +351,7 @@ export default function SettingsPage() {
     if (!currentProject) return;
 
     const confirmed = confirm(
-      `Are you sure you want to delete "${currentProject.name}"? This will delete all knowledge sources, API endpoints, and chat history for this project. This action cannot be undone.`
+      `Are you sure you want to delete "${currentProject.name}"? This will delete all knowledge sources, API endpoints, and chat history for this agent. This action cannot be undone.`
     );
 
     if (!confirmed) return;
@@ -320,7 +366,7 @@ export default function SettingsPage() {
       // or switch to another project
     } catch (err) {
       console.error("Error deleting project:", err);
-      setError("Failed to delete project");
+      setError("Failed to delete agent");
       setDeleting(false);
     }
   };
@@ -368,16 +414,11 @@ export default function SettingsPage() {
   const handleSaveLeadCapture = async () => {
     if (!currentProject) return;
 
-    // Validate email if lead capture is enabled
-    if (leadCaptureEnabled && !leadCaptureEmail.trim()) {
-      setError("Please enter a notification email to enable lead capture");
-      return;
-    }
-
-    if (leadCaptureEnabled && leadCaptureEmail) {
+    // Validate V2 notification email if enabled
+    if (lcV2Enabled && lcV2NotifsEnabled && lcV2NotifEmail.trim()) {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(leadCaptureEmail.trim())) {
-        setError("Please enter a valid email address");
+      if (!emailRegex.test(lcV2NotifEmail.trim())) {
+        setError("Please enter a valid notification email address");
         return;
       }
     }
@@ -391,9 +432,26 @@ export default function SettingsPage() {
       const existingSettings = currentProject.settings || {};
       const updatedSettings = {
         ...existingSettings,
-        lead_capture_enabled: leadCaptureEnabled,
+        // Keep V1 settings in sync (disabled when V2 is active)
+        lead_capture_enabled: lcV2Enabled ? false : leadCaptureEnabled,
         lead_capture_email: leadCaptureEmail.trim() || null,
         lead_notifications_enabled: leadNotificationsEnabled,
+        // V2 settings
+        lead_capture_v2: {
+          enabled: lcV2Enabled,
+          form_fields: {
+            email: { required: true },
+            field_2: { enabled: lcV2Field2Enabled, label: lcV2Field2Label.trim() || "Phone Number", required: lcV2Field2Required },
+            field_3: { enabled: lcV2Field3Enabled, label: lcV2Field3Label.trim() || "Company", required: lcV2Field3Required },
+          },
+          qualifying_questions: [
+            { question: lcV2Q1Text.trim(), enabled: lcV2Q1Enabled && !!lcV2Q1Text.trim() },
+            { question: lcV2Q2Text.trim(), enabled: lcV2Q2Enabled && !!lcV2Q2Text.trim() },
+            { question: lcV2Q3Text.trim(), enabled: lcV2Q3Enabled && !!lcV2Q3Text.trim() },
+          ],
+          notification_email: lcV2NotifEmail.trim() || null,
+          notifications_enabled: lcV2NotifsEnabled,
+        },
       };
 
       await apiClient<ProjectUpdateResponse>(`/api/projects/${currentProject.id}`, {
@@ -513,15 +571,15 @@ export default function SettingsPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">No project selected</p>
+          <p className="text-muted-foreground">No agent selected</p>
         </div>
         <Card>
           <CardContent className="p-6 text-center">
             <p className="text-muted-foreground mb-4">
-              Please select or create a project first.
+              Please select or create an agent first.
             </p>
             <Button onClick={() => router.push("/projects")}>
-              Go to Projects
+              Go to Agents
             </Button>
           </CardContent>
         </Card>
@@ -555,11 +613,11 @@ export default function SettingsPage() {
       <div className="grid gap-6">
         <Card>
           <CardContent className="p-6">
-            <h2 className="font-semibold mb-4">Project Settings</h2>
+            <h2 className="font-semibold mb-4">Agent Settings</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Project Name
+                  Agent Name
                 </label>
                 <input
                   type="text"
@@ -632,11 +690,11 @@ export default function SettingsPage() {
 
         <Card>
           <CardContent className="p-6">
-            <h2 className="font-semibold mb-4">Widget Project ID</h2>
+            <h2 className="font-semibold mb-4">Widget Agent ID</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Project ID
+                  Agent ID
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -934,59 +992,204 @@ export default function SettingsPage() {
               <h2 className="font-semibold">Lead Capture</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              When your chatbot can&apos;t answer a question, it can offer to collect the visitor&apos;s email so you can follow up.
+              Show an inline form after the first message to capture visitor contact info and qualify leads with follow-up questions.
             </p>
 
             <div className="space-y-6">
+              {/* Enable Toggle */}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="lead-capture-toggle" className="text-base">
-                    Enable Lead Capture
+                  <Label htmlFor="lc-v2-toggle" className="text-base">
+                    Enable Lead Capture Form
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Ask for email when chatbot can&apos;t answer
+                    Show a form after the first AI response to collect visitor info
                   </p>
                 </div>
                 <Switch
-                  id="lead-capture-toggle"
-                  checked={leadCaptureEnabled}
-                  onCheckedChange={setLeadCaptureEnabled}
+                  id="lc-v2-toggle"
+                  checked={lcV2Enabled}
+                  onCheckedChange={setLcV2Enabled}
                 />
               </div>
 
-              {leadCaptureEnabled && (
-                <div className="pl-0 space-y-4 border-l-2 border-primary/20 ml-0 pt-2">
-                  <div className="pl-4">
-                    <Label htmlFor="lead-capture-email" className="text-sm font-medium">
-                      Notification Email
-                    </Label>
-                    <input
-                      id="lead-capture-email"
-                      type="email"
-                      value={leadCaptureEmail}
-                      onChange={(e) => setLeadCaptureEmail(e.target.value)}
-                      placeholder="support@yourbusiness.com"
-                      className="w-full mt-1.5 px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      We&apos;ll send a daily digest of captured leads to this email
-                    </p>
+              {lcV2Enabled && (
+                <div className="space-y-6 border-t pt-6">
+                  {/* Form Fields Section */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3">Form Fields</h3>
+                    <div className="space-y-3">
+                      {/* Email - always required */}
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Email</p>
+                          <p className="text-xs text-muted-foreground">Always required</p>
+                        </div>
+                        <Badge variant="secondary">Required</Badge>
+                      </div>
+
+                      {/* Field 2 */}
+                      <div className="flex items-center gap-3 p-3 border rounded-lg">
+                        <Switch
+                          id="lc-v2-field2-toggle"
+                          checked={lcV2Field2Enabled}
+                          onCheckedChange={setLcV2Field2Enabled}
+                        />
+                        <div className="flex-1 space-y-1.5">
+                          <input
+                            type="text"
+                            value={lcV2Field2Label}
+                            onChange={(e) => setLcV2Field2Label(e.target.value)}
+                            placeholder="Field label"
+                            maxLength={30}
+                            disabled={!lcV2Field2Enabled}
+                            className="w-full px-2 py-1 text-sm border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                          />
+                        </div>
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={lcV2Field2Required}
+                            onChange={(e) => setLcV2Field2Required(e.target.checked)}
+                            disabled={!lcV2Field2Enabled}
+                            className="rounded"
+                          />
+                          Required
+                        </label>
+                      </div>
+
+                      {/* Field 3 */}
+                      <div className="flex items-center gap-3 p-3 border rounded-lg">
+                        <Switch
+                          id="lc-v2-field3-toggle"
+                          checked={lcV2Field3Enabled}
+                          onCheckedChange={setLcV2Field3Enabled}
+                        />
+                        <div className="flex-1 space-y-1.5">
+                          <input
+                            type="text"
+                            value={lcV2Field3Label}
+                            onChange={(e) => setLcV2Field3Label(e.target.value)}
+                            placeholder="Field label"
+                            maxLength={30}
+                            disabled={!lcV2Field3Enabled}
+                            className="w-full px-2 py-1 text-sm border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                          />
+                        </div>
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={lcV2Field3Required}
+                            onChange={(e) => setLcV2Field3Required(e.target.checked)}
+                            disabled={!lcV2Field3Enabled}
+                            className="rounded"
+                          />
+                          Required
+                        </label>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between pl-4">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="notifications-toggle" className="text-sm">
-                        Send Email Notifications
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        Receive daily digest of unanswered questions
-                      </p>
+                  {/* Qualifying Questions Section */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-1">Qualifying Questions</h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      After the form, your AI agent will ask these questions one by one in the chat
+                    </p>
+                    <div className="space-y-3">
+                      {/* Q1 */}
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          id="lc-v2-q1-toggle"
+                          checked={lcV2Q1Enabled}
+                          onCheckedChange={setLcV2Q1Enabled}
+                        />
+                        <input
+                          type="text"
+                          value={lcV2Q1Text}
+                          onChange={(e) => setLcV2Q1Text(e.target.value)}
+                          placeholder="e.g. What's your team size?"
+                          maxLength={200}
+                          disabled={!lcV2Q1Enabled}
+                          className="flex-1 px-3 py-2 text-sm border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                        />
+                      </div>
+
+                      {/* Q2 */}
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          id="lc-v2-q2-toggle"
+                          checked={lcV2Q2Enabled}
+                          onCheckedChange={setLcV2Q2Enabled}
+                        />
+                        <input
+                          type="text"
+                          value={lcV2Q2Text}
+                          onChange={(e) => setLcV2Q2Text(e.target.value)}
+                          placeholder="e.g. How did you hear about us?"
+                          maxLength={200}
+                          disabled={!lcV2Q2Enabled}
+                          className="flex-1 px-3 py-2 text-sm border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                        />
+                      </div>
+
+                      {/* Q3 */}
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          id="lc-v2-q3-toggle"
+                          checked={lcV2Q3Enabled}
+                          onCheckedChange={setLcV2Q3Enabled}
+                        />
+                        <input
+                          type="text"
+                          value={lcV2Q3Text}
+                          onChange={(e) => setLcV2Q3Text(e.target.value)}
+                          placeholder="e.g. What problem are you looking to solve?"
+                          maxLength={200}
+                          disabled={!lcV2Q3Enabled}
+                          className="flex-1 px-3 py-2 text-sm border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                        />
+                      </div>
                     </div>
-                    <Switch
-                      id="notifications-toggle"
-                      checked={leadNotificationsEnabled}
-                      onCheckedChange={setLeadNotificationsEnabled}
-                    />
+                  </div>
+
+                  {/* Notifications Section */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3">Notifications</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="lc-v2-notif-email" className="text-sm">
+                          Notification Email
+                        </Label>
+                        <input
+                          id="lc-v2-notif-email"
+                          type="email"
+                          value={lcV2NotifEmail}
+                          onChange={(e) => setLcV2NotifEmail(e.target.value)}
+                          placeholder="leads@yourbusiness.com"
+                          className="w-full mt-1.5 px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Receive notifications when new leads are captured
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="lc-v2-notifs-toggle" className="text-sm">
+                            Enable Notifications
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Send email when a new lead is captured
+                          </p>
+                        </div>
+                        <Switch
+                          id="lc-v2-notifs-toggle"
+                          checked={lcV2NotifsEnabled}
+                          onCheckedChange={setLcV2NotifsEnabled}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1126,9 +1329,9 @@ export default function SettingsPage() {
           <CardContent className="p-6">
             <h2 className="font-semibold mb-4 text-destructive">Danger Zone</h2>
             <div className="p-4 border border-destructive/50 rounded-md">
-              <h3 className="font-medium">Delete Project</h3>
+              <h3 className="font-medium">Delete Agent</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Once you delete this project, all knowledge sources, API endpoints, and chat history will be removed. This action cannot be undone.
+                Once you delete this agent, all knowledge sources, API endpoints, and chat history will be removed. This action cannot be undone.
               </p>
               <Button
                 variant="destructive"
@@ -1137,7 +1340,7 @@ export default function SettingsPage() {
                 disabled={deleting}
               >
                 {deleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {deleting ? "Deleting..." : "Delete Project"}
+                {deleting ? "Deleting..." : "Delete Agent"}
               </Button>
             </div>
           </CardContent>

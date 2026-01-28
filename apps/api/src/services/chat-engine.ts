@@ -56,6 +56,12 @@ import {
   type HandoffTriggerResult,
 } from "./handoff-trigger";
 import { broadcastNewMessage } from "./realtime";
+import {
+  leadCaptureV2Interceptor,
+  getLeadCaptureV2Settings,
+  maskEmail,
+  type LeadCaptureState,
+} from "./lead-capture-v2";
 
 /**
  * Valid sources for chat sessions
@@ -187,6 +193,25 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     const sanitizedMessage = sanitizeUserInput(input.message);
     if (!sanitizedMessage) {
       throw new ChatError("EMPTY_MESSAGE", "Message cannot be empty");
+    }
+
+    // 1.1 Lead Capture V2 Interceptor
+    // If user is in qualifying question flow, intercept before any AI processing
+    const lcV2Result = await leadCaptureV2Interceptor(
+      input.projectId,
+      input.visitorId,
+      input.sessionId,
+      sanitizedMessage
+    );
+    if (lcV2Result) {
+      return {
+        response: lcV2Result.response,
+        sessionId: lcV2Result.sessionId || input.sessionId || "",
+        sources: [],
+        toolCalls: [],
+        processingTime: Date.now() - metrics.startTime,
+        requestId,
+      };
     }
 
     // 1.5. Check if conversation is in handoff state (agent_active or waiting)
@@ -383,16 +408,44 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       // Get lead capture settings
       const leadSettings = await getLeadCaptureSettings(input.projectId);
 
-      if (leadSettings.lead_capture_enabled) {
-        // Determine if the bot found an answer
-        // - Check if RAG returned relevant chunks
-        // - Check if LLM response indicates it couldn't answer
+      // Check if V2 is enabled (takes precedence over V1)
+      const v2Settings = await getLeadCaptureV2Settings(input.projectId);
+
+      if (v2Settings) {
+        // V2 flow: Check if AI can't answer for qualified/skipped users
+        const responseIndicatesNoAnswer = detectNoAnswer(response);
+        const hasRelevantContext = retrievedChunks.length > 0 &&
+          retrievedChunks.some(c => c.combinedScore > 0.3);
+        const foundAnswer = hasRelevantContext && !responseIndicatesNoAnswer;
+
+        if (!foundAnswer) {
+          // Look up customer state
+          const { data: customer } = await supabaseAdmin
+            .from("customers")
+            .select("lead_capture_state")
+            .eq("project_id", input.projectId)
+            .eq("visitor_id", input.visitorId)
+            .single();
+
+          const state = customer?.lead_capture_state as LeadCaptureState | null;
+
+          if (state?.lead_capture_status === "qualified") {
+            // Qualified user: tell them we have their info
+            const maskedEmail = maskEmail(state.form_data.email);
+            finalResponse = response + `\n\nWe have your email on file (${maskedEmail}). I'll flag this for our team to follow up with you.`;
+          } else if (!state || state.lead_capture_status === "skipped") {
+            // Unqualified/skipped user: suggest leaving email
+            finalResponse = response + "\n\nWould you like to leave your email? Someone from our team can follow up.";
+          }
+          // If form_completed or qualifying, don't append anything (they're mid-flow)
+        }
+      } else if (leadSettings.lead_capture_enabled) {
+        // V1 flow (unchanged)
         const hasRelevantContext = retrievedChunks.length > 0 &&
           retrievedChunks.some(c => c.combinedScore > 0.3);
         const responseIndicatesNoAnswer = detectNoAnswer(response);
         const foundAnswer = hasRelevantContext && !responseIndicatesNoAnswer;
 
-        // Process lead capture flow
         leadCaptureResult = await handleLeadCaptureFlow(
           sessionId,
           input.projectId,
@@ -401,13 +454,10 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
           leadSettings
         );
 
-        // Append lead capture message to response if needed
         if (leadCaptureResult.shouldAppendToResponse && leadCaptureResult.responseAppendix) {
-          // If we captured an email, replace the response with confirmation
           if (leadCaptureResult.type === "email_captured") {
             finalResponse = leadCaptureResult.responseAppendix;
           } else {
-            // Otherwise append the email request
             finalResponse = response + leadCaptureResult.responseAppendix;
           }
         }

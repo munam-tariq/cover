@@ -57,14 +57,14 @@ export default function ProjectsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Projects</h1>
+          <h1 className="text-2xl font-bold">Agents</h1>
           <p className="text-muted-foreground">
-            Manage your chatbot projects
+            Manage your AI agents
           </p>
         </div>
         <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
           <Plus className="h-4 w-4" />
-          Create New Project
+          Create New Agent
         </Button>
       </div>
 
@@ -87,14 +87,14 @@ export default function ProjectsPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FolderOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-medium mb-2">No projects yet</h3>
+            <h3 className="text-lg font-medium mb-2">No agents yet</h3>
             <p className="text-muted-foreground text-sm mb-4 text-center max-w-sm">
-              Create your first chatbot project to get started. Each project has its own
+              Create your first AI agent to get started. Each agent has its own
               knowledge base, API endpoints, and chat settings.
             </p>
             <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />
-              Create Your First Project
+              Create Your First Agent
             </Button>
           </CardContent>
         </Card>

@@ -12,7 +12,8 @@ const allNavItems = [
   { href: "/", label: "Dashboard", icon: "home", roles: undefined },
   { href: "/inbox", label: "Inbox", icon: "inbox", roles: undefined },
   { href: "/team", label: "Team", icon: "users", roles: undefined },
-  { href: "/projects", label: "Projects", icon: "folder", roles: "owner" as const },
+  { href: "/projects", label: "Agents", icon: "folder", roles: "owner" as const },
+  { href: "/leads", label: "Leads", icon: "user-plus", roles: "owner" as const },
   { href: "/analytics", label: "Analytics", icon: "bar-chart", roles: "owner" as const },
   { href: "/feedback", label: "Feedback", icon: "thumbs-up", roles: "owner" as const },
   { href: "/playground", label: "Playground", icon: "sparkles", roles: "owner_admin" as const },
@@ -72,6 +73,13 @@ const icons: Record<string, React.FC<{ className?: string }>> = {
   users: ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  ),
+  "user-plus": ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+      <circle cx="8.5" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 8v6m3-3h-6" />
     </svg>
   ),
   "thumbs-up": ({ className }) => (

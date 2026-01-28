@@ -17,6 +17,7 @@ import { endpointsRouter } from "./routes/endpoints";
 import { handoffRouter } from "./routes/handoff";
 import { handoffSettingsRouter } from "./routes/handoff-settings";
 import { knowledgeRouter } from "./routes/knowledge";
+import { leadCaptureRouter, leadsRouter } from "./routes/lead-capture";
 import { mcpRouter } from "./routes/mcp";
 import { projectsRouter } from "./routes/projects";
 import { teamRouter } from "./routes/team";
@@ -79,10 +80,12 @@ app.use("/api/embed", widgetCors, embedRouter); // Widget config (open CORS for 
 app.use("/api/projects", dashboardCors, projectsRouter);
 app.use("/api/projects", dashboardCors, handoffSettingsRouter); // Handoff settings routes: /api/projects/:id/handoff-settings
 app.use("/api/projects", dashboardCors, teamRouter); // Team routes: /api/projects/:id/members/*
+app.use("/api/projects", dashboardCors, leadsRouter); // Leads routes: /api/projects/:id/leads
 
 // Widget/Public API routes (open CORS - can be called from any domain)
 // These come AFTER specific dashboard routes to avoid blocking PUT/DELETE
 app.use("/api/chat", widgetCors, chatRouter);
+app.use("/api/chat", widgetCors, leadCaptureRouter); // Lead capture V2 widget routes: submit-form, skip, status
 app.use("/api/widget/conversations", widgetCors, conversationsRouter); // Widget conversation routes (POST to create)
 app.use("/api", widgetCors, handoffRouter); // Widget handoff routes: handoff-availability, trigger handoff
 app.use("/api/customers", widgetCors, customersRouter); // Widget customer routes: identify

@@ -16,7 +16,18 @@ import { Input } from "./input";
 import { TypingIndicator } from "./typing-indicator";
 import { HumanButton } from "./human-button";
 import { OfflineForm } from "./offline-form";
-import { sendMessage, ChatApiError } from "../utils/api";
+import {
+  LeadCaptureForm,
+  LeadCaptureFormData,
+  LeadCaptureFormConfig,
+} from "./lead-capture-form";
+import {
+  sendMessage,
+  ChatApiError,
+  submitLeadCaptureForm,
+  skipLeadCaptureForm,
+  getLeadCaptureStatus,
+} from "../utils/api";
 import {
   checkHandoffAvailability,
   triggerHandoff,
@@ -34,7 +45,10 @@ import {
   setSessionId,
   getStoredMessages,
   setStoredMessages,
+  getLeadCaptureState,
+  setLeadCaptureState,
   StoredMessage,
+  LeadCaptureLocalState,
 } from "../utils/storage";
 import { generateId } from "../utils/helpers";
 import {
@@ -52,6 +66,7 @@ export interface ChatWindowOptions {
   title: string;
   primaryColor: string;
   onClose: () => void;
+  leadCaptureConfig?: Record<string, unknown> | null;
 }
 
 export class ChatWindow {
@@ -80,6 +95,11 @@ export class ChatWindow {
   private presenceManager: PresenceManager;
   private offlineForm: OfflineForm | null = null;
   private showingOfflineForm = false;
+  private leadCaptureForm: LeadCaptureForm | null = null;
+  private isLeadCaptureActive = false;
+  private leadCaptureLocalState: LeadCaptureLocalState | null = null;
+  private firstUserMessage: string | null = null;
+  private isFirstMessage = true;
 
   constructor(private options: ChatWindowOptions) {
     this.visitorId = getVisitorId();
@@ -128,11 +148,18 @@ export class ChatWindow {
       this.messagesContainer.nextSibling
     );
 
+    // Load lead capture local state
+    this.leadCaptureLocalState = getLeadCaptureState(options.projectId);
+    this.isFirstMessage = this.messages.length === 0;
+
     // Render initial messages
     this.renderMessages();
 
     // Setup keyboard handling
     this.setupKeyboardHandling();
+
+    // Check lead capture status for returning users
+    this.initializeLeadCaptureState();
 
     // Check conversation status first (if we have a session)
     // This determines if we should show the human button
@@ -504,6 +531,16 @@ export class ChatWindow {
         this.addMessageToDOM(assistantMessage);
         setStoredMessages(this.options.projectId, this.messages);
       }
+
+      // Show lead capture form after first message + AI response
+      if (this.isFirstMessage && this.shouldShowLeadCaptureForm()) {
+        this.firstUserMessage = content;
+        this.isFirstMessage = false;
+        // Small delay so user sees the AI response first
+        setTimeout(() => this.showLeadCaptureForm(), 500);
+      } else {
+        this.isFirstMessage = false;
+      }
     } catch (error) {
       console.error("Chat error:", error);
 
@@ -535,6 +572,189 @@ export class ChatWindow {
       this.input.setLoading(false);
       this.scrollToBottom();
     }
+  }
+
+  // ─── Lead Capture V2 ──────────────────────────────────────────────────────
+
+  /**
+   * Initialize lead capture state for returning users
+   */
+  private async initializeLeadCaptureState(): Promise<void> {
+    const lcConfig = this.options.leadCaptureConfig;
+    if (!lcConfig?.enabled) return;
+
+    // Check local cache first
+    if (this.leadCaptureLocalState?.hasCompletedForm) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Widget] Lead capture: returning user (cached)");
+      }
+      return; // Already completed form, skip
+    }
+
+    // Check server for returning user status
+    try {
+      const status = await getLeadCaptureStatus(
+        this.options.apiUrl,
+        this.options.projectId,
+        this.visitorId
+      );
+
+      if (status.hasCompletedForm) {
+        // Cache the result locally
+        setLeadCaptureState(this.options.projectId, {
+          hasCompletedForm: true,
+          hasCompletedQualifying: status.hasCompletedQualifying,
+        });
+        this.leadCaptureLocalState = {
+          hasCompletedForm: true,
+          hasCompletedQualifying: status.hasCompletedQualifying,
+        };
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Widget] Lead capture: returning user (server)");
+        }
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[Widget] Lead capture status check failed:", error);
+      }
+    }
+  }
+
+  /**
+   * Check if we should show the lead capture form after first message response
+   */
+  private shouldShowLeadCaptureForm(): boolean {
+    const lcConfig = this.options.leadCaptureConfig;
+    if (!lcConfig?.enabled) return false;
+    if (this.isLeadCaptureActive) return false;
+    if (this.leadCaptureLocalState?.hasCompletedForm) return false;
+    return true;
+  }
+
+  /**
+   * Show the lead capture form inline in the messages area
+   */
+  private showLeadCaptureForm(): void {
+    const lcConfig = this.options.leadCaptureConfig;
+    if (!lcConfig) return;
+
+    this.isLeadCaptureActive = true;
+
+    // Build form config
+    const formConfig: LeadCaptureFormConfig = {
+      formFields: lcConfig.formFields as LeadCaptureFormConfig["formFields"],
+    };
+
+    this.leadCaptureForm = new LeadCaptureForm({
+      config: formConfig,
+      primaryColor: this.options.primaryColor,
+      onSubmit: (data) => this.handleLeadCaptureSubmit(data),
+      onSkip: () => this.handleLeadCaptureSkip(),
+    });
+
+    // Insert form into messages container (before typing indicator)
+    this.messagesContainer.insertBefore(
+      this.leadCaptureForm.element,
+      this.typingIndicator.element
+    );
+
+    // Disable input while form is active
+    this.input.setDisabled(true, "Please complete the form above");
+
+    this.scrollToBottom();
+
+    // Focus the email input
+    this.leadCaptureForm.focusEmail();
+  }
+
+  /**
+   * Handle lead capture form submission
+   */
+  private async handleLeadCaptureSubmit(formData: LeadCaptureFormData): Promise<void> {
+    if (!this.leadCaptureForm) return;
+
+    try {
+      const result = await submitLeadCaptureForm(
+        this.options.apiUrl,
+        this.options.projectId,
+        this.visitorId,
+        this.sessionId,
+        formData,
+        this.firstUserMessage || ""
+      );
+
+      if (result.success) {
+        // Show success state on form
+        this.leadCaptureForm.showSuccess(formData.email);
+
+        // Cache locally
+        setLeadCaptureState(this.options.projectId, {
+          hasCompletedForm: true,
+          hasCompletedQualifying: result.nextAction === "none",
+          firstMessage: this.firstUserMessage || "",
+        });
+        this.leadCaptureLocalState = {
+          hasCompletedForm: true,
+          hasCompletedQualifying: result.nextAction === "none",
+        };
+
+        // Re-enable input
+        this.isLeadCaptureActive = false;
+        this.input.setDisabled(false);
+
+        // If there's a qualifying question, show it as an assistant message
+        if (result.nextAction === "qualifying_question" && result.qualifyingQuestion) {
+          const qMsg: StoredMessage = {
+            id: generateId(),
+            content: result.qualifyingQuestion,
+            role: "assistant",
+            timestamp: Date.now(),
+          };
+          this.messages.push(qMsg);
+          this.addMessageToDOM(qMsg);
+          setStoredMessages(this.options.projectId, this.messages);
+        }
+
+        this.scrollToBottom();
+        this.input.focus();
+      } else {
+        this.leadCaptureForm.setLoading(false);
+      }
+    } catch (error) {
+      console.error("[Widget] Lead form submit error:", error);
+      this.leadCaptureForm.setLoading(false);
+    }
+  }
+
+  /**
+   * Handle lead capture form skip
+   */
+  private async handleLeadCaptureSkip(): Promise<void> {
+    // Tell backend the user skipped
+    skipLeadCaptureForm(
+      this.options.apiUrl,
+      this.options.projectId,
+      this.visitorId
+    ).catch(() => {}); // Fire and forget
+
+    // Cache locally
+    setLeadCaptureState(this.options.projectId, {
+      hasCompletedForm: false,
+      hasCompletedQualifying: false,
+    });
+    this.leadCaptureLocalState = { hasCompletedForm: false, hasCompletedQualifying: false };
+
+    // Remove form from DOM
+    if (this.leadCaptureForm) {
+      this.leadCaptureForm.element.remove();
+      this.leadCaptureForm = null;
+    }
+
+    // Re-enable input
+    this.isLeadCaptureActive = false;
+    this.input.setDisabled(false);
+    this.input.focus();
   }
 
   private scrollToBottom(): void {

@@ -10,6 +10,7 @@
 const VISITOR_ID_KEY = "chatbot_visitor_id";
 const SESSION_PREFIX = "chatbot_session_";
 const MESSAGES_PREFIX = "chatbot_messages_";
+const LEAD_STATE_PREFIX = "chatbot_lead_state_";
 
 export interface StoredMessage {
   id: string;
@@ -99,12 +100,43 @@ export function setStoredMessages(projectId: string, messages: StoredMessage[]):
 }
 
 /**
+ * Get lead capture state for a project
+ */
+export interface LeadCaptureLocalState {
+  hasCompletedForm: boolean;
+  hasCompletedQualifying: boolean;
+  firstMessage?: string;
+}
+
+export function getLeadCaptureState(projectId: string): LeadCaptureLocalState | null {
+  try {
+    const data = localStorage.getItem(`${LEAD_STATE_PREFIX}${projectId}`);
+    if (!data) return null;
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save lead capture state for a project
+ */
+export function setLeadCaptureState(projectId: string, state: LeadCaptureLocalState): void {
+  try {
+    localStorage.setItem(`${LEAD_STATE_PREFIX}${projectId}`, JSON.stringify(state));
+  } catch {
+    // localStorage not available
+  }
+}
+
+/**
  * Clear all stored data for a project
  */
 export function clearProjectData(projectId: string): void {
   try {
     localStorage.removeItem(`${SESSION_PREFIX}${projectId}`);
     localStorage.removeItem(`${MESSAGES_PREFIX}${projectId}`);
+    localStorage.removeItem(`${LEAD_STATE_PREFIX}${projectId}`);
   } catch {
     // Storage not available
   }

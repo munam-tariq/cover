@@ -59,6 +59,7 @@ class ChatbotWidget {
   private bubble: Bubble | null = null;
   private chatWindow: ChatWindow | null = null;
   private isOpen = false;
+  private leadCaptureConfig: Record<string, unknown> | null = null;
 
   constructor(config: WidgetConfig) {
     // Validate required config
@@ -130,6 +131,7 @@ class ChatbotWidget {
       title: this.config.title,
       primaryColor: this.config.primaryColor,
       onClose: () => this.close(),
+      leadCaptureConfig: this.leadCaptureConfig,
     });
     wrapper.appendChild(this.chatWindow.element);
 
@@ -167,6 +169,11 @@ class ChatbotWidget {
       // Check if widget is enabled (default to true if not specified)
       if (data.enabled === false) {
         return false;
+      }
+
+      // Store lead capture config
+      if (data.leadCapture?.enabled) {
+        this.leadCaptureConfig = data.leadCapture;
       }
 
       // Store realtime config for realtime.ts to use
