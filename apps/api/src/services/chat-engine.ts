@@ -60,8 +60,11 @@ import {
   leadCaptureV2Interceptor,
   getLeadCaptureV2Settings,
   maskEmail,
+  checkAndReaskQualifyingQuestion,
+  getReaskIntro,
   type LeadCaptureState,
 } from "./lead-capture-v2";
+import { scanAndSaveLateAnswers } from "./late-answer-detector";
 
 /**
  * Valid sources for chat sessions
@@ -531,6 +534,30 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       // Log but don't fail the chat if lead capture has issues
       logger.error("Lead capture error", leadError, { ...logCtx, step: "lead_capture" });
     }
+
+    // 11.5 Re-ask qualifying question if user asked a new question mid-qualifying
+    try {
+      const reaskResult = await checkAndReaskQualifyingQuestion(input.projectId, input.visitorId);
+      if (reaskResult.shouldReask && reaskResult.question) {
+        finalResponse = `${finalResponse}\n\n${getReaskIntro(reaskResult.question)}`;
+        logger.info("Appended qualifying question re-ask", {
+          ...logCtx,
+          step: "qualifying_reask",
+          question: reaskResult.question.substring(0, 50),
+        });
+      }
+    } catch (reaskError) {
+      // Log but don't fail the chat if re-ask has issues
+      logger.error("Qualifying re-ask error", reaskError, { ...logCtx, step: "qualifying_reask" });
+    }
+
+    // 11.7 Late Answer Detection (async, non-blocking)
+    // Scans for late answers to skipped qualifying questions
+    scanAndSaveLateAnswers(
+      input.projectId,
+      input.visitorId,
+      sanitizedMessage
+    ).catch((err) => logger.error("Late answer scan error", err, logCtx));
 
     // 12. Log conversation asynchronously
     logConversation(

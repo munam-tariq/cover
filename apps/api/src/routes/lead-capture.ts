@@ -345,6 +345,7 @@ leadsRouter.get(
           email: lead.email,
           formData: lead.form_data,
           qualifyingAnswers: lead.qualifying_answers,
+          lateQualifyingAnswers: lead.late_qualifying_answers || [],
           qualificationStatus: lead.qualification_status,
           captureSource: lead.capture_source || null,
           firstMessage: lead.first_message,

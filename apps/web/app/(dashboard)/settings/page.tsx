@@ -1221,7 +1221,8 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Proactive Engagement */}
+        {/* Proactive Engagement - HIDDEN (not production ready) */}
+        {false && (
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -1394,6 +1395,7 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <Card>
           <CardContent className="p-6">
@@ -1719,7 +1721,8 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Lead Recovery (V3) */}
+        {/* Lead Recovery (V3) - HIDDEN (not production ready) */}
+        {false && (
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -1928,6 +1931,7 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <Card>
           <CardContent className="p-6">

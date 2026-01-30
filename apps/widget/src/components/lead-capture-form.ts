@@ -63,8 +63,8 @@ export class LeadCaptureForm {
 
     // V3: Adjust intro text when in progressive profiling mode
     const introText = hideEmail
-      ? "Just a couple more details to help me assist you better!"
-      : "Before I dive in, I'd love to know who I'm chatting with!";
+      ? "Just a couple quick things to help me help you better!"
+      : "Hey! Quick intro so I know who I'm talking to 😊";
 
     const formHtml = `
       <div style="
@@ -440,7 +440,7 @@ export class LeadCaptureForm {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-          <span>Thanks, ${this.escapeHtml(email)}! Let me help you.</span>
+          <span>Awesome, great to meet you ${this.escapeHtml(email.split('@')[0])}! Let's chat.</span>
         </div>
       `;
     }

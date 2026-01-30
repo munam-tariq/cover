@@ -6,11 +6,23 @@ import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
 import { Mail, ChevronDown, ChevronUp, Search } from "lucide-react";
 
+interface LateQualifyingAnswer {
+  question_index: number;
+  question_text: string;
+  answer: string;
+  raw_message: string;
+  confidence: number;
+  capture_type: string;
+  captured_at: string;
+  promoted: boolean;
+}
+
 interface Lead {
   id: string;
   email: string;
   formData: Record<string, { label: string; value: string }>;
   qualifyingAnswers: Array<{ question: string; answer: string }>;
+  lateQualifyingAnswers: LateQualifyingAnswer[];
   qualificationStatus: string;
   captureSource: string | null;
   firstMessage: string | null;
@@ -253,12 +265,31 @@ export default function LeadsPage() {
                           <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Qualifying Answers</h4>
                           {lead.qualifyingAnswers && lead.qualifyingAnswers.length > 0 ? (
                             <div className="space-y-2">
-                              {lead.qualifyingAnswers.map((qa, i) => (
-                                <div key={i} className="text-sm">
-                                  <p className="text-muted-foreground">{qa.question}</p>
-                                  <p className="font-medium">{qa.answer}</p>
-                                </div>
-                              ))}
+                              {lead.qualifyingAnswers.map((qa, i) => {
+                                // Check if this answer was skipped and has a late answer
+                                const isSkipped = qa.answer === "[skipped]" || qa.answer === "N/A";
+                                const lateAnswer = lead.lateQualifyingAnswers?.find(
+                                  (la) => la.question_text === qa.question || la.question_index === i
+                                );
+                                const displayAnswer = isSkipped && lateAnswer ? lateAnswer.answer : qa.answer;
+                                const isLateCapture = isSkipped && lateAnswer;
+
+                                return (
+                                  <div key={i} className="text-sm">
+                                    <p className="text-muted-foreground">{qa.question}</p>
+                                    <div className="flex items-center gap-2">
+                                      <p className={`font-medium ${isSkipped && !lateAnswer ? "text-muted-foreground italic" : ""}`}>
+                                        {displayAnswer}
+                                      </p>
+                                      {isLateCapture && (
+                                        <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                          Late capture
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           ) : (
                             <p className="text-sm text-muted-foreground">No qualifying questions answered</p>
