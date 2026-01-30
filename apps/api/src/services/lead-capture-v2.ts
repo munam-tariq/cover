@@ -47,12 +47,21 @@ export interface QualifyingAnswer {
 }
 
 export interface LeadCaptureState {
-  lead_capture_status: "pending" | "form_shown" | "form_completed" | "qualifying" | "qualified" | "skipped";
+  lead_capture_status: "pending" | "form_shown" | "form_completed" | "qualifying" | "qualified" | "skipped" | "deferred";
   form_data: FormData;
   qualifying_status: "pending" | "in_progress" | "completed" | "skipped";
   qualifying_answers: QualifyingAnswer[];
   current_qualifying_index: number;
   first_message: string;
+  // V3 cascade tracking fields
+  capture_source?: "inline_email" | "form" | "conversational" | "exit_overlay" | "summary_hook";
+  ask_count?: number;
+  messages_since_last_ask?: number;
+  visit_count?: number;
+  high_intent_detected?: boolean;
+  deferred_at?: string;
+  inline_email_shown?: boolean;
+  inline_email_skipped?: boolean;
 }
 
 export interface LeadFormSubmitResult {
@@ -280,11 +289,20 @@ export async function submitLeadForm(
     // Find or create customer
     const customer = await findOrCreateCustomer(projectId, visitorId);
 
-    // Update customer email
-    await supabaseAdmin
-      .from("customers")
-      .update({ email: formData.email })
-      .eq("id", customer.id);
+    // If email not provided (progressive profiling — email was captured inline),
+    // use the existing customer email so we don't overwrite it with "".
+    const email = formData.email || customer.email || "";
+    if (email && email !== formData.email) {
+      formData = { ...formData, email };
+    }
+
+    // Update customer email only if we have one
+    if (email) {
+      await supabaseAdmin
+        .from("customers")
+        .update({ email })
+        .eq("id", customer.id);
+    }
 
     // Determine if qualifying questions are configured
     const enabledQuestions = v2Settings.qualifying_questions.filter(q => q.enabled && q.question.trim());
@@ -292,7 +310,9 @@ export async function submitLeadForm(
 
     // Determine initial status
     const qualificationStatus = hasQualifyingQuestions ? "form_completed" : "qualified";
-    const qualifyingStatus = hasQualifyingQuestions ? "pending" : "completed";
+
+    // Preserve capture source from existing state (e.g. inline_email)
+    const existingState = customer.lead_capture_state;
 
     // Build lead capture state
     const lcState: LeadCaptureState = {
@@ -302,6 +322,8 @@ export async function submitLeadForm(
       qualifying_answers: [],
       current_qualifying_index: 0,
       first_message: firstMessage,
+      // Preserve capture source from inline email if it was set
+      ...(existingState?.capture_source ? { capture_source: existingState.capture_source } : {}),
     };
 
     // Save state to customer
@@ -310,26 +332,56 @@ export async function submitLeadForm(
       .update({ lead_capture_state: lcState })
       .eq("id", customer.id);
 
-    // Create qualified_leads record
-    const { data: lead, error: leadError } = await supabaseAdmin
+    // Create or update qualified_leads record
+    // Check if a lead already exists (e.g. from inline email capture)
+    const { data: existingLead } = await supabaseAdmin
       .from("qualified_leads")
-      .insert({
-        project_id: projectId,
-        customer_id: customer.id,
-        conversation_id: sessionId,
-        visitor_id: visitorId,
-        email: formData.email,
-        form_data: formData,
-        qualification_status: qualificationStatus,
-        first_message: firstMessage,
-        qualification_completed_at: hasQualifyingQuestions ? null : new Date().toISOString(),
-      })
       .select("id")
+      .eq("customer_id", customer.id)
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .single();
 
-    if (leadError) {
-      logger.error("Failed to create qualified lead", leadError, logCtx);
-      return { success: false, nextAction: "none" };
+    let leadId: string;
+    if (existingLead) {
+      // Update existing lead with form data
+      await supabaseAdmin
+        .from("qualified_leads")
+        .update({
+          email,
+          form_data: formData,
+          qualification_status: qualificationStatus,
+          first_message: firstMessage || undefined,
+          form_submitted_at: new Date().toISOString(),
+          qualification_completed_at: hasQualifyingQuestions ? null : new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingLead.id);
+      leadId = existingLead.id;
+    } else {
+      // Create new lead
+      const { data: lead, error: leadError } = await supabaseAdmin
+        .from("qualified_leads")
+        .insert({
+          project_id: projectId,
+          customer_id: customer.id,
+          conversation_id: sessionId,
+          visitor_id: visitorId,
+          email,
+          form_data: formData,
+          qualification_status: qualificationStatus,
+          first_message: firstMessage,
+          qualification_completed_at: hasQualifyingQuestions ? null : new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (leadError) {
+        logger.error("Failed to create qualified lead", leadError, logCtx);
+        return { success: false, nextAction: "none" };
+      }
+      leadId = lead.id;
     }
 
     // If qualifying questions exist, return first question
@@ -337,7 +389,7 @@ export async function submitLeadForm(
       const firstQuestion = enabledQuestions[0];
       return {
         success: true,
-        leadId: lead.id,
+        leadId,
         nextAction: "qualifying_question",
         qualifyingQuestion: `Thanks! Quick question - ${firstQuestion.question}`,
       };
@@ -346,7 +398,7 @@ export async function submitLeadForm(
     // No qualifying questions - done
     return {
       success: true,
-      leadId: lead.id,
+      leadId,
       nextAction: "none",
     };
   } catch (err) {
@@ -381,6 +433,12 @@ export async function getLeadCaptureStatus(
     hasCompletedForm: ["form_completed", "qualifying", "qualified"].includes(state.lead_capture_status),
     hasCompletedQualifying: state.qualifying_status === "completed",
     leadCaptureState: state,
+    // V3 recovery fields
+    askCount: state.ask_count || 0,
+    visitCount: state.visit_count || 0,
+    isDeferred: state.lead_capture_status === "deferred",
+    hasProvidedEmail: !!state.form_data?.email,
+    captureSource: state.capture_source || null,
   };
 }
 
@@ -388,27 +446,230 @@ export async function getLeadCaptureStatus(
 
 /**
  * Handle form skip from the widget.
- * Sets status to skipped so we don't show it again.
+ * "permanent" sets terminal "skipped" state.
+ * "deferred" sets re-askable "deferred" state (V3).
  */
 export async function skipLeadForm(
+  projectId: string,
+  visitorId: string,
+  skipType: "permanent" | "deferred" = "permanent"
+): Promise<void> {
+  const customer = await findOrCreateCustomer(projectId, visitorId);
+
+  const existingState = customer.lead_capture_state;
+  const askCount = (existingState?.ask_count || 0) + 1;
+
+  if (skipType === "deferred") {
+    const deferredState: LeadCaptureState = {
+      ...(existingState || {
+        form_data: { email: "" },
+        qualifying_answers: [],
+        current_qualifying_index: 0,
+        first_message: "",
+      }),
+      lead_capture_status: "deferred",
+      qualifying_status: "pending",
+      ask_count: askCount,
+      messages_since_last_ask: 0,
+      deferred_at: new Date().toISOString(),
+    } as LeadCaptureState;
+
+    await supabaseAdmin
+      .from("customers")
+      .update({ lead_capture_state: deferredState })
+      .eq("id", customer.id);
+  } else {
+    // Preserve existing state data (especially email captured inline)
+    const skippedState: LeadCaptureState = {
+      ...(existingState || {
+        form_data: { email: "" },
+        qualifying_answers: [],
+        current_qualifying_index: 0,
+        first_message: "",
+      }),
+      lead_capture_status: "skipped",
+      qualifying_status: "skipped",
+      ask_count: askCount,
+    } as LeadCaptureState;
+
+    await supabaseAdmin
+      .from("customers")
+      .update({ lead_capture_state: skippedState })
+      .eq("id", customer.id);
+  }
+}
+
+/**
+ * Submit inline email capture (V3 cascade).
+ * Lightweight email-only capture, no form fields.
+ */
+export async function submitInlineEmail(
+  projectId: string,
+  visitorId: string,
+  sessionId: string | null,
+  email: string,
+  captureSource: string = "inline_email"
+): Promise<LeadFormSubmitResult> {
+  const logCtx: LogContext = { projectId, visitorId, step: "lc_v3_inline_email" };
+
+  try {
+    const v2Settings = await getLeadCaptureV2Settings(projectId);
+    if (!v2Settings) {
+      return { success: false, nextAction: "none" };
+    }
+
+    // Find or create customer
+    const customer = await findOrCreateCustomer(projectId, visitorId);
+
+    // Update customer email
+    await supabaseAdmin
+      .from("customers")
+      .update({ email })
+      .eq("id", customer.id);
+
+    // Determine if qualifying questions are configured
+    const enabledQuestions = v2Settings.qualifying_questions.filter(q => q.enabled && q.question.trim());
+    const hasQualifyingQuestions = enabledQuestions.length > 0;
+
+    // Check if custom form fields exist (for progressive profiling)
+    const hasCustomFields = (v2Settings.form_fields.field_2?.enabled) || (v2Settings.form_fields.field_3?.enabled);
+
+    // Determine the correct state based on what's left to collect.
+    // If custom fields exist, the progressive profiling form must show first
+    // before qualifying begins — so qualifying_status stays "pending".
+    // Only start qualifying immediately when there are NO custom fields.
+    const startQualifyingNow = hasQualifyingQuestions && !hasCustomFields;
+
+    const qualificationStatus = (!hasCustomFields && !hasQualifyingQuestions)
+      ? "qualified"
+      : "form_completed";
+
+    // Build lead capture state
+    const lcState: LeadCaptureState = {
+      lead_capture_status: hasCustomFields
+        ? "form_shown"                             // progressive profiling form pending
+        : (hasQualifyingQuestions ? "qualifying" : "qualified"),
+      form_data: { email },
+      qualifying_status: startQualifyingNow
+        ? "in_progress"   // no form needed → qualifying starts now
+        : (hasQualifyingQuestions ? "pending" : "completed"),
+      qualifying_answers: [],
+      current_qualifying_index: 0,
+      first_message: "",
+      capture_source: captureSource as LeadCaptureState["capture_source"],
+    };
+
+    await supabaseAdmin
+      .from("customers")
+      .update({ lead_capture_state: lcState })
+      .eq("id", customer.id);
+
+    // Create qualified_leads record
+    const { data: lead, error: leadError } = await supabaseAdmin
+      .from("qualified_leads")
+      .insert({
+        project_id: projectId,
+        customer_id: customer.id,
+        conversation_id: sessionId,
+        visitor_id: visitorId,
+        email,
+        form_data: { email },
+        qualification_status: qualificationStatus,
+        first_message: "",
+        qualification_completed_at: qualificationStatus === "qualified" ? new Date().toISOString() : null,
+      })
+      .select("id")
+      .single();
+
+    if (leadError) {
+      logger.error("Failed to create inline lead", leadError, logCtx);
+      return { success: false, nextAction: "none" };
+    }
+
+    // Only return qualifying question if starting immediately (no custom fields)
+    if (startQualifyingNow) {
+      const firstQuestion = enabledQuestions[0];
+      return {
+        success: true,
+        leadId: lead.id,
+        nextAction: "qualifying_question",
+        qualifyingQuestion: `Thanks! Quick question - ${firstQuestion.question}`,
+      };
+    }
+
+    return { success: true, leadId: lead.id, nextAction: "none" };
+  } catch (err) {
+    logger.error("Inline email submission error", err, logCtx);
+    return { success: false, nextAction: "none" };
+  }
+}
+
+// ─── V3 Recovery Helpers ──────────────────────────────────────────────────────
+
+/**
+ * Defer lead capture (sets status to "deferred" without terminal skip).
+ * Called when the widget uses the defer API route.
+ */
+export async function deferLeadCapture(
   projectId: string,
   visitorId: string
 ): Promise<void> {
   const customer = await findOrCreateCustomer(projectId, visitorId);
+  const existingState = customer.lead_capture_state;
 
-  const skippedState: LeadCaptureState = {
-    lead_capture_status: "skipped",
-    form_data: { email: "" },
-    qualifying_status: "skipped",
-    qualifying_answers: [],
-    current_qualifying_index: 0,
-    first_message: "",
-  };
+  const deferredState: LeadCaptureState = {
+    ...(existingState || {
+      form_data: { email: "" },
+      qualifying_answers: [],
+      current_qualifying_index: 0,
+      first_message: "",
+    }),
+    lead_capture_status: "deferred",
+    qualifying_status: "pending",
+    ask_count: (existingState?.ask_count || 0) + 1,
+    messages_since_last_ask: 0,
+    deferred_at: new Date().toISOString(),
+  } as LeadCaptureState;
 
   await supabaseAdmin
     .from("customers")
-    .update({ lead_capture_state: skippedState })
+    .update({ lead_capture_state: deferredState })
     .eq("id", customer.id);
+}
+
+/**
+ * Increment visit count for a returning visitor.
+ */
+export async function updateVisitCount(
+  projectId: string,
+  visitorId: string
+): Promise<{ visitCount: number }> {
+  const customer = await getCustomerByVisitorId(projectId, visitorId);
+  if (!customer) {
+    return { visitCount: 0 };
+  }
+
+  const state = customer.lead_capture_state;
+  const newCount = (state?.visit_count || 0) + 1;
+
+  const updatedState: LeadCaptureState = {
+    ...(state || {
+      lead_capture_status: "pending",
+      form_data: { email: "" },
+      qualifying_status: "pending",
+      qualifying_answers: [],
+      current_qualifying_index: 0,
+      first_message: "",
+    }),
+    visit_count: newCount,
+  } as LeadCaptureState;
+
+  await supabaseAdmin
+    .from("customers")
+    .update({ lead_capture_state: updatedState })
+    .eq("id", customer.id);
+
+  return { visitCount: newCount };
 }
 
 // ─── Internal Helpers ─────────────────────────────────────────────────────────

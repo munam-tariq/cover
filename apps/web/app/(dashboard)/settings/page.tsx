@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
 import { Button, Card, CardContent, Skeleton, Switch, Label, Badge, Input } from "@chatbot/ui";
-import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff, Users, ChevronRight, Shield, ShieldCheck, ShieldAlert, Plus, X, ChevronDown } from "lucide-react";
+import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff, Users, ChevronRight, Shield, ShieldCheck, ShieldAlert, Plus, X, ChevronDown, MessageSquare, Zap, MousePointerClick, ScrollText, Timer, RotateCcw } from "lucide-react";
 import Link from "next/link";
 
 interface UpdatedProject {
@@ -100,6 +100,45 @@ export default function SettingsPage() {
   const [savingDomains, setSavingDomains] = useState(false);
   const [loadingDomains, setLoadingDomains] = useState(true);
 
+  // Proactive engagement state
+  const [peEnabled, setPeEnabled] = useState(false);
+  const [peTeaserEnabled, setPeTeaserEnabled] = useState(true);
+  const [peTeaserMessage, setPeTeaserMessage] = useState("Have a question? I can help!");
+  const [peTeaserDelay, setPeTeaserDelay] = useState(5);
+  const [peBadgeEnabled, setPeBadgeEnabled] = useState(true);
+  const [peTimeEnabled, setPeTimeEnabled] = useState(true);
+  const [peTimeDelay, setPeTimeDelay] = useState(30);
+  const [peScrollEnabled, setPeScrollEnabled] = useState(true);
+  const [peScrollThreshold, setPeScrollThreshold] = useState(50);
+  const [peExitIntentEnabled, setPeExitIntentEnabled] = useState(true);
+  const [peHighIntentEnabled, setPeHighIntentEnabled] = useState(false);
+  const [peHighIntentPatterns, setPeHighIntentPatterns] = useState("");
+  const [savingProactive, setSavingProactive] = useState(false);
+
+  // Email capture cascade (V3) state
+  const [captureMode, setCaptureMode] = useState<"email_after" | "email_first" | "email_required">("email_after");
+  const [reaskEnabled, setReaskEnabled] = useState(false);
+  const [reaskMax, setReaskMax] = useState(2);
+  const [reaskMessagesBetween, setReaskMessagesBetween] = useState(5);
+
+  // Lead recovery (V3) state
+  const [lrEnabled, setLrEnabled] = useState(false);
+  const [lrExitOverlayEnabled, setLrExitOverlayEnabled] = useState(true);
+  const [lrExitHeadline, setLrExitHeadline] = useState("Before you go...");
+  const [lrExitSubtext, setLrExitSubtext] = useState("Drop your email and we'll follow up");
+  const [lrDeferredEnabled, setLrDeferredEnabled] = useState(true);
+  const [lrDeferredReaskAfter, setLrDeferredReaskAfter] = useState(3);
+  const [lrDeferredMaxAsks, setLrDeferredMaxAsks] = useState(2);
+  const [lrReturnVisitEnabled, setLrReturnVisitEnabled] = useState(true);
+  const [lrReturnMaxVisits, setLrReturnMaxVisits] = useState(3);
+  const [lrReturnMessage, setLrReturnMessage] = useState("Welcome back! Want me to email you a summary?");
+  const [lrHighIntentEnabled, setLrHighIntentEnabled] = useState(true);
+  const [lrHighIntentKeywords, setLrHighIntentKeywords] = useState("pricing, demo, trial, contact, sales, buy, subscribe");
+  const [lrSummaryHookEnabled, setLrSummaryHookEnabled] = useState(true);
+  const [lrSummaryMinMessages, setLrSummaryMinMessages] = useState(3);
+  const [lrSummaryPrompt, setLrSummaryPrompt] = useState("Want me to email you a summary of this conversation?");
+  const [savingRecovery, setSavingRecovery] = useState(false);
+
   const router = useRouter();
 
   // System prompt presets
@@ -133,6 +172,36 @@ export default function SettingsPage() {
       // Load widget enabled status (default to true)
       setWidgetEnabled(settings.widget_enabled !== false);
 
+      // Load proactive engagement settings
+      const pe = settings.proactive_engagement as Record<string, unknown> | undefined;
+      if (pe) {
+        setPeEnabled(pe.enabled === true);
+        const teaser = pe.teaser as Record<string, unknown> | undefined;
+        if (teaser) {
+          setPeTeaserEnabled(teaser.enabled !== false);
+          setPeTeaserMessage((teaser.message as string) || "Have a question? I can help!");
+          setPeTeaserDelay((teaser.delay_seconds as number) || 5);
+        }
+        const badge = pe.badge as Record<string, unknown> | undefined;
+        if (badge) {
+          setPeBadgeEnabled(badge.enabled !== false);
+        }
+        const triggers = pe.triggers as Record<string, unknown> | undefined;
+        if (triggers) {
+          const time = triggers.time_on_page as Record<string, unknown> | undefined;
+          if (time) { setPeTimeEnabled(time.enabled !== false); setPeTimeDelay((time.delay_seconds as number) || 30); }
+          const scroll = triggers.scroll_depth as Record<string, unknown> | undefined;
+          if (scroll) { setPeScrollEnabled(scroll.enabled !== false); setPeScrollThreshold((scroll.threshold_percent as number) || 50); }
+          const exit = triggers.exit_intent as Record<string, unknown> | undefined;
+          if (exit) { setPeExitIntentEnabled(exit.enabled !== false); }
+          const highIntent = triggers.high_intent_urls as Record<string, unknown> | undefined;
+          if (highIntent) {
+            setPeHighIntentEnabled(highIntent.enabled === true);
+            setPeHighIntentPatterns(((highIntent.patterns as string[]) || []).join("\n"));
+          }
+        }
+      }
+
       // Load V2 lead capture settings
       const lcV2 = settings.lead_capture_v2 as Record<string, unknown> | undefined;
       if (lcV2) {
@@ -160,6 +229,55 @@ export default function SettingsPage() {
         }
         setLcV2NotifEmail((lcV2.notification_email as string) || "");
         setLcV2NotifsEnabled(lcV2.notifications_enabled !== false);
+
+        // V3: Load capture mode and conversational re-ask settings
+        const cm = lcV2.capture_mode as string | undefined;
+        if (cm === "email_first" || cm === "email_required") {
+          setCaptureMode(cm);
+        } else {
+          setCaptureMode("email_after");
+        }
+        const cr = lcV2.conversational_reask as Record<string, unknown> | undefined;
+        if (cr) {
+          setReaskEnabled(cr.enabled === true);
+          setReaskMax((cr.max_reasks_per_session as number) || 2);
+          setReaskMessagesBetween((cr.messages_between_reasks as number) || 5);
+        }
+      }
+
+      // Load lead recovery settings (V3)
+      const lr = settings.lead_recovery as Record<string, unknown> | undefined;
+      if (lr) {
+        setLrEnabled(lr.enabled === true);
+        const exitOverlay = lr.exit_intent_overlay as Record<string, unknown> | undefined;
+        if (exitOverlay) {
+          setLrExitOverlayEnabled(exitOverlay.enabled !== false);
+          setLrExitHeadline((exitOverlay.headline as string) || "Before you go...");
+          setLrExitSubtext((exitOverlay.subtext as string) || "Drop your email and we'll follow up");
+        }
+        const deferred = lr.deferred_skip as Record<string, unknown> | undefined;
+        if (deferred) {
+          setLrDeferredEnabled(deferred.enabled !== false);
+          setLrDeferredReaskAfter((deferred.reask_after_messages as number) || 3);
+          setLrDeferredMaxAsks((deferred.max_deferred_asks as number) || 2);
+        }
+        const returnVisit = lr.return_visit as Record<string, unknown> | undefined;
+        if (returnVisit) {
+          setLrReturnVisitEnabled(returnVisit.enabled !== false);
+          setLrReturnMaxVisits((returnVisit.max_visits_before_stop as number) || 3);
+          setLrReturnMessage((returnVisit.welcome_back_message as string) || "Welcome back! Want me to email you a summary?");
+        }
+        const highIntent = lr.high_intent_override as Record<string, unknown> | undefined;
+        if (highIntent) {
+          setLrHighIntentEnabled(highIntent.enabled !== false);
+          setLrHighIntentKeywords(((highIntent.keywords as string[]) || []).join(", "));
+        }
+        const summaryHook = lr.conversation_summary_hook as Record<string, unknown> | undefined;
+        if (summaryHook) {
+          setLrSummaryHookEnabled(summaryHook.enabled !== false);
+          setLrSummaryMinMessages((summaryHook.min_messages as number) || 3);
+          setLrSummaryPrompt((summaryHook.prompt as string) || "Want me to email you a summary of this conversation?");
+        }
       }
     }
   }, [currentProject]);
@@ -451,6 +569,13 @@ export default function SettingsPage() {
           ],
           notification_email: lcV2NotifEmail.trim() || null,
           notifications_enabled: lcV2NotifsEnabled,
+          // V3: Capture mode and conversational re-ask
+          capture_mode: captureMode,
+          conversational_reask: {
+            enabled: reaskEnabled,
+            max_reasks_per_session: reaskMax,
+            messages_between_reasks: reaskMessagesBetween,
+          },
         },
       };
 
@@ -472,6 +597,117 @@ export default function SettingsPage() {
       setError("Failed to save lead capture settings");
     } finally {
       setSavingLeadCapture(false);
+    }
+  };
+
+  // Save proactive engagement settings
+  const handleSaveProactive = async () => {
+    if (!currentProject) return;
+
+    setSavingProactive(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const existingSettings = currentProject.settings || {};
+      const updatedSettings = {
+        ...existingSettings,
+        proactive_engagement: {
+          enabled: peEnabled,
+          teaser: {
+            enabled: peTeaserEnabled,
+            message: peTeaserMessage.trim() || "Have a question? I can help!",
+            delay_seconds: peTeaserDelay,
+            show_once_per_session: true,
+          },
+          badge: {
+            enabled: peBadgeEnabled,
+            show_until_opened: true,
+          },
+          triggers: {
+            time_on_page: { enabled: peTimeEnabled, delay_seconds: peTimeDelay, action: "teaser" as const },
+            scroll_depth: { enabled: peScrollEnabled, threshold_percent: peScrollThreshold, action: "teaser" as const },
+            exit_intent: { enabled: peExitIntentEnabled, action: "overlay" as const, message: "Before you go - have a question?" },
+            high_intent_urls: {
+              enabled: peHighIntentEnabled,
+              patterns: peHighIntentPatterns.split("\n").map(p => p.trim()).filter(Boolean),
+              action: "auto_open" as const,
+            },
+          },
+        },
+      };
+
+      await apiClient<ProjectUpdateResponse>(`/api/projects/${currentProject.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name: currentProject.name, settings: updatedSettings }),
+      });
+
+      await refreshProjects();
+      setSuccess("Proactive engagement settings saved");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Error saving proactive settings:", err);
+      setError("Failed to save proactive engagement settings");
+    } finally {
+      setSavingProactive(false);
+    }
+  };
+
+  // Save lead recovery settings (V3)
+  const handleSaveRecovery = async () => {
+    if (!currentProject) return;
+
+    setSavingRecovery(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const existingSettings = currentProject.settings || {};
+      const updatedSettings = {
+        ...existingSettings,
+        lead_recovery: {
+          enabled: lrEnabled,
+          exit_intent_overlay: {
+            enabled: lrExitOverlayEnabled,
+            headline: lrExitHeadline.trim() || "Before you go...",
+            subtext: lrExitSubtext.trim() || "Drop your email and we'll follow up",
+          },
+          deferred_skip: {
+            enabled: lrDeferredEnabled,
+            reask_after_messages: lrDeferredReaskAfter,
+            max_deferred_asks: lrDeferredMaxAsks,
+          },
+          return_visit: {
+            enabled: lrReturnVisitEnabled,
+            max_visits_before_stop: lrReturnMaxVisits,
+            welcome_back_message: lrReturnMessage.trim() || "Welcome back! Want me to email you a summary?",
+          },
+          high_intent_override: {
+            enabled: lrHighIntentEnabled,
+            keywords: lrHighIntentKeywords.split(",").map(k => k.trim()).filter(Boolean),
+            override_cooldowns: true,
+          },
+          conversation_summary_hook: {
+            enabled: lrSummaryHookEnabled,
+            min_messages: lrSummaryMinMessages,
+            prompt: lrSummaryPrompt.trim() || "Want me to email you a summary of this conversation?",
+          },
+        },
+      };
+
+      await apiClient<ProjectUpdateResponse>(`/api/projects/${currentProject.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name: currentProject.name, settings: updatedSettings }),
+      });
+
+      await refreshProjects();
+      setSuccess("Lead recovery settings saved");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Error saving recovery settings:", err);
+      setError("Failed to save lead recovery settings");
+    } finally {
+      setSavingRecovery(false);
     }
   };
 
@@ -985,6 +1221,180 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Proactive Engagement */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold">Proactive Engagement</h2>
+              {savingProactive && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Proactively engage visitors with teasers, badges, and triggers to increase chat opens.
+            </p>
+
+            {/* Master Toggle */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="space-y-0.5">
+                <Label htmlFor="pe-enabled" className="text-base">Enable Proactive Engagement</Label>
+                <p className="text-sm text-muted-foreground">Show teasers and triggers to visitors</p>
+              </div>
+              <Switch id="pe-enabled" checked={peEnabled} onCheckedChange={setPeEnabled} />
+            </div>
+
+            {peEnabled && (
+              <div className="space-y-6 border-t pt-4">
+                {/* Teaser Message */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-sm font-medium">Teaser Message</h3>
+                    <Switch checked={peTeaserEnabled} onCheckedChange={setPeTeaserEnabled} />
+                  </div>
+                  {peTeaserEnabled && (
+                    <div className="ml-6 space-y-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Message</Label>
+                        <Input
+                          value={peTeaserMessage}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeTeaserMessage(e.target.value)}
+                          placeholder="Have a question? I can help!"
+                          maxLength={100}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Delay (seconds)</Label>
+                        <Input
+                          type="number"
+                          value={peTeaserDelay}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeTeaserDelay(Number(e.target.value))}
+                          min={1}
+                          max={120}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Notification Badge */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-3 h-3 bg-red-500 rounded-full" />
+                    <div>
+                      <h3 className="text-sm font-medium">Notification Badge</h3>
+                      <p className="text-xs text-muted-foreground">Red dot on chat bubble to attract attention</p>
+                    </div>
+                  </div>
+                  <Switch checked={peBadgeEnabled} onCheckedChange={setPeBadgeEnabled} />
+                </div>
+
+                {/* Triggers */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium">Triggers</h3>
+
+                  {/* Time on Page */}
+                  <div className="flex items-center justify-between ml-2">
+                    <div className="flex items-center gap-2">
+                      <Timer className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm">Time on Page</p>
+                        {peTimeEnabled && (
+                          <p className="text-xs text-muted-foreground">
+                            After {peTimeDelay}s on page
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Switch checked={peTimeEnabled} onCheckedChange={setPeTimeEnabled} />
+                  </div>
+                  {peTimeEnabled && (
+                    <div className="ml-8">
+                      <Input
+                        type="number"
+                        value={peTimeDelay}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeTimeDelay(Number(e.target.value))}
+                        min={5}
+                        max={300}
+                        className="w-24"
+                      />
+                    </div>
+                  )}
+
+                  {/* Scroll Depth */}
+                  <div className="flex items-center justify-between ml-2">
+                    <div className="flex items-center gap-2">
+                      <ScrollText className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm">Scroll Depth</p>
+                        {peScrollEnabled && (
+                          <p className="text-xs text-muted-foreground">
+                            After scrolling {peScrollThreshold}% of the page
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Switch checked={peScrollEnabled} onCheckedChange={setPeScrollEnabled} />
+                  </div>
+                  {peScrollEnabled && (
+                    <div className="ml-8">
+                      <Input
+                        type="number"
+                        value={peScrollThreshold}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeScrollThreshold(Number(e.target.value))}
+                        min={10}
+                        max={100}
+                        className="w-24"
+                      />
+                    </div>
+                  )}
+
+                  {/* Exit Intent */}
+                  <div className="flex items-center justify-between ml-2">
+                    <div className="flex items-center gap-2">
+                      <MousePointerClick className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm">Exit Intent (Desktop Only)</p>
+                        <p className="text-xs text-muted-foreground">When cursor moves to close/back</p>
+                      </div>
+                    </div>
+                    <Switch checked={peExitIntentEnabled} onCheckedChange={setPeExitIntentEnabled} />
+                  </div>
+
+                  {/* High-Intent URLs */}
+                  <div className="flex items-center justify-between ml-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm">High-Intent URL Patterns</p>
+                        <p className="text-xs text-muted-foreground">Auto-open on matching pages</p>
+                      </div>
+                    </div>
+                    <Switch checked={peHighIntentEnabled} onCheckedChange={setPeHighIntentEnabled} />
+                  </div>
+                  {peHighIntentEnabled && (
+                    <div className="ml-8">
+                      <textarea
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={peHighIntentPatterns}
+                        onChange={(e) => setPeHighIntentPatterns(e.target.value)}
+                        rows={3}
+                        placeholder={"/pricing\n/contact\n/demo"}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">One URL pattern per line (e.g., /pricing)</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <Button onClick={handleSaveProactive} disabled={savingProactive}>
+                {savingProactive ? "Saving..." : "Save Engagement Settings"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -1191,6 +1601,111 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* V3: Email Capture Mode Section */}
+                  <div className="border-t pt-6">
+                    <h3 className="text-sm font-semibold mb-1">Email Capture Mode</h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Controls when and how visitors are asked for their email
+                    </p>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="captureMode"
+                          value="email_after"
+                          checked={captureMode === "email_after"}
+                          onChange={() => setCaptureMode("email_after")}
+                          className="accent-primary"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">After first response</span>
+                          <span className="text-xs text-muted-foreground ml-1">(default)</span>
+                          <p className="text-xs text-muted-foreground">Form appears after the first AI response</p>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="captureMode"
+                          value="email_first"
+                          checked={captureMode === "email_first"}
+                          onChange={() => setCaptureMode("email_first")}
+                          className="accent-primary"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">Email first (cascade)</span>
+                          <p className="text-xs text-muted-foreground">Shows inline email field on open, falls back to form if skipped</p>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="captureMode"
+                          value="email_required"
+                          checked={captureMode === "email_required"}
+                          onChange={() => setCaptureMode("email_required")}
+                          className="accent-primary"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">Email required</span>
+                          <p className="text-xs text-muted-foreground">Must enter email before chatting (blocks input until email is provided)</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* V3: Conversational Re-ask Section */}
+                  <div className="border-t pt-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h3 className="text-sm font-semibold">Conversational Re-ask</h3>
+                        <p className="text-xs text-muted-foreground">
+                          If the visitor skips the form, the AI will naturally ask for their email later in conversation
+                        </p>
+                      </div>
+                      <Switch
+                        id="reask-toggle"
+                        checked={reaskEnabled}
+                        onCheckedChange={setReaskEnabled}
+                      />
+                    </div>
+                    {reaskEnabled && (
+                      <div className="space-y-3 pl-2 border-l-2 border-muted ml-1">
+                        <div>
+                          <Label htmlFor="reask-max" className="text-xs">
+                            Max re-asks per session
+                          </Label>
+                          <Input
+                            id="reask-max"
+                            type="number"
+                            min={1}
+                            max={5}
+                            value={reaskMax}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setReaskMax(parseInt(e.target.value) || 2)}
+                            className="w-20 h-8 text-sm mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="reask-between" className="text-xs">
+                            Messages between re-asks
+                          </Label>
+                          <Input
+                            id="reask-between"
+                            type="number"
+                            min={2}
+                            max={20}
+                            value={reaskMessagesBetween}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setReaskMessagesBetween(parseInt(e.target.value) || 5)}
+                            className="w-20 h-8 text-sm mt-1"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Wait this many messages before asking again
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1200,6 +1715,216 @@ export default function SettingsPage() {
                   {savingLeadCapture ? "Saving..." : "Save Lead Capture Settings"}
                 </Button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Lead Recovery (V3) */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <RotateCcw className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold">Lead Recovery</h2>
+              {savingRecovery && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Recover visitors who didn&apos;t leave their email on the first attempt with exit overlays, deferred re-asks, return visit detection, and more.
+            </p>
+
+            {/* Master Toggle */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="space-y-0.5">
+                <Label htmlFor="lr-enabled" className="text-base">Enable Lead Recovery</Label>
+                <p className="text-sm text-muted-foreground">Activate multi-signal recovery to capture more leads</p>
+              </div>
+              <Switch id="lr-enabled" checked={lrEnabled} onCheckedChange={setLrEnabled} />
+            </div>
+
+            {lrEnabled && (
+              <div className="space-y-6 border-t pt-4">
+                {/* Exit Intent Overlay */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MousePointerClick className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <h3 className="text-sm font-medium">Exit Intent Overlay</h3>
+                        <p className="text-xs text-muted-foreground">Show email capture when visitor tries to leave (desktop only)</p>
+                      </div>
+                    </div>
+                    <Switch checked={lrExitOverlayEnabled} onCheckedChange={setLrExitOverlayEnabled} />
+                  </div>
+                  {lrExitOverlayEnabled && (
+                    <div className="ml-6 space-y-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Headline</Label>
+                        <Input
+                          value={lrExitHeadline}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrExitHeadline(e.target.value)}
+                          placeholder="Before you go..."
+                          maxLength={60}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Subtext</Label>
+                        <Input
+                          value={lrExitSubtext}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrExitSubtext(e.target.value)}
+                          placeholder="Drop your email and we'll follow up"
+                          maxLength={120}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Deferred Skip */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Timer className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <h3 className="text-sm font-medium">Deferred Skip</h3>
+                        <p className="text-xs text-muted-foreground">Re-ask for email after visitor skips the form</p>
+                      </div>
+                    </div>
+                    <Switch checked={lrDeferredEnabled} onCheckedChange={setLrDeferredEnabled} />
+                  </div>
+                  {lrDeferredEnabled && (
+                    <div className="ml-6 space-y-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Re-ask after N more messages</Label>
+                        <Input
+                          type="number"
+                          value={lrDeferredReaskAfter}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrDeferredReaskAfter(Number(e.target.value))}
+                          min={1}
+                          max={20}
+                          className="w-20"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Max deferred re-asks</Label>
+                        <Input
+                          type="number"
+                          value={lrDeferredMaxAsks}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrDeferredMaxAsks(Number(e.target.value))}
+                          min={1}
+                          max={5}
+                          className="w-20"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Return Visit */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <h3 className="text-sm font-medium">Return Visit Recovery</h3>
+                        <p className="text-xs text-muted-foreground">Welcome back returning visitors and ask for email</p>
+                      </div>
+                    </div>
+                    <Switch checked={lrReturnVisitEnabled} onCheckedChange={setLrReturnVisitEnabled} />
+                  </div>
+                  {lrReturnVisitEnabled && (
+                    <div className="ml-6 space-y-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Max visits before stopping</Label>
+                        <Input
+                          type="number"
+                          value={lrReturnMaxVisits}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrReturnMaxVisits(Number(e.target.value))}
+                          min={1}
+                          max={10}
+                          className="w-20"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Welcome-back message</Label>
+                        <Input
+                          value={lrReturnMessage}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrReturnMessage(e.target.value)}
+                          placeholder="Welcome back! Want me to email you a summary?"
+                          maxLength={200}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* High-Intent Override */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <h3 className="text-sm font-medium">High-Intent Override</h3>
+                        <p className="text-xs text-muted-foreground">Override cooldowns when visitor shows buying intent</p>
+                      </div>
+                    </div>
+                    <Switch checked={lrHighIntentEnabled} onCheckedChange={setLrHighIntentEnabled} />
+                  </div>
+                  {lrHighIntentEnabled && (
+                    <div className="ml-6">
+                      <Label className="text-xs text-muted-foreground">Keywords (comma-separated)</Label>
+                      <Input
+                        value={lrHighIntentKeywords}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrHighIntentKeywords(e.target.value)}
+                        placeholder="pricing, demo, trial, contact, sales"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">When a visitor types any of these words, immediately ask for email</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Conversation Summary Hook */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <h3 className="text-sm font-medium">Conversation Summary Hook</h3>
+                        <p className="text-xs text-muted-foreground">Offer to email a summary after a conversation</p>
+                      </div>
+                    </div>
+                    <Switch checked={lrSummaryHookEnabled} onCheckedChange={setLrSummaryHookEnabled} />
+                  </div>
+                  {lrSummaryHookEnabled && (
+                    <div className="ml-6 space-y-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Minimum messages before showing</Label>
+                        <Input
+                          type="number"
+                          value={lrSummaryMinMessages}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrSummaryMinMessages(Number(e.target.value))}
+                          min={2}
+                          max={20}
+                          className="w-20"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Prompt message</Label>
+                        <Input
+                          value={lrSummaryPrompt}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrSummaryPrompt(e.target.value)}
+                          placeholder="Want me to email you a summary of this conversation?"
+                          maxLength={200}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <Button onClick={handleSaveRecovery} disabled={savingRecovery}>
+                {savingRecovery ? "Saving..." : "Save Recovery Settings"}
+              </Button>
             </div>
           </CardContent>
         </Card>

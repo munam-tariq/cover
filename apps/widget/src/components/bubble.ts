@@ -41,8 +41,14 @@ export class Bubble {
       "icon-close"
     );
 
+    // Notification badge dot (hidden by default, CSS handles visibility)
+    const notificationDot = document.createElement("span");
+    notificationDot.className = "notification-dot";
+    notificationDot.setAttribute("aria-hidden", "true");
+
     bubble.appendChild(chatIcon);
     bubble.appendChild(closeIcon);
+    bubble.appendChild(notificationDot);
 
     return bubble;
   }
@@ -117,5 +123,19 @@ export class Bubble {
    */
   getActive(): boolean {
     return this.isActive;
+  }
+
+  /**
+   * Show notification badge dot
+   */
+  showBadge(): void {
+    this.element.classList.add("has-notification");
+  }
+
+  /**
+   * Hide notification badge dot
+   */
+  hideBadge(): void {
+    this.element.classList.remove("has-notification");
   }
 }

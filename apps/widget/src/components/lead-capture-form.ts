@@ -18,6 +18,8 @@ export interface LeadCaptureFormConfig {
     field_2?: LeadCaptureFormField;
     field_3?: LeadCaptureFormField;
   };
+  /** V3: Hide email field when already captured via inline (progressive profiling) */
+  hideEmail?: boolean;
 }
 
 export interface LeadCaptureFormData {
@@ -57,6 +59,12 @@ export class LeadCaptureForm {
     const { config, primaryColor } = this.options;
     const field2 = config.formFields.field_2;
     const field3 = config.formFields.field_3;
+    const hideEmail = !!config.hideEmail;
+
+    // V3: Adjust intro text when in progressive profiling mode
+    const introText = hideEmail
+      ? "Just a couple more details to help me assist you better!"
+      : "Before I dive in, I'd love to know who I'm chatting with!";
 
     const formHtml = `
       <div style="
@@ -73,9 +81,10 @@ export class LeadCaptureForm {
           margin-bottom: 12px;
           line-height: 1.4;
         ">
-          Before I dive in, I'd love to know who I'm chatting with!
+          ${introText}
         </div>
 
+        ${!hideEmail ? `
         <div style="margin-bottom: 8px;">
           <label style="
             display: block;
@@ -102,6 +111,7 @@ export class LeadCaptureForm {
             "
           />
         </div>
+        ` : ''}
 
         ${field2?.enabled ? `
         <div style="margin-bottom: 8px;">
@@ -225,9 +235,9 @@ export class LeadCaptureForm {
     const submitBtn = card.querySelector(".lc-submit-btn") as HTMLButtonElement;
     submitBtn.addEventListener("click", () => this.handleSubmit());
 
-    // Skip handler
+    // Skip handler - validates required fields before allowing skip
     const skipBtn = card.querySelector(".lc-skip-btn") as HTMLButtonElement;
-    skipBtn.addEventListener("click", () => this.options.onSkip());
+    skipBtn.addEventListener("click", () => this.handleSkip());
 
     // Enter key submits
     card.addEventListener("keydown", (e) => {
@@ -240,24 +250,100 @@ export class LeadCaptureForm {
     return card;
   }
 
-  private handleSubmit(): void {
-    if (!this.emailInput) return;
-
-    const email = this.emailInput.value.trim();
+  /**
+   * Handle skip button click - validates required fields before allowing skip
+   */
+  private handleSkip(): void {
     const { config } = this.options;
+    const hideEmail = !!config.hideEmail;
 
-    // Validate email
-    if (!email) {
-      this.showError("Please enter your email address.");
-      this.emailInput.focus();
-      return;
+    // Validate required email field (if not hidden)
+    if (!hideEmail && this.emailInput) {
+      const email = this.emailInput.value.trim();
+      if (!email) {
+        this.showError("Email is required. Please enter your email address.");
+        this.emailInput.focus();
+        return;
+      }
+
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(email)) {
+        this.showError("Please enter a valid email address.");
+        this.emailInput.focus();
+        return;
+      }
     }
 
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email)) {
-      this.showError("Please enter a valid email address.");
-      this.emailInput.focus();
-      return;
+    // Validate required custom fields
+    const field2 = config.formFields.field_2;
+    const field3 = config.formFields.field_3;
+
+    if (field2?.enabled && field2.required && this.field2Input) {
+      if (!this.field2Input.value.trim()) {
+        this.showError(`${field2.label} is required.`);
+        this.field2Input.focus();
+        return;
+      }
+    }
+
+    if (field3?.enabled && field3.required && this.field3Input) {
+      if (!this.field3Input.value.trim()) {
+        this.showError(`${field3.label} is required.`);
+        this.field3Input.focus();
+        return;
+      }
+    }
+
+    // All required fields are filled, allow skip (submits required data only)
+    this.hideError();
+
+    // Build form data with required fields only
+    const formData: LeadCaptureFormData = {
+      email: !hideEmail && this.emailInput ? this.emailInput.value.trim() : ""
+    };
+
+    if (field2?.enabled && field2.required && this.field2Input?.value.trim()) {
+      formData.field_2 = {
+        label: field2.label,
+        value: this.field2Input.value.trim(),
+      };
+    }
+
+    if (field3?.enabled && field3.required && this.field3Input?.value.trim()) {
+      formData.field_3 = {
+        label: field3.label,
+        value: this.field3Input.value.trim(),
+      };
+    }
+
+    // Submit the required data and then trigger skip callback
+    this.setLoading(true);
+    this.options.onSubmit(formData);
+  }
+
+  private handleSubmit(): void {
+    const { config } = this.options;
+    const hideEmail = !!config.hideEmail;
+
+    // V3: When email is hidden (progressive profiling), skip email validation
+    let email = "";
+    if (!hideEmail) {
+      if (!this.emailInput) return;
+      email = this.emailInput.value.trim();
+
+      // Validate email
+      if (!email) {
+        this.showError("Please enter your email address.");
+        this.emailInput.focus();
+        return;
+      }
+
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(email)) {
+        this.showError("Please enter a valid email address.");
+        this.emailInput.focus();
+        return;
+      }
     }
 
     // Validate required custom fields
@@ -283,7 +369,7 @@ export class LeadCaptureForm {
     // Clear error
     this.hideError();
 
-    // Build form data
+    // Build form data (email may be empty string in progressive profiling mode)
     const formData: LeadCaptureFormData = { email };
 
     if (field2?.enabled && this.field2Input?.value.trim()) {
@@ -362,7 +448,14 @@ export class LeadCaptureForm {
 
   focusEmail(): void {
     setTimeout(() => {
-      this.emailInput?.focus();
+      // V3: If email is hidden (progressive profiling), focus first available field
+      if (this.emailInput) {
+        this.emailInput.focus();
+      } else if (this.field2Input) {
+        this.field2Input.focus();
+      } else if (this.field3Input) {
+        this.field3Input.focus();
+      }
     }, 100);
   }
 

@@ -203,11 +203,13 @@ export async function submitLeadCaptureForm(
 
 /**
  * Skip lead capture form
+ * @param skipType - "permanent" for terminal skip, "deferred" for re-askable skip
  */
 export async function skipLeadCaptureForm(
   apiUrl: string,
   projectId: string,
-  visitorId: string
+  visitorId: string,
+  skipType: "permanent" | "deferred" = "permanent"
 ): Promise<void> {
   await fetch(`${apiUrl}/api/chat/lead-capture/skip`, {
     method: "POST",
@@ -215,8 +217,45 @@ export async function skipLeadCaptureForm(
       "Content-Type": "application/json",
       "X-Visitor-Id": visitorId,
     },
-    body: JSON.stringify({ projectId, visitorId }),
+    body: JSON.stringify({ projectId, visitorId, skipType }),
   });
+}
+
+/**
+ * Submit inline email capture (lightweight, no form fields)
+ */
+export async function submitInlineEmail(
+  apiUrl: string,
+  projectId: string,
+  visitorId: string,
+  sessionId: string | null,
+  email: string,
+  captureSource: string = "inline_email"
+): Promise<LeadCaptureSubmitResponse> {
+  const response = await fetch(`${apiUrl}/api/chat/lead-capture/submit-inline`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Visitor-Id": visitorId,
+    },
+    body: JSON.stringify({
+      projectId,
+      visitorId,
+      sessionId,
+      email,
+      captureSource,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new ChatApiError(
+      errorData.error?.code || "INLINE_EMAIL_ERROR",
+      errorData.error?.message || "Failed to submit email"
+    );
+  }
+
+  return response.json();
 }
 
 /**

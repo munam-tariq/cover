@@ -9,6 +9,94 @@ export interface ProjectSettings {
   welcomeMessage?: string;
   primaryColor?: string;
   widgetPosition?: "bottom-right" | "bottom-left";
+
+  /** Proactive engagement settings (V3) */
+  proactive_engagement?: {
+    enabled: boolean;
+    teaser: {
+      enabled: boolean;
+      message: string;
+      delay_seconds: number;
+      show_once_per_session: boolean;
+    };
+    badge: {
+      enabled: boolean;
+      show_until_opened: boolean;
+    };
+    triggers: {
+      time_on_page: {
+        enabled: boolean;
+        delay_seconds: number;
+        action: "teaser" | "badge" | "auto_open";
+      };
+      scroll_depth: {
+        enabled: boolean;
+        threshold_percent: number;
+        action: "teaser" | "badge" | "auto_open";
+      };
+      exit_intent: {
+        enabled: boolean;
+        action: "auto_open" | "overlay";
+        message: string;
+      };
+      high_intent_urls: {
+        enabled: boolean;
+        patterns: string[];
+        action: "auto_open" | "teaser";
+      };
+    };
+  };
+
+  /** Lead capture V2 settings (includes V3 cascade extensions) */
+  lead_capture_v2?: {
+    enabled: boolean;
+    form_fields: {
+      email: { required: true };
+      field_2?: { enabled: boolean; label: string; required: boolean };
+      field_3?: { enabled: boolean; label: string; required: boolean };
+    };
+    qualifying_questions?: Array<{ question: string; enabled: boolean }>;
+    notification_email?: string | null;
+    notifications_enabled?: boolean;
+    // V3 cascade fields
+    capture_mode?: "email_after" | "email_first" | "email_required";
+    conversational_reask?: {
+      enabled: boolean;
+      max_reasks_per_session: number;
+      messages_between_reasks: number;
+    };
+  };
+
+  /** Lead recovery settings (V3) */
+  lead_recovery?: {
+    enabled: boolean;
+    exit_intent_overlay: {
+      enabled: boolean;
+      headline: string;
+      subtext: string;
+    };
+    deferred_skip: {
+      enabled: boolean;
+      reask_after_messages: number;
+      max_deferred_asks: number;
+    };
+    return_visit: {
+      enabled: boolean;
+      max_visits_before_stop: number;
+      welcome_back_message: string;
+    };
+    high_intent_override: {
+      enabled: boolean;
+      keywords: string[];
+      override_cooldowns: boolean;
+    };
+    conversation_summary_hook: {
+      enabled: boolean;
+      min_messages: number;
+      prompt: string;
+    };
+  };
+
   [key: string]: Json | undefined;
 }
 

@@ -12,6 +12,7 @@ interface Lead {
   formData: Record<string, { label: string; value: string }>;
   qualifyingAnswers: Array<{ question: string; answer: string }>;
   qualificationStatus: string;
+  captureSource: string | null;
   firstMessage: string | null;
   createdAt: string;
 }
@@ -26,6 +27,7 @@ const STATUS_LABELS: Record<string, string> = {
   qualifying: "In Progress",
   form_completed: "Form Only",
   skipped: "Skipped",
+  deferred: "Deferred",
 };
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -33,6 +35,15 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
   qualifying: "secondary",
   form_completed: "outline",
   skipped: "destructive",
+  deferred: "secondary",
+};
+
+const CAPTURE_SOURCE_LABELS: Record<string, string> = {
+  form: "Form",
+  inline_email: "Inline Email",
+  conversational: "Conversational",
+  exit_overlay: "Exit Overlay",
+  summary_hook: "Summary Hook",
 };
 
 export default function LeadsPage() {
@@ -135,7 +146,7 @@ export default function LeadsPage() {
           />
         </div>
         <div className="flex gap-1">
-          {["all", "qualified", "qualifying", "form_completed"].map((status) => (
+          {["all", "qualified", "qualifying", "form_completed", "deferred"].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -179,10 +190,11 @@ export default function LeadsPage() {
           ) : (
             <div>
               {/* Table Header */}
-              <div className="grid grid-cols-[1fr_1fr_120px_1fr_100px] gap-4 px-6 py-3 border-b bg-muted/30 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <div className="grid grid-cols-[1fr_1fr_120px_100px_1fr_100px] gap-4 px-6 py-3 border-b bg-muted/30 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 <span>Email</span>
                 <span>Custom Fields</span>
                 <span>Status</span>
+                <span>Source</span>
                 <span>First Message</span>
                 <span>Date</span>
               </div>
@@ -192,7 +204,7 @@ export default function LeadsPage() {
                 <div key={lead.id} className="border-b last:border-b-0">
                   <button
                     onClick={() => setExpandedId(expandedId === lead.id ? null : lead.id)}
-                    className="w-full grid grid-cols-[1fr_1fr_120px_1fr_100px] gap-4 px-6 py-4 text-left hover:bg-muted/20 transition-colors items-center"
+                    className="w-full grid grid-cols-[1fr_1fr_120px_100px_1fr_100px] gap-4 px-6 py-4 text-left hover:bg-muted/20 transition-colors items-center"
                   >
                     <span className="text-sm font-medium truncate">{lead.email}</span>
                     <span className="text-sm text-muted-foreground truncate">
@@ -204,6 +216,9 @@ export default function LeadsPage() {
                     <Badge variant={STATUS_VARIANTS[lead.qualificationStatus] || "outline"}>
                       {STATUS_LABELS[lead.qualificationStatus] || lead.qualificationStatus}
                     </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {lead.captureSource ? (CAPTURE_SOURCE_LABELS[lead.captureSource] || lead.captureSource) : "—"}
+                    </span>
                     <span className="text-sm text-muted-foreground truncate">
                       {lead.firstMessage || "—"}
                     </span>

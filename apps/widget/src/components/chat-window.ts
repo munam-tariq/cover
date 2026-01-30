@@ -21,10 +21,12 @@ import {
   LeadCaptureFormData,
   LeadCaptureFormConfig,
 } from "./lead-capture-form";
+import { InlineEmailField } from "./inline-email-field";
 import {
   sendMessage,
   ChatApiError,
   submitLeadCaptureForm,
+  submitInlineEmail,
   skipLeadCaptureForm,
   getLeadCaptureStatus,
 } from "../utils/api";
@@ -51,6 +53,7 @@ import {
   LeadCaptureLocalState,
 } from "../utils/storage";
 import { generateId } from "../utils/helpers";
+import { detectHighIntent } from "../utils/high-intent-detector";
 import {
   WidgetRealtimeManager,
   getRealtimeManager,
@@ -58,6 +61,14 @@ import {
   RealtimeMessage,
   RealtimeStatusChange,
 } from "../utils/realtime";
+
+export interface LeadRecoveryConfig {
+  enabled: boolean;
+  deferred_skip?: { enabled: boolean; reask_after_messages: number; max_deferred_asks: number };
+  return_visit?: { enabled: boolean; max_visits_before_stop: number; welcome_back_message: string };
+  high_intent_override?: { enabled: boolean; keywords: string[]; override_cooldowns: boolean };
+  conversation_summary_hook?: { enabled: boolean; min_messages: number; prompt: string };
+}
 
 export interface ChatWindowOptions {
   projectId: string;
@@ -67,6 +78,7 @@ export interface ChatWindowOptions {
   primaryColor: string;
   onClose: () => void;
   leadCaptureConfig?: Record<string, unknown> | null;
+  leadRecoveryConfig?: LeadRecoveryConfig | null;
 }
 
 export class ChatWindow {
@@ -100,6 +112,24 @@ export class ChatWindow {
   private leadCaptureLocalState: LeadCaptureLocalState | null = null;
   private firstUserMessage: string | null = null;
   private isFirstMessage = true;
+
+  // V3 Email Capture Cascade
+  private inlineEmailField: InlineEmailField | null = null;
+  private emailCapturedInline = false;
+  private capturedEmail: string | null = null;
+  private captureMode: "email_after" | "email_first" | "email_required" = "email_after";
+  private conversationalReaskConfig: {
+    enabled: boolean;
+    maxReasks: number;
+    messagesBetween: number;
+  } | null = null;
+  private messagesSinceLastAsk = 0;
+  private reaskCount = 0;
+
+  // V3 Recovery
+  private highIntentDetected = false;
+  private summaryHookShown = false;
+  private totalUserMessages = 0;
 
   constructor(private options: ChatWindowOptions) {
     this.visitorId = getVisitorId();
@@ -152,13 +182,16 @@ export class ChatWindow {
     this.leadCaptureLocalState = getLeadCaptureState(options.projectId);
     this.isFirstMessage = this.messages.length === 0;
 
+    // V3 Cascade: parse capture mode and conversational re-ask config
+    this.initCaptureMode(inputContainer);
+
     // Render initial messages
     this.renderMessages();
 
     // Setup keyboard handling
     this.setupKeyboardHandling();
 
-    // Check lead capture status for returning users
+    // Check lead capture status for returning users, then show form if needed
     this.initializeLeadCaptureState();
 
     // Check conversation status first (if we have a session)
@@ -473,6 +506,40 @@ export class ChatWindow {
     // Record activity for presence tracking
     this.presenceManager.recordActivity();
 
+    // V3: Check for email in user message (conversational capture)
+    if (!this.emailCapturedInline && !this.leadCaptureLocalState?.hasCompletedForm) {
+      const detectedEmail = this.detectEmailInMessage(content);
+      if (detectedEmail) {
+        this.handleConversationalEmailCapture(detectedEmail);
+      }
+    }
+
+    // V3: Track message count for conversational re-ask
+    this.messagesSinceLastAsk++;
+    this.totalUserMessages++;
+
+    // V3 Recovery: High-intent detection
+    const recoveryConfig = this.options.leadRecoveryConfig;
+    if (
+      recoveryConfig?.enabled &&
+      recoveryConfig.high_intent_override?.enabled &&
+      !this.emailCapturedInline &&
+      !this.leadCaptureLocalState?.hasCompletedForm &&
+      !this.leadCaptureLocalState?.hasProvidedEmail
+    ) {
+      const keywords = recoveryConfig.high_intent_override.keywords;
+      if (detectHighIntent(content, keywords)) {
+        this.highIntentDetected = true;
+        // Override cooldowns: reset message counter to trigger re-ask sooner
+        if (recoveryConfig.high_intent_override.override_cooldowns) {
+          this.messagesSinceLastAsk = Math.max(this.messagesSinceLastAsk, (this.conversationalReaskConfig?.messagesBetween || 5));
+        }
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Widget] High-intent detected in message:", content);
+        }
+      }
+    }
+
     // Create user message
     const userMessage: StoredMessage = {
       id: generateId(),
@@ -532,14 +599,29 @@ export class ChatWindow {
         setStoredMessages(this.options.projectId, this.messages);
       }
 
-      // Show lead capture form after first message + AI response
-      if (this.isFirstMessage && this.shouldShowLeadCaptureForm()) {
+      // Track first message (used for lead metadata)
+      if (this.isFirstMessage) {
         this.firstUserMessage = content;
         this.isFirstMessage = false;
-        // Small delay so user sees the AI response first
-        setTimeout(() => this.showLeadCaptureForm(), 500);
-      } else {
-        this.isFirstMessage = false;
+      }
+
+      // V3: Conversational re-ask check (after AI response, not on first message)
+      if (this.shouldDoConversationalReask()) {
+        setTimeout(() => this.doConversationalReask(), 1000);
+      }
+      // V3 Recovery: Summary hook (after min messages, offer to email summary)
+      else if (this.shouldShowSummaryHook()) {
+        setTimeout(() => this.showSummaryHook(), 1200);
+      }
+
+      // V3: Persist message count
+      if (this.leadCaptureLocalState) {
+        const updated: LeadCaptureLocalState = {
+          ...this.leadCaptureLocalState,
+          sessionMessageCount: this.messagesSinceLastAsk,
+        };
+        setLeadCaptureState(this.options.projectId, updated);
+        this.leadCaptureLocalState = updated;
       }
     } catch (error) {
       console.error("Chat error:", error);
@@ -613,11 +695,371 @@ export class ChatWindow {
         if (process.env.NODE_ENV === "development") {
           console.log("[Widget] Lead capture: returning user (server)");
         }
+        return;
+      }
+
+      // V3 Recovery: Return-visit welcome-back for non-captured visitors
+      if (this.shouldShowReturnVisitMessage()) {
+        setTimeout(() => this.showReturnVisitMessage(), 800);
       }
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
         console.error("[Widget] Lead capture status check failed:", error);
       }
+    }
+
+    // Show lead capture form immediately on chat init (email_after mode).
+    // This ensures qualifying questions are asked BEFORE the AI answers anything.
+    // For email_first/email_required, the inline email field is already shown in initCaptureMode().
+    if (this.captureMode === "email_after" && this.shouldShowLeadCaptureForm()) {
+      setTimeout(() => this.showLeadCaptureForm(), 400);
+    }
+  }
+
+  // ─── V3 Email Capture Cascade ───────────────────────────────────────────────
+
+  /**
+   * Initialize capture mode from config + create inline email field if needed
+   */
+  private initCaptureMode(inputContainer: Element): void {
+    const lcConfig = this.options.leadCaptureConfig;
+    if (!lcConfig?.enabled) return;
+
+    // Parse capture mode (default: email_after = current V2 behavior)
+    const mode = lcConfig.capture_mode as string | undefined;
+    if (mode === "email_first" || mode === "email_required") {
+      this.captureMode = mode;
+    }
+
+    // Parse conversational re-ask config
+    const reask = lcConfig.conversational_reask as Record<string, unknown> | undefined;
+    if (reask?.enabled) {
+      this.conversationalReaskConfig = {
+        enabled: true,
+        maxReasks: (reask.max_reasks_per_session as number) || 2,
+        messagesBetween: (reask.messages_between_reasks as number) || 5,
+      };
+    }
+
+    // Restore cascade state from local storage
+    if (this.leadCaptureLocalState) {
+      this.emailCapturedInline = !!this.leadCaptureLocalState.hasProvidedEmail;
+      this.reaskCount = this.leadCaptureLocalState.askCount || 0;
+      this.messagesSinceLastAsk = this.leadCaptureLocalState.sessionMessageCount || 0;
+    }
+
+    // Already captured email → skip inline field
+    if (this.emailCapturedInline || this.leadCaptureLocalState?.hasCompletedForm) {
+      return;
+    }
+
+    // email_first: create inline email field above input
+    if (this.captureMode === "email_first") {
+      this.inlineEmailField = new InlineEmailField({
+        primaryColor: this.options.primaryColor,
+        onSubmit: (email) => this.handleInlineEmailSubmit(email),
+        onDismiss: () => this.handleInlineEmailDismiss(),
+      });
+      inputContainer.insertBefore(this.inlineEmailField.element, inputContainer.firstChild);
+      // Show after a small delay so the widget animation completes
+      setTimeout(() => this.inlineEmailField?.show(), 400);
+    }
+
+    // email_required: disable input until email is provided
+    if (this.captureMode === "email_required") {
+      this.inlineEmailField = new InlineEmailField({
+        primaryColor: this.options.primaryColor,
+        required: true,
+        onSubmit: (email) => this.handleInlineEmailSubmit(email),
+        onDismiss: () => {}, // No dismiss in required mode
+      });
+      inputContainer.insertBefore(this.inlineEmailField.element, inputContainer.firstChild);
+      setTimeout(() => this.inlineEmailField?.show(), 400);
+      this.input.setDisabled(true, "Please enter your email above to start chatting");
+    }
+  }
+
+  /**
+   * Handle inline email field submission
+   */
+  private async handleInlineEmailSubmit(email: string): Promise<void> {
+    if (!this.inlineEmailField) return;
+
+    try {
+      const result = await submitInlineEmail(
+        this.options.apiUrl,
+        this.options.projectId,
+        this.visitorId,
+        this.sessionId,
+        email,
+        "inline_email"
+      );
+
+      // Mark as captured
+      this.emailCapturedInline = true;
+      this.capturedEmail = email;
+      this.inlineEmailField.showSuccess(email);
+
+      // Update local state
+      const newState: LeadCaptureLocalState = {
+        ...(this.leadCaptureLocalState || { hasCompletedForm: false, hasCompletedQualifying: false }),
+        hasProvidedEmail: true,
+        captureSource: "inline_email",
+      };
+      setLeadCaptureState(this.options.projectId, newState);
+      this.leadCaptureLocalState = newState;
+
+      // Re-enable input if it was disabled (email_required mode)
+      if (this.captureMode === "email_required") {
+        this.input.setDisabled(false);
+        this.input.focus();
+      }
+
+      // If qualifying question returned (no custom fields → direct to qualifying),
+      // display it as an assistant message
+      if (result.nextAction === "qualifying_question" && result.qualifyingQuestion) {
+        setTimeout(() => {
+          const qMsg: StoredMessage = {
+            id: generateId(),
+            content: result.qualifyingQuestion!,
+            role: "assistant",
+            timestamp: Date.now(),
+          };
+          this.messages.push(qMsg);
+          this.addMessageToDOM(qMsg);
+          setStoredMessages(this.options.projectId, this.messages);
+          this.scrollToBottom();
+        }, 500);
+      }
+      // If no qualifying question returned but form should show (custom fields → progressive profiling),
+      // show the form immediately so qualifying happens before any AI chat
+      else if (this.shouldShowLeadCaptureForm()) {
+        setTimeout(() => this.showLeadCaptureForm(), 500);
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Widget] Inline email captured:", email);
+      }
+    } catch (error) {
+      console.error("[Widget] Inline email submit error:", error);
+      this.inlineEmailField.setSubmitting(false);
+    }
+  }
+
+  /**
+   * Handle inline email field dismiss (falls through to V2 form)
+   */
+  private handleInlineEmailDismiss(): void {
+    // Track that inline was skipped
+    const newState: LeadCaptureLocalState = {
+      ...(this.leadCaptureLocalState || { hasCompletedForm: false, hasCompletedQualifying: false }),
+      inlineEmailSkipped: true,
+    };
+    setLeadCaptureState(this.options.projectId, newState);
+    this.leadCaptureLocalState = newState;
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Widget] Inline email dismissed, will fall through to form");
+    }
+  }
+
+  /**
+   * Check if we should do a conversational re-ask for email
+   */
+  private shouldDoConversationalReask(): boolean {
+    if (!this.conversationalReaskConfig?.enabled) return false;
+    if (this.emailCapturedInline) return false;
+    if (this.leadCaptureLocalState?.hasCompletedForm) return false;
+    if (this.leadCaptureLocalState?.hasProvidedEmail) return false;
+    if (this.isLeadCaptureActive) return false;
+
+    // Only re-ask if form was skipped (inline or form)
+    const formSkipped = this.leadCaptureLocalState?.formSkipped;
+    const inlineSkipped = this.leadCaptureLocalState?.inlineEmailSkipped;
+    if (!formSkipped && !inlineSkipped) return false;
+
+    // Check limits
+    if (this.reaskCount >= this.conversationalReaskConfig.maxReasks) return false;
+    if (this.messagesSinceLastAsk < this.conversationalReaskConfig.messagesBetween) return false;
+
+    return true;
+  }
+
+  /**
+   * Perform a conversational re-ask for email
+   */
+  private doConversationalReask(): void {
+    // Varied framing messages
+    const reaskMessages = [
+      "By the way, if you'd like me to follow up on this, just drop your email and I'll send you a summary!",
+      "Want me to email you this information? Just share your email address.",
+      "I can send you a copy of this conversation. What's your email?",
+    ];
+    const messageText = reaskMessages[this.reaskCount % reaskMessages.length];
+
+    const reaskMsg: StoredMessage = {
+      id: generateId(),
+      content: messageText,
+      role: "assistant",
+      timestamp: Date.now(),
+    };
+
+    this.messages.push(reaskMsg);
+    this.addMessageToDOM(reaskMsg);
+    setStoredMessages(this.options.projectId, this.messages);
+
+    // Update counters
+    this.reaskCount++;
+    this.messagesSinceLastAsk = 0;
+
+    // Persist
+    const newState: LeadCaptureLocalState = {
+      ...(this.leadCaptureLocalState || { hasCompletedForm: false, hasCompletedQualifying: false }),
+      askCount: this.reaskCount,
+      sessionMessageCount: 0,
+    };
+    setLeadCaptureState(this.options.projectId, newState);
+    this.leadCaptureLocalState = newState;
+
+    this.scrollToBottom();
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Widget] Conversational re-ask #", this.reaskCount);
+    }
+  }
+
+  /**
+   * Check if user's message contains an email address (for conversational capture)
+   */
+  private detectEmailInMessage(message: string): string | null {
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+    const match = message.match(emailRegex);
+    return match ? match[0] : null;
+  }
+
+  /**
+   * Handle email detected in a user message (conversational capture)
+   */
+  private async handleConversationalEmailCapture(email: string): Promise<void> {
+    try {
+      await submitInlineEmail(
+        this.options.apiUrl,
+        this.options.projectId,
+        this.visitorId,
+        this.sessionId,
+        email,
+        "conversational"
+      );
+
+      this.emailCapturedInline = true;
+
+      const newState: LeadCaptureLocalState = {
+        ...(this.leadCaptureLocalState || { hasCompletedForm: false, hasCompletedQualifying: false }),
+        hasProvidedEmail: true,
+        captureSource: "conversational",
+      };
+      setLeadCaptureState(this.options.projectId, newState);
+      this.leadCaptureLocalState = newState;
+
+      // Acknowledge the email
+      const ackMsg: StoredMessage = {
+        id: generateId(),
+        content: `Got it! I've saved your email (${email}). How else can I help?`,
+        role: "assistant",
+        timestamp: Date.now(),
+      };
+      this.messages.push(ackMsg);
+      this.addMessageToDOM(ackMsg);
+      setStoredMessages(this.options.projectId, this.messages);
+      this.scrollToBottom();
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Widget] Conversational email captured:", email);
+      }
+    } catch (error) {
+      console.error("[Widget] Conversational email capture error:", error);
+    }
+  }
+
+  // ─── V3 Recovery Methods ─────────────────────────────────────────────────────
+
+  /**
+   * Check if we should show the summary hook
+   */
+  private shouldShowSummaryHook(): boolean {
+    const rc = this.options.leadRecoveryConfig;
+    if (!rc?.enabled) return false;
+    if (!rc.conversation_summary_hook?.enabled) return false;
+    if (this.summaryHookShown) return false;
+    if (this.emailCapturedInline || this.leadCaptureLocalState?.hasCompletedForm) return false;
+    if (this.leadCaptureLocalState?.hasProvidedEmail) return false;
+    if (this.isLeadCaptureActive) return false;
+    if (this.totalUserMessages < (rc.conversation_summary_hook.min_messages || 3)) return false;
+    return true;
+  }
+
+  /**
+   * Show the summary hook — offer to email a conversation summary
+   */
+  private showSummaryHook(): void {
+    const rc = this.options.leadRecoveryConfig;
+    const prompt = rc?.conversation_summary_hook?.prompt || "Want me to email you a summary of this conversation?";
+
+    this.summaryHookShown = true;
+
+    const hookMsg: StoredMessage = {
+      id: generateId(),
+      content: prompt,
+      role: "assistant",
+      timestamp: Date.now(),
+    };
+    this.messages.push(hookMsg);
+    this.addMessageToDOM(hookMsg);
+    setStoredMessages(this.options.projectId, this.messages);
+    this.scrollToBottom();
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Widget] Summary hook shown");
+    }
+  }
+
+  /**
+   * Check if we should show a return-visit welcome-back message.
+   * Called during initializeLeadCaptureState for returning visitors.
+   */
+  private shouldShowReturnVisitMessage(): boolean {
+    const rc = this.options.leadRecoveryConfig;
+    if (!rc?.enabled || !rc.return_visit?.enabled) return false;
+    if (this.emailCapturedInline || this.leadCaptureLocalState?.hasCompletedForm) return false;
+    if (this.leadCaptureLocalState?.hasProvidedEmail) return false;
+
+    const visitCount = this.leadCaptureLocalState?.sessionMessageCount || 0;
+    const maxVisits = rc.return_visit.max_visits_before_stop || 3;
+    if (visitCount >= maxVisits) return false;
+
+    return true;
+  }
+
+  /**
+   * Show return-visit welcome-back message
+   */
+  private showReturnVisitMessage(): void {
+    const rc = this.options.leadRecoveryConfig;
+    const message = rc?.return_visit?.welcome_back_message || "Welcome back! Want me to email you a summary?";
+
+    const welcomeMsg: StoredMessage = {
+      id: generateId(),
+      content: message,
+      role: "assistant",
+      timestamp: Date.now(),
+    };
+    this.messages.push(welcomeMsg);
+    this.addMessageToDOM(welcomeMsg);
+    setStoredMessages(this.options.projectId, this.messages);
+    this.scrollToBottom();
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Widget] Return visit welcome-back message shown");
     }
   }
 
@@ -629,6 +1071,17 @@ export class ChatWindow {
     if (!lcConfig?.enabled) return false;
     if (this.isLeadCaptureActive) return false;
     if (this.leadCaptureLocalState?.hasCompletedForm) return false;
+
+    // V3: If email was captured inline AND no custom form fields exist, skip form entirely
+    if (this.emailCapturedInline) {
+      const formFields = lcConfig.formFields as Record<string, unknown> | undefined;
+      const hasCustomFields =
+        (formFields?.field_2 as Record<string, unknown>)?.enabled ||
+        (formFields?.field_3 as Record<string, unknown>)?.enabled;
+      if (!hasCustomFields) return false;
+      // Has custom fields → will show form with only those fields (progressive profiling)
+    }
+
     return true;
   }
 
@@ -644,6 +1097,8 @@ export class ChatWindow {
     // Build form config
     const formConfig: LeadCaptureFormConfig = {
       formFields: lcConfig.formFields as LeadCaptureFormConfig["formFields"],
+      // V3: If email was captured inline, hide the email field (progressive profiling)
+      hideEmail: this.emailCapturedInline,
     };
 
     this.leadCaptureForm = new LeadCaptureForm({
@@ -686,7 +1141,9 @@ export class ChatWindow {
 
       if (result.success) {
         // Show success state on form
-        this.leadCaptureForm.showSuccess(formData.email);
+        // Use submitted email, or fall back to inline-captured email for progressive profiling
+        const displayEmail = formData.email || this.capturedEmail || "";
+        this.leadCaptureForm.showSuccess(displayEmail);
 
         // Cache locally
         setLeadCaptureState(this.options.projectId, {
@@ -731,19 +1188,30 @@ export class ChatWindow {
    * Handle lead capture form skip
    */
   private async handleLeadCaptureSkip(): Promise<void> {
+    // V3: Use "deferred" skip when conversational re-ask is enabled (recoverable)
+    const skipType = this.conversationalReaskConfig?.enabled ? "deferred" : "permanent";
+
     // Tell backend the user skipped
     skipLeadCaptureForm(
       this.options.apiUrl,
       this.options.projectId,
-      this.visitorId
+      this.visitorId,
+      skipType
     ).catch(() => {}); // Fire and forget
 
     // Cache locally
-    setLeadCaptureState(this.options.projectId, {
+    const newState: LeadCaptureLocalState = {
       hasCompletedForm: false,
       hasCompletedQualifying: false,
-    });
-    this.leadCaptureLocalState = { hasCompletedForm: false, hasCompletedQualifying: false };
+      formSkipped: true,
+      askCount: this.reaskCount,
+      sessionMessageCount: 0,
+    };
+    setLeadCaptureState(this.options.projectId, newState);
+    this.leadCaptureLocalState = newState;
+
+    // Reset message counter for re-ask cooldown
+    this.messagesSinceLastAsk = 0;
 
     // Remove form from DOM
     if (this.leadCaptureForm) {

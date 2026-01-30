@@ -15,8 +15,11 @@ import { chatRateLimiter } from "../middleware/rate-limit";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import {
   submitLeadForm,
+  submitInlineEmail,
   getLeadCaptureStatus,
   skipLeadForm,
+  deferLeadCapture,
+  updateVisitCount,
 } from "../services/lead-capture-v2";
 import { supabaseAdmin } from "../lib/supabase";
 import { logger } from "../lib/logger";
@@ -39,17 +42,20 @@ leadCaptureRouter.post(
       const { projectId, visitorId, sessionId, formData, firstMessage } = req.body;
 
       // Validate required fields
-      if (!projectId || !visitorId || !formData?.email) {
+      // Note: formData.email may be empty during progressive profiling
+      // (email already captured inline). submitLeadForm() handles the lookup.
+      if (!projectId || !visitorId || !formData) {
         return res.status(400).json({
           error: {
             code: "INVALID_INPUT",
-            message: "projectId, visitorId, and formData.email are required",
+            message: "projectId, visitorId, and formData are required",
           },
         });
       }
 
-      // Validate email format
-      if (!isValidEmail(formData.email)) {
+      // Validate email format only if email is provided
+      // (empty email is OK for progressive profiling — inline email was already captured)
+      if (formData.email && !isValidEmail(formData.email)) {
         return res.status(400).json({
           error: {
             code: "INVALID_EMAIL",
@@ -80,6 +86,57 @@ leadCaptureRouter.post(
 );
 
 /**
+ * POST /api/chat/lead-capture/submit-inline
+ *
+ * Lightweight email-only capture for inline email field (V3 cascade).
+ */
+leadCaptureRouter.post(
+  "/lead-capture/submit-inline",
+  chatRateLimiter,
+  async (req: Request, res: Response) => {
+    try {
+      const { projectId, visitorId, sessionId, email, captureSource } = req.body;
+
+      if (!projectId || !visitorId || !email) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_INPUT",
+            message: "projectId, visitorId, and email are required",
+          },
+        });
+      }
+
+      if (!isValidEmail(email)) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_EMAIL",
+            message: "Please provide a valid email address",
+          },
+        });
+      }
+
+      const result = await submitInlineEmail(
+        projectId,
+        visitorId,
+        sessionId || null,
+        email,
+        captureSource || "inline_email"
+      );
+
+      res.json(result);
+    } catch (error) {
+      logger.error("Inline email submit error", error, { requestId: req.requestId });
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Failed to submit inline email",
+        },
+      });
+    }
+  }
+);
+
+/**
  * POST /api/chat/lead-capture/skip
  *
  * Called by the widget when user clicks "Skip" on the form.
@@ -89,7 +146,7 @@ leadCaptureRouter.post(
   chatRateLimiter,
   async (req: Request, res: Response) => {
     try {
-      const { projectId, visitorId } = req.body;
+      const { projectId, visitorId, skipType } = req.body;
 
       if (!projectId || !visitorId) {
         return res.status(400).json({
@@ -100,7 +157,7 @@ leadCaptureRouter.post(
         });
       }
 
-      await skipLeadForm(projectId, visitorId);
+      await skipLeadForm(projectId, visitorId, skipType || "permanent");
 
       res.json({ success: true });
     } catch (error) {
@@ -145,6 +202,78 @@ leadCaptureRouter.get(
         error: {
           code: "INTERNAL_ERROR",
           message: "Failed to check lead capture status",
+        },
+      });
+    }
+  }
+);
+
+// ─── V3 Recovery Routes ──────────────────────────────────────────────────────
+
+/**
+ * POST /api/chat/lead-capture/defer
+ *
+ * Defer lead capture (sets status to "deferred" without terminal skip).
+ */
+leadCaptureRouter.post(
+  "/lead-capture/defer",
+  chatRateLimiter,
+  async (req: Request, res: Response) => {
+    try {
+      const { projectId, visitorId } = req.body;
+
+      if (!projectId || !visitorId) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_INPUT",
+            message: "projectId and visitorId are required",
+          },
+        });
+      }
+
+      await deferLeadCapture(projectId, visitorId);
+      res.json({ success: true });
+    } catch (error) {
+      logger.error("Lead defer error", error, { requestId: req.requestId });
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Failed to defer lead capture",
+        },
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/chat/lead-capture/visit
+ *
+ * Increment visit count for returning visitor recovery.
+ */
+leadCaptureRouter.post(
+  "/lead-capture/visit",
+  chatRateLimiter,
+  async (req: Request, res: Response) => {
+    try {
+      const { projectId, visitorId } = req.body;
+
+      if (!projectId || !visitorId) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_INPUT",
+            message: "projectId and visitorId are required",
+          },
+        });
+      }
+
+      const result = await updateVisitCount(projectId, visitorId);
+      res.json(result);
+    } catch (error) {
+      logger.error("Visit count update error", error, { requestId: req.requestId });
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Failed to update visit count",
         },
       });
     }
@@ -200,7 +329,7 @@ leadsRouter.get(
         .range(offset, offset + limit - 1);
 
       // Filter by status if provided
-      if (status && ["form_completed", "qualifying", "qualified", "skipped"].includes(status)) {
+      if (status && ["form_completed", "qualifying", "qualified", "skipped", "deferred"].includes(status)) {
         query = query.eq("qualification_status", status);
       }
 
@@ -217,6 +346,7 @@ leadsRouter.get(
           formData: lead.form_data,
           qualifyingAnswers: lead.qualifying_answers,
           qualificationStatus: lead.qualification_status,
+          captureSource: lead.capture_source || null,
           firstMessage: lead.first_message,
           formSubmittedAt: lead.form_submitted_at,
           qualificationCompletedAt: lead.qualification_completed_at,

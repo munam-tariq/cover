@@ -106,6 +106,13 @@ export interface LeadCaptureLocalState {
   hasCompletedForm: boolean;
   hasCompletedQualifying: boolean;
   firstMessage?: string;
+  // V3 cascade tracking
+  hasProvidedEmail?: boolean;
+  captureSource?: "inline_email" | "form" | "conversational" | "exit_overlay" | "summary_hook";
+  askCount?: number;
+  inlineEmailSkipped?: boolean;
+  formSkipped?: boolean;
+  sessionMessageCount?: number;
 }
 
 export function getLeadCaptureState(projectId: string): LeadCaptureLocalState | null {
@@ -139,6 +146,36 @@ export function clearProjectData(projectId: string): void {
     localStorage.removeItem(`${LEAD_STATE_PREFIX}${projectId}`);
   } catch {
     // Storage not available
+  }
+}
+
+// ─── Visit Count Tracking (V3 Recovery) ──────────────────────────────────────
+
+const VISIT_COUNT_PREFIX = "chatbot_visit_count_";
+
+/**
+ * Get visit count for a project (persists across sessions)
+ */
+export function getVisitCount(projectId: string): number {
+  try {
+    const val = localStorage.getItem(`${VISIT_COUNT_PREFIX}${projectId}`);
+    return val ? parseInt(val, 10) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Increment visit count for a project
+ */
+export function incrementVisitCount(projectId: string): number {
+  try {
+    const current = getVisitCount(projectId);
+    const newCount = current + 1;
+    localStorage.setItem(`${VISIT_COUNT_PREFIX}${projectId}`, String(newCount));
+    return newCount;
+  } catch {
+    return 0;
   }
 }
 

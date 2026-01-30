@@ -418,17 +418,17 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
           retrievedChunks.some(c => c.combinedScore > 0.3);
         const foundAnswer = hasRelevantContext && !responseIndicatesNoAnswer;
 
+        // Look up customer state (needed for V2 + V3 recovery logic)
+        const { data: customer } = await supabaseAdmin
+          .from("customers")
+          .select("lead_capture_state")
+          .eq("project_id", input.projectId)
+          .eq("visitor_id", input.visitorId)
+          .single();
+
+        const state = customer?.lead_capture_state as LeadCaptureState | null;
+
         if (!foundAnswer) {
-          // Look up customer state
-          const { data: customer } = await supabaseAdmin
-            .from("customers")
-            .select("lead_capture_state")
-            .eq("project_id", input.projectId)
-            .eq("visitor_id", input.visitorId)
-            .single();
-
-          const state = customer?.lead_capture_state as LeadCaptureState | null;
-
           if (state?.lead_capture_status === "qualified") {
             // Qualified user: tell them we have their info
             const maskedEmail = maskEmail(state.form_data.email);
@@ -438,6 +438,71 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
             finalResponse = response + "\n\nWould you like to leave your email? Someone from our team can follow up.";
           }
           // If form_completed or qualifying, don't append anything (they're mid-flow)
+        }
+
+        // V3 Recovery: High-intent override + Summary hook (server-side)
+        const recoverySettings = (await getProjectRecoverySettings(input.projectId));
+        if (recoverySettings && state) {
+          const emailCaptured = !!(state as Record<string, unknown>).email ||
+            state.lead_capture_status === "qualified" ||
+            state.lead_capture_status === "form_completed";
+
+          if (!emailCaptured) {
+            // High-intent override: detect high-intent keywords in user message
+            if (recoverySettings.high_intent_override?.enabled) {
+              const keywords = recoverySettings.high_intent_override.keywords || [];
+              const defaultKeywords = ["pricing", "demo", "trial", "contact", "sales", "buy", "subscribe", "cost", "price", "plan", "enterprise", "quote"];
+              const keywordList = keywords.length > 0 ? keywords : defaultKeywords;
+              const lowerMessage = sanitizedMessage.toLowerCase();
+              const isHighIntent = keywordList.some(kw => lowerMessage.includes(kw.toLowerCase()));
+
+              if (isHighIntent && (state.lead_capture_status === "deferred" || state.lead_capture_status === "pending" || state.lead_capture_status === "skipped")) {
+                // Flag high intent in customer state
+                await supabaseAdmin
+                  .from("customers")
+                  .update({
+                    lead_capture_state: {
+                      ...state,
+                      high_intent_detected: true,
+                    },
+                  })
+                  .eq("project_id", input.projectId)
+                  .eq("visitor_id", input.visitorId);
+
+                // Append contextual email ask to response
+                finalResponse = finalResponse + "\n\nIt sounds like you're interested in learning more. Would you like to share your email so our team can follow up with personalized information?";
+              }
+            }
+
+            // Summary hook: after N messages, offer to email a summary
+            if (recoverySettings.conversation_summary_hook?.enabled) {
+              const minMessages = recoverySettings.conversation_summary_hook.min_messages || 3;
+              const messageCount = (input.conversationHistory?.length || 0) + 1;
+
+              if (messageCount >= minMessages * 2) { // *2 because history has both user and assistant
+                const hookPrompt = recoverySettings.conversation_summary_hook.prompt ||
+                  "Want me to email you a summary of this conversation?";
+
+                // Only append if we haven't already appended a high-intent message
+                const stateRecord = state as Record<string, unknown>;
+                if (!stateRecord.high_intent_detected && !stateRecord.summary_hook_shown) {
+                  finalResponse = finalResponse + `\n\n${hookPrompt}`;
+
+                  // Mark summary hook as shown
+                  await supabaseAdmin
+                    .from("customers")
+                    .update({
+                      lead_capture_state: {
+                        ...state,
+                        summary_hook_shown: true,
+                      },
+                    })
+                    .eq("project_id", input.projectId)
+                    .eq("visitor_id", input.visitorId);
+                }
+              }
+            }
+          }
         }
       } else if (leadSettings.lead_capture_enabled) {
         // V1 flow (unchanged)
@@ -875,6 +940,31 @@ async function storeCustomerMessageOnly(
       step: "store_customer_message",
     });
     throw error;
+  }
+}
+
+/**
+ * Get lead recovery settings for a project (V3)
+ */
+async function getProjectRecoverySettings(
+  projectId: string
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data: project } = await supabaseAdmin
+      .from("projects")
+      .select("settings")
+      .eq("id", projectId)
+      .single();
+
+    if (!project) return null;
+
+    const settings = (project.settings as Record<string, unknown>) || {};
+    const recovery = settings.lead_recovery as Record<string, unknown> | undefined;
+
+    if (!recovery?.enabled) return null;
+    return recovery;
+  } catch {
+    return null;
   }
 }
 

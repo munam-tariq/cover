@@ -50,7 +50,16 @@ embedRouter.get(
       hasQualifyingQuestions: Array.isArray(lcV2.qualifying_questions)
         ? (lcV2.qualifying_questions as Array<{ enabled: boolean; question: string }>).some(q => q.enabled && q.question?.trim())
         : false,
+      // V3: Capture mode and conversational re-ask config
+      capture_mode: lcV2.capture_mode || "email_after",
+      conversational_reask: lcV2.conversational_reask || { enabled: false },
     } : { enabled: false };
+
+    // Build proactive engagement config if enabled
+    const proactiveSettings = settings.proactive_engagement as Record<string, unknown> | undefined;
+    const proactiveEngagementConfig = proactiveSettings?.enabled
+      ? proactiveSettings
+      : { enabled: false };
 
     // Return widget config including enabled status
     res.json({
@@ -69,6 +78,13 @@ embedRouter.get(
       },
       // Lead capture V2 config
       leadCapture: leadCaptureConfig,
+      // Proactive engagement config
+      proactiveEngagement: proactiveEngagementConfig,
+      // Lead recovery config (V3)
+      leadRecovery: (() => {
+        const lr = settings.lead_recovery as Record<string, unknown> | undefined;
+        return lr?.enabled ? lr : { enabled: false };
+      })(),
     });
   } catch (err) {
     logger.error("Widget config error", err, { projectId });
