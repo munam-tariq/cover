@@ -705,20 +705,86 @@ async function createHandoffConversation(
   }
 
   // Create new conversation with waiting status
+  // IMPORTANT: Use sessionId as the conversation ID if provided to maintain consistency
+  // with getOrCreateConversation. Otherwise, there will be a mismatch where handoff
+  // creates conversation "B" but getOrCreateSession creates conversation "A" (the sessionId),
+  // causing the widget to use a different conversation than the agent sees in the queue.
+  const conversationData: Record<string, unknown> = {
+    project_id: projectId,
+    visitor_id: visitorId,
+    status: "waiting",
+    source: "widget",
+    queue_entered_at: now,
+    handoff_requested_at: now,
+  };
+
+  // Use the sessionId as the conversation ID if provided
+  if (sessionId) {
+    conversationData.id = sessionId;
+  }
+
   const { data: conversation, error } = await supabaseAdmin
     .from("conversations")
-    .insert({
-      project_id: projectId,
-      visitor_id: visitorId,
-      status: "waiting",
-      source: "widget",
-      queue_entered_at: now,
-      handoff_requested_at: now,
-    })
+    .insert(conversationData)
     .select("id")
     .single();
 
   if (error) {
+    // Handle race condition: conversation might have been created by another process
+    // (e.g., getOrCreateConversation called in parallel)
+    if (sessionId && error.code === "23505") {
+      // Unique constraint violation - conversation already exists, try to update it
+      logger.info("Conversation already exists during handoff, updating status", {
+        projectId,
+        visitorId,
+        sessionId,
+        step: "handoff_update_existing",
+      });
+
+      const { error: updateError } = await supabaseAdmin
+        .from("conversations")
+        .update({
+          status: "waiting",
+          queue_entered_at: now,
+          handoff_requested_at: now,
+        })
+        .eq("id", sessionId);
+
+      if (updateError) {
+        logger.error("Failed to update existing conversation for handoff", updateError, {
+          projectId,
+          visitorId,
+          sessionId,
+          step: "handoff_update_conversation",
+        });
+        throw updateError;
+      }
+
+      // Calculate queue position
+      const { count } = await supabaseAdmin
+        .from("conversations")
+        .select("*", { count: "exact", head: true })
+        .eq("project_id", projectId)
+        .eq("status", "waiting")
+        .lt("queue_entered_at", now);
+
+      const queuePosition = (count || 0) + 1;
+
+      // Broadcast status change
+      broadcastConversationStatusChanged(
+        sessionId,
+        projectId,
+        "waiting",
+        { queuePosition }
+      ).catch((err) => logger.error("Realtime broadcast error", err, { step: "realtime_broadcast" }));
+
+      return {
+        conversationId: sessionId,
+        directAssignment: false,
+        queuePosition,
+      };
+    }
+
     logger.error("Failed to create handoff conversation", error, {
       projectId,
       visitorId,

@@ -115,12 +115,6 @@ export default function SettingsPage() {
   const [peHighIntentPatterns, setPeHighIntentPatterns] = useState("");
   const [savingProactive, setSavingProactive] = useState(false);
 
-  // Email capture cascade (V3) state
-  const [captureMode, setCaptureMode] = useState<"email_after" | "email_first" | "email_required">("email_after");
-  const [reaskEnabled, setReaskEnabled] = useState(false);
-  const [reaskMax, setReaskMax] = useState(2);
-  const [reaskMessagesBetween, setReaskMessagesBetween] = useState(5);
-
   // Lead recovery (V3) state
   const [lrEnabled, setLrEnabled] = useState(false);
   const [lrExitOverlayEnabled, setLrExitOverlayEnabled] = useState(true);
@@ -229,20 +223,6 @@ export default function SettingsPage() {
         }
         setLcV2NotifEmail((lcV2.notification_email as string) || "");
         setLcV2NotifsEnabled(lcV2.notifications_enabled !== false);
-
-        // V3: Load capture mode and conversational re-ask settings
-        const cm = lcV2.capture_mode as string | undefined;
-        if (cm === "email_first" || cm === "email_required") {
-          setCaptureMode(cm);
-        } else {
-          setCaptureMode("email_after");
-        }
-        const cr = lcV2.conversational_reask as Record<string, unknown> | undefined;
-        if (cr) {
-          setReaskEnabled(cr.enabled === true);
-          setReaskMax((cr.max_reasks_per_session as number) || 2);
-          setReaskMessagesBetween((cr.messages_between_reasks as number) || 5);
-        }
       }
 
       // Load lead recovery settings (V3)
@@ -569,13 +549,6 @@ export default function SettingsPage() {
           ],
           notification_email: lcV2NotifEmail.trim() || null,
           notifications_enabled: lcV2NotifsEnabled,
-          // V3: Capture mode and conversational re-ask
-          capture_mode: captureMode,
-          conversational_reask: {
-            enabled: reaskEnabled,
-            max_reasks_per_session: reaskMax,
-            messages_between_reasks: reaskMessagesBetween,
-          },
         },
       };
 
@@ -1604,110 +1577,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* V3: Email Capture Mode Section */}
-                  <div className="border-t pt-6">
-                    <h3 className="text-sm font-semibold mb-1">Email Capture Mode</h3>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Controls when and how visitors are asked for their email
-                    </p>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="captureMode"
-                          value="email_after"
-                          checked={captureMode === "email_after"}
-                          onChange={() => setCaptureMode("email_after")}
-                          className="accent-primary"
-                        />
-                        <div>
-                          <span className="text-sm font-medium">After first response</span>
-                          <span className="text-xs text-muted-foreground ml-1">(default)</span>
-                          <p className="text-xs text-muted-foreground">Form appears after the first AI response</p>
-                        </div>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="captureMode"
-                          value="email_first"
-                          checked={captureMode === "email_first"}
-                          onChange={() => setCaptureMode("email_first")}
-                          className="accent-primary"
-                        />
-                        <div>
-                          <span className="text-sm font-medium">Email first (cascade)</span>
-                          <p className="text-xs text-muted-foreground">Shows inline email field on open, falls back to form if skipped</p>
-                        </div>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="captureMode"
-                          value="email_required"
-                          checked={captureMode === "email_required"}
-                          onChange={() => setCaptureMode("email_required")}
-                          className="accent-primary"
-                        />
-                        <div>
-                          <span className="text-sm font-medium">Email required</span>
-                          <p className="text-xs text-muted-foreground">Must enter email before chatting (blocks input until email is provided)</p>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* V3: Conversational Re-ask Section */}
-                  <div className="border-t pt-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="text-sm font-semibold">Conversational Re-ask</h3>
-                        <p className="text-xs text-muted-foreground">
-                          If the visitor skips the form, the AI will naturally ask for their email later in conversation
-                        </p>
-                      </div>
-                      <Switch
-                        id="reask-toggle"
-                        checked={reaskEnabled}
-                        onCheckedChange={setReaskEnabled}
-                      />
-                    </div>
-                    {reaskEnabled && (
-                      <div className="space-y-3 pl-2 border-l-2 border-muted ml-1">
-                        <div>
-                          <Label htmlFor="reask-max" className="text-xs">
-                            Max re-asks per session
-                          </Label>
-                          <Input
-                            id="reask-max"
-                            type="number"
-                            min={1}
-                            max={5}
-                            value={reaskMax}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setReaskMax(parseInt(e.target.value) || 2)}
-                            className="w-20 h-8 text-sm mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="reask-between" className="text-xs">
-                            Messages between re-asks
-                          </Label>
-                          <Input
-                            id="reask-between"
-                            type="number"
-                            min={2}
-                            max={20}
-                            value={reaskMessagesBetween}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setReaskMessagesBetween(parseInt(e.target.value) || 5)}
-                            className="w-20 h-8 text-sm mt-1"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Wait this many messages before asking again
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
               )}
 

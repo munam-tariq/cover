@@ -36,6 +36,13 @@ export interface SendMessageResponse {
   sources: ChatSource[];
   toolCalls: ToolCall[];
   processingTime: number;
+  handoff?: {
+    triggered: boolean;
+    reason?: string;
+    queuePosition?: number;
+    estimatedWait?: string;
+    conversationId?: string;
+  };
 }
 
 export interface ApiError {

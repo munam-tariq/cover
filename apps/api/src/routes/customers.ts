@@ -331,6 +331,68 @@ router.get(
 
       const { data: previousConversations } = await prevConversationsQuery;
 
+      // Fetch project settings to get configured qualifying questions
+      const { data: projectData } = await supabaseAdmin
+        .from("projects")
+        .select("settings")
+        .eq("id", conversation.project_id)
+        .single();
+
+      const leadCaptureSettings = projectData?.settings?.lead_capture_v2;
+      const configuredQuestions = leadCaptureSettings?.qualifying_questions?.filter(
+        (q: { enabled: boolean; question: string }) => q.enabled && q.question?.trim()
+      ) || [];
+
+      // Fetch lead capture data for this conversation/customer
+      let leadData = null;
+      const leadQuery = supabaseAdmin
+        .from("qualified_leads")
+        .select("id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, capture_source, first_message, form_submitted_at")
+        .eq("project_id", conversation.project_id);
+
+      // Try to find by conversation_id first, then by customer_id, then by visitor_id
+      if (conversation.id) {
+        const { data: leadByConv } = await leadQuery
+          .eq("conversation_id", conversation.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (leadByConv) {
+          leadData = leadByConv;
+        }
+      }
+
+      if (!leadData && customer?.id) {
+        const { data: leadByCustomer } = await supabaseAdmin
+          .from("qualified_leads")
+          .select("id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, capture_source, first_message, form_submitted_at")
+          .eq("project_id", conversation.project_id)
+          .eq("customer_id", customer.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (leadByCustomer) {
+          leadData = leadByCustomer;
+        }
+      }
+
+      if (!leadData && conversation.visitor_id) {
+        const { data: leadByVisitor } = await supabaseAdmin
+          .from("qualified_leads")
+          .select("id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, capture_source, first_message, form_submitted_at")
+          .eq("project_id", conversation.project_id)
+          .eq("visitor_id", conversation.visitor_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (leadByVisitor) {
+          leadData = leadByVisitor;
+        }
+      }
+
       res.json({
         customer: customer
           ? {
@@ -357,6 +419,21 @@ router.get(
           resolvedAt: c.resolved_at,
           messageCount: c.message_count,
         })),
+        leadData: leadData
+          ? {
+              id: leadData.id,
+              email: leadData.email,
+              formData: leadData.form_data || {},
+              qualifyingAnswers: leadData.qualifying_answers || [],
+              lateQualifyingAnswers: leadData.late_qualifying_answers || [],
+              qualificationStatus: leadData.qualification_status,
+              captureSource: leadData.capture_source,
+              firstMessage: leadData.first_message,
+              formSubmittedAt: leadData.form_submitted_at,
+            }
+          : null,
+        // Include configured qualifying questions so agents can see what to ask
+        configuredQuestions: configuredQuestions.map((q: { question: string }) => q.question),
       });
     } catch (error) {
       console.error("Error in GET /conversations/:id/customer:", error);

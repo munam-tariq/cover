@@ -106,13 +106,6 @@ export interface LeadCaptureLocalState {
   hasCompletedForm: boolean;
   hasCompletedQualifying: boolean;
   firstMessage?: string;
-  // V3 cascade tracking
-  hasProvidedEmail?: boolean;
-  captureSource?: "inline_email" | "form" | "conversational" | "exit_overlay" | "summary_hook";
-  askCount?: number;
-  inlineEmailSkipped?: boolean;
-  formSkipped?: boolean;
-  sessionMessageCount?: number;
 }
 
 export function getLeadCaptureState(projectId: string): LeadCaptureLocalState | null {

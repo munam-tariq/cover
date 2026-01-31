@@ -2,7 +2,8 @@
  * Lead Capture Form Component
  *
  * Inline form card rendered in the messages container.
- * Shows email (required) + up to 2 custom fields + Continue/Skip buttons.
+ * Shows email (required) + up to 2 custom fields + Continue button.
+ * Form submission is required - no skip option.
  * Uses inline styles for Shadow DOM compatibility.
  */
 
@@ -31,7 +32,6 @@ export interface LeadCaptureFormData {
 export interface LeadCaptureFormOptions {
   config: LeadCaptureFormConfig;
   onSubmit: (data: LeadCaptureFormData) => void;
-  onSkip: () => void;
   primaryColor: string;
 }
 
@@ -180,12 +180,12 @@ export class LeadCaptureForm {
 
         <div style="
           display: flex;
-          gap: 8px;
+          justify-content: center;
           margin-top: 12px;
         ">
           <button class="lc-submit-btn" style="
-            flex: 1;
-            padding: 8px 16px;
+            width: 100%;
+            padding: 10px 16px;
             background: ${primaryColor};
             color: white;
             border: none;
@@ -195,16 +195,6 @@ export class LeadCaptureForm {
             cursor: pointer;
             transition: opacity 0.15s;
           ">Continue</button>
-          <button class="lc-skip-btn" style="
-            padding: 8px 16px;
-            background: transparent;
-            color: #6b7280;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 13px;
-            cursor: pointer;
-            transition: background 0.15s;
-          ">Skip</button>
         </div>
       </div>
     `;
@@ -235,10 +225,6 @@ export class LeadCaptureForm {
     const submitBtn = card.querySelector(".lc-submit-btn") as HTMLButtonElement;
     submitBtn.addEventListener("click", () => this.handleSubmit());
 
-    // Skip handler - validates required fields before allowing skip
-    const skipBtn = card.querySelector(".lc-skip-btn") as HTMLButtonElement;
-    skipBtn.addEventListener("click", () => this.handleSkip());
-
     // Enter key submits
     card.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -248,77 +234,6 @@ export class LeadCaptureForm {
     });
 
     return card;
-  }
-
-  /**
-   * Handle skip button click - validates required fields before allowing skip
-   */
-  private handleSkip(): void {
-    const { config } = this.options;
-    const hideEmail = !!config.hideEmail;
-
-    // Validate required email field (if not hidden)
-    if (!hideEmail && this.emailInput) {
-      const email = this.emailInput.value.trim();
-      if (!email) {
-        this.showError("Email is required. Please enter your email address.");
-        this.emailInput.focus();
-        return;
-      }
-
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(email)) {
-        this.showError("Please enter a valid email address.");
-        this.emailInput.focus();
-        return;
-      }
-    }
-
-    // Validate required custom fields
-    const field2 = config.formFields.field_2;
-    const field3 = config.formFields.field_3;
-
-    if (field2?.enabled && field2.required && this.field2Input) {
-      if (!this.field2Input.value.trim()) {
-        this.showError(`${field2.label} is required.`);
-        this.field2Input.focus();
-        return;
-      }
-    }
-
-    if (field3?.enabled && field3.required && this.field3Input) {
-      if (!this.field3Input.value.trim()) {
-        this.showError(`${field3.label} is required.`);
-        this.field3Input.focus();
-        return;
-      }
-    }
-
-    // All required fields are filled, allow skip (submits required data only)
-    this.hideError();
-
-    // Build form data with required fields only
-    const formData: LeadCaptureFormData = {
-      email: !hideEmail && this.emailInput ? this.emailInput.value.trim() : ""
-    };
-
-    if (field2?.enabled && field2.required && this.field2Input?.value.trim()) {
-      formData.field_2 = {
-        label: field2.label,
-        value: this.field2Input.value.trim(),
-      };
-    }
-
-    if (field3?.enabled && field3.required && this.field3Input?.value.trim()) {
-      formData.field_3 = {
-        label: field3.label,
-        value: this.field3Input.value.trim(),
-      };
-    }
-
-    // Submit the required data and then trigger skip callback
-    this.setLoading(true);
-    this.options.onSubmit(formData);
   }
 
   private handleSubmit(): void {
@@ -403,11 +318,6 @@ export class LeadCaptureForm {
     inputs.forEach((input) => {
       (input as HTMLInputElement).disabled = loading;
     });
-
-    const skipBtn = this.element.querySelector(".lc-skip-btn") as HTMLButtonElement;
-    if (skipBtn) {
-      skipBtn.disabled = loading;
-    }
   }
 
   private showError(message: string): void {

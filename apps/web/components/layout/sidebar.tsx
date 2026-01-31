@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { MessageSquare, Inbox, Users } from "lucide-react";
 import { useAgent } from "@/contexts/agent-context";
 import { useProject } from "@/contexts/project-context";
+import { useInboxPollingOptional } from "@/contexts/inbox-polling-context";
 
 // Navigation items with role requirements
 // roles: undefined = all, "owner" = owner only, "owner_admin" = owner or admin, "agent_only" = agents (not owners viewing their own project)
@@ -93,6 +94,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { role, availability, isLoading } = useAgent();
   const { currentProject, isLoading: isProjectLoading } = useProject();
+  const inboxPolling = useInboxPollingOptional();
 
   // Get the effective role for the current project
   // Priority: project.role > agent context role
@@ -119,8 +121,10 @@ export function Sidebar() {
 
   const navItems = getNavItems();
 
-  // Calculate unread/queue count for inbox badge
-  const showInboxBadge = availability?.currentChatCount && availability.currentChatCount > 0;
+  // Inbox badge: use polling context (queue + assigned) if available, fallback to agent's chat count
+  const inboxCount = inboxPolling?.totalPending ?? availability?.currentChatCount ?? 0;
+  const hasUnread = inboxPolling?.hasUnread ?? false;
+  const showInboxBadge = inboxCount > 0;
 
   return (
     <aside className="w-64 bg-card border-r min-h-screen p-4">
@@ -150,10 +154,16 @@ export function Sidebar() {
             >
               <Icon className="w-5 h-5" />
               <span className="flex-1">{item.label}</span>
-              {/* Badge for Inbox */}
+              {/* Badge for Inbox - shows queue + assigned count */}
               {item.href === "/inbox" && showInboxBadge && (
-                <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                  {availability?.currentChatCount}
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center ${
+                    hasUnread
+                      ? "bg-red-500 text-white animate-pulse"
+                      : "bg-primary text-primary-foreground"
+                  }`}
+                >
+                  {inboxCount}
                 </span>
               )}
             </Link>

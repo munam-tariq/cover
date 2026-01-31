@@ -198,27 +198,9 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       throw new ChatError("EMPTY_MESSAGE", "Message cannot be empty");
     }
 
-    // 1.1 Lead Capture V2 Interceptor
-    // If user is in qualifying question flow, intercept before any AI processing
-    const lcV2Result = await leadCaptureV2Interceptor(
-      input.projectId,
-      input.visitorId,
-      input.sessionId,
-      sanitizedMessage
-    );
-    if (lcV2Result) {
-      return {
-        response: lcV2Result.response,
-        sessionId: lcV2Result.sessionId || input.sessionId || "",
-        sources: [],
-        toolCalls: [],
-        processingTime: Date.now() - metrics.startTime,
-        requestId,
-      };
-    }
-
-    // 1.5. Check if conversation is in handoff state (agent_active or waiting)
-    // If so, just store the message and don't process with AI
+    // 1.1. Check if conversation is in handoff state (agent_active or waiting)
+    // This MUST run BEFORE the Lead Capture interceptor to ensure agent sees all messages
+    // even if the customer is mid-qualifying-questions flow
     if (input.sessionId) {
       const handoffState = await checkConversationHandoffState(input.sessionId);
       if (handoffState.isInHandoff) {
@@ -239,6 +221,47 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       }
     }
 
+    // 1.5 Lead Capture V2 Interceptor
+    // Only runs if NOT in handoff state - qualifying questions continue normally
+    const lcV2Result = await leadCaptureV2Interceptor(
+      input.projectId,
+      input.visitorId,
+      input.sessionId,
+      sanitizedMessage
+    );
+    if (lcV2Result) {
+      // IMPORTANT: Create/get session even for qualifying question flow
+      // This ensures the widget has a valid sessionId for handoff trigger
+      const sessionId = await getOrCreateSession(
+        input.projectId,
+        input.visitorId,
+        lcV2Result.sessionId || input.sessionId,
+        input.source || "widget",
+        input.context
+      );
+
+      // Log the qualifying question conversation
+      logConversation(
+        input.projectId,
+        sessionId,
+        sanitizedMessage,
+        lcV2Result.response,
+        0,
+        0,
+        input.context,
+        requestId
+      ).catch((err) => logger.error("Failed to log qualifying conversation", err, logCtx));
+
+      return {
+        response: lcV2Result.response,
+        sessionId,
+        sources: [],
+        toolCalls: [],
+        processingTime: Date.now() - metrics.startTime,
+        requestId,
+      };
+    }
+
     // 2. Get project configuration
     const project = await getProjectConfig(input.projectId);
     if (!project) {
@@ -254,14 +277,35 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     );
 
     if (handoffResult.triggered) {
-      // Get or create session for the handoff
-      const sessionId = await getOrCreateSession(
-        input.projectId,
-        input.visitorId,
-        input.sessionId,
-        input.source || "widget",
-        input.context
-      );
+      // Use the conversation ID from handoff result if available
+      // This ensures the widget uses the SAME conversation that was put in the queue
+      // Otherwise, there's a bug where createHandoffConversation creates conversation "A"
+      // but getOrCreateSession might create conversation "B", causing a mismatch
+      let sessionId: string;
+
+      if (handoffResult.conversationId) {
+        // Handoff created/updated a conversation - use that ID
+        sessionId = handoffResult.conversationId;
+
+        // Update customer context for this conversation
+        await getOrCreateSession(
+          input.projectId,
+          input.visitorId,
+          sessionId, // Use the handoff conversation ID
+          input.source || "widget",
+          input.context
+        );
+      } else {
+        // Fallback: create session normally (for cases where handoff triggers but
+        // doesn't create a conversation, e.g., offline responses)
+        sessionId = await getOrCreateSession(
+          input.projectId,
+          input.visitorId,
+          input.sessionId,
+          input.source || "widget",
+          input.context
+        );
+      }
 
       // Log the user message that triggered handoff
       logConversation(
@@ -286,7 +330,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
           reason: handoffResult.reason,
           queuePosition: handoffResult.queuePosition,
           estimatedWait: handoffResult.estimatedWait,
-          conversationId: handoffResult.conversationId,
+          conversationId: sessionId, // Use consistent ID
         },
       };
     }
@@ -319,14 +363,32 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     );
 
     if (lowConfidenceResult.triggered) {
-      // Get or create session for the low confidence handoff
-      const sessionId = await getOrCreateSession(
-        input.projectId,
-        input.visitorId,
-        input.sessionId,
-        input.source || "widget",
-        input.context
-      );
+      // Use the conversation ID from handoff result if available
+      // This ensures the widget uses the SAME conversation that was put in the queue
+      let sessionId: string;
+
+      if (lowConfidenceResult.conversationId) {
+        // Handoff created/updated a conversation - use that ID
+        sessionId = lowConfidenceResult.conversationId;
+
+        // Update customer context for this conversation
+        await getOrCreateSession(
+          input.projectId,
+          input.visitorId,
+          sessionId, // Use the handoff conversation ID
+          input.source || "widget",
+          input.context
+        );
+      } else {
+        // Fallback: create session normally
+        sessionId = await getOrCreateSession(
+          input.projectId,
+          input.visitorId,
+          input.sessionId,
+          input.source || "widget",
+          input.context
+        );
+      }
 
       // Log the user message that triggered low confidence handoff
       logConversation(
@@ -351,7 +413,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
           reason: lowConfidenceResult.reason,
           queuePosition: lowConfidenceResult.queuePosition,
           estimatedWait: lowConfidenceResult.estimatedWait,
-          conversationId: lowConfidenceResult.conversationId,
+          conversationId: sessionId, // Use consistent ID
         },
       };
     }
