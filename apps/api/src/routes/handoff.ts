@@ -474,9 +474,17 @@ router.post("/conversations/:id/handoff", async (req: Request, res: Response) =>
           .eq("project_id", conversation.project_id);
       }
 
-      // Get agent info
+      // Get agent info - first check project_members.name, then fall back to auth.users
+      const { data: memberRecord } = await supabaseAdmin
+        .from("project_members")
+        .select("name")
+        .eq("project_id", conversation.project_id)
+        .eq("user_id", availableAgentId)
+        .eq("status", "active")
+        .single();
+
       const { data: agentUser } = await supabaseAdmin.auth.admin.getUserById(availableAgentId);
-      const agentName = agentUser?.user?.user_metadata?.name || agentUser?.user?.email || "Support Agent";
+      const agentName = memberRecord?.name || agentUser?.user?.user_metadata?.name || agentUser?.user?.email || "Support Agent";
 
       // Format agent joined message using settings or default
       const agentJoinedTemplate = settings.agent_joined_message || "You're now connected with {agent_name}.";
@@ -716,9 +724,17 @@ router.post("/conversations/:id/claim", authMiddleware, async (req: Request, res
       .eq("project_id", conversation.project_id)
       .single();
 
-    // Add system message and broadcast it
+    // Get agent info - first check project_members.name, then fall back to auth.users
+    const { data: memberRecord } = await supabaseAdmin
+      .from("project_members")
+      .select("name")
+      .eq("project_id", conversation.project_id)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .single();
+
     const { data: agentUser } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const agentName = agentUser?.user?.user_metadata?.name || "An agent";
+    const agentName = memberRecord?.name || agentUser?.user?.user_metadata?.name || "An agent";
 
     // Format agent joined message using settings or default
     const agentJoinedTemplate = settings?.agent_joined_message || "You're now connected with {agent_name}.";

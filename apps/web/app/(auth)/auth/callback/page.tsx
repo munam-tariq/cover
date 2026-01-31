@@ -28,15 +28,47 @@ function AuthCallbackContent() {
       const next = searchParams.get("next") ?? "/dashboard";
 
       // Check if user is coming from invitation flow - don't create default project for invited users
-      const isInvitationFlow = next.includes("/invite/");
+      // More precise detection - must be exactly /invite/{64-char-hex-token}
+      const isInvitationFlow = /^\/invite\/[a-f0-9]{64}$/i.test(next);
+
+      // Helper function to check if user has pending invitations via API
+      const checkPendingInvitations = async (email: string): Promise<boolean> => {
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+          const response = await fetch(
+            `${apiUrl}/api/invitations/pending?email=${encodeURIComponent(email)}`
+          );
+
+          if (!response.ok) {
+            console.warn("Failed to check pending invitations:", response.status);
+            return false;
+          }
+
+          const data = await response.json();
+          return data.hasPendingInvitations === true;
+        } catch (err) {
+          console.warn("Error checking pending invitations:", err);
+          return false;
+        }
+      };
 
       // Helper function to set up new user - creates default project if none exists
       // Skip for invited users since they're joining someone else's project
-      const setupNewUser = async (userId: string) => {
-        // Don't create default project for users signing up via invitation
+      const setupNewUser = async (userId: string, userEmail?: string) => {
+        // Method 1: URL-based detection (existing, more precise now)
         if (isInvitationFlow) {
-          console.log("Invitation flow detected, skipping default project creation");
+          console.log("Invitation flow detected via URL, skipping default project creation");
           return;
+        }
+
+        // Method 2: Check database for pending invitations
+        // This catches the case where returnUrl was lost but user has a pending invite
+        if (userEmail) {
+          const hasPendingInvites = await checkPendingInvitations(userEmail);
+          if (hasPendingInvites) {
+            console.log("User has pending invitations, skipping default project creation");
+            return;
+          }
         }
 
         // Use .limit(1) instead of .single() to avoid errors when multiple projects exist
@@ -74,7 +106,7 @@ function AuthCallbackContent() {
 
       if (existingSession?.user) {
         console.log("Session already exists, skipping code exchange");
-        await setupNewUser(existingSession.user.id);
+        await setupNewUser(existingSession.user.id, existingSession.user.email);
         router.push(next);
         return;
       }
@@ -99,7 +131,7 @@ function AuthCallbackContent() {
 
           if (retrySession?.user) {
             console.log("Session found after exchange error, proceeding...");
-            await setupNewUser(retrySession.user.id);
+            await setupNewUser(retrySession.user.id, retrySession.user.email);
             router.push(next);
             return;
           }
@@ -111,7 +143,7 @@ function AuthCallbackContent() {
         }
 
         if (data.user) {
-          await setupNewUser(data.user.id);
+          await setupNewUser(data.user.id, data.user.email);
         }
 
         router.push(next);
@@ -123,7 +155,7 @@ function AuthCallbackContent() {
 
         if (lastCheckSession?.user) {
           console.log("Session found in catch block, proceeding...");
-          await setupNewUser(lastCheckSession.user.id);
+          await setupNewUser(lastCheckSession.user.id, lastCheckSession.user.email);
           router.push(next);
           return;
         }

@@ -305,6 +305,41 @@ export async function leadCaptureV2Interceptor(
     // 4. Only intercept if qualifying is in_progress
     if (state.qualifying_status !== "in_progress") return null;
 
+    // 4.5. Check for human intent keywords - let handoff trigger handle these
+    // This ensures "Talk to Human" button works even during qualifying flow
+    const humanIntentKeywords = [
+      "human",
+      "agent",
+      "person",
+      "representative",
+      "speak to someone",
+      "talk to someone",
+      "talk to human",
+      "real person",
+      "live agent",
+      "customer service",
+      "support agent",
+      "human support",
+      "live support",
+      "speak to a human",
+      "talk to a human",
+      "speak with someone",
+      "talk with someone",
+      "speak with a human",
+      "i would like to speak",
+    ];
+
+    const lowerMessage = message.toLowerCase();
+    const hasHumanIntent = humanIntentKeywords.some(keyword => lowerMessage.includes(keyword));
+
+    if (hasHumanIntent) {
+      logger.info("Human intent detected during qualifying, passing to handoff trigger", {
+        ...logCtx,
+        message: message.substring(0, 50),
+      });
+      return null; // Let handoff trigger handle this
+    }
+
     // 5. We're in qualifying flow - process the answer
     const enabledQuestions = v2Settings.qualifying_questions.filter(q => q.enabled && q.question.trim());
     const currentIndex = state.current_qualifying_index;
