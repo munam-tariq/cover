@@ -474,9 +474,17 @@ router.post("/conversations/:id/handoff", async (req: Request, res: Response) =>
           .eq("project_id", conversation.project_id);
       }
 
-      // Get agent info
+      // Get agent info - first check project_members.name, then fall back to auth.users
+      const { data: memberRecord } = await supabaseAdmin
+        .from("project_members")
+        .select("name")
+        .eq("project_id", conversation.project_id)
+        .eq("user_id", availableAgentId)
+        .eq("status", "active")
+        .single();
+
       const { data: agentUser } = await supabaseAdmin.auth.admin.getUserById(availableAgentId);
-      const agentName = agentUser?.user?.user_metadata?.name || agentUser?.user?.email || "Support Agent";
+      const agentName = memberRecord?.name || agentUser?.user?.user_metadata?.name || agentUser?.user?.email || "Support Agent";
 
       // Format agent joined message using settings or default
       const agentJoinedTemplate = settings.agent_joined_message || "You're now connected with {agent_name}.";
@@ -716,9 +724,17 @@ router.post("/conversations/:id/claim", authMiddleware, async (req: Request, res
       .eq("project_id", conversation.project_id)
       .single();
 
-    // Add system message and broadcast it
+    // Get agent info - first check project_members.name, then fall back to auth.users
+    const { data: memberRecord } = await supabaseAdmin
+      .from("project_members")
+      .select("name")
+      .eq("project_id", conversation.project_id)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .single();
+
     const { data: agentUser } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const agentName = agentUser?.user?.user_metadata?.name || "An agent";
+    const agentName = memberRecord?.name || agentUser?.user?.user_metadata?.name || "An agent";
 
     // Format agent joined message using settings or default
     const agentJoinedTemplate = settings?.agent_joined_message || "You're now connected with {agent_name}.";
@@ -1059,6 +1075,88 @@ router.post("/conversations/:id/resolve", authMiddleware, async (req: Request, r
     });
   } catch (error) {
     console.error("Error in POST /conversations/:id/resolve:", error);
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+    });
+  }
+});
+
+/**
+ * GET /api/projects/:id/inbox-summary
+ * Lightweight endpoint for polling - returns just counts for badge display
+ */
+router.get("/projects/:id/inbox-summary", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req as AuthenticatedRequest;
+    const { id: projectId } = req.params;
+
+    if (!isValidUUID(projectId)) {
+      return res.status(400).json({
+        error: { code: "INVALID_ID", message: "Invalid project ID format" },
+      });
+    }
+
+    // Verify user has access
+    const { data: project } = await supabaseAdmin
+      .from("projects")
+      .select("id, user_id")
+      .eq("id", projectId)
+      .is("deleted_at", null)
+      .single();
+
+    if (!project) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Project not found" },
+      });
+    }
+
+    const isOwner = project.user_id === userId;
+
+    if (!isOwner) {
+      const { data: membership } = await supabaseAdmin
+        .from("project_members")
+        .select("id")
+        .eq("project_id", projectId)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .single();
+
+      if (!membership) {
+        return res.status(403).json({
+          error: { code: "FORBIDDEN", message: "Access denied" },
+        });
+      }
+    }
+
+    // Get counts in parallel for efficiency
+    const [queueResult, assignedResult] = await Promise.all([
+      // Count waiting conversations (queue)
+      supabaseAdmin
+        .from("conversations")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", projectId)
+        .eq("status", "waiting"),
+      // Count conversations assigned to this user
+      supabaseAdmin
+        .from("conversations")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", projectId)
+        .eq("assigned_agent_id", userId)
+        .eq("status", "agent_active"),
+    ]);
+
+    const queueCount = queueResult.count || 0;
+    const assignedCount = assignedResult.count || 0;
+    const totalPending = queueCount + assignedCount;
+
+    res.json({
+      queueCount,
+      assignedCount,
+      totalPending,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Error in GET /projects/:id/inbox-summary:", error);
     res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: "Internal server error" },
     });

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
 import { Button, Card, CardContent, Skeleton, Switch, Label, Badge, Input } from "@chatbot/ui";
-import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff, Users, ChevronRight, Shield, ShieldCheck, ShieldAlert, Plus, X, ChevronDown } from "lucide-react";
+import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff, Users, ChevronRight, Shield, ShieldCheck, ShieldAlert, Plus, X, ChevronDown, MessageSquare, Zap, MousePointerClick, ScrollText, Timer, RotateCcw } from "lucide-react";
 import Link from "next/link";
 
 interface UpdatedProject {
@@ -67,10 +67,27 @@ export default function SettingsPage() {
   const [name, setName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
 
-  // Lead capture state
+  // Lead capture state (V1 - kept for backward compatibility)
   const [leadCaptureEnabled, setLeadCaptureEnabled] = useState(false);
   const [leadCaptureEmail, setLeadCaptureEmail] = useState("");
   const [leadNotificationsEnabled, setLeadNotificationsEnabled] = useState(true);
+
+  // Lead capture V2 state
+  const [lcV2Enabled, setLcV2Enabled] = useState(false);
+  const [lcV2Field2Enabled, setLcV2Field2Enabled] = useState(false);
+  const [lcV2Field2Label, setLcV2Field2Label] = useState("Phone Number");
+  const [lcV2Field2Required, setLcV2Field2Required] = useState(false);
+  const [lcV2Field3Enabled, setLcV2Field3Enabled] = useState(false);
+  const [lcV2Field3Label, setLcV2Field3Label] = useState("Company");
+  const [lcV2Field3Required, setLcV2Field3Required] = useState(false);
+  const [lcV2Q1Enabled, setLcV2Q1Enabled] = useState(false);
+  const [lcV2Q1Text, setLcV2Q1Text] = useState("");
+  const [lcV2Q2Enabled, setLcV2Q2Enabled] = useState(false);
+  const [lcV2Q2Text, setLcV2Q2Text] = useState("");
+  const [lcV2Q3Enabled, setLcV2Q3Enabled] = useState(false);
+  const [lcV2Q3Text, setLcV2Q3Text] = useState("");
+  const [lcV2NotifEmail, setLcV2NotifEmail] = useState("");
+  const [lcV2NotifsEnabled, setLcV2NotifsEnabled] = useState(true);
 
   // Widget status state (emergency kill switch)
   const [widgetEnabled, setWidgetEnabled] = useState(true);
@@ -82,6 +99,39 @@ export default function SettingsPage() {
   const [domainError, setDomainError] = useState<string | null>(null);
   const [savingDomains, setSavingDomains] = useState(false);
   const [loadingDomains, setLoadingDomains] = useState(true);
+
+  // Proactive engagement state
+  const [peEnabled, setPeEnabled] = useState(false);
+  const [peTeaserEnabled, setPeTeaserEnabled] = useState(true);
+  const [peTeaserMessage, setPeTeaserMessage] = useState("Have a question? I can help!");
+  const [peTeaserDelay, setPeTeaserDelay] = useState(5);
+  const [peBadgeEnabled, setPeBadgeEnabled] = useState(true);
+  const [peTimeEnabled, setPeTimeEnabled] = useState(true);
+  const [peTimeDelay, setPeTimeDelay] = useState(30);
+  const [peScrollEnabled, setPeScrollEnabled] = useState(true);
+  const [peScrollThreshold, setPeScrollThreshold] = useState(50);
+  const [peExitIntentEnabled, setPeExitIntentEnabled] = useState(true);
+  const [peHighIntentEnabled, setPeHighIntentEnabled] = useState(false);
+  const [peHighIntentPatterns, setPeHighIntentPatterns] = useState("");
+  const [savingProactive, setSavingProactive] = useState(false);
+
+  // Lead recovery (V3) state
+  const [lrEnabled, setLrEnabled] = useState(false);
+  const [lrExitOverlayEnabled, setLrExitOverlayEnabled] = useState(true);
+  const [lrExitHeadline, setLrExitHeadline] = useState("Before you go...");
+  const [lrExitSubtext, setLrExitSubtext] = useState("Drop your email and we'll follow up");
+  const [lrDeferredEnabled, setLrDeferredEnabled] = useState(true);
+  const [lrDeferredReaskAfter, setLrDeferredReaskAfter] = useState(3);
+  const [lrDeferredMaxAsks, setLrDeferredMaxAsks] = useState(2);
+  const [lrReturnVisitEnabled, setLrReturnVisitEnabled] = useState(true);
+  const [lrReturnMaxVisits, setLrReturnMaxVisits] = useState(3);
+  const [lrReturnMessage, setLrReturnMessage] = useState("Welcome back! Want me to email you a summary?");
+  const [lrHighIntentEnabled, setLrHighIntentEnabled] = useState(true);
+  const [lrHighIntentKeywords, setLrHighIntentKeywords] = useState("pricing, demo, trial, contact, sales, buy, subscribe");
+  const [lrSummaryHookEnabled, setLrSummaryHookEnabled] = useState(true);
+  const [lrSummaryMinMessages, setLrSummaryMinMessages] = useState(3);
+  const [lrSummaryPrompt, setLrSummaryPrompt] = useState("Want me to email you a summary of this conversation?");
+  const [savingRecovery, setSavingRecovery] = useState(false);
 
   const router = useRouter();
 
@@ -115,6 +165,100 @@ export default function SettingsPage() {
       setLeadNotificationsEnabled(settings.lead_notifications_enabled !== false);
       // Load widget enabled status (default to true)
       setWidgetEnabled(settings.widget_enabled !== false);
+
+      // Load proactive engagement settings
+      const pe = settings.proactive_engagement as Record<string, unknown> | undefined;
+      if (pe) {
+        setPeEnabled(pe.enabled === true);
+        const teaser = pe.teaser as Record<string, unknown> | undefined;
+        if (teaser) {
+          setPeTeaserEnabled(teaser.enabled !== false);
+          setPeTeaserMessage((teaser.message as string) || "Have a question? I can help!");
+          setPeTeaserDelay((teaser.delay_seconds as number) || 5);
+        }
+        const badge = pe.badge as Record<string, unknown> | undefined;
+        if (badge) {
+          setPeBadgeEnabled(badge.enabled !== false);
+        }
+        const triggers = pe.triggers as Record<string, unknown> | undefined;
+        if (triggers) {
+          const time = triggers.time_on_page as Record<string, unknown> | undefined;
+          if (time) { setPeTimeEnabled(time.enabled !== false); setPeTimeDelay((time.delay_seconds as number) || 30); }
+          const scroll = triggers.scroll_depth as Record<string, unknown> | undefined;
+          if (scroll) { setPeScrollEnabled(scroll.enabled !== false); setPeScrollThreshold((scroll.threshold_percent as number) || 50); }
+          const exit = triggers.exit_intent as Record<string, unknown> | undefined;
+          if (exit) { setPeExitIntentEnabled(exit.enabled !== false); }
+          const highIntent = triggers.high_intent_urls as Record<string, unknown> | undefined;
+          if (highIntent) {
+            setPeHighIntentEnabled(highIntent.enabled === true);
+            setPeHighIntentPatterns(((highIntent.patterns as string[]) || []).join("\n"));
+          }
+        }
+      }
+
+      // Load V2 lead capture settings
+      const lcV2 = settings.lead_capture_v2 as Record<string, unknown> | undefined;
+      if (lcV2) {
+        setLcV2Enabled(lcV2.enabled === true);
+        const formFields = lcV2.form_fields as Record<string, unknown> | undefined;
+        if (formFields) {
+          const f2 = formFields.field_2 as Record<string, unknown> | undefined;
+          if (f2) {
+            setLcV2Field2Enabled(f2.enabled === true);
+            setLcV2Field2Label((f2.label as string) || "Phone Number");
+            setLcV2Field2Required(f2.required === true);
+          }
+          const f3 = formFields.field_3 as Record<string, unknown> | undefined;
+          if (f3) {
+            setLcV2Field3Enabled(f3.enabled === true);
+            setLcV2Field3Label((f3.label as string) || "Company");
+            setLcV2Field3Required(f3.required === true);
+          }
+        }
+        const qs = lcV2.qualifying_questions as Array<Record<string, unknown>> | undefined;
+        if (qs) {
+          if (qs[0]) { setLcV2Q1Enabled(qs[0].enabled === true); setLcV2Q1Text((qs[0].question as string) || ""); }
+          if (qs[1]) { setLcV2Q2Enabled(qs[1].enabled === true); setLcV2Q2Text((qs[1].question as string) || ""); }
+          if (qs[2]) { setLcV2Q3Enabled(qs[2].enabled === true); setLcV2Q3Text((qs[2].question as string) || ""); }
+        }
+        setLcV2NotifEmail((lcV2.notification_email as string) || "");
+        setLcV2NotifsEnabled(lcV2.notifications_enabled !== false);
+      }
+
+      // Load lead recovery settings (V3)
+      const lr = settings.lead_recovery as Record<string, unknown> | undefined;
+      if (lr) {
+        setLrEnabled(lr.enabled === true);
+        const exitOverlay = lr.exit_intent_overlay as Record<string, unknown> | undefined;
+        if (exitOverlay) {
+          setLrExitOverlayEnabled(exitOverlay.enabled !== false);
+          setLrExitHeadline((exitOverlay.headline as string) || "Before you go...");
+          setLrExitSubtext((exitOverlay.subtext as string) || "Drop your email and we'll follow up");
+        }
+        const deferred = lr.deferred_skip as Record<string, unknown> | undefined;
+        if (deferred) {
+          setLrDeferredEnabled(deferred.enabled !== false);
+          setLrDeferredReaskAfter((deferred.reask_after_messages as number) || 3);
+          setLrDeferredMaxAsks((deferred.max_deferred_asks as number) || 2);
+        }
+        const returnVisit = lr.return_visit as Record<string, unknown> | undefined;
+        if (returnVisit) {
+          setLrReturnVisitEnabled(returnVisit.enabled !== false);
+          setLrReturnMaxVisits((returnVisit.max_visits_before_stop as number) || 3);
+          setLrReturnMessage((returnVisit.welcome_back_message as string) || "Welcome back! Want me to email you a summary?");
+        }
+        const highIntent = lr.high_intent_override as Record<string, unknown> | undefined;
+        if (highIntent) {
+          setLrHighIntentEnabled(highIntent.enabled !== false);
+          setLrHighIntentKeywords(((highIntent.keywords as string[]) || []).join(", "));
+        }
+        const summaryHook = lr.conversation_summary_hook as Record<string, unknown> | undefined;
+        if (summaryHook) {
+          setLrSummaryHookEnabled(summaryHook.enabled !== false);
+          setLrSummaryMinMessages((summaryHook.min_messages as number) || 3);
+          setLrSummaryPrompt((summaryHook.prompt as string) || "Want me to email you a summary of this conversation?");
+        }
+      }
     }
   }, [currentProject]);
 
@@ -305,7 +449,7 @@ export default function SettingsPage() {
     if (!currentProject) return;
 
     const confirmed = confirm(
-      `Are you sure you want to delete "${currentProject.name}"? This will delete all knowledge sources, API endpoints, and chat history for this project. This action cannot be undone.`
+      `Are you sure you want to delete "${currentProject.name}"? This will delete all knowledge sources, API endpoints, and chat history for this agent. This action cannot be undone.`
     );
 
     if (!confirmed) return;
@@ -320,7 +464,7 @@ export default function SettingsPage() {
       // or switch to another project
     } catch (err) {
       console.error("Error deleting project:", err);
-      setError("Failed to delete project");
+      setError("Failed to delete agent");
       setDeleting(false);
     }
   };
@@ -368,16 +512,11 @@ export default function SettingsPage() {
   const handleSaveLeadCapture = async () => {
     if (!currentProject) return;
 
-    // Validate email if lead capture is enabled
-    if (leadCaptureEnabled && !leadCaptureEmail.trim()) {
-      setError("Please enter a notification email to enable lead capture");
-      return;
-    }
-
-    if (leadCaptureEnabled && leadCaptureEmail) {
+    // Validate V2 notification email if enabled
+    if (lcV2Enabled && lcV2NotifsEnabled && lcV2NotifEmail.trim()) {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(leadCaptureEmail.trim())) {
-        setError("Please enter a valid email address");
+      if (!emailRegex.test(lcV2NotifEmail.trim())) {
+        setError("Please enter a valid notification email address");
         return;
       }
     }
@@ -391,9 +530,26 @@ export default function SettingsPage() {
       const existingSettings = currentProject.settings || {};
       const updatedSettings = {
         ...existingSettings,
-        lead_capture_enabled: leadCaptureEnabled,
+        // Keep V1 settings in sync (disabled when V2 is active)
+        lead_capture_enabled: lcV2Enabled ? false : leadCaptureEnabled,
         lead_capture_email: leadCaptureEmail.trim() || null,
         lead_notifications_enabled: leadNotificationsEnabled,
+        // V2 settings
+        lead_capture_v2: {
+          enabled: lcV2Enabled,
+          form_fields: {
+            email: { required: true },
+            field_2: { enabled: lcV2Field2Enabled, label: lcV2Field2Label.trim() || "Phone Number", required: lcV2Field2Required },
+            field_3: { enabled: lcV2Field3Enabled, label: lcV2Field3Label.trim() || "Company", required: lcV2Field3Required },
+          },
+          qualifying_questions: [
+            { question: lcV2Q1Text.trim(), enabled: lcV2Q1Enabled && !!lcV2Q1Text.trim() },
+            { question: lcV2Q2Text.trim(), enabled: lcV2Q2Enabled && !!lcV2Q2Text.trim() },
+            { question: lcV2Q3Text.trim(), enabled: lcV2Q3Enabled && !!lcV2Q3Text.trim() },
+          ],
+          notification_email: lcV2NotifEmail.trim() || null,
+          notifications_enabled: lcV2NotifsEnabled,
+        },
       };
 
       await apiClient<ProjectUpdateResponse>(`/api/projects/${currentProject.id}`, {
@@ -414,6 +570,117 @@ export default function SettingsPage() {
       setError("Failed to save lead capture settings");
     } finally {
       setSavingLeadCapture(false);
+    }
+  };
+
+  // Save proactive engagement settings
+  const handleSaveProactive = async () => {
+    if (!currentProject) return;
+
+    setSavingProactive(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const existingSettings = currentProject.settings || {};
+      const updatedSettings = {
+        ...existingSettings,
+        proactive_engagement: {
+          enabled: peEnabled,
+          teaser: {
+            enabled: peTeaserEnabled,
+            message: peTeaserMessage.trim() || "Have a question? I can help!",
+            delay_seconds: peTeaserDelay,
+            show_once_per_session: true,
+          },
+          badge: {
+            enabled: peBadgeEnabled,
+            show_until_opened: true,
+          },
+          triggers: {
+            time_on_page: { enabled: peTimeEnabled, delay_seconds: peTimeDelay, action: "teaser" as const },
+            scroll_depth: { enabled: peScrollEnabled, threshold_percent: peScrollThreshold, action: "teaser" as const },
+            exit_intent: { enabled: peExitIntentEnabled, action: "overlay" as const, message: "Before you go - have a question?" },
+            high_intent_urls: {
+              enabled: peHighIntentEnabled,
+              patterns: peHighIntentPatterns.split("\n").map(p => p.trim()).filter(Boolean),
+              action: "auto_open" as const,
+            },
+          },
+        },
+      };
+
+      await apiClient<ProjectUpdateResponse>(`/api/projects/${currentProject.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name: currentProject.name, settings: updatedSettings }),
+      });
+
+      await refreshProjects();
+      setSuccess("Proactive engagement settings saved");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Error saving proactive settings:", err);
+      setError("Failed to save proactive engagement settings");
+    } finally {
+      setSavingProactive(false);
+    }
+  };
+
+  // Save lead recovery settings (V3)
+  const handleSaveRecovery = async () => {
+    if (!currentProject) return;
+
+    setSavingRecovery(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const existingSettings = currentProject.settings || {};
+      const updatedSettings = {
+        ...existingSettings,
+        lead_recovery: {
+          enabled: lrEnabled,
+          exit_intent_overlay: {
+            enabled: lrExitOverlayEnabled,
+            headline: lrExitHeadline.trim() || "Before you go...",
+            subtext: lrExitSubtext.trim() || "Drop your email and we'll follow up",
+          },
+          deferred_skip: {
+            enabled: lrDeferredEnabled,
+            reask_after_messages: lrDeferredReaskAfter,
+            max_deferred_asks: lrDeferredMaxAsks,
+          },
+          return_visit: {
+            enabled: lrReturnVisitEnabled,
+            max_visits_before_stop: lrReturnMaxVisits,
+            welcome_back_message: lrReturnMessage.trim() || "Welcome back! Want me to email you a summary?",
+          },
+          high_intent_override: {
+            enabled: lrHighIntentEnabled,
+            keywords: lrHighIntentKeywords.split(",").map(k => k.trim()).filter(Boolean),
+            override_cooldowns: true,
+          },
+          conversation_summary_hook: {
+            enabled: lrSummaryHookEnabled,
+            min_messages: lrSummaryMinMessages,
+            prompt: lrSummaryPrompt.trim() || "Want me to email you a summary of this conversation?",
+          },
+        },
+      };
+
+      await apiClient<ProjectUpdateResponse>(`/api/projects/${currentProject.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name: currentProject.name, settings: updatedSettings }),
+      });
+
+      await refreshProjects();
+      setSuccess("Lead recovery settings saved");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Error saving recovery settings:", err);
+      setError("Failed to save lead recovery settings");
+    } finally {
+      setSavingRecovery(false);
     }
   };
 
@@ -513,15 +780,15 @@ export default function SettingsPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">No project selected</p>
+          <p className="text-muted-foreground">No agent selected</p>
         </div>
         <Card>
           <CardContent className="p-6 text-center">
             <p className="text-muted-foreground mb-4">
-              Please select or create a project first.
+              Please select or create an agent first.
             </p>
             <Button onClick={() => router.push("/projects")}>
-              Go to Projects
+              Go to Agents
             </Button>
           </CardContent>
         </Card>
@@ -555,11 +822,11 @@ export default function SettingsPage() {
       <div className="grid gap-6">
         <Card>
           <CardContent className="p-6">
-            <h2 className="font-semibold mb-4">Project Settings</h2>
+            <h2 className="font-semibold mb-4">Agent Settings</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Project Name
+                  Agent Name
                 </label>
                 <input
                   type="text"
@@ -632,11 +899,11 @@ export default function SettingsPage() {
 
         <Card>
           <CardContent className="p-6">
-            <h2 className="font-semibold mb-4">Widget Project ID</h2>
+            <h2 className="font-semibold mb-4">Widget Agent ID</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Project ID
+                  Agent ID
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -927,6 +1194,182 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Proactive Engagement - HIDDEN (not production ready) */}
+        {false && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold">Proactive Engagement</h2>
+              {savingProactive && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Proactively engage visitors with teasers, badges, and triggers to increase chat opens.
+            </p>
+
+            {/* Master Toggle */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="space-y-0.5">
+                <Label htmlFor="pe-enabled" className="text-base">Enable Proactive Engagement</Label>
+                <p className="text-sm text-muted-foreground">Show teasers and triggers to visitors</p>
+              </div>
+              <Switch id="pe-enabled" checked={peEnabled} onCheckedChange={setPeEnabled} />
+            </div>
+
+            {peEnabled && (
+              <div className="space-y-6 border-t pt-4">
+                {/* Teaser Message */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-sm font-medium">Teaser Message</h3>
+                    <Switch checked={peTeaserEnabled} onCheckedChange={setPeTeaserEnabled} />
+                  </div>
+                  {peTeaserEnabled && (
+                    <div className="ml-6 space-y-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Message</Label>
+                        <Input
+                          value={peTeaserMessage}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeTeaserMessage(e.target.value)}
+                          placeholder="Have a question? I can help!"
+                          maxLength={100}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Delay (seconds)</Label>
+                        <Input
+                          type="number"
+                          value={peTeaserDelay}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeTeaserDelay(Number(e.target.value))}
+                          min={1}
+                          max={120}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Notification Badge */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-3 h-3 bg-red-500 rounded-full" />
+                    <div>
+                      <h3 className="text-sm font-medium">Notification Badge</h3>
+                      <p className="text-xs text-muted-foreground">Red dot on chat bubble to attract attention</p>
+                    </div>
+                  </div>
+                  <Switch checked={peBadgeEnabled} onCheckedChange={setPeBadgeEnabled} />
+                </div>
+
+                {/* Triggers */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium">Triggers</h3>
+
+                  {/* Time on Page */}
+                  <div className="flex items-center justify-between ml-2">
+                    <div className="flex items-center gap-2">
+                      <Timer className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm">Time on Page</p>
+                        {peTimeEnabled && (
+                          <p className="text-xs text-muted-foreground">
+                            After {peTimeDelay}s on page
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Switch checked={peTimeEnabled} onCheckedChange={setPeTimeEnabled} />
+                  </div>
+                  {peTimeEnabled && (
+                    <div className="ml-8">
+                      <Input
+                        type="number"
+                        value={peTimeDelay}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeTimeDelay(Number(e.target.value))}
+                        min={5}
+                        max={300}
+                        className="w-24"
+                      />
+                    </div>
+                  )}
+
+                  {/* Scroll Depth */}
+                  <div className="flex items-center justify-between ml-2">
+                    <div className="flex items-center gap-2">
+                      <ScrollText className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm">Scroll Depth</p>
+                        {peScrollEnabled && (
+                          <p className="text-xs text-muted-foreground">
+                            After scrolling {peScrollThreshold}% of the page
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Switch checked={peScrollEnabled} onCheckedChange={setPeScrollEnabled} />
+                  </div>
+                  {peScrollEnabled && (
+                    <div className="ml-8">
+                      <Input
+                        type="number"
+                        value={peScrollThreshold}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeScrollThreshold(Number(e.target.value))}
+                        min={10}
+                        max={100}
+                        className="w-24"
+                      />
+                    </div>
+                  )}
+
+                  {/* Exit Intent */}
+                  <div className="flex items-center justify-between ml-2">
+                    <div className="flex items-center gap-2">
+                      <MousePointerClick className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm">Exit Intent (Desktop Only)</p>
+                        <p className="text-xs text-muted-foreground">When cursor moves to close/back</p>
+                      </div>
+                    </div>
+                    <Switch checked={peExitIntentEnabled} onCheckedChange={setPeExitIntentEnabled} />
+                  </div>
+
+                  {/* High-Intent URLs */}
+                  <div className="flex items-center justify-between ml-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm">High-Intent URL Patterns</p>
+                        <p className="text-xs text-muted-foreground">Auto-open on matching pages</p>
+                      </div>
+                    </div>
+                    <Switch checked={peHighIntentEnabled} onCheckedChange={setPeHighIntentEnabled} />
+                  </div>
+                  {peHighIntentEnabled && (
+                    <div className="ml-8">
+                      <textarea
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={peHighIntentPatterns}
+                        onChange={(e) => setPeHighIntentPatterns(e.target.value)}
+                        rows={3}
+                        placeholder={"/pricing\n/contact\n/demo"}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">One URL pattern per line (e.g., /pricing)</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <Button onClick={handleSaveProactive} disabled={savingProactive}>
+                {savingProactive ? "Saving..." : "Save Engagement Settings"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        )}
+
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -934,60 +1377,206 @@ export default function SettingsPage() {
               <h2 className="font-semibold">Lead Capture</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              When your chatbot can&apos;t answer a question, it can offer to collect the visitor&apos;s email so you can follow up.
+              Show an inline form after the first message to capture visitor contact info and qualify leads with follow-up questions.
             </p>
 
             <div className="space-y-6">
+              {/* Enable Toggle */}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="lead-capture-toggle" className="text-base">
-                    Enable Lead Capture
+                  <Label htmlFor="lc-v2-toggle" className="text-base">
+                    Enable Lead Capture Form
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Ask for email when chatbot can&apos;t answer
+                    Show a form after the first AI response to collect visitor info
                   </p>
                 </div>
                 <Switch
-                  id="lead-capture-toggle"
-                  checked={leadCaptureEnabled}
-                  onCheckedChange={setLeadCaptureEnabled}
+                  id="lc-v2-toggle"
+                  checked={lcV2Enabled}
+                  onCheckedChange={setLcV2Enabled}
                 />
               </div>
 
-              {leadCaptureEnabled && (
-                <div className="pl-0 space-y-4 border-l-2 border-primary/20 ml-0 pt-2">
-                  <div className="pl-4">
-                    <Label htmlFor="lead-capture-email" className="text-sm font-medium">
-                      Notification Email
-                    </Label>
-                    <input
-                      id="lead-capture-email"
-                      type="email"
-                      value={leadCaptureEmail}
-                      onChange={(e) => setLeadCaptureEmail(e.target.value)}
-                      placeholder="support@yourbusiness.com"
-                      className="w-full mt-1.5 px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      We&apos;ll send a daily digest of captured leads to this email
-                    </p>
+              {lcV2Enabled && (
+                <div className="space-y-6 border-t pt-6">
+                  {/* Form Fields Section */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3">Form Fields</h3>
+                    <div className="space-y-3">
+                      {/* Email - always required */}
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Email</p>
+                          <p className="text-xs text-muted-foreground">Always required</p>
+                        </div>
+                        <Badge variant="secondary">Required</Badge>
+                      </div>
+
+                      {/* Field 2 */}
+                      <div className="flex items-center gap-3 p-3 border rounded-lg">
+                        <Switch
+                          id="lc-v2-field2-toggle"
+                          checked={lcV2Field2Enabled}
+                          onCheckedChange={setLcV2Field2Enabled}
+                        />
+                        <div className="flex-1 space-y-1.5">
+                          <input
+                            type="text"
+                            value={lcV2Field2Label}
+                            onChange={(e) => setLcV2Field2Label(e.target.value)}
+                            placeholder="Field label"
+                            maxLength={30}
+                            disabled={!lcV2Field2Enabled}
+                            className="w-full px-2 py-1 text-sm border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                          />
+                        </div>
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={lcV2Field2Required}
+                            onChange={(e) => setLcV2Field2Required(e.target.checked)}
+                            disabled={!lcV2Field2Enabled}
+                            className="rounded"
+                          />
+                          Required
+                        </label>
+                      </div>
+
+                      {/* Field 3 */}
+                      <div className="flex items-center gap-3 p-3 border rounded-lg">
+                        <Switch
+                          id="lc-v2-field3-toggle"
+                          checked={lcV2Field3Enabled}
+                          onCheckedChange={setLcV2Field3Enabled}
+                        />
+                        <div className="flex-1 space-y-1.5">
+                          <input
+                            type="text"
+                            value={lcV2Field3Label}
+                            onChange={(e) => setLcV2Field3Label(e.target.value)}
+                            placeholder="Field label"
+                            maxLength={30}
+                            disabled={!lcV2Field3Enabled}
+                            className="w-full px-2 py-1 text-sm border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                          />
+                        </div>
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={lcV2Field3Required}
+                            onChange={(e) => setLcV2Field3Required(e.target.checked)}
+                            disabled={!lcV2Field3Enabled}
+                            className="rounded"
+                          />
+                          Required
+                        </label>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between pl-4">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="notifications-toggle" className="text-sm">
-                        Send Email Notifications
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        Receive daily digest of unanswered questions
-                      </p>
+                  {/* Qualifying Questions Section */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-1">Qualifying Questions</h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      After the form, your AI agent will ask these questions one by one in the chat
+                    </p>
+                    <div className="space-y-3">
+                      {/* Q1 */}
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          id="lc-v2-q1-toggle"
+                          checked={lcV2Q1Enabled}
+                          onCheckedChange={setLcV2Q1Enabled}
+                        />
+                        <input
+                          type="text"
+                          value={lcV2Q1Text}
+                          onChange={(e) => setLcV2Q1Text(e.target.value)}
+                          placeholder="e.g. What's your team size?"
+                          maxLength={200}
+                          disabled={!lcV2Q1Enabled}
+                          className="flex-1 px-3 py-2 text-sm border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                        />
+                      </div>
+
+                      {/* Q2 */}
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          id="lc-v2-q2-toggle"
+                          checked={lcV2Q2Enabled}
+                          onCheckedChange={setLcV2Q2Enabled}
+                        />
+                        <input
+                          type="text"
+                          value={lcV2Q2Text}
+                          onChange={(e) => setLcV2Q2Text(e.target.value)}
+                          placeholder="e.g. How did you hear about us?"
+                          maxLength={200}
+                          disabled={!lcV2Q2Enabled}
+                          className="flex-1 px-3 py-2 text-sm border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                        />
+                      </div>
+
+                      {/* Q3 */}
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          id="lc-v2-q3-toggle"
+                          checked={lcV2Q3Enabled}
+                          onCheckedChange={setLcV2Q3Enabled}
+                        />
+                        <input
+                          type="text"
+                          value={lcV2Q3Text}
+                          onChange={(e) => setLcV2Q3Text(e.target.value)}
+                          placeholder="e.g. What problem are you looking to solve?"
+                          maxLength={200}
+                          disabled={!lcV2Q3Enabled}
+                          className="flex-1 px-3 py-2 text-sm border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                        />
+                      </div>
                     </div>
-                    <Switch
-                      id="notifications-toggle"
-                      checked={leadNotificationsEnabled}
-                      onCheckedChange={setLeadNotificationsEnabled}
-                    />
                   </div>
+
+                  {/* Notifications Section */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3">Notifications</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="lc-v2-notif-email" className="text-sm">
+                          Notification Email
+                        </Label>
+                        <input
+                          id="lc-v2-notif-email"
+                          type="email"
+                          value={lcV2NotifEmail}
+                          onChange={(e) => setLcV2NotifEmail(e.target.value)}
+                          placeholder="leads@yourbusiness.com"
+                          className="w-full mt-1.5 px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Receive notifications when new leads are captured
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="lc-v2-notifs-toggle" className="text-sm">
+                            Enable Notifications
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Send email when a new lead is captured
+                          </p>
+                        </div>
+                        <Switch
+                          id="lc-v2-notifs-toggle"
+                          checked={lcV2NotifsEnabled}
+                          onCheckedChange={setLcV2NotifsEnabled}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               )}
 
@@ -1000,6 +1589,218 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Lead Recovery (V3) - HIDDEN (not production ready) */}
+        {false && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <RotateCcw className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold">Lead Recovery</h2>
+              {savingRecovery && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Recover visitors who didn&apos;t leave their email on the first attempt with exit overlays, deferred re-asks, return visit detection, and more.
+            </p>
+
+            {/* Master Toggle */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="space-y-0.5">
+                <Label htmlFor="lr-enabled" className="text-base">Enable Lead Recovery</Label>
+                <p className="text-sm text-muted-foreground">Activate multi-signal recovery to capture more leads</p>
+              </div>
+              <Switch id="lr-enabled" checked={lrEnabled} onCheckedChange={setLrEnabled} />
+            </div>
+
+            {lrEnabled && (
+              <div className="space-y-6 border-t pt-4">
+                {/* Exit Intent Overlay */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MousePointerClick className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <h3 className="text-sm font-medium">Exit Intent Overlay</h3>
+                        <p className="text-xs text-muted-foreground">Show email capture when visitor tries to leave (desktop only)</p>
+                      </div>
+                    </div>
+                    <Switch checked={lrExitOverlayEnabled} onCheckedChange={setLrExitOverlayEnabled} />
+                  </div>
+                  {lrExitOverlayEnabled && (
+                    <div className="ml-6 space-y-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Headline</Label>
+                        <Input
+                          value={lrExitHeadline}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrExitHeadline(e.target.value)}
+                          placeholder="Before you go..."
+                          maxLength={60}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Subtext</Label>
+                        <Input
+                          value={lrExitSubtext}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrExitSubtext(e.target.value)}
+                          placeholder="Drop your email and we'll follow up"
+                          maxLength={120}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Deferred Skip */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Timer className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <h3 className="text-sm font-medium">Deferred Skip</h3>
+                        <p className="text-xs text-muted-foreground">Re-ask for email after visitor skips the form</p>
+                      </div>
+                    </div>
+                    <Switch checked={lrDeferredEnabled} onCheckedChange={setLrDeferredEnabled} />
+                  </div>
+                  {lrDeferredEnabled && (
+                    <div className="ml-6 space-y-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Re-ask after N more messages</Label>
+                        <Input
+                          type="number"
+                          value={lrDeferredReaskAfter}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrDeferredReaskAfter(Number(e.target.value))}
+                          min={1}
+                          max={20}
+                          className="w-20"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Max deferred re-asks</Label>
+                        <Input
+                          type="number"
+                          value={lrDeferredMaxAsks}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrDeferredMaxAsks(Number(e.target.value))}
+                          min={1}
+                          max={5}
+                          className="w-20"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Return Visit */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <h3 className="text-sm font-medium">Return Visit Recovery</h3>
+                        <p className="text-xs text-muted-foreground">Welcome back returning visitors and ask for email</p>
+                      </div>
+                    </div>
+                    <Switch checked={lrReturnVisitEnabled} onCheckedChange={setLrReturnVisitEnabled} />
+                  </div>
+                  {lrReturnVisitEnabled && (
+                    <div className="ml-6 space-y-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Max visits before stopping</Label>
+                        <Input
+                          type="number"
+                          value={lrReturnMaxVisits}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrReturnMaxVisits(Number(e.target.value))}
+                          min={1}
+                          max={10}
+                          className="w-20"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Welcome-back message</Label>
+                        <Input
+                          value={lrReturnMessage}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrReturnMessage(e.target.value)}
+                          placeholder="Welcome back! Want me to email you a summary?"
+                          maxLength={200}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* High-Intent Override */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <h3 className="text-sm font-medium">High-Intent Override</h3>
+                        <p className="text-xs text-muted-foreground">Override cooldowns when visitor shows buying intent</p>
+                      </div>
+                    </div>
+                    <Switch checked={lrHighIntentEnabled} onCheckedChange={setLrHighIntentEnabled} />
+                  </div>
+                  {lrHighIntentEnabled && (
+                    <div className="ml-6">
+                      <Label className="text-xs text-muted-foreground">Keywords (comma-separated)</Label>
+                      <Input
+                        value={lrHighIntentKeywords}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrHighIntentKeywords(e.target.value)}
+                        placeholder="pricing, demo, trial, contact, sales"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">When a visitor types any of these words, immediately ask for email</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Conversation Summary Hook */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <h3 className="text-sm font-medium">Conversation Summary Hook</h3>
+                        <p className="text-xs text-muted-foreground">Offer to email a summary after a conversation</p>
+                      </div>
+                    </div>
+                    <Switch checked={lrSummaryHookEnabled} onCheckedChange={setLrSummaryHookEnabled} />
+                  </div>
+                  {lrSummaryHookEnabled && (
+                    <div className="ml-6 space-y-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Minimum messages before showing</Label>
+                        <Input
+                          type="number"
+                          value={lrSummaryMinMessages}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrSummaryMinMessages(Number(e.target.value))}
+                          min={2}
+                          max={20}
+                          className="w-20"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Prompt message</Label>
+                        <Input
+                          value={lrSummaryPrompt}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLrSummaryPrompt(e.target.value)}
+                          placeholder="Want me to email you a summary of this conversation?"
+                          maxLength={200}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <Button onClick={handleSaveRecovery} disabled={savingRecovery}>
+                {savingRecovery ? "Saving..." : "Save Recovery Settings"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        )}
 
         <Card>
           <CardContent className="p-6">
@@ -1126,9 +1927,9 @@ export default function SettingsPage() {
           <CardContent className="p-6">
             <h2 className="font-semibold mb-4 text-destructive">Danger Zone</h2>
             <div className="p-4 border border-destructive/50 rounded-md">
-              <h3 className="font-medium">Delete Project</h3>
+              <h3 className="font-medium">Delete Agent</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Once you delete this project, all knowledge sources, API endpoints, and chat history will be removed. This action cannot be undone.
+                Once you delete this agent, all knowledge sources, API endpoints, and chat history will be removed. This action cannot be undone.
               </p>
               <Button
                 variant="destructive"
@@ -1137,7 +1938,7 @@ export default function SettingsPage() {
                 disabled={deleting}
               >
                 {deleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {deleting ? "Deleting..." : "Delete Project"}
+                {deleting ? "Deleting..." : "Delete Agent"}
               </Button>
             </div>
           </CardContent>

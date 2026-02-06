@@ -7,6 +7,7 @@ import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
 import { useAgent } from "@/contexts/agent-context";
 import { useConversationRealtime } from "@/hooks/use-inbox-realtime";
+import { useMessagePolling, Message as PollingMessage } from "@/hooks/use-message-polling";
 import { Button, Card, CardContent, Skeleton, Badge } from "@chatbot/ui";
 import {
   AlertCircle,
@@ -62,6 +63,41 @@ interface Customer {
   firstSeenAt: string;
   lastSeenAt: string;
 }
+
+interface QualifyingAnswer {
+  question: string;
+  answer: string;
+  raw_response?: string;
+}
+
+interface LateQualifyingAnswer {
+  question_index: number;
+  question_text: string;
+  answer: string;
+  raw_message?: string;
+  confidence?: number;
+  capture_type?: string;
+  captured_at?: string;
+  promoted?: boolean;
+}
+
+interface LeadData {
+  id: string;
+  email: string;
+  formData: {
+    field_2?: { label: string; value: string };
+    field_3?: { label: string; value: string };
+  };
+  qualifyingAnswers: QualifyingAnswer[];
+  lateQualifyingAnswers: LateQualifyingAnswer[];
+  qualificationStatus: string;
+  captureSource: string | null;
+  firstMessage: string | null;
+  formSubmittedAt: string;
+}
+
+// Configured questions from project settings (shown even if not answered)
+type ConfiguredQuestions = string[];
 
 // ============================================================================
 // Message Component
@@ -132,6 +168,8 @@ function CustomerContextPanel({
   conversation,
   customer,
   previousConversations,
+  leadData,
+  configuredQuestions,
 }: {
   conversation: Conversation;
   customer: Customer | null;
@@ -141,6 +179,8 @@ function CustomerContextPanel({
     createdAt: string;
     messageCount: number;
   }>;
+  leadData: LeadData | null;
+  configuredQuestions: ConfiguredQuestions;
 }) {
   const displayName =
     conversation.customerName ||
@@ -170,6 +210,94 @@ function CustomerContextPanel({
             </div>
           </div>
         </div>
+
+        {/* Lead Data */}
+        {leadData && (
+          <div className="border-t pt-4">
+            <h3 className="font-semibold text-sm mb-2">Lead Profile</h3>
+            <div className="space-y-3">
+              {/* Email */}
+              <div className="flex items-start gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="text-sm font-medium">{leadData.email}</p>
+                </div>
+              </div>
+
+              {/* Custom Fields */}
+              {leadData.formData.field_2 && (
+                <div className="flex items-start gap-2">
+                  <User className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">{leadData.formData.field_2.label}</p>
+                    <p className="text-sm font-medium">{leadData.formData.field_2.value}</p>
+                  </div>
+                </div>
+              )}
+              {leadData.formData.field_3 && (
+                <div className="flex items-start gap-2">
+                  <User className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">{leadData.formData.field_3.label}</p>
+                    <p className="text-sm font-medium">{leadData.formData.field_3.value}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Status Badge */}
+              <div className="flex items-center gap-2 pt-2">
+                <Badge
+                  variant={leadData.qualificationStatus === "qualified" ? "default" : "secondary"}
+                  className="text-xs"
+                >
+                  {leadData.qualificationStatus}
+                </Badge>
+                {leadData.captureSource && (
+                  <Badge variant="outline" className="text-xs">
+                    {leadData.captureSource.replace(/_/g, ' ')}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Qualifying Questions - Always show if configured, so agent knows what to ask */}
+        {configuredQuestions.length > 0 && (
+          <div className="border-t pt-4">
+            <h3 className="font-semibold text-sm mb-2">Qualifying Questions</h3>
+            <div className="space-y-2">
+              {configuredQuestions.map((question, idx) => {
+                // Find answer from qualifyingAnswers or lateQualifyingAnswers
+                const directAnswer = leadData?.qualifyingAnswers.find(
+                  (qa) => qa.question === question
+                );
+                const lateAnswer = leadData?.lateQualifyingAnswers.find(
+                  (lqa) => lqa.question_text === question
+                );
+                const answer = directAnswer?.answer || lateAnswer?.answer;
+                const isLateCapture = !directAnswer && lateAnswer;
+
+                return (
+                  <div key={idx} className="p-2 bg-muted/50 rounded text-sm">
+                    <p className="text-xs text-muted-foreground mb-1">Q: {question}</p>
+                    {answer ? (
+                      <p className="font-medium">
+                        A: {answer}
+                        {isLateCapture && (
+                          <Badge variant="secondary" className="ml-2 text-xs">Auto-detected</Badge>
+                        )}
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground italic">Not answered</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         {customer && (
@@ -254,6 +382,8 @@ export default function ConversationPage() {
   const [previousConversations, setPreviousConversations] = useState<
     Array<{ id: string; status: string; createdAt: string; messageCount: number }>
   >([]);
+  const [leadData, setLeadData] = useState<LeadData | null>(null);
+  const [configuredQuestions, setConfiguredQuestions] = useState<ConfiguredQuestions>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
@@ -301,9 +431,13 @@ export default function ConversationPage() {
             createdAt: string;
             messageCount: number;
           }>;
+          leadData: LeadData | null;
+          configuredQuestions: ConfiguredQuestions;
         }>(`/api/conversations/${conversationId}/customer`);
         setCustomer(customerResponse.customer);
         setPreviousConversations(customerResponse.previousConversations || []);
+        setLeadData(customerResponse.leadData);
+        setConfiguredQuestions(customerResponse.configuredQuestions || []);
       } catch {
         // Customer context is optional
       }
@@ -392,6 +526,39 @@ export default function ConversationPage() {
 
   // Setup realtime subscription for this conversation
   const { isSubscribed } = useConversationRealtime(conversationId, realtimeHandlers);
+
+  // Get the last message for polling reference
+  const lastMessage = messages[messages.length - 1];
+
+  // Message polling as fallback for realtime (30 second interval)
+  useMessagePolling(conversationId, {
+    interval: 30000,
+    enabled: true, // Always enabled as fallback
+    lastMessageId: lastMessage?.id,
+    lastMessageTime: lastMessage?.createdAt,
+    onNewMessages: useCallback((newMessages: PollingMessage[]) => {
+      setMessages((prev) => {
+        // Filter out messages we already have
+        const existingIds = new Set(prev.map((m) => m.id));
+        const uniqueNew = newMessages.filter((m) => !existingIds.has(m.id));
+
+        if (uniqueNew.length > 0) {
+          console.log(`[Conversation] Poll found ${uniqueNew.length} new messages`);
+          // Scroll to bottom when new messages arrive
+          setTimeout(scrollToBottom, 100);
+          return [...prev, ...uniqueNew.map((m): Message => ({
+            id: m.id,
+            senderType: m.senderType as Message["senderType"],
+            senderId: m.senderId ?? undefined,
+            content: m.content,
+            createdAt: m.createdAt,
+            metadata: m.metadata,
+          }))];
+        }
+        return prev;
+      });
+    }, []),
+  });
 
   useEffect(() => {
     scrollToBottom();
@@ -806,6 +973,8 @@ export default function ConversationPage() {
             conversation={conversation}
             customer={customer}
             previousConversations={previousConversations}
+            leadData={leadData}
+            configuredQuestions={configuredQuestions}
           />
         </div>
       </div>

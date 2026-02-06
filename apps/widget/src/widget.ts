@@ -12,8 +12,17 @@
  * ></script>
  */
 
-import { ChatWindow } from "./components/chat-window";
+import { ChatWindow, type LeadRecoveryConfig } from "./components/chat-window";
 import { Bubble } from "./components/bubble";
+import { TeaserMessage } from "./components/teaser-message";
+import { ExitOverlay } from "./components/exit-overlay";
+import { submitInlineEmail } from "./utils/api";
+import { getVisitorId, getLeadCaptureState, setLeadCaptureState } from "./utils/storage";
+import {
+  EngagementTriggerService,
+  type ProactiveEngagementConfig,
+  type TriggerAction,
+} from "./utils/engagement-triggers";
 
 // CSS is injected at build time
 declare const __WIDGET_CSS__: string;
@@ -59,6 +68,12 @@ class ChatbotWidget {
   private bubble: Bubble | null = null;
   private chatWindow: ChatWindow | null = null;
   private isOpen = false;
+  private leadCaptureConfig: Record<string, unknown> | null = null;
+  private proactiveConfig: ProactiveEngagementConfig | null = null;
+  private triggerService: EngagementTriggerService | null = null;
+  private teaserMessage: TeaserMessage | null = null;
+  private exitOverlay: ExitOverlay | null = null;
+  private leadRecoveryConfig: LeadRecoveryConfig | null = null;
 
   constructor(config: WidgetConfig) {
     // Validate required config
@@ -130,11 +145,23 @@ class ChatbotWidget {
       title: this.config.title,
       primaryColor: this.config.primaryColor,
       onClose: () => this.close(),
+      leadCaptureConfig: this.leadCaptureConfig,
+      leadRecoveryConfig: this.leadRecoveryConfig,
     });
     wrapper.appendChild(this.chatWindow.element);
 
     // Add to document
     document.body.appendChild(this.container);
+
+    // Initialize proactive engagement if configured
+    if (this.proactiveConfig?.enabled) {
+      this.initProactiveEngagement(wrapper);
+    }
+
+    // Initialize exit overlay for recovery (if exit_intent_overlay enabled)
+    if (this.leadRecoveryConfig?.enabled && this.leadRecoveryConfig.exit_intent_overlay?.enabled) {
+      this.initExitOverlay(wrapper);
+    }
 
     // Log initialization
     if (process.env.NODE_ENV === "development") {
@@ -142,6 +169,7 @@ class ChatbotWidget {
         projectId: this.config.projectId,
         apiUrl: this.config.apiUrl,
         realtimeEnabled: !!(window as Record<string, unknown>).__WIDGET_CONFIG__,
+        proactiveEnabled: !!this.proactiveConfig?.enabled,
       });
     }
   }
@@ -167,6 +195,21 @@ class ChatbotWidget {
       // Check if widget is enabled (default to true if not specified)
       if (data.enabled === false) {
         return false;
+      }
+
+      // Store lead capture config
+      if (data.leadCapture?.enabled) {
+        this.leadCaptureConfig = data.leadCapture;
+      }
+
+      // Store proactive engagement config
+      if (data.proactiveEngagement?.enabled) {
+        this.proactiveConfig = data.proactiveEngagement as ProactiveEngagementConfig;
+      }
+
+      // Store lead recovery config
+      if (data.leadRecovery?.enabled) {
+        this.leadRecoveryConfig = data.leadRecovery as LeadRecoveryConfig;
       }
 
       // Store realtime config for realtime.ts to use
@@ -209,6 +252,11 @@ class ChatbotWidget {
     this.isOpen = true;
     this.chatWindow?.show();
     this.bubble?.setActive(true);
+
+    // Proactive engagement: chat opened, dismiss triggers
+    this.teaserMessage?.hide();
+    this.bubble?.hideBadge();
+    this.triggerService?.setChatOpened();
   }
 
   /**
@@ -258,7 +306,153 @@ class ChatbotWidget {
   /**
    * Destroy the widget
    */
+  /**
+   * Initialize proactive engagement: teaser, badge, and trigger service
+   */
+  private initProactiveEngagement(wrapper: HTMLDivElement): void {
+    if (!this.proactiveConfig) return;
+
+    // Create teaser message component
+    if (this.proactiveConfig.teaser.enabled) {
+      this.teaserMessage = new TeaserMessage({
+        message: this.proactiveConfig.teaser.message,
+        primaryColor: this.config.primaryColor,
+        onTeaserClick: () => this.open(),
+        onDismiss: () => {
+          // Teaser dismissed by user, but don't stop other triggers
+          if (process.env.NODE_ENV === "development") {
+            console.log("[Chatbot Widget] Teaser dismissed");
+          }
+        },
+      });
+      wrapper.appendChild(this.teaserMessage.element);
+    }
+
+    // Create trigger service
+    this.triggerService = new EngagementTriggerService({
+      config: this.proactiveConfig,
+      projectId: this.config.projectId,
+      onTrigger: (action: TriggerAction) =>
+        this.handleEngagementTrigger(action),
+    });
+
+    // Start monitoring triggers
+    this.triggerService.start();
+  }
+
+  /**
+   * Handle a proactive engagement trigger action
+   */
+  private handleEngagementTrigger(action: TriggerAction): void {
+    if (this.isOpen) return; // Already open, ignore triggers
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Chatbot Widget] Trigger fired:", action.source, action.type);
+    }
+
+    switch (action.type) {
+      case "teaser":
+        this.teaserMessage?.show();
+        if (this.proactiveConfig?.badge.enabled) {
+          this.bubble?.showBadge();
+        }
+        break;
+
+      case "badge":
+        this.bubble?.showBadge();
+        break;
+
+      case "auto_open":
+        this.open();
+        break;
+
+      case "overlay":
+        // V3 Recovery: show exit overlay if configured, otherwise fall back to teaser
+        if (this.exitOverlay && !this.isEmailCaptured()) {
+          this.exitOverlay.show();
+        } else {
+          this.teaserMessage?.show();
+          if (this.proactiveConfig?.badge.enabled) {
+            this.bubble?.showBadge();
+          }
+        }
+        break;
+    }
+  }
+
+  /**
+   * Initialize exit overlay component for lead recovery
+   */
+  private initExitOverlay(wrapper: HTMLDivElement): void {
+    const overlayConfig = this.leadRecoveryConfig?.exit_intent_overlay;
+    if (!overlayConfig?.enabled) return;
+
+    this.exitOverlay = new ExitOverlay({
+      headline: overlayConfig.headline || "Before you go...",
+      subtext: overlayConfig.subtext || "Drop your email and we'll follow up",
+      primaryColor: this.config.primaryColor,
+      onSubmit: (email) => this.handleExitOverlayEmail(email),
+      onDismiss: () => {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Chatbot Widget] Exit overlay dismissed");
+        }
+      },
+    });
+    wrapper.appendChild(this.exitOverlay.element);
+  }
+
+  /**
+   * Handle email submitted via exit overlay
+   */
+  private async handleExitOverlayEmail(email: string): Promise<void> {
+    if (!this.exitOverlay) return;
+
+    try {
+      const visitorId = getVisitorId();
+      await submitInlineEmail(
+        this.config.apiUrl,
+        this.config.projectId,
+        visitorId,
+        null,
+        email,
+        "exit_overlay"
+      );
+
+      this.exitOverlay.showSuccess();
+
+      // Update local lead state
+      const existingState = getLeadCaptureState(this.config.projectId);
+      setLeadCaptureState(this.config.projectId, {
+        ...(existingState || { hasCompletedForm: false, hasCompletedQualifying: false }),
+        hasProvidedEmail: true,
+        captureSource: "exit_overlay",
+      });
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Chatbot Widget] Exit overlay email captured:", email);
+      }
+    } catch (error) {
+      console.error("[Chatbot Widget] Exit overlay email error:", error);
+      this.exitOverlay.setSubmitting(false);
+    }
+  }
+
+  /**
+   * Check if email has been captured (prevents showing overlay after capture)
+   */
+  private isEmailCaptured(): boolean {
+    const state = getLeadCaptureState(this.config.projectId);
+    return !!(state?.hasProvidedEmail || state?.hasCompletedForm);
+  }
+
   destroy(): void {
+    this.triggerService?.destroy();
+    this.teaserMessage?.destroy();
+    this.exitOverlay?.destroy();
+    this.triggerService = null;
+    this.teaserMessage = null;
+    this.exitOverlay = null;
+
     if (this.container) {
       this.container.remove();
       this.container = null;

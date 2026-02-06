@@ -16,7 +16,17 @@ import { Input } from "./input";
 import { TypingIndicator } from "./typing-indicator";
 import { HumanButton } from "./human-button";
 import { OfflineForm } from "./offline-form";
-import { sendMessage, ChatApiError } from "../utils/api";
+import {
+  LeadCaptureForm,
+  LeadCaptureFormData,
+  LeadCaptureFormConfig,
+} from "./lead-capture-form";
+import {
+  sendMessage,
+  ChatApiError,
+  submitLeadCaptureForm,
+  getLeadCaptureStatus,
+} from "../utils/api";
 import {
   checkHandoffAvailability,
   triggerHandoff,
@@ -34,9 +44,13 @@ import {
   setSessionId,
   getStoredMessages,
   setStoredMessages,
+  getLeadCaptureState,
+  setLeadCaptureState,
   StoredMessage,
+  LeadCaptureLocalState,
 } from "../utils/storage";
 import { generateId } from "../utils/helpers";
+import { detectHighIntent } from "../utils/high-intent-detector";
 import {
   WidgetRealtimeManager,
   getRealtimeManager,
@@ -45,6 +59,14 @@ import {
   RealtimeStatusChange,
 } from "../utils/realtime";
 
+export interface LeadRecoveryConfig {
+  enabled: boolean;
+  deferred_skip?: { enabled: boolean; reask_after_messages: number; max_deferred_asks: number };
+  return_visit?: { enabled: boolean; max_visits_before_stop: number; welcome_back_message: string };
+  high_intent_override?: { enabled: boolean; keywords: string[]; override_cooldowns: boolean };
+  conversation_summary_hook?: { enabled: boolean; min_messages: number; prompt: string };
+}
+
 export interface ChatWindowOptions {
   projectId: string;
   apiUrl: string;
@@ -52,6 +74,8 @@ export interface ChatWindowOptions {
   title: string;
   primaryColor: string;
   onClose: () => void;
+  leadCaptureConfig?: Record<string, unknown> | null;
+  leadRecoveryConfig?: LeadRecoveryConfig | null;
 }
 
 export class ChatWindow {
@@ -80,6 +104,16 @@ export class ChatWindow {
   private presenceManager: PresenceManager;
   private offlineForm: OfflineForm | null = null;
   private showingOfflineForm = false;
+  private leadCaptureForm: LeadCaptureForm | null = null;
+  private isLeadCaptureActive = false;
+  private leadCaptureLocalState: LeadCaptureLocalState | null = null;
+  private firstUserMessage: string | null = null;
+  private isFirstMessage = true;
+
+  // V3 Recovery
+  private highIntentDetected = false;
+  private summaryHookShown = false;
+  private totalUserMessages = 0;
 
   constructor(private options: ChatWindowOptions) {
     this.visitorId = getVisitorId();
@@ -128,11 +162,18 @@ export class ChatWindow {
       this.messagesContainer.nextSibling
     );
 
+    // Load lead capture local state
+    this.leadCaptureLocalState = getLeadCaptureState(options.projectId);
+    this.isFirstMessage = this.messages.length === 0;
+
     // Render initial messages
     this.renderMessages();
 
     // Setup keyboard handling
     this.setupKeyboardHandling();
+
+    // Check lead capture status for returning users, then show form if needed
+    this.initializeLeadCaptureState();
 
     // Check conversation status first (if we have a session)
     // This determines if we should show the human button
@@ -446,6 +487,9 @@ export class ChatWindow {
     // Record activity for presence tracking
     this.presenceManager.recordActivity();
 
+    // Track total user messages
+    this.totalUserMessages++;
+
     // Create user message
     const userMessage: StoredMessage = {
       id: generateId(),
@@ -504,6 +548,18 @@ export class ChatWindow {
         this.addMessageToDOM(assistantMessage);
         setStoredMessages(this.options.projectId, this.messages);
       }
+
+      // Track first message (used for lead metadata)
+      if (this.isFirstMessage) {
+        this.firstUserMessage = content;
+        this.isFirstMessage = false;
+      }
+
+      // V3 Recovery: Summary hook (after min messages, offer to email summary)
+      if (this.shouldShowSummaryHook()) {
+        setTimeout(() => this.showSummaryHook(), 1200);
+      }
+
     } catch (error) {
       console.error("Chat error:", error);
 
@@ -534,6 +590,249 @@ export class ChatWindow {
       this.typingIndicator.hide();
       this.input.setLoading(false);
       this.scrollToBottom();
+    }
+  }
+
+  // ─── Lead Capture V2 ──────────────────────────────────────────────────────
+
+  /**
+   * Initialize lead capture state for returning users
+   */
+  private async initializeLeadCaptureState(): Promise<void> {
+    const lcConfig = this.options.leadCaptureConfig;
+    if (!lcConfig?.enabled) return;
+
+    // Check local cache first
+    if (this.leadCaptureLocalState?.hasCompletedForm) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Widget] Lead capture: returning user (cached)");
+      }
+      return; // Already completed form, skip
+    }
+
+    // Check server for returning user status
+    try {
+      const status = await getLeadCaptureStatus(
+        this.options.apiUrl,
+        this.options.projectId,
+        this.visitorId
+      );
+
+      if (status.hasCompletedForm) {
+        // Cache the result locally
+        setLeadCaptureState(this.options.projectId, {
+          hasCompletedForm: true,
+          hasCompletedQualifying: status.hasCompletedQualifying,
+        });
+        this.leadCaptureLocalState = {
+          hasCompletedForm: true,
+          hasCompletedQualifying: status.hasCompletedQualifying,
+        };
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Widget] Lead capture: returning user (server)");
+        }
+        return;
+      }
+
+      // V3 Recovery: Return-visit welcome-back for non-captured visitors
+      if (this.shouldShowReturnVisitMessage()) {
+        setTimeout(() => this.showReturnVisitMessage(), 800);
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[Widget] Lead capture status check failed:", error);
+      }
+    }
+
+    // Show lead capture form immediately if enabled and not completed
+    if (this.shouldShowLeadCaptureForm()) {
+      setTimeout(() => this.showLeadCaptureForm(), 400);
+    }
+  }
+
+  // ─── V3 Recovery Methods ─────────────────────────────────────────────────────
+
+  /**
+   * Check if we should show the summary hook
+   */
+  private shouldShowSummaryHook(): boolean {
+    const rc = this.options.leadRecoveryConfig;
+    if (!rc?.enabled) return false;
+    if (!rc.conversation_summary_hook?.enabled) return false;
+    if (this.summaryHookShown) return false;
+    if (this.leadCaptureLocalState?.hasCompletedForm) return false;
+    if (this.isLeadCaptureActive) return false;
+    if (this.totalUserMessages < (rc.conversation_summary_hook.min_messages || 3)) return false;
+    return true;
+  }
+
+  /**
+   * Show the summary hook — offer to email a conversation summary
+   */
+  private showSummaryHook(): void {
+    const rc = this.options.leadRecoveryConfig;
+    const prompt = rc?.conversation_summary_hook?.prompt || "Want me to email you a summary of this conversation?";
+
+    this.summaryHookShown = true;
+
+    const hookMsg: StoredMessage = {
+      id: generateId(),
+      content: prompt,
+      role: "assistant",
+      timestamp: Date.now(),
+    };
+    this.messages.push(hookMsg);
+    this.addMessageToDOM(hookMsg);
+    setStoredMessages(this.options.projectId, this.messages);
+    this.scrollToBottom();
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Widget] Summary hook shown");
+    }
+  }
+
+  /**
+   * Check if we should show a return-visit welcome-back message.
+   * Called during initializeLeadCaptureState for returning visitors.
+   */
+  private shouldShowReturnVisitMessage(): boolean {
+    const rc = this.options.leadRecoveryConfig;
+    if (!rc?.enabled || !rc.return_visit?.enabled) return false;
+    if (this.leadCaptureLocalState?.hasCompletedForm) return false;
+
+    return true;
+  }
+
+  /**
+   * Show return-visit welcome-back message
+   */
+  private showReturnVisitMessage(): void {
+    const rc = this.options.leadRecoveryConfig;
+    const message = rc?.return_visit?.welcome_back_message || "Welcome back! Want me to email you a summary?";
+
+    const welcomeMsg: StoredMessage = {
+      id: generateId(),
+      content: message,
+      role: "assistant",
+      timestamp: Date.now(),
+    };
+    this.messages.push(welcomeMsg);
+    this.addMessageToDOM(welcomeMsg);
+    setStoredMessages(this.options.projectId, this.messages);
+    this.scrollToBottom();
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Widget] Return visit welcome-back message shown");
+    }
+  }
+
+  /**
+   * Check if we should show the lead capture form
+   */
+  private shouldShowLeadCaptureForm(): boolean {
+    const lcConfig = this.options.leadCaptureConfig;
+    if (!lcConfig?.enabled) return false;
+    if (this.isLeadCaptureActive) return false;
+    if (this.leadCaptureLocalState?.hasCompletedForm) return false;
+
+    return true;
+  }
+
+  /**
+   * Show the lead capture form inline in the messages area
+   */
+  private showLeadCaptureForm(): void {
+    const lcConfig = this.options.leadCaptureConfig;
+    if (!lcConfig) return;
+
+    this.isLeadCaptureActive = true;
+
+    // Build form config
+    const formConfig: LeadCaptureFormConfig = {
+      formFields: lcConfig.formFields as LeadCaptureFormConfig["formFields"],
+    };
+
+    this.leadCaptureForm = new LeadCaptureForm({
+      config: formConfig,
+      primaryColor: this.options.primaryColor,
+      onSubmit: (data) => this.handleLeadCaptureSubmit(data),
+    });
+
+    // Insert form into messages container (before typing indicator)
+    this.messagesContainer.insertBefore(
+      this.leadCaptureForm.element,
+      this.typingIndicator.element
+    );
+
+    // Disable input while form is active
+    this.input.setDisabled(true, "Please complete the form above");
+
+    this.scrollToBottom();
+
+    // Focus the email input
+    this.leadCaptureForm.focusEmail();
+  }
+
+  /**
+   * Handle lead capture form submission
+   */
+  private async handleLeadCaptureSubmit(formData: LeadCaptureFormData): Promise<void> {
+    if (!this.leadCaptureForm) return;
+
+    try {
+      const result = await submitLeadCaptureForm(
+        this.options.apiUrl,
+        this.options.projectId,
+        this.visitorId,
+        this.sessionId,
+        formData,
+        this.firstUserMessage || ""
+      );
+
+      if (result.success) {
+        // Show success state on form
+        this.leadCaptureForm.showSuccess(formData.email);
+
+        // Cache locally
+        setLeadCaptureState(this.options.projectId, {
+          hasCompletedForm: true,
+          hasCompletedQualifying: result.nextAction === "none",
+          firstMessage: this.firstUserMessage || "",
+        });
+        this.leadCaptureLocalState = {
+          hasCompletedForm: true,
+          hasCompletedQualifying: result.nextAction === "none",
+        };
+
+        // Re-enable input
+        this.isLeadCaptureActive = false;
+        this.input.setDisabled(false);
+
+        // Re-check handoff availability to show "Talk to Human" button now that form is complete
+        this.checkAvailability();
+
+        // If there's a qualifying question, show it as an assistant message
+        if (result.nextAction === "qualifying_question" && result.qualifyingQuestion) {
+          const qMsg: StoredMessage = {
+            id: generateId(),
+            content: result.qualifyingQuestion,
+            role: "assistant",
+            timestamp: Date.now(),
+          };
+          this.messages.push(qMsg);
+          this.addMessageToDOM(qMsg);
+          setStoredMessages(this.options.projectId, this.messages);
+        }
+
+        this.scrollToBottom();
+        this.input.focus();
+      } else {
+        this.leadCaptureForm.setLoading(false);
+      }
+    } catch (error) {
+      console.error("[Widget] Lead form submit error:", error);
+      this.leadCaptureForm.setLoading(false);
     }
   }
 
@@ -603,6 +902,7 @@ export class ChatWindow {
 
   /**
    * Check handoff availability and update UI
+   * Button is gated behind lead capture form completion when enabled
    */
   private async checkAvailability(): Promise<void> {
     try {
@@ -611,8 +911,15 @@ export class ChatWindow {
         this.options.projectId
       );
 
+      // Gate: Only show button if form completed OR lead capture disabled
+      const lcConfig = this.options.leadCaptureConfig;
+      const leadCaptureEnabled = lcConfig?.enabled === true;
+      const formCompleted = this.leadCaptureLocalState?.hasCompletedForm === true;
+      const shouldShowButton = this.handoffAvailability.showButton &&
+        (!leadCaptureEnabled || formCompleted);
+
       // Update human button visibility
-      if (this.handoffAvailability.showButton && this.humanButton) {
+      if (shouldShowButton && this.humanButton) {
         this.humanButton.setText(this.handoffAvailability.buttonText || "Talk to a human");
         this.humanButton.show();
       } else if (this.humanButton) {
@@ -621,7 +928,11 @@ export class ChatWindow {
 
       // Log for debugging
       if (process.env.NODE_ENV === "development") {
-        console.log("[Widget] Handoff availability:", this.handoffAvailability);
+        console.log("[Widget] Handoff availability:", this.handoffAvailability, {
+          leadCaptureEnabled,
+          formCompleted,
+          shouldShowButton
+        });
       }
     } catch (error) {
       console.error("[Widget] Failed to check handoff availability:", error);
@@ -668,6 +979,12 @@ export class ChatWindow {
           setSessionId(this.options.projectId, response.sessionId);
         }
 
+        console.log("[Widget] Chat response for handoff request:", {
+          hasHandoff: !!response.handoff,
+          handoffTriggered: response.handoff?.triggered,
+          sessionId: response.sessionId,
+        });
+
         // Check if handoff was already triggered by the chat engine
         if (response.handoff?.triggered) {
           // Handoff was triggered automatically, show the response
@@ -692,10 +1009,16 @@ export class ChatWindow {
         }
       }
 
+      // Ensure we have a valid session ID before triggering handoff
+      if (!this.sessionId) {
+        console.error("[Widget] No session ID available for handoff");
+        throw new Error("No session ID available");
+      }
+
       // Now trigger handoff
       const result = await triggerHandoff(
         this.options.apiUrl,
-        this.sessionId!,
+        this.sessionId,
         { reason: "button_click" }
       );
 

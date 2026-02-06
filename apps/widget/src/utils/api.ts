@@ -36,6 +36,13 @@ export interface SendMessageResponse {
   sources: ChatSource[];
   toolCalls: ToolCall[];
   processingTime: number;
+  handoff?: {
+    triggered: boolean;
+    reason?: string;
+    queuePosition?: number;
+    estimatedWait?: string;
+    conversationId?: string;
+  };
 }
 
 export interface ApiError {
@@ -141,6 +148,144 @@ export async function sendMessage(
   }
 
   return response.json();
+}
+
+// ─── Lead Capture V2 API ────────────────────────────────────────────────────
+
+export interface LeadCaptureFormData {
+  email: string;
+  field_2?: { label: string; value: string };
+  field_3?: { label: string; value: string };
+}
+
+export interface LeadCaptureSubmitResponse {
+  success: boolean;
+  leadId?: string;
+  nextAction: "qualifying_question" | "none";
+  qualifyingQuestion?: string;
+}
+
+export interface LeadCaptureStatusResponse {
+  hasCompletedForm: boolean;
+  hasCompletedQualifying: boolean;
+  leadCaptureState: Record<string, unknown> | null;
+}
+
+/**
+ * Submit lead capture form
+ */
+export async function submitLeadCaptureForm(
+  apiUrl: string,
+  projectId: string,
+  visitorId: string,
+  sessionId: string | null,
+  formData: LeadCaptureFormData,
+  firstMessage: string
+): Promise<LeadCaptureSubmitResponse> {
+  const response = await fetch(`${apiUrl}/api/chat/lead-capture/submit-form`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Visitor-Id": visitorId,
+    },
+    body: JSON.stringify({
+      projectId,
+      visitorId,
+      sessionId,
+      formData,
+      firstMessage,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new ChatApiError(
+      errorData.error?.code || "FORM_SUBMIT_ERROR",
+      errorData.error?.message || "Failed to submit form"
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Skip lead capture form
+ * @param skipType - "permanent" for terminal skip, "deferred" for re-askable skip
+ */
+export async function skipLeadCaptureForm(
+  apiUrl: string,
+  projectId: string,
+  visitorId: string,
+  skipType: "permanent" | "deferred" = "permanent"
+): Promise<void> {
+  await fetch(`${apiUrl}/api/chat/lead-capture/skip`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Visitor-Id": visitorId,
+    },
+    body: JSON.stringify({ projectId, visitorId, skipType }),
+  });
+}
+
+/**
+ * Submit inline email capture (lightweight, no form fields)
+ */
+export async function submitInlineEmail(
+  apiUrl: string,
+  projectId: string,
+  visitorId: string,
+  sessionId: string | null,
+  email: string,
+  captureSource: string = "inline_email"
+): Promise<LeadCaptureSubmitResponse> {
+  const response = await fetch(`${apiUrl}/api/chat/lead-capture/submit-inline`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Visitor-Id": visitorId,
+    },
+    body: JSON.stringify({
+      projectId,
+      visitorId,
+      sessionId,
+      email,
+      captureSource,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new ChatApiError(
+      errorData.error?.code || "INLINE_EMAIL_ERROR",
+      errorData.error?.message || "Failed to submit email"
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Check lead capture status for returning users
+ */
+export async function getLeadCaptureStatus(
+  apiUrl: string,
+  projectId: string,
+  visitorId: string
+): Promise<LeadCaptureStatusResponse> {
+  try {
+    const response = await fetch(
+      `${apiUrl}/api/chat/lead-capture/status?projectId=${encodeURIComponent(projectId)}&visitorId=${encodeURIComponent(visitorId)}`
+    );
+
+    if (!response.ok) {
+      return { hasCompletedForm: false, hasCompletedQualifying: false, leadCaptureState: null };
+    }
+
+    return response.json();
+  } catch {
+    return { hasCompletedForm: false, hasCompletedQualifying: false, leadCaptureState: null };
+  }
 }
 
 /**

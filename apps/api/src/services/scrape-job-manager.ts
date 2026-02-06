@@ -202,6 +202,8 @@ export function getJob(jobId: string): ScrapeJob | undefined {
  */
 export async function getJobFromDb(jobId: string): Promise<{
   id: string;
+  projectId: string;
+  userId: string;
   status: ScrapeJobStatus;
   domain: string;
   error?: string;
@@ -213,7 +215,7 @@ export async function getJobFromDb(jobId: string): Promise<{
 } | null> {
   const { data, error } = await supabaseAdmin
     .from('crawl_jobs')
-    .select('id, status, domain, error, pages_found, pages_imported, pages_failed, created_at, completed_at')
+    .select('id, project_id, user_id, status, domain, error, pages_found, pages_imported, pages_failed, created_at, completed_at')
     .eq('id', jobId)
     .single();
 
@@ -223,6 +225,8 @@ export async function getJobFromDb(jobId: string): Promise<{
 
   return {
     id: data.id,
+    projectId: data.project_id,
+    userId: data.user_id,
     status: data.status as ScrapeJobStatus,
     domain: data.domain,
     error: data.error,

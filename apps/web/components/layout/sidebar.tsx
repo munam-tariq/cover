@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { MessageSquare, Inbox, Users } from "lucide-react";
 import { useAgent } from "@/contexts/agent-context";
 import { useProject } from "@/contexts/project-context";
+import { useInboxPollingOptional } from "@/contexts/inbox-polling-context";
 
 // Navigation items with role requirements
 // roles: undefined = all, "owner" = owner only, "owner_admin" = owner or admin, "agent_only" = agents (not owners viewing their own project)
@@ -12,7 +13,8 @@ const allNavItems = [
   { href: "/", label: "Dashboard", icon: "home", roles: undefined },
   { href: "/inbox", label: "Inbox", icon: "inbox", roles: undefined },
   { href: "/team", label: "Team", icon: "users", roles: undefined },
-  { href: "/projects", label: "Projects", icon: "folder", roles: "owner" as const },
+  { href: "/projects", label: "Agents", icon: "folder", roles: "owner" as const },
+  { href: "/leads", label: "Leads", icon: "user-plus", roles: "owner" as const },
   { href: "/analytics", label: "Analytics", icon: "bar-chart", roles: "owner" as const },
   { href: "/feedback", label: "Feedback", icon: "thumbs-up", roles: "owner" as const },
   { href: "/playground", label: "Playground", icon: "sparkles", roles: "owner_admin" as const },
@@ -74,6 +76,13 @@ const icons: Record<string, React.FC<{ className?: string }>> = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
     </svg>
   ),
+  "user-plus": ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+      <circle cx="8.5" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 8v6m3-3h-6" />
+    </svg>
+  ),
   "thumbs-up": ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
@@ -85,6 +94,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { role, availability, isLoading } = useAgent();
   const { currentProject, isLoading: isProjectLoading } = useProject();
+  const inboxPolling = useInboxPollingOptional();
 
   // Get the effective role for the current project
   // Priority: project.role > agent context role
@@ -111,8 +121,10 @@ export function Sidebar() {
 
   const navItems = getNavItems();
 
-  // Calculate unread/queue count for inbox badge
-  const showInboxBadge = availability?.currentChatCount && availability.currentChatCount > 0;
+  // Inbox badge: use polling context (queue + assigned) if available, fallback to agent's chat count
+  const inboxCount = inboxPolling?.totalPending ?? availability?.currentChatCount ?? 0;
+  const hasUnread = inboxPolling?.hasUnread ?? false;
+  const showInboxBadge = inboxCount > 0;
 
   return (
     <aside className="w-64 bg-card border-r min-h-screen p-4">
@@ -142,10 +154,16 @@ export function Sidebar() {
             >
               <Icon className="w-5 h-5" />
               <span className="flex-1">{item.label}</span>
-              {/* Badge for Inbox */}
+              {/* Badge for Inbox - shows queue + assigned count */}
               {item.href === "/inbox" && showInboxBadge && (
-                <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                  {availability?.currentChatCount}
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center ${
+                    hasUnread
+                      ? "bg-red-500 text-white animate-pulse"
+                      : "bg-primary text-primary-foreground"
+                  }`}
+                >
+                  {inboxCount}
                 </span>
               )}
             </Link>

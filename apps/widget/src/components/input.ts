@@ -228,6 +228,21 @@ export class Input {
   }
 
   /**
+   * Disable/enable the input with a custom placeholder
+   */
+  setDisabled(disabled: boolean, placeholder?: string): void {
+    this.textarea.disabled = disabled;
+    this.sendButton.disabled = disabled;
+    this.element.classList.toggle("disabled", disabled);
+
+    if (disabled && placeholder) {
+      this.textarea.placeholder = placeholder;
+    } else if (!disabled) {
+      this.textarea.placeholder = this.options.placeholder || "Type a message...";
+    }
+  }
+
+  /**
    * Update primary color
    */
   setColor(color: string): void {

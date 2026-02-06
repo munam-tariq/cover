@@ -56,6 +56,15 @@ import {
   type HandoffTriggerResult,
 } from "./handoff-trigger";
 import { broadcastNewMessage } from "./realtime";
+import {
+  leadCaptureV2Interceptor,
+  getLeadCaptureV2Settings,
+  maskEmail,
+  checkAndReaskQualifyingQuestion,
+  getReaskIntro,
+  type LeadCaptureState,
+} from "./lead-capture-v2";
+import { scanAndSaveLateAnswers } from "./late-answer-detector";
 
 /**
  * Valid sources for chat sessions
@@ -189,8 +198,9 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       throw new ChatError("EMPTY_MESSAGE", "Message cannot be empty");
     }
 
-    // 1.5. Check if conversation is in handoff state (agent_active or waiting)
-    // If so, just store the message and don't process with AI
+    // 1.1. Check if conversation is in handoff state (agent_active or waiting)
+    // This MUST run BEFORE the Lead Capture interceptor to ensure agent sees all messages
+    // even if the customer is mid-qualifying-questions flow
     if (input.sessionId) {
       const handoffState = await checkConversationHandoffState(input.sessionId);
       if (handoffState.isInHandoff) {
@@ -211,6 +221,47 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       }
     }
 
+    // 1.5 Lead Capture V2 Interceptor
+    // Only runs if NOT in handoff state - qualifying questions continue normally
+    const lcV2Result = await leadCaptureV2Interceptor(
+      input.projectId,
+      input.visitorId,
+      input.sessionId,
+      sanitizedMessage
+    );
+    if (lcV2Result) {
+      // IMPORTANT: Create/get session even for qualifying question flow
+      // This ensures the widget has a valid sessionId for handoff trigger
+      const sessionId = await getOrCreateSession(
+        input.projectId,
+        input.visitorId,
+        lcV2Result.sessionId || input.sessionId,
+        input.source || "widget",
+        input.context
+      );
+
+      // Log the qualifying question conversation
+      logConversation(
+        input.projectId,
+        sessionId,
+        sanitizedMessage,
+        lcV2Result.response,
+        0,
+        0,
+        input.context,
+        requestId
+      ).catch((err) => logger.error("Failed to log qualifying conversation", err, logCtx));
+
+      return {
+        response: lcV2Result.response,
+        sessionId,
+        sources: [],
+        toolCalls: [],
+        processingTime: Date.now() - metrics.startTime,
+        requestId,
+      };
+    }
+
     // 2. Get project configuration
     const project = await getProjectConfig(input.projectId);
     if (!project) {
@@ -226,14 +277,35 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     );
 
     if (handoffResult.triggered) {
-      // Get or create session for the handoff
-      const sessionId = await getOrCreateSession(
-        input.projectId,
-        input.visitorId,
-        input.sessionId,
-        input.source || "widget",
-        input.context
-      );
+      // Use the conversation ID from handoff result if available
+      // This ensures the widget uses the SAME conversation that was put in the queue
+      // Otherwise, there's a bug where createHandoffConversation creates conversation "A"
+      // but getOrCreateSession might create conversation "B", causing a mismatch
+      let sessionId: string;
+
+      if (handoffResult.conversationId) {
+        // Handoff created/updated a conversation - use that ID
+        sessionId = handoffResult.conversationId;
+
+        // Update customer context for this conversation
+        await getOrCreateSession(
+          input.projectId,
+          input.visitorId,
+          sessionId, // Use the handoff conversation ID
+          input.source || "widget",
+          input.context
+        );
+      } else {
+        // Fallback: create session normally (for cases where handoff triggers but
+        // doesn't create a conversation, e.g., offline responses)
+        sessionId = await getOrCreateSession(
+          input.projectId,
+          input.visitorId,
+          input.sessionId,
+          input.source || "widget",
+          input.context
+        );
+      }
 
       // Log the user message that triggered handoff
       logConversation(
@@ -258,7 +330,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
           reason: handoffResult.reason,
           queuePosition: handoffResult.queuePosition,
           estimatedWait: handoffResult.estimatedWait,
-          conversationId: handoffResult.conversationId,
+          conversationId: sessionId, // Use consistent ID
         },
       };
     }
@@ -291,14 +363,32 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     );
 
     if (lowConfidenceResult.triggered) {
-      // Get or create session for the low confidence handoff
-      const sessionId = await getOrCreateSession(
-        input.projectId,
-        input.visitorId,
-        input.sessionId,
-        input.source || "widget",
-        input.context
-      );
+      // Use the conversation ID from handoff result if available
+      // This ensures the widget uses the SAME conversation that was put in the queue
+      let sessionId: string;
+
+      if (lowConfidenceResult.conversationId) {
+        // Handoff created/updated a conversation - use that ID
+        sessionId = lowConfidenceResult.conversationId;
+
+        // Update customer context for this conversation
+        await getOrCreateSession(
+          input.projectId,
+          input.visitorId,
+          sessionId, // Use the handoff conversation ID
+          input.source || "widget",
+          input.context
+        );
+      } else {
+        // Fallback: create session normally
+        sessionId = await getOrCreateSession(
+          input.projectId,
+          input.visitorId,
+          input.sessionId,
+          input.source || "widget",
+          input.context
+        );
+      }
 
       // Log the user message that triggered low confidence handoff
       logConversation(
@@ -323,7 +413,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
           reason: lowConfidenceResult.reason,
           queuePosition: lowConfidenceResult.queuePosition,
           estimatedWait: lowConfidenceResult.estimatedWait,
-          conversationId: lowConfidenceResult.conversationId,
+          conversationId: sessionId, // Use consistent ID
         },
       };
     }
@@ -383,16 +473,109 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       // Get lead capture settings
       const leadSettings = await getLeadCaptureSettings(input.projectId);
 
-      if (leadSettings.lead_capture_enabled) {
-        // Determine if the bot found an answer
-        // - Check if RAG returned relevant chunks
-        // - Check if LLM response indicates it couldn't answer
+      // Check if V2 is enabled (takes precedence over V1)
+      const v2Settings = await getLeadCaptureV2Settings(input.projectId);
+
+      if (v2Settings) {
+        // V2 flow: Check if AI can't answer for qualified/skipped users
+        const responseIndicatesNoAnswer = detectNoAnswer(response);
+        const hasRelevantContext = retrievedChunks.length > 0 &&
+          retrievedChunks.some(c => c.combinedScore > 0.3);
+        const foundAnswer = hasRelevantContext && !responseIndicatesNoAnswer;
+
+        // Look up customer state (needed for V2 + V3 recovery logic)
+        const { data: customer } = await supabaseAdmin
+          .from("customers")
+          .select("lead_capture_state")
+          .eq("project_id", input.projectId)
+          .eq("visitor_id", input.visitorId)
+          .single();
+
+        const state = customer?.lead_capture_state as LeadCaptureState | null;
+
+        if (!foundAnswer) {
+          if (state?.lead_capture_status === "qualified") {
+            // Qualified user: tell them we have their info
+            const maskedEmail = maskEmail(state.form_data.email);
+            finalResponse = response + `\n\nWe have your email on file (${maskedEmail}). I'll flag this for our team to follow up with you.`;
+          } else if (!state || state.lead_capture_status === "skipped") {
+            // Unqualified/skipped user: suggest leaving email
+            finalResponse = response + "\n\nWould you like to leave your email? Someone from our team can follow up.";
+          }
+          // If form_completed or qualifying, don't append anything (they're mid-flow)
+        }
+
+        // V3 Recovery: High-intent override + Summary hook (server-side)
+        const recoverySettings = (await getProjectRecoverySettings(input.projectId));
+        if (recoverySettings && state) {
+          const emailCaptured = !!(state as Record<string, unknown>).email ||
+            state.lead_capture_status === "qualified" ||
+            state.lead_capture_status === "form_completed";
+
+          if (!emailCaptured) {
+            // High-intent override: detect high-intent keywords in user message
+            if (recoverySettings.high_intent_override?.enabled) {
+              const keywords = recoverySettings.high_intent_override.keywords || [];
+              const defaultKeywords = ["pricing", "demo", "trial", "contact", "sales", "buy", "subscribe", "cost", "price", "plan", "enterprise", "quote"];
+              const keywordList = keywords.length > 0 ? keywords : defaultKeywords;
+              const lowerMessage = sanitizedMessage.toLowerCase();
+              const isHighIntent = keywordList.some(kw => lowerMessage.includes(kw.toLowerCase()));
+
+              if (isHighIntent && (state.lead_capture_status === "deferred" || state.lead_capture_status === "pending" || state.lead_capture_status === "skipped")) {
+                // Flag high intent in customer state
+                await supabaseAdmin
+                  .from("customers")
+                  .update({
+                    lead_capture_state: {
+                      ...state,
+                      high_intent_detected: true,
+                    },
+                  })
+                  .eq("project_id", input.projectId)
+                  .eq("visitor_id", input.visitorId);
+
+                // Append contextual email ask to response
+                finalResponse = finalResponse + "\n\nIt sounds like you're interested in learning more. Would you like to share your email so our team can follow up with personalized information?";
+              }
+            }
+
+            // Summary hook: after N messages, offer to email a summary
+            if (recoverySettings.conversation_summary_hook?.enabled) {
+              const minMessages = recoverySettings.conversation_summary_hook.min_messages || 3;
+              const messageCount = (input.conversationHistory?.length || 0) + 1;
+
+              if (messageCount >= minMessages * 2) { // *2 because history has both user and assistant
+                const hookPrompt = recoverySettings.conversation_summary_hook.prompt ||
+                  "Want me to email you a summary of this conversation?";
+
+                // Only append if we haven't already appended a high-intent message
+                const stateRecord = state as Record<string, unknown>;
+                if (!stateRecord.high_intent_detected && !stateRecord.summary_hook_shown) {
+                  finalResponse = finalResponse + `\n\n${hookPrompt}`;
+
+                  // Mark summary hook as shown
+                  await supabaseAdmin
+                    .from("customers")
+                    .update({
+                      lead_capture_state: {
+                        ...state,
+                        summary_hook_shown: true,
+                      },
+                    })
+                    .eq("project_id", input.projectId)
+                    .eq("visitor_id", input.visitorId);
+                }
+              }
+            }
+          }
+        }
+      } else if (leadSettings.lead_capture_enabled) {
+        // V1 flow (unchanged)
         const hasRelevantContext = retrievedChunks.length > 0 &&
           retrievedChunks.some(c => c.combinedScore > 0.3);
         const responseIndicatesNoAnswer = detectNoAnswer(response);
         const foundAnswer = hasRelevantContext && !responseIndicatesNoAnswer;
 
-        // Process lead capture flow
         leadCaptureResult = await handleLeadCaptureFlow(
           sessionId,
           input.projectId,
@@ -401,13 +584,10 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
           leadSettings
         );
 
-        // Append lead capture message to response if needed
         if (leadCaptureResult.shouldAppendToResponse && leadCaptureResult.responseAppendix) {
-          // If we captured an email, replace the response with confirmation
           if (leadCaptureResult.type === "email_captured") {
             finalResponse = leadCaptureResult.responseAppendix;
           } else {
-            // Otherwise append the email request
             finalResponse = response + leadCaptureResult.responseAppendix;
           }
         }
@@ -416,6 +596,30 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       // Log but don't fail the chat if lead capture has issues
       logger.error("Lead capture error", leadError, { ...logCtx, step: "lead_capture" });
     }
+
+    // 11.5 Re-ask qualifying question if user asked a new question mid-qualifying
+    try {
+      const reaskResult = await checkAndReaskQualifyingQuestion(input.projectId, input.visitorId);
+      if (reaskResult.shouldReask && reaskResult.question) {
+        finalResponse = `${finalResponse}\n\n${getReaskIntro(reaskResult.question)}`;
+        logger.info("Appended qualifying question re-ask", {
+          ...logCtx,
+          step: "qualifying_reask",
+          question: reaskResult.question.substring(0, 50),
+        });
+      }
+    } catch (reaskError) {
+      // Log but don't fail the chat if re-ask has issues
+      logger.error("Qualifying re-ask error", reaskError, { ...logCtx, step: "qualifying_reask" });
+    }
+
+    // 11.7 Late Answer Detection (async, non-blocking)
+    // Scans for late answers to skipped qualifying questions
+    scanAndSaveLateAnswers(
+      input.projectId,
+      input.visitorId,
+      sanitizedMessage
+    ).catch((err) => logger.error("Late answer scan error", err, logCtx));
 
     // 12. Log conversation asynchronously
     logConversation(
@@ -825,6 +1029,31 @@ async function storeCustomerMessageOnly(
       step: "store_customer_message",
     });
     throw error;
+  }
+}
+
+/**
+ * Get lead recovery settings for a project (V3)
+ */
+async function getProjectRecoverySettings(
+  projectId: string
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data: project } = await supabaseAdmin
+      .from("projects")
+      .select("settings")
+      .eq("id", projectId)
+      .single();
+
+    if (!project) return null;
+
+    const settings = (project.settings as Record<string, unknown>) || {};
+    const recovery = settings.lead_recovery as Record<string, unknown> | undefined;
+
+    if (!recovery?.enabled) return null;
+    return recovery;
+  } catch {
+    return null;
   }
 }
 

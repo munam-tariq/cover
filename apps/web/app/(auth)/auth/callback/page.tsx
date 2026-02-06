@@ -28,44 +28,80 @@ function AuthCallbackContent() {
       const next = searchParams.get("next") ?? "/dashboard";
 
       // Check if user is coming from invitation flow - don't create default project for invited users
-      const isInvitationFlow = next.includes("/invite/");
+      // More precise detection - must be exactly /invite/{64-char-hex-token}
+      const isInvitationFlow = /^\/invite\/[a-f0-9]{64}$/i.test(next);
 
-      // Helper function to set up new user - creates default project if none exists
+      // Helper function to check if user has pending invitations via API
+      const checkPendingInvitations = async (email: string): Promise<boolean> => {
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+          const response = await fetch(
+            `${apiUrl}/api/invitations/pending?email=${encodeURIComponent(email)}`
+          );
+
+          if (!response.ok) {
+            console.warn("Failed to check pending invitations:", response.status);
+            return false;
+          }
+
+          const data = await response.json();
+          return data.hasPendingInvitations === true;
+        } catch (err) {
+          console.warn("Error checking pending invitations:", err);
+          return false;
+        }
+      };
+
+      // Helper function to set up new user - redirects to onboarding if no projects
       // Skip for invited users since they're joining someone else's project
-      const setupNewUser = async (userId: string) => {
-        // Don't create default project for users signing up via invitation
+      // Returns the redirect path (may be onboarding for new users)
+      const setupNewUser = async (userId: string, userEmail?: string): Promise<string | null> => {
+        // Method 1: URL-based detection (existing, more precise now)
         if (isInvitationFlow) {
-          console.log("Invitation flow detected, skipping default project creation");
-          return;
+          console.log("Invitation flow detected via URL, skipping onboarding");
+          return null;
+        }
+
+        // Method 2: Check database for pending invitations
+        // This catches the case where returnUrl was lost but user has a pending invite
+        if (userEmail) {
+          const hasPendingInvites = await checkPendingInvitations(userEmail);
+          if (hasPendingInvites) {
+            console.log("User has pending invitations, skipping onboarding");
+            return null;
+          }
         }
 
         // Use .limit(1) instead of .single() to avoid errors when multiple projects exist
         const { data: existingProjects, error: fetchError } = await supabase
           .from("projects")
-          .select("id")
+          .select("id, settings")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .limit(1);
 
         if (fetchError) {
           console.error("Failed to check for existing projects:", fetchError);
-          return;
+          return null;
         }
 
-        // Only create a project if the user has none
+        // New user with no projects -> redirect to onboarding
         if (!existingProjects || existingProjects.length === 0) {
-          const { error: createError } = await supabase.from("projects").insert({
-            user_id: userId,
-            name: "My Chatbot",
-            settings: {},
-          });
-
-          if (createError) {
-            // Ignore duplicate key errors (race condition where project was just created)
-            if (!createError.message?.includes("duplicate")) {
-              console.error("Failed to create project for new user:", createError);
-            }
-          }
+          console.log("New user detected, redirecting to onboarding");
+          return "/onboarding";
         }
+
+        // Check if user has an incomplete onboarding
+        const firstProject = existingProjects[0];
+        const settings = firstProject.settings as Record<string, unknown> | null;
+        const onboarding = settings?.onboarding as Record<string, unknown> | null;
+
+        if (onboarding && !onboarding.completed_at && !onboarding.skipped) {
+          console.log("Incomplete onboarding detected, redirecting to onboarding");
+          return "/onboarding";
+        }
+
+        return null; // Normal user, proceed to dashboard
       };
 
       // First, check if we already have a session
@@ -74,8 +110,8 @@ function AuthCallbackContent() {
 
       if (existingSession?.user) {
         console.log("Session already exists, skipping code exchange");
-        await setupNewUser(existingSession.user.id);
-        router.push(next);
+        const redirectPath = await setupNewUser(existingSession.user.id, existingSession.user.email);
+        router.push(redirectPath || next);
         return;
       }
 
@@ -99,8 +135,8 @@ function AuthCallbackContent() {
 
           if (retrySession?.user) {
             console.log("Session found after exchange error, proceeding...");
-            await setupNewUser(retrySession.user.id);
-            router.push(next);
+            const redirectPath = await setupNewUser(retrySession.user.id, retrySession.user.email);
+            router.push(redirectPath || next);
             return;
           }
 
@@ -110,11 +146,12 @@ function AuthCallbackContent() {
           return;
         }
 
+        let redirectPath: string | null = null;
         if (data.user) {
-          await setupNewUser(data.user.id);
+          redirectPath = await setupNewUser(data.user.id, data.user.email);
         }
 
-        router.push(next);
+        router.push(redirectPath || next);
       } catch (err) {
         console.error("Unexpected error during auth callback:", err);
 
@@ -123,8 +160,8 @@ function AuthCallbackContent() {
 
         if (lastCheckSession?.user) {
           console.log("Session found in catch block, proceeding...");
-          await setupNewUser(lastCheckSession.user.id);
-          router.push(next);
+          const redirectPath = await setupNewUser(lastCheckSession.user.id, lastCheckSession.user.email);
+          router.push(redirectPath || next);
           return;
         }
 

@@ -12,6 +12,7 @@ import {
   Monitor,
   RefreshCw,
   Palette,
+  AlertTriangle,
 } from "lucide-react";
 import { useProject } from "@/contexts/project-context";
 
@@ -154,9 +155,9 @@ export default function EmbedPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <p className="text-muted-foreground mb-4">No project found.</p>
+          <p className="text-muted-foreground mb-4">No agent found.</p>
           <Button asChild>
-            <a href="/projects?create=true">Create Project</a>
+            <a href="/projects?create=true">Create Agent</a>
           </Button>
         </div>
       </div>
@@ -177,9 +178,19 @@ export default function EmbedPage() {
           </p>
         </div>
         <Badge variant="outline" className="text-xs">
-          Project: {currentProject.name}
+          Agent: {currentProject.name}
         </Badge>
       </div>
+
+      {/* Warning banner if no knowledge base */}
+      {currentProject.knowledgeCount === 0 && (
+        <div className="flex items-center gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+          <AlertTriangle className="h-5 w-5 shrink-0" />
+          <p className="text-sm">
+            Your agent has no knowledge base. Add content before embedding, or the widget won&apos;t be able to answer questions.
+          </p>
+        </div>
+      )}
 
       {/* Two column layout: Preview + Customization */}
       <div className="grid gap-6 lg:grid-cols-3">

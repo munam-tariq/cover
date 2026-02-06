@@ -42,6 +42,25 @@ embedRouter.get(
     const settings = (project?.settings as Record<string, unknown>) || {};
     const widgetEnabled = settings.widget_enabled !== false;
 
+    // Build lead capture V2 config if enabled
+    const lcV2 = settings.lead_capture_v2 as Record<string, unknown> | undefined;
+    const leadCaptureConfig = lcV2?.enabled ? {
+      enabled: true,
+      formFields: lcV2.form_fields,
+      hasQualifyingQuestions: Array.isArray(lcV2.qualifying_questions)
+        ? (lcV2.qualifying_questions as Array<{ enabled: boolean; question: string }>).some(q => q.enabled && q.question?.trim())
+        : false,
+      // V3: Capture mode and conversational re-ask config
+      capture_mode: lcV2.capture_mode || "email_after",
+      conversational_reask: lcV2.conversational_reask || { enabled: false },
+    } : { enabled: false };
+
+    // Build proactive engagement config if enabled
+    const proactiveSettings = settings.proactive_engagement as Record<string, unknown> | undefined;
+    const proactiveEngagementConfig = proactiveSettings?.enabled
+      ? proactiveSettings
+      : { enabled: false };
+
     // Return widget config including enabled status
     res.json({
       projectId,
@@ -57,6 +76,15 @@ embedRouter.get(
         supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "",
         supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
       },
+      // Lead capture V2 config
+      leadCapture: leadCaptureConfig,
+      // Proactive engagement config
+      proactiveEngagement: proactiveEngagementConfig,
+      // Lead recovery config (V3)
+      leadRecovery: (() => {
+        const lr = settings.lead_recovery as Record<string, unknown> | undefined;
+        return lr?.enabled ? lr : { enabled: false };
+      })(),
     });
   } catch (err) {
     logger.error("Widget config error", err, { projectId });
@@ -74,6 +102,7 @@ embedRouter.get(
         supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "",
         supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
       },
+      leadCapture: { enabled: false },
     });
   }
 });

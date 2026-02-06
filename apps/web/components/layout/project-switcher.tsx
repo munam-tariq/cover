@@ -82,7 +82,7 @@ export function ProjectSwitcher() {
         className="gap-2"
       >
         <Plus className="h-4 w-4" />
-        Create Project
+        Create Agent
       </Button>
     );
   }
@@ -103,7 +103,7 @@ export function ProjectSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-          Switch project
+          Switch agent
         </DropdownMenuLabel>
 
         {/* Projects list */}
@@ -128,14 +128,14 @@ export function ProjectSwitcher() {
           className="cursor-pointer"
         >
           <Plus className="h-4 w-4 mr-2" />
-          New Project
+          New Agent
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={handleViewAllProjects}
           className="cursor-pointer"
         >
           <FolderOpen className="h-4 w-4 mr-2" />
-          View all projects
+          View all agents
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

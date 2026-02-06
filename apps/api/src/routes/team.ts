@@ -6,7 +6,9 @@
  * - POST /api/projects/:id/members/invite - Send invitation
  * - PUT /api/projects/:id/members/:memberId - Update member settings
  * - DELETE /api/projects/:id/members/:memberId - Remove member
- * - POST /api/invitations/:token/accept - Accept invitation (public)
+ * - GET /api/invitations/pending?email=xxx - Check pending invitations (public)
+ * - GET /api/invitations/:token - Get invitation details (public)
+ * - POST /api/invitations/:token/accept - Accept invitation (auth required)
  */
 
 import { Router, Request, Response } from "express";
@@ -749,6 +751,53 @@ router.post("/invitations/:token/accept", authMiddleware, async (req: Request, r
     console.error("Error in POST /invitations/:token/accept:", error);
     res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+    });
+  }
+});
+
+/**
+ * GET /api/invitations/pending
+ * Check if email has any pending invitations (public - no auth required)
+ * Used by auth callback to determine if default project should be created
+ */
+router.get("/invitations/pending", async (req: Request, res: Response) => {
+  try {
+    const email = req.query.email as string;
+
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({
+        error: { code: "INVALID_EMAIL", message: "Valid email required" },
+      });
+    }
+
+    const { data: invitations, error: queryError } = await supabaseAdmin
+      .from("project_members")
+      .select("id, project_id, role, expires_at, projects(name)")
+      .eq("email", email.toLowerCase())
+      .eq("status", "pending")
+      .gt("expires_at", new Date().toISOString());
+
+    if (queryError) {
+      console.error("Error checking pending invitations:", queryError);
+      return res.status(500).json({
+        error: { code: "QUERY_ERROR", message: "Failed to check invitations" },
+      });
+    }
+
+    res.json({
+      hasPendingInvitations: (invitations || []).length > 0,
+      count: (invitations || []).length,
+      // Don't expose tokens or sensitive data - only project names and roles
+      invitations: (invitations || []).map((inv) => ({
+        projectName: (inv.projects as { name: string } | null)?.name || "Unknown",
+        role: inv.role,
+        expiresAt: inv.expires_at,
+      })),
+    });
+  } catch (error) {
+    console.error("Error in GET /invitations/pending:", error);
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Failed to check invitations" },
     });
   }
 });

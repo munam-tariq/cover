@@ -364,6 +364,24 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Project not found" } });
     }
 
+    // Guard: cannot enable widget without a knowledge base
+    if (newSettings?.widget_enabled === true) {
+      const { count } = await supabase
+        .from("knowledge_sources")
+        .select("*", { count: "exact", head: true })
+        .eq("project_id", id)
+        .eq("status", "ready");
+
+      if (!count || count === 0) {
+        return res.status(400).json({
+          error: {
+            code: "NO_KNOWLEDGE_BASE",
+            message: "Cannot enable widget without a knowledge base",
+          },
+        });
+      }
+    }
+
     // Build update object
     const updates: Record<string, unknown> = {};
 

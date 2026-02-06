@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
 import { useAgent } from "@/contexts/agent-context";
+import { useInboxPolling } from "@/contexts/inbox-polling-context";
 import { useInboxRealtime, QueueUpdate, ConversationUpdate } from "@/hooks/use-inbox-realtime";
 import { Button, Card, CardContent, Skeleton, Badge } from "@chatbot/ui";
 import {
@@ -171,9 +172,13 @@ function QueueListItem({
 // Main Component
 // ============================================================================
 
+// Polling interval: 30 seconds (fallback for realtime)
+const POLL_INTERVAL_MS = 30 * 1000;
+
 export default function InboxPage() {
   const { currentProject, isLoading: projectLoading } = useProject();
   const { role, availability, agent } = useAgent();
+  const { markAsSeen, pausePolling, resumePolling } = useInboxPolling();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,6 +186,7 @@ export default function InboxPage() {
   const [claiming, setClaiming] = useState<string | null>(null);
   const [filter, setFilter] = useState<"active" | "waiting" | "mine" | "all">("mine");
   const [isOwner, setIsOwner] = useState(false);
+  const [lastPolled, setLastPolled] = useState<Date | null>(null);
 
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
@@ -262,35 +268,47 @@ export default function InboxPage() {
     }
   }, [currentProject, fetchConversations]);
 
-  // Poll for updates every 10 seconds as fallback for realtime
+  // Poll for updates every 30 seconds as fallback for realtime
   useEffect(() => {
     if (!currentProject) return;
 
-    const pollInterval = setInterval(() => {
-      // Silent refresh - don't show loading state
-      const silentFetch = async () => {
-        try {
-          const response = await apiClient<{ conversations: Conversation[]; pagination: unknown; isOwner: boolean }>(
-            `/api/conversations?projectId=${currentProject.id}&limit=50`
-          );
-          setConversations(response.conversations || []);
-          setIsOwner(response.isOwner || false);
+    const silentFetch = async () => {
+      try {
+        const response = await apiClient<{ conversations: Conversation[]; pagination: unknown; isOwner: boolean }>(
+          `/api/conversations?projectId=${currentProject.id}&limit=50`
+        );
+        setConversations(response.conversations || []);
+        setIsOwner(response.isOwner || false);
 
-          const queueResponse = await apiClient<{ queue: QueueItem[]; count: number }>(
-            `/api/projects/${currentProject.id}/queue`
-          );
-          setQueue(queueResponse.queue || []);
-        } catch (err) {
-          // Silent fail - don't show error for background polling
-          console.error("[Inbox] Background poll failed:", err);
+        const queueResponse = await apiClient<{ queue: QueueItem[]; count: number }>(
+          `/api/projects/${currentProject.id}/queue`
+        );
+        setQueue(queueResponse.queue || []);
+        setLastPolled(new Date());
+
+        // Mark items as seen in global context since we're viewing inbox
+        markAsSeen();
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Inbox] Background poll completed");
         }
-      };
+      } catch (err) {
+        // Silent fail - don't show error for background polling
+        console.error("[Inbox] Background poll failed:", err);
+      }
+    };
 
-      silentFetch();
-    }, 10000); // Poll every 10 seconds
+    const pollInterval = setInterval(silentFetch, POLL_INTERVAL_MS);
 
     return () => clearInterval(pollInterval);
-  }, [currentProject]);
+  }, [currentProject, markAsSeen]);
+
+  // Pause global polling while on inbox page (we handle our own refresh)
+  useEffect(() => {
+    pausePolling();
+    markAsSeen();
+    return () => resumePolling();
+  }, [pausePolling, resumePolling, markAsSeen]);
 
   // Claim conversation from queue
   const handleClaim = async (conversationId: string) => {
@@ -402,6 +420,11 @@ export default function InboxPage() {
           </h1>
           <p className="text-muted-foreground">
             {myActiveCount} active conversation{myActiveCount !== 1 ? "s" : ""}
+            {lastPolled && (
+              <span className="text-xs ml-2">
+                · Updated {formatTime(lastPolled.toISOString())}
+              </span>
+            )}
           </p>
         </div>
         <Button variant="outline" onClick={fetchConversations}>

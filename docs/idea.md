@@ -1,42 +1,86 @@
-# Chatbot Platform: Project Vision & Overview
+# Cover: AI SDR Agent Platform
 
 ## The Big Idea
 
-**An AI-native chatbot platform built for vibe coders.**
+**An AI-powered SDR (Sales Development Representative) agent that helps businesses capture more leads, answer product questions 24/7, and reduce the cost of human sales reps.**
 
-While other chatbot platforms require you to leave your coding environment, navigate dashboards, fill forms, and copy-paste embed codes - this platform lets you do everything from within your AI coding tool.
+Cover isn't a chatbot. It's a **sales team member that never sleeps**. It understands your product, answers prospect questions, captures qualified leads, and hands off hot opportunities to your human sales team.
 
-**"You're vibe coding your app. You need a chatbot. Just ask your AI assistant to add one."**
+While traditional chatbots wait for users to ask questions and then apologize when they can't answer, Cover **proactively qualifies visitors**, captures their contact information, and ensures every conversation generates business value.
+
+**"Your AI SDR works 24/7, knows your product inside out, captures every lead, and costs a fraction of a human rep."**
+
+---
+
+## The Pivot: From Chatbot to SDR Agent
+
+| Chatbot Mindset | SDR Agent Mindset |
+|-----------------|-------------------|
+| "Answer user questions" | "Qualify visitors and capture leads" |
+| "Deflect support tickets" | "Convert conversations into pipeline" |
+| "Reduce support costs" | "Generate revenue and reduce sales costs" |
+| "Metric: tickets resolved" | "Metric: leads captured, pipeline generated" |
+| "Dead-end: I don't know" | "Dead-end: Let me get our team to follow up (captures email)" |
+| "Success: user satisfied" | "Success: lead captured + user satisfied" |
+
+### Why This Matters
+
+Every business that embeds Cover gets:
+1. **24/7 lead capture** - 70% of enquiries come after hours
+2. **Instant response** - 90% of prospects expect immediate answers
+3. **Qualified leads** - Not just emails, but context on what they need
+4. **Cost savings** - Replace repetitive SDR tasks with AI
+5. **Never misses a lead** - Every conversation is an opportunity
 
 ---
 
 ## Target Audience
 
-### Primary: Vibe Coders
+### Primary: Businesses That Need More Leads
+- **SaaS companies** - qualify trial users, answer pricing questions, capture enterprise leads
+- **Service businesses** - handle enquiries, book consultations, capture client details
+- **E-commerce** - answer product questions, capture intent, reduce cart abandonment
+- **Agencies** - qualify inbound leads, answer scope questions, route to right team
+
+### Secondary: Vibe Coders (Distribution Channel)
 - Developers using **Cursor**, **Claude Code**, or similar AI-assisted development tools
 - People who build apps conversationally with AI
-- Both technical and non-technical users who prefer natural language over complex UIs
+- MCP-first setup means Cover can be deployed in minutes from within the editor
 
-### Secondary: Traditional Developers
-- Engineers who want a simple, fast chatbot solution
-- Teams needing customer support automation
+### Tertiary: Traditional Developers
+- Engineers who want a simple, fast AI agent solution
+- Teams needing combined support + lead generation
 - Businesses wanting to add AI chat to their websites
 
 ---
 
 ## Core Value Proposition
 
-| Traditional Chatbot Setup | This Platform |
-|---------------------------|---------------|
+### For Business Owners (Buyers)
+
+| Traditional SDR Team | Cover AI SDR |
+|----------------------|--------------|
+| $50-80K/year per SDR | Fraction of the cost |
+| Works 9-5, needs breaks | Works 24/7/365 |
+| Takes weeks to train on product | Learns your product in minutes |
+| Handles ~50 conversations/day | Handles unlimited conversations |
+| Misses after-hours leads | Captures every lead, any time |
+| Inconsistent qualification | Consistent, always follows the process |
+
+### For Developers (Implementers)
+
+| Traditional Chatbot Setup | Cover AI SDR |
+|---------------------------|--------------|
 | Leave editor → Sign up → Dashboard → Configure → Copy code → Return to editor | Stay in editor → Ask AI → Done |
-| Multiple tabs, forms, clicks | One conversation |
-| Technical complexity | Natural language |
+| Multiple tabs, forms, clicks | One conversation via MCP |
+| Technical complexity | Natural language setup |
 | Context switching | Seamless flow |
 
 ### The Promise
 - **Install in one line** - Single script tag deployment
-- **Work in 15 minutes** - From zero to live chatbot
-- **No friction** - MCP-first, dashboard-second approach
+- **Live in 15 minutes** - From zero to capturing leads
+- **AI SDR from day one** - Not just answering questions, capturing leads
+- **MCP-first** - Deploy from your AI editor without leaving the flow
 
 ---
 
@@ -127,48 +171,53 @@ cover/
 
 ## Key Features
 
-### 1. Multi-Project Support
-- Users can create and manage multiple chatbot projects
-- Each project has isolated knowledge, settings, and analytics
-- Easy switching between projects in dashboard or via MCP
+### 1. Lead Capture & Qualification (Core SDR Function)
+The primary purpose of Cover - capture and qualify every visitor:
+- **Smart lead capture form** - Asks for email and phone after first message
+- **One-time capture** - New visitors only, returning visitors skip
+- **Qualified vs unqualified** - Track which leads gave contact info
+- **"We have your info" flow** - When AI can't answer, tells qualified leads their team will follow up
+- **Fallback capture** - For unqualified users, asks for email when AI hits dead-ends
+- **Leads dashboard** - Email, phone, conversations, qualification status for sales teams
 
-### 2. Knowledge Base Management
-Upload and manage knowledge sources that train your chatbot:
-- **PDF files** - Product manuals, documentation
-- **Text files** - FAQs, policies, guides
-- **URLs** - Crawl websites for content (via Firecrawl)
-- **Markdown** - Structured documentation
+### 2. Product Knowledge Engine
+Train the SDR agent on your product so it sells like your best rep:
+- **PDF files** - Product manuals, pricing docs, case studies
+- **Text files** - FAQs, objection handling, competitive positioning
+- **URLs** - Crawl your website, landing pages, docs (via Firecrawl)
+- **Markdown** - Structured sales playbooks, feature guides
 
 ### 3. RAG (Retrieval Augmented Generation) System
-Advanced document processing pipeline:
+Advanced intelligence that makes the AI SDR knowledgeable:
 - **Semantic Chunking** - Intelligent text splitting based on content structure
 - **Contextual Embeddings** - Adds surrounding context to chunks
 - **Hybrid Search** - Combines vector similarity + full-text search
 - **OpenAI Embeddings** - Uses text-embedding-3-small model
 
 ### 4. API Tool Calling
-Extend chatbot capabilities with external APIs:
-- Configure GET/POST endpoints
+Extend the SDR's capabilities with real-time data:
+- Configure GET/POST endpoints (pricing, availability, scheduling)
 - Support for API Key and Bearer token auth
 - Dynamic parameter extraction from URL patterns
-- LLM decides when to call which API
+- LLM decides when to call which API (e.g., check appointment slots)
 
-### 5. Lead Capture
-Automatic email collection when the bot can't answer:
-- Detects conversation dead-ends
-- Politely asks for visitor email
-- Stores leads linked to projects
-- Email notifications via Resend
+### 5. Human Handoff (Escalation)
+When the AI SDR needs human backup:
+- **Keyword detection** - "talk to human", "speak to agent"
+- **Intelligent routing** - Route to available agents
+- **Business hours aware** - Appropriate response based on availability
+- **Context preservation** - Full conversation history passed to human
 
-### 6. Analytics Dashboard
-Conversation insights and metrics:
-- Message counts with trend analysis
-- Top questions clustering
-- Timeline visualization
-- Period comparisons (24h, 7d, 30d)
+### 6. Analytics & Lead Dashboard
+Business impact metrics, not just conversation counts:
+- **Leads captured** - Total, by day, by source
+- **Qualification rate** - % of conversations that captured contact info
+- **Top questions** - What prospects are asking about
+- **Conversation analytics** - Volume trends, engagement metrics
+- **Lead export** - CSV export for CRM import
 
 ### 7. Embeddable Widget
-Lightweight, isolated chat interface:
+Lightweight SDR agent interface for any website:
 ```html
 <script
   src="https://your-cdn.com/widget.js"
@@ -182,8 +231,14 @@ Lightweight, isolated chat interface:
 - Mobile responsive
 - Minimal footprint
 
-### 8. MCP Server Integration
-First-class support for AI coding tools:
+### 8. Multi-Project Support
+Manage SDR agents for multiple products or clients:
+- Each project has isolated knowledge, settings, and leads
+- Easy switching between projects in dashboard or via MCP
+- Separate lead pipelines per project
+
+### 9. MCP Server Integration
+Deploy and manage from your AI editor:
 - Account-level API key authentication
 - Full project management capabilities
 - Knowledge base operations
@@ -268,13 +323,22 @@ Process with RAG pipeline:
 Mark source as "completed"
 ```
 
-### Chat Message Flow
+### SDR Conversation Flow
 ```
-Visitor sends message
+Visitor sends first message
     ↓
-Validate input (length, content)
+Is this a new visitor or returning?
     ↓
-Retrieve/create session
+NEW VISITOR:
+    ├── AI acknowledges question: "Great question! Before I answer..."
+    ├── Show lead capture form (email required, phone optional, skip button)
+    ├── Store contact info → mark as "qualified"
+    └── Continue to answer their question
+    ↓
+RETURNING VISITOR:
+    ├── Pull contact info from backend
+    ├── Skip lead capture (already qualified)
+    └── Answer their question directly
     ↓
 RAG retrieval:
     ├── Generate query embedding
@@ -288,11 +352,15 @@ Call OpenAI (GPT-4o-mini)
     ↓
 Check for tool calls → Execute if needed
     ↓
-Check lead capture conditions
+Can AI answer confidently?
+    ├── YES → Return response + sources
+    └── NO → Is visitor qualified?
+        ├── YES → "We have your email on file, our team will follow up"
+        └── NO  → "What's the best email for our team to reach you?"
     ↓
 Store session & analytics
     ↓
-Return response + sources
+Return response
 ```
 
 ### MCP Integration Flow
@@ -397,31 +465,38 @@ pnpm --filter @chatbot/widget build  # Widget only
 
 ## What Makes This Different
 
-### 1. MCP-First Design
-Other platforms bolt on API access as an afterthought. This platform was designed from the ground up with MCP as the primary interface. The dashboard exists for those who want it, but the real magic happens in your AI editor.
+### 1. SDR-First, Not Support-First
+Other chatbot platforms are built for ticket deflection. Cover is built for **lead generation**. Every conversation is an opportunity to capture a lead, not just resolve a question.
 
-### 2. Zero Context Switching
-Vibe coders stay in flow. No tab switching, no form filling, no copy-pasting between windows. Ask your AI to add a chatbot, and it happens.
+### 2. Leads Are the Primary Output
+The dashboard doesn't just show conversations - it shows **leads**. Email, phone, what they asked about, qualification status. Your sales team opens Cover and sees a list of warm leads ready for follow-up.
 
-### 3. Instant Value
-15 minutes from nothing to a working chatbot. Upload a PDF, get an embed code, paste it in your app. Done.
+### 3. Zero Friction Lead Capture
+No pre-chat forms that scare visitors away. Lead capture happens **after** the first message when the visitor is already engaged. Email + optional phone, with a skip button to prevent abandonment.
 
-### 4. Smart Defaults
-The platform makes intelligent choices so users don't have to:
-- Semantic chunking (not arbitrary splits)
-- Hybrid search (vector + text)
-- Contextual embeddings (better retrieval)
-- Lead capture (automatic business value)
+### 4. Smart Dead-End Handling
+When the AI can't answer, it's not a failure - it's a **sales opportunity**:
+- Qualified visitor: "We have your email on file, our team will follow up"
+- Unqualified visitor: "What's the best email for our team to reach you?"
+- Never: "I don't know" and leaves the visitor hanging
 
-### 5. True Isolation
-The widget uses Shadow DOM - it won't break your site's styles, and your site won't break the widget. Works everywhere.
+### 5. MCP-First Deployment
+Deploy your AI SDR from your code editor in minutes. No dashboard required for setup. MCP-native means vibe coders can add lead generation to their app in one conversation.
+
+### 6. Product Knowledge That Sells
+RAG system trained on your product docs, pricing, FAQs, and objection handling. The AI SDR answers like your best sales rep - knowledgeable, helpful, and always capturing the lead.
+
+### 7. True Isolation
+The widget uses Shadow DOM - works on any website without CSS conflicts. Drop a script tag, start capturing leads.
 
 ---
 
 ## The Vision
 
-**Democratize AI chatbots for the vibe coding era.**
+**Replace the first human SDR with AI.**
 
-As more people build software through conversation with AI, the tools they use should work the same way. This platform removes the last friction point - now adding an intelligent, knowledge-aware chatbot to your app is as simple as asking for it.
+Most businesses can't afford a 24/7 sales team. Prospects visit their website at 11pm, ask a question, get no answer, and leave forever. Cover changes that. Your AI SDR is always online, always knowledgeable, and always capturing the lead.
 
-No dashboard required. No technical expertise needed. Just vibe.
+The goal isn't to replace your entire sales team - it's to handle the **repetitive, redundant work**: answering the same product questions, capturing contact info, qualifying interest. Your human reps focus on closing deals, not answering "what's your pricing?" for the 100th time.
+
+**Cover: Your AI SDR that works 24/7, knows your product, and captures every lead.**

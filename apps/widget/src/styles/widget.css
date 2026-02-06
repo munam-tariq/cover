@@ -1234,3 +1234,371 @@
     animation: none;
   }
 }
+
+/* ============================================
+   Teaser Message (Proactive Engagement)
+   ============================================ */
+.chatbot-teaser {
+  position: absolute;
+  bottom: 80px;
+  right: 0;
+  max-width: 260px;
+  background: #ffffff;
+  border: 1px solid var(--widget-border, #e5e5e5);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 8px 12px 16px;
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 1;
+}
+
+.chatbot-teaser.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  animation: teaser-slide-up 0.4s ease-out;
+}
+
+@keyframes teaser-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Teaser tail/arrow pointing to the bubble */
+.chatbot-teaser::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  right: 24px;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-right: 1px solid var(--widget-border, #e5e5e5);
+  border-bottom: 1px solid var(--widget-border, #e5e5e5);
+  transform: rotate(45deg);
+}
+
+.chatbot-teaser-message {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--widget-text, #0a0a0a);
+  cursor: pointer;
+  text-align: left;
+}
+
+.chatbot-teaser-message:hover {
+  color: var(--widget-primary, #0a0a0a);
+}
+
+.chatbot-teaser-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--widget-muted, #737373);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.chatbot-teaser-close:hover {
+  color: var(--widget-text, #0a0a0a);
+  background: var(--widget-muted-bg, #f5f5f5);
+}
+
+/* Left position variant */
+.chatbot-widget.bottom-left .chatbot-teaser {
+  right: auto;
+  left: 0;
+}
+
+.chatbot-widget.bottom-left .chatbot-teaser::after {
+  right: auto;
+  left: 24px;
+}
+
+/* Mobile: wider teaser */
+@media (max-width: 640px) {
+  .chatbot-teaser {
+    max-width: 280px;
+    right: -10px;
+  }
+}
+
+/* Reduced motion for teaser */
+@media (prefers-reduced-motion: reduce) {
+  .chatbot-teaser,
+  .chatbot-teaser.visible {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* ============================================
+   Inline Email Field (Email Capture Cascade)
+   ============================================ */
+.chatbot-inline-email {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--widget-muted-bg, #f5f5f5);
+  border-top: 1px solid var(--widget-border, #e5e5e5);
+}
+
+.chatbot-inline-email.visible {
+  display: flex;
+  animation: inline-email-slide-down 0.25s ease-out;
+}
+
+@keyframes inline-email-slide-down {
+  0% { opacity: 0; transform: translateY(-8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.chatbot-inline-email-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--widget-border, #d1d5db);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #ffffff;
+  color: var(--widget-text, #0a0a0a);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.chatbot-inline-email-input:focus {
+  border-color: var(--widget-primary, #0a0a0a);
+  box-shadow: 0 0 0 1px var(--widget-primary, #0a0a0a)20;
+}
+
+.chatbot-inline-email-input.error {
+  border-color: #ef4444;
+  animation: inline-email-shake 0.3s ease;
+}
+
+@keyframes inline-email-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.chatbot-inline-email-submit,
+.chatbot-inline-email-dismiss {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.chatbot-inline-email-submit {
+  background: var(--widget-primary, #0a0a0a);
+  color: white;
+}
+
+.chatbot-inline-email-submit:hover {
+  opacity: 0.85;
+}
+
+.chatbot-inline-email-dismiss {
+  background: transparent;
+  color: var(--widget-muted, #737373);
+}
+
+.chatbot-inline-email-dismiss:hover {
+  background: var(--widget-border, #e5e5e5);
+  color: var(--widget-text, #0a0a0a);
+}
+
+.chatbot-inline-email-success {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #059669;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .chatbot-inline-email.visible,
+  .chatbot-inline-email-input.error {
+    animation: none;
+  }
+}
+
+/* ─── Exit Overlay (V3 Recovery) ──────────────────────────────────────────── */
+
+.chatbot-exit-overlay {
+  position: absolute;
+  bottom: 70px;
+  right: 0;
+  z-index: 10000;
+  display: none;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.chatbot-exit-overlay.visible {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+  animation: exit-overlay-fade-in 0.3s ease;
+}
+
+@keyframes exit-overlay-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chatbot-exit-overlay-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  width: 280px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.chatbot-exit-overlay-headline {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 6px 0;
+  line-height: 1.3;
+}
+
+.chatbot-exit-overlay-subtext {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 14px 0;
+  line-height: 1.4;
+}
+
+.chatbot-exit-overlay-input-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.chatbot-exit-overlay-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+  color: #111827;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+
+.chatbot-exit-overlay-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.15);
+}
+
+.chatbot-exit-overlay-input.error {
+  border-color: #ef4444;
+  animation: inline-email-shake 0.3s ease;
+}
+
+.chatbot-exit-overlay-submit {
+  padding: 8px 14px;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.chatbot-exit-overlay-submit:hover {
+  opacity: 0.9;
+}
+
+.chatbot-exit-overlay-dismiss {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+.chatbot-exit-overlay-dismiss:hover {
+  color: #6b7280;
+}
+
+.chatbot-exit-overlay-success {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #059669;
+  font-size: 14px;
+  padding: 12px 0;
+}
+
+/* Left position variant */
+:host([position="bottom-left"]) .chatbot-exit-overlay {
+  right: auto;
+  left: 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .chatbot-exit-overlay-card {
+    width: 260px;
+    padding: 16px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .chatbot-exit-overlay.visible {
+    animation: none;
+  }
+}
