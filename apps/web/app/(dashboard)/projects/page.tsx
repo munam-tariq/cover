@@ -2,17 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, FolderOpen, Calendar } from "lucide-react";
+import { Plus, FolderOpen, Calendar, Bot } from "lucide-react";
 import { Card, CardContent, Button, Skeleton } from "@chatbot/ui";
-import { useProject } from "@/contexts/project-context";
+import { useProject, type Project } from "@/contexts/project-context";
 import { CreateProjectModal } from "@/components/projects/create-project-modal";
+import Image from "next/image";
 
 /**
- * ProjectsPage - Page showing all user's projects
+ * Get company logo URL from project settings
+ */
+function getProjectLogoUrl(project: Project): string | null {
+  const settings = project.settings as Record<string, unknown> | null;
+  const onboarding = settings?.onboarding as Record<string, unknown> | null;
+  return (onboarding?.company_logo_url as string) || null;
+}
+
+/**
+ * ProjectsPage - Page showing all user's projects/agents
  *
  * Features:
  * - List of all projects with name and created date
- * - Click project to switch and go to dashboard
+ * - Click project to open Agent Studio (/projects/[projectId])
  * - Create new project button
  * - Empty state for users with no projects
  * - Opens create modal if ?create=true in URL
@@ -20,7 +30,7 @@ import { CreateProjectModal } from "@/components/projects/create-project-modal";
 export default function ProjectsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { projects, currentProject, isLoading, switchProject } = useProject();
+  const { projects, currentProject, isLoading } = useProject();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Open create modal if ?create=true in URL
@@ -33,11 +43,10 @@ export default function ProjectsPage() {
   }, [searchParams, router]);
 
   /**
-   * Handle project click - switch to it and go to dashboard
+   * Handle project click - navigate to the Agent Studio
    */
   const handleProjectClick = (projectId: string) => {
-    switchProject(projectId);
-    router.push("/");
+    router.push(`/projects/${projectId}`);
   };
 
   /**
@@ -105,6 +114,7 @@ export default function ProjectsPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => {
             const isActive = currentProject?.id === project.id;
+            const logoUrl = getProjectLogoUrl(project);
 
             return (
               <Card
@@ -115,19 +125,32 @@ export default function ProjectsPage() {
                 onClick={() => handleProjectClick(project.id)}
               >
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    {/* Logo or fallback icon */}
+                    <ProjectLogo logoUrl={logoUrl} name={project.name} />
+
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-medium truncate">{project.name}</h3>
+                      <div className="flex items-start justify-between">
+                        <h3 className="font-medium truncate">{project.name}</h3>
+                        {(() => {
+                          const settings = project.settings as Record<string, unknown> | null;
+                          const widgetEnabled = settings?.widget_enabled !== false;
+                          return widgetEnabled ? (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full shrink-0 ml-2">
+                              Live
+                            </span>
+                          ) : (
+                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full shrink-0 ml-2">
+                              Off
+                            </span>
+                          );
+                        })()}
+                      </div>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                         <Calendar className="h-3 w-3" />
                         Created {formatDate(project.createdAt)}
                       </div>
                     </div>
-                    {isActive && (
-                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full shrink-0 ml-2">
-                        Active
-                      </span>
-                    )}
                   </div>
 
                   {/* Optional: Show quick stats if available */}
@@ -153,6 +176,33 @@ export default function ProjectsPage() {
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
       />
+    </div>
+  );
+}
+
+/**
+ * ProjectLogo - Shows company logo or fallback Bot icon
+ */
+function ProjectLogo({ logoUrl, name }: { logoUrl: string | null; name: string }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (logoUrl && !hasError) {
+    return (
+      <Image
+        src={logoUrl}
+        alt={`${name} logo`}
+        width={40}
+        height={40}
+        className="rounded-lg shrink-0"
+        onError={() => setHasError(true)}
+        unoptimized
+      />
+    );
+  }
+
+  return (
+    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+      <Bot className="h-5 w-5 text-primary" />
     </div>
   );
 }

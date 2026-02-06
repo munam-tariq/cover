@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 
@@ -70,12 +70,18 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Use refs for values needed in initializeProjects to avoid re-running on navigation
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
+  const routerRef = useRef(router);
+  routerRef.current = router;
+
   /**
-   * Fetch all projects from API
+   * Fetch all projects from API (with stats for knowledge/endpoint counts)
    */
   const fetchProjects = useCallback(async () => {
     try {
-      const response = await apiClient<{ projects: Project[] }>("/api/projects");
+      const response = await apiClient<{ projects: Project[] }>("/api/projects?include_stats=true");
       return response.projects || [];
     } catch (err) {
       console.error("Failed to fetch projects:", err);
@@ -97,8 +103,8 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       if (fetchedProjects.length === 0) {
         // No projects - redirect to projects page (unless already there)
         setCurrentProject(null);
-        if (pathname !== "/projects") {
-          router.push("/projects");
+        if (pathnameRef.current !== "/projects") {
+          routerRef.current.push("/projects");
         }
         return;
       }
@@ -132,7 +138,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchProjects, pathname, router]);
+  }, [fetchProjects]);
 
   /**
    * Switch to a different project

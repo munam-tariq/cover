@@ -52,13 +52,14 @@ function AuthCallbackContent() {
         }
       };
 
-      // Helper function to set up new user - creates default project if none exists
+      // Helper function to set up new user - redirects to onboarding if no projects
       // Skip for invited users since they're joining someone else's project
-      const setupNewUser = async (userId: string, userEmail?: string) => {
+      // Returns the redirect path (may be onboarding for new users)
+      const setupNewUser = async (userId: string, userEmail?: string): Promise<string | null> => {
         // Method 1: URL-based detection (existing, more precise now)
         if (isInvitationFlow) {
-          console.log("Invitation flow detected via URL, skipping default project creation");
-          return;
+          console.log("Invitation flow detected via URL, skipping onboarding");
+          return null;
         }
 
         // Method 2: Check database for pending invitations
@@ -66,38 +67,41 @@ function AuthCallbackContent() {
         if (userEmail) {
           const hasPendingInvites = await checkPendingInvitations(userEmail);
           if (hasPendingInvites) {
-            console.log("User has pending invitations, skipping default project creation");
-            return;
+            console.log("User has pending invitations, skipping onboarding");
+            return null;
           }
         }
 
         // Use .limit(1) instead of .single() to avoid errors when multiple projects exist
         const { data: existingProjects, error: fetchError } = await supabase
           .from("projects")
-          .select("id")
+          .select("id, settings")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .limit(1);
 
         if (fetchError) {
           console.error("Failed to check for existing projects:", fetchError);
-          return;
+          return null;
         }
 
-        // Only create a project if the user has none
+        // New user with no projects -> redirect to onboarding
         if (!existingProjects || existingProjects.length === 0) {
-          const { error: createError } = await supabase.from("projects").insert({
-            user_id: userId,
-            name: "My Chatbot",
-            settings: {},
-          });
-
-          if (createError) {
-            // Ignore duplicate key errors (race condition where project was just created)
-            if (!createError.message?.includes("duplicate")) {
-              console.error("Failed to create project for new user:", createError);
-            }
-          }
+          console.log("New user detected, redirecting to onboarding");
+          return "/onboarding";
         }
+
+        // Check if user has an incomplete onboarding
+        const firstProject = existingProjects[0];
+        const settings = firstProject.settings as Record<string, unknown> | null;
+        const onboarding = settings?.onboarding as Record<string, unknown> | null;
+
+        if (onboarding && !onboarding.completed_at && !onboarding.skipped) {
+          console.log("Incomplete onboarding detected, redirecting to onboarding");
+          return "/onboarding";
+        }
+
+        return null; // Normal user, proceed to dashboard
       };
 
       // First, check if we already have a session
@@ -106,8 +110,8 @@ function AuthCallbackContent() {
 
       if (existingSession?.user) {
         console.log("Session already exists, skipping code exchange");
-        await setupNewUser(existingSession.user.id, existingSession.user.email);
-        router.push(next);
+        const redirectPath = await setupNewUser(existingSession.user.id, existingSession.user.email);
+        router.push(redirectPath || next);
         return;
       }
 
@@ -131,8 +135,8 @@ function AuthCallbackContent() {
 
           if (retrySession?.user) {
             console.log("Session found after exchange error, proceeding...");
-            await setupNewUser(retrySession.user.id, retrySession.user.email);
-            router.push(next);
+            const redirectPath = await setupNewUser(retrySession.user.id, retrySession.user.email);
+            router.push(redirectPath || next);
             return;
           }
 
@@ -142,11 +146,12 @@ function AuthCallbackContent() {
           return;
         }
 
+        let redirectPath: string | null = null;
         if (data.user) {
-          await setupNewUser(data.user.id, data.user.email);
+          redirectPath = await setupNewUser(data.user.id, data.user.email);
         }
 
-        router.push(next);
+        router.push(redirectPath || next);
       } catch (err) {
         console.error("Unexpected error during auth callback:", err);
 
@@ -155,8 +160,8 @@ function AuthCallbackContent() {
 
         if (lastCheckSession?.user) {
           console.log("Session found in catch block, proceeding...");
-          await setupNewUser(lastCheckSession.user.id, lastCheckSession.user.email);
-          router.push(next);
+          const redirectPath = await setupNewUser(lastCheckSession.user.id, lastCheckSession.user.email);
+          router.push(redirectPath || next);
           return;
         }
 

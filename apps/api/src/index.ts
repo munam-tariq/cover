@@ -19,6 +19,7 @@ import { handoffSettingsRouter } from "./routes/handoff-settings";
 import { knowledgeRouter } from "./routes/knowledge";
 import { leadCaptureRouter, leadsRouter } from "./routes/lead-capture";
 import { mcpRouter } from "./routes/mcp";
+import { onboardingRouter } from "./routes/onboarding";
 import { projectsRouter } from "./routes/projects";
 import { teamRouter } from "./routes/team";
 
@@ -81,6 +82,7 @@ app.use("/api/projects", dashboardCors, projectsRouter);
 app.use("/api/projects", dashboardCors, handoffSettingsRouter); // Handoff settings routes: /api/projects/:id/handoff-settings
 app.use("/api/projects", dashboardCors, teamRouter); // Team routes: /api/projects/:id/members/*
 app.use("/api/projects", dashboardCors, leadsRouter); // Leads routes: /api/projects/:id/leads
+app.use("/api/onboarding", dashboardCors, onboardingRouter); // Onboarding routes for new users
 
 // Widget/Public API routes (open CORS - can be called from any domain)
 // These come AFTER specific dashboard routes to avoid blocking PUT/DELETE
