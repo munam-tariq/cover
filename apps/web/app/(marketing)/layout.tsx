@@ -1,5 +1,7 @@
 import Script from "next/script";
 import { Header } from "./components/header";
+import { CursorGlow } from "./components/cursor-glow";
+import { ScrollProgress } from "./components/scroll-progress";
 
 export default function MarketingLayout({
   children,
@@ -7,7 +9,9 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="marketing-light min-h-screen bg-white text-[#09090b]">
+      <ScrollProgress />
+      <CursorGlow />
       <Header />
       {children}
       {/* SupportBase Help Chat Widget */}
@@ -17,7 +21,7 @@ export default function MarketingLayout({
         data-api-url="https://api.supportbase.app"
         data-title="Help"
         data-greeting="Hi! Have questions about SupportBase? I'm here to help."
-        data-primary-color="#2563eb"
+        data-primary-color="#3b82f6"
         data-position="bottom-right"
         strategy="lazyOnload"
       />

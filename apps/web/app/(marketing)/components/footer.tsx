@@ -1,21 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { MessageSquare } from "lucide-react";
 
-const footerLinks = {
-  product: [
-    { label: "Features", href: "#features" },
-    { label: "How It Works", href: "#how-it-works" },
-    { label: "Pricing", href: "#" },
-    { label: "Documentation", href: "#" },
+const links = {
+  Product: [
+    { label: "Features", href: "#showcase" },
+    { label: "Pricing", href: "#pricing" },
+    { label: "Blog", href: "/blog" },
   ],
-  company: [
-    { label: "About", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Contact", href: "#" },
-  ],
-  legal: [
+  Legal: [
     { label: "Privacy", href: "/privacy" },
     { label: "Terms", href: "/terms" },
   ],
@@ -23,82 +16,43 @@ const footerLinks = {
 
 export function Footer() {
   return (
-    <footer className="py-16 bg-slate-900 text-white">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
+    <footer className="border-t border-black/[0.06]">
+      <div className="max-w-5xl mx-auto px-6 py-12">
+        <div className="flex flex-col md:flex-row justify-between gap-8">
           {/* Brand */}
-          <div className="col-span-2">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-                <MessageSquare className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-xl font-bold">SupportBase</span>
-            </Link>
-            <p className="text-slate-400 text-sm max-w-xs">
-              AI customer support for small businesses. Answer questions 24/7
-              while you focus on growing.
+          <div>
+            <p className="text-sm font-medium text-zinc-900 mb-2">SupportBase</p>
+            <p className="text-xs text-zinc-400 max-w-xs">
+              AI-powered lead capture for your website. Turn visitors into
+              customers, 24/7.
             </p>
           </div>
 
-          {/* Product Links */}
-          <div>
-            <h4 className="font-semibold mb-4">Product</h4>
-            <ul className="space-y-3">
-              {footerLinks.product.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-slate-400 hover:text-white transition-colors text-sm"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Company Links */}
-          <div>
-            <h4 className="font-semibold mb-4">Company</h4>
-            <ul className="space-y-3">
-              {footerLinks.company.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-slate-400 hover:text-white transition-colors text-sm"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Legal Links */}
-          <div>
-            <h4 className="font-semibold mb-4">Legal</h4>
-            <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-slate-400 hover:text-white transition-colors text-sm"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          {/* Links */}
+          <div className="flex gap-16">
+            {Object.entries(links).map(([group, items]) => (
+              <div key={group}>
+                <p className="text-xs text-zinc-400 mb-3">{group}</p>
+                <ul className="space-y-2">
+                  {items.map((item) => (
+                    <li key={item.label}>
+                      <Link
+                        href={item.href}
+                        className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors"
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-slate-500 text-sm">
-            &copy; {new Date().getFullYear()} SupportBase. All rights reserved.
-          </p>
-          <p className="text-slate-500 text-sm">
-            Built with love for small businesses
+        <div className="mt-12 pt-6 border-t border-black/[0.04]">
+          <p className="text-[11px] text-zinc-400">
+            &copy; {new Date().getFullYear()} SupportBase
           </p>
         </div>
       </div>
