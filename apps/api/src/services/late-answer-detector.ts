@@ -24,6 +24,10 @@ import {
   type LeadCaptureState,
   type QualifyingAnswer,
 } from "./lead-capture-v2";
+import {
+  getMatchLateAnswersMessages,
+  getExtractEmbeddedAnswerMessages,
+} from "./prompts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -199,30 +203,12 @@ async function matchAnswersToQuestions(
       .map((q, i) => `${i + 1}. [Q${q.index}] ${q.question}`)
       .join("\n");
 
+    const msgs = getMatchLateAnswersMessages(questionsText, message);
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        {
-          role: "system",
-          content: `Analyze if this message contains answers to any of these business qualification questions.
-
-QUESTIONS:
-${questionsText}
-
-Return ONLY a JSON object with "answers" array:
-{"answers": [{ "questionIndex": <number from Q#>, "answer": "<extracted answer>", "confidence": <0.0-1.0> }]}
-
-Rules:
-- Only include questions where you found a clear, relevant answer
-- Extract clean, normalized answers (e.g., "500" not "about five hundred")
-- Confidence should reflect how certain you are this answers THAT specific question
-- If message contains a question AND an answer, still extract the answer part
-- Return empty array if no answers found: {"answers": []}`,
-        },
-        {
-          role: "user",
-          content: message,
-        },
+        { role: "system", content: msgs.system },
+        { role: "user", content: msgs.user },
       ],
       max_tokens: 300,
       temperature: 0,
@@ -485,30 +471,12 @@ export async function extractEmbeddedAnswer(
   userMessage: string
 ): Promise<{ answer: string; confidence: number } | null> {
   try {
+    const msgs = getExtractEmbeddedAnswerMessages(question, userMessage);
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        {
-          role: "system",
-          content: `The user's message contains BOTH:
-1. An answer to a qualifying question
-2. A new question they're asking
-
-Extract ONLY the answer part that responds to the qualifying question.
-
-Qualifying question: "${question}"
-
-Return JSON: {"hasAnswer": boolean, "answer": "extracted answer or null", "confidence": 0.0-1.0}
-
-Rules:
-- If no relevant answer found, return {"hasAnswer": false, "answer": null, "confidence": 0}
-- Extract clean, normalized answers
-- Confidence reflects how clearly this answers the qualifying question`,
-        },
-        {
-          role: "user",
-          content: userMessage,
-        },
+        { role: "system", content: msgs.system },
+        { role: "user", content: msgs.user },
       ],
       max_tokens: 100,
       temperature: 0,

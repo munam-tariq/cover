@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Wifi,
   WifiOff,
+  Phone,
 } from "lucide-react";
 
 // ============================================================================
@@ -37,6 +38,8 @@ interface Conversation {
   lastMessageAt: string | null;
   queueEnteredAt: string | null;
   resolvedAt: string | null;
+  isVoiceCall?: boolean;
+  voiceDurationSeconds?: number;
   lastMessage?: {
     content: string;
     senderType: string;
@@ -105,10 +108,15 @@ function ConversationListItem({ conversation, showAgent }: { conversation: Conve
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="font-medium truncate">{displayName}</span>
+              {conversation.isVoiceCall && (
+                <Phone className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+              )}
               <span className={`w-2 h-2 rounded-full ${config.color}`} />
             </div>
             <p className="text-sm text-muted-foreground truncate max-w-xs">
-              {conversation.lastMessage?.content || "No messages yet"}
+              {conversation.isVoiceCall
+                ? `Voice call${conversation.voiceDurationSeconds ? ` · ${Math.floor(conversation.voiceDurationSeconds / 60)}:${String(conversation.voiceDurationSeconds % 60).padStart(2, "0")}` : ""}`
+                : conversation.lastMessage?.content || "No messages yet"}
             </p>
             {showAgent && agentName && (
               <p className="text-xs text-muted-foreground mt-1">

@@ -12,6 +12,17 @@ import { openai } from "../lib/openai";
 import { supabaseAdmin } from "../lib/supabase";
 import { logger, type LogContext } from "../lib/logger";
 import { extractEmbeddedAnswer } from "./late-answer-detector";
+import {
+  pickRandom,
+  UNCERTAIN_ACKNOWLEDGMENTS,
+  getFirstQuestionMessage,
+  getNextQuestionMessage,
+  getSkipMessage,
+  getQualifyingCompleteMessage,
+  getExtractAnswerMessages,
+  getClassifyIntentMessages,
+  getVoiceTranscriptExtractionMessages,
+} from "./prompts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -92,98 +103,9 @@ interface InterceptorResult {
   sessionId?: string;
 }
 
-// ─── SDR-Style Conversational Messages ────────────────────────────────────────
-// Natural, warm, human-sounding responses like a senior SDR would use
-
-const FIRST_QUESTION_INTROS = [
-  "Love it! Just a quick one for me —",
-  "Awesome! One quick thing I'm curious about —",
-  "Perfect! Just wondering —",
-  "Great to meet you! Quick question —",
-  "Thanks for reaching out! I'd love to know —",
-];
-
-const NEXT_QUESTION_TRANSITIONS = [
-  "Perfect, that helps a lot! And",
-  "Great, thanks for sharing! Also curious —",
-  "Awesome, good to know! One more —",
-  "That's really helpful! Last thing —",
-  "Got it, appreciate that! Quick follow-up —",
-];
-
-const ANSWER_ACKNOWLEDGMENTS = [
-  "Perfect!",
-  "Love it!",
-  "Awesome!",
-  "Great!",
-  "That's helpful!",
-];
-
-const SKIP_TRANSITIONS = [
-  "No worries at all! Let me ask you this instead —",
-  "Totally fine! How about this one —",
-  "All good! Different question —",
-  "No problem! Let's try this —",
-];
-
-const QUALIFYING_COMPLETE_MESSAGES = [
-  "Awesome, thanks for sharing! Now, how can I help you today?",
-  "Perfect, I really appreciate that! What can I help you with?",
-  "Great, thanks so much! What brings you here today?",
-  "Love it, thanks! So tell me — what can I help you figure out?",
-];
-
-const REASK_INTROS = [
-  "Oh, one thing I forgot to ask earlier —",
-  "By the way, I'm still curious —",
-  "Quick thing before I forget —",
-  "Oh, and I meant to ask —",
-];
-
-/**
- * Pick a random message from an array for natural variation
- */
-function pickRandom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-/**
- * Get a friendly intro for the first qualifying question
- */
-function getFirstQuestionMessage(question: string): string {
-  return `${pickRandom(FIRST_QUESTION_INTROS)} ${question}`;
-}
-
-/**
- * Get a warm transition to the next qualifying question
- */
-function getNextQuestionMessage(question: string, isLastQuestion: boolean): string {
-  if (isLastQuestion) {
-    return `${pickRandom(ANSWER_ACKNOWLEDGMENTS)} Last one — ${question}`;
-  }
-  return `${pickRandom(NEXT_QUESTION_TRANSITIONS)} ${question}`;
-}
-
-/**
- * Get a friendly skip-to-next message
- */
-function getSkipMessage(question: string): string {
-  return `${pickRandom(SKIP_TRANSITIONS)} ${question}`;
-}
-
-/**
- * Get a warm completion message when all questions are done
- */
-function getQualifyingCompleteMessage(): string {
-  return pickRandom(QUALIFYING_COMPLETE_MESSAGES);
-}
-
-/**
- * Get a natural re-ask intro for appending to chat responses
- */
-export function getReaskIntro(question: string): string {
-  return `${pickRandom(REASK_INTROS)} ${question}`;
-}
+// SDR messages and prompt builders are centralized in ./prompts.ts
+// Re-export getReaskIntro for external consumers (chat-engine)
+export { getReaskIntro } from "./prompts";
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
@@ -474,8 +396,12 @@ export async function leadCaptureV2Interceptor(
         .eq("id", customer.id);
 
       const isLastQuestion = nextIndex === enabledQuestions.length - 1;
+      // Use uncertain acknowledgment if the user wasn't sure
+      const ack = extracted.isUncertain ? pickRandom(UNCERTAIN_ACKNOWLEDGMENTS) : undefined;
       return {
-        response: getNextQuestionMessage(nextQuestion.question, isLastQuestion),
+        response: ack
+          ? `${ack} ${getNextQuestionMessage(nextQuestion.question, isLastQuestion)}`
+          : getNextQuestionMessage(nextQuestion.question, isLastQuestion),
         sessionId,
       };
     }
@@ -908,29 +834,29 @@ export async function updateVisitCount(
 async function extractQualifyingAnswer(
   question: string,
   userResponse: string
-): Promise<{ answer: string }> {
+): Promise<{ answer: string; isUncertain: boolean }> {
   try {
+    const msgs = getExtractAnswerMessages(question, userResponse);
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        {
-          role: "system",
-          content: `Extract a concise answer from the user's response to the question. Return ONLY the extracted answer, nothing else. If the response doesn't contain a clear answer, return "N/A".`,
-        },
-        {
-          role: "user",
-          content: `Question: "${question}"\nUser's response: "${userResponse}"\n\nExtracted answer:`,
-        },
+        { role: "system", content: msgs.system },
+        { role: "user", content: msgs.user },
       ],
       max_tokens: 100,
       temperature: 0,
+      response_format: { type: "json_object" },
     });
 
-    const answer = completion.choices[0]?.message?.content?.trim() || "N/A";
-    return { answer };
+    const content = completion.choices[0]?.message?.content?.trim() || "{}";
+    const result = JSON.parse(content);
+    return {
+      answer: result.answer || "N/A",
+      isUncertain: result.isUncertain === true,
+    };
   } catch (err) {
     logger.error("Failed to extract qualifying answer", err, { step: "extract_answer" });
-    return { answer: userResponse.trim().substring(0, 200) }; // Fallback: use raw response
+    return { answer: userResponse.trim().substring(0, 200), isUncertain: false };
   }
 }
 
@@ -953,28 +879,12 @@ async function classifyQualifyingIntent(
   userMessage: string
 ): Promise<IntentClassification> {
   try {
+    const msgs = getClassifyIntentMessages(question, userMessage);
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        {
-          role: "system",
-          content: `You are classifying user messages in a chatbot conversation.
-The chatbot just asked the user a qualifying question, and the user responded.
-Classify the user's response into one of these categories:
-
-1. "answer" - The user is providing an answer (direct or indirect) to the question asked. This includes partial answers, "I don't know" responses, or any attempt to address the question.
-2. "new_question" - The user is asking a NEW question or making a request that is clearly unrelated to the qualifying question. Examples: asking about pricing, features, refund policy, how something works, etc.
-3. "off_topic" - The user is going off-topic, expressing frustration, refusing to answer, or providing clearly irrelevant information without asking a new question.
-
-Respond ONLY with valid JSON: {"intent": "answer" | "new_question" | "off_topic", "confidence": 0.0-1.0, "reason": "brief explanation"}`,
-        },
-        {
-          role: "user",
-          content: `Qualifying question: "${question}"
-User's response: "${userMessage}"
-
-Classification:`,
-        },
+        { role: "system", content: msgs.system },
+        { role: "user", content: msgs.user },
       ],
       max_tokens: 100,
       temperature: 0,
@@ -1137,7 +1047,7 @@ export async function checkAndReaskQualifyingQuestion(
 /**
  * Save a qualifying answer and update lead record.
  */
-async function saveQualifyingAnswer(
+export async function saveQualifyingAnswer(
   customerId: string,
   projectId: string,
   state: LeadCaptureState,
@@ -1199,7 +1109,7 @@ async function syncSkippedAnswerToLead(
 /**
  * Mark a customer as fully qualified (form + all questions answered).
  */
-async function markAsQualified(
+export async function markAsQualified(
   customerId: string,
   projectId: string
 ): Promise<void> {
@@ -1246,4 +1156,148 @@ export function maskEmail(email: string): string {
   if (!local || !domain) return "***@***";
   if (local.length <= 1) return `${local}***@${domain}`;
   return `${local[0]}***@${domain}`;
+}
+
+// ─── Voice Transcript Answer Extraction ───────────────────────────────────────
+
+/**
+ * Extract qualifying answers from a voice call transcript using LLM.
+ * Called from the Vapi webhook after a call ends (fire-and-forget).
+ *
+ * Looks at the transcript, finds answers to unanswered qualifying questions,
+ * saves them to the lead record, and updates qualifying status.
+ */
+export async function extractQualifyingAnswersFromVoiceTranscript(
+  projectId: string,
+  visitorId: string,
+  callMessages: Array<{ role: string; message?: string; content?: string }>
+): Promise<void> {
+  const logCtx: LogContext = { projectId, visitorId, step: "voice_qualifying_extract" };
+
+  // 1. Get V2 settings → enabled qualifying questions
+  const v2Settings = await getLeadCaptureV2Settings(projectId);
+  if (!v2Settings) return;
+
+  const enabledQuestions = v2Settings.qualifying_questions.filter(q => q.enabled && q.question.trim());
+  if (enabledQuestions.length === 0) return;
+
+  // 2. Get customer by visitorId → lead_capture_state
+  const customer = await getCustomerByVisitorId(projectId, visitorId);
+  if (!customer) {
+    logger.warn("[Voice Extract] No customer found for visitor", logCtx);
+    return;
+  }
+
+  const state = customer.lead_capture_state;
+
+  // 3. Determine which questions are unanswered
+  const answeredQuestions = new Set(
+    (state?.qualifying_answers || [])
+      .filter(a => a.answer !== "[skipped]")
+      .map(a => a.question.toLowerCase().trim())
+  );
+
+  const unansweredQuestions = enabledQuestions.filter(
+    q => !answeredQuestions.has(q.question.toLowerCase().trim())
+  );
+
+  if (unansweredQuestions.length === 0) {
+    logger.info("[Voice Extract] All qualifying questions already answered", logCtx);
+    return;
+  }
+
+  // 4. Build transcript text
+  const transcriptText = callMessages
+    .filter(m => {
+      const content = (m.message || m.content || "").trim();
+      return content && (m.role === "user" || m.role === "assistant" || m.role === "bot");
+    })
+    .map(m => {
+      const role = m.role === "user" ? "Caller" : "Agent";
+      const content = m.message || m.content || "";
+      return `${role}: ${content}`;
+    })
+    .join("\n");
+
+  if (!transcriptText) {
+    logger.info("[Voice Extract] Empty transcript, skipping", logCtx);
+    return;
+  }
+
+  // 5. LLM extraction
+  const questionsText = unansweredQuestions
+    .map((q, i) => `  ${i + 1}. "${q.question}"`)
+    .join("\n");
+
+  try {
+    const msgs = getVoiceTranscriptExtractionMessages(questionsText, transcriptText);
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: msgs.system },
+        { role: "user", content: msgs.user },
+      ],
+      max_tokens: 500,
+      temperature: 0,
+      response_format: { type: "json_object" },
+    });
+
+    const content = completion.choices[0]?.message?.content || "{}";
+    const result = JSON.parse(content) as {
+      answers: Array<{ question: string; answer: string; confidence: number }>;
+    };
+
+    const validAnswers = (result.answers || []).filter(a => a.confidence > 0.6);
+
+    if (validAnswers.length === 0) {
+      logger.info("[Voice Extract] No qualifying answers found in transcript", logCtx);
+      return;
+    }
+
+    logger.info(`[Voice Extract] Found ${validAnswers.length} qualifying answers`, logCtx);
+
+    // 6. Save each answer
+    // Refresh state to get the latest
+    const freshCustomer = await getCustomerByVisitorId(projectId, visitorId);
+    if (!freshCustomer) return;
+    let currentState = freshCustomer.lead_capture_state || state;
+
+    for (const extracted of validAnswers) {
+      const answer: QualifyingAnswer = {
+        question: extracted.question,
+        answer: extracted.answer,
+        raw_response: `[Extracted from voice transcript]`,
+      };
+
+      await saveQualifyingAnswer(freshCustomer.id, projectId, currentState!, answer);
+
+      // Update local state for next iteration
+      const currentIndex = currentState?.current_qualifying_index || 0;
+      currentState = {
+        ...currentState!,
+        qualifying_answers: [...(currentState?.qualifying_answers || []), answer],
+        current_qualifying_index: currentIndex + 1,
+      };
+
+      // Update customer state
+      await supabaseAdmin
+        .from("customers")
+        .update({ lead_capture_state: currentState })
+        .eq("id", freshCustomer.id);
+    }
+
+    // 7. Check if all questions are now answered
+    const allAnswered = enabledQuestions.every(q => {
+      const qText = q.question.toLowerCase().trim();
+      return answeredQuestions.has(qText) ||
+        validAnswers.some(a => a.question.toLowerCase().trim() === qText);
+    });
+
+    if (allAnswered) {
+      await markAsQualified(freshCustomer.id, projectId);
+      logger.info("[Voice Extract] All qualifying questions answered — marked as qualified", logCtx);
+    }
+  } catch (err) {
+    logger.error("[Voice Extract] LLM extraction failed", err, logCtx);
+  }
 }

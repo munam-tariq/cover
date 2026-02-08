@@ -19,6 +19,9 @@ const generateVersion = () => {
 async function build() {
   const version = generateVersion();
 
+  // Resolve the `events` polyfill for browser usage (needed by @vapi-ai/web)
+  const eventsPolyfill = require.resolve("events/");
+
   // Build main widget (widget-app.js - loaded by the loader)
   const widgetCtx = await esbuild.context({
     entryPoints: ["src/widget.ts"],
@@ -28,9 +31,14 @@ async function build() {
     target: ["es2018"],
     outfile: "dist/widget-app.js",
     sourcemap: isDev,
+    platform: "browser",
+    alias: {
+      events: eventsPolyfill,
+    },
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"',
       __WIDGET_CSS__: JSON.stringify(cssContent),
+      global: "globalThis",
     },
     banner: {
       js: `/* SupportBase Widget v${version} */`,

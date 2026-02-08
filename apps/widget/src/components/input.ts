@@ -18,6 +18,8 @@ export interface InputOptions {
   primaryColor: string;
   placeholder?: string;
   onInput?: () => void; // Called when user types (for typing indicators)
+  voiceEnabled?: boolean;
+  onVoiceClick?: () => void;
 }
 
 export class Input {
@@ -51,6 +53,53 @@ export class Input {
 
     textareaWrapper.appendChild(textarea);
     container.appendChild(textareaWrapper);
+
+    // Voice/mic button (only if voice is enabled)
+    if (this.options.voiceEnabled) {
+      const micButton = document.createElement("button");
+      micButton.type = "button";
+      micButton.className = "cb-voice-input-btn";
+      micButton.setAttribute("aria-label", "Start voice call");
+      micButton.title = "Voice call";
+
+      const micSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      micSvg.setAttribute("width", "18");
+      micSvg.setAttribute("height", "18");
+      micSvg.setAttribute("viewBox", "0 0 24 24");
+      micSvg.setAttribute("fill", "none");
+      micSvg.setAttribute("stroke", "currentColor");
+      micSvg.setAttribute("stroke-width", "2");
+      micSvg.setAttribute("aria-hidden", "true");
+
+      const micPath1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      micPath1.setAttribute("d", "M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z");
+      micSvg.appendChild(micPath1);
+
+      const micPath2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      micPath2.setAttribute("d", "M19 10v2a7 7 0 0 1-14 0v-2");
+      micSvg.appendChild(micPath2);
+
+      const micLine1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      micLine1.setAttribute("x1", "12");
+      micLine1.setAttribute("y1", "19");
+      micLine1.setAttribute("x2", "12");
+      micLine1.setAttribute("y2", "23");
+      micSvg.appendChild(micLine1);
+
+      const micLine2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      micLine2.setAttribute("x1", "8");
+      micLine2.setAttribute("y1", "23");
+      micLine2.setAttribute("x2", "16");
+      micLine2.setAttribute("y2", "23");
+      micSvg.appendChild(micLine2);
+
+      micButton.appendChild(micSvg);
+      container.appendChild(micButton);
+
+      micButton.addEventListener("click", () => {
+        this.options.onVoiceClick?.();
+      });
+    }
 
     // Send button
     const sendButton = document.createElement("button");
