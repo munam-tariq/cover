@@ -46,7 +46,7 @@ export class Input {
 
     // Textarea
     const textarea = document.createElement("textarea");
-    textarea.placeholder = this.options.placeholder || "Type a message...";
+    textarea.placeholder = this.options.placeholder || "Ask anything...";
     textarea.rows = 1;
     textarea.setAttribute("aria-label", "Message input");
     textarea.setAttribute("maxlength", MAX_MESSAGE_LENGTH.toString());
@@ -106,7 +106,7 @@ export class Input {
     sendButton.type = "button";
     sendButton.className = "chatbot-send";
     sendButton.setAttribute("aria-label", "Send message");
-    sendButton.style.backgroundColor = this.options.primaryColor;
+    // Gradient send button handled via CSS — no inline style needed
 
     // Send icon
     const sendIcon = this.createSendIcon();
@@ -295,6 +295,7 @@ export class Input {
    * Update primary color
    */
   setColor(color: string): void {
-    this.sendButton.style.backgroundColor = color;
+    // Accent color set via CSS custom property on parent — gradient in CSS handles the rest
+    this.sendButton.style.setProperty("--widget-accent", color);
   }
 }

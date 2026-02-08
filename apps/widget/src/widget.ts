@@ -4,6 +4,10 @@
  * A lightweight, embeddable chat widget that loads via a single script tag.
  * Uses Shadow DOM for style isolation and works on any website.
  *
+ * Architecture: Pill Bar + Panel
+ * - The pill (horizontal input bar) is always visible at the bottom center
+ * - The panel (conversation) slides up from the pill when active
+ *
  * Usage:
  * <script
  *   src="https://cdn.yoursite.com/widget.js"
@@ -13,7 +17,6 @@
  */
 
 import { ChatWindow, type LeadRecoveryConfig } from "./components/chat-window";
-import { Bubble } from "./components/bubble";
 import { TeaserMessage } from "./components/teaser-message";
 import { ExitOverlay } from "./components/exit-overlay";
 import { submitInlineEmail } from "./utils/api";
@@ -51,7 +54,7 @@ export interface VoiceConfig {
 export interface WidgetConfig {
   projectId: string;
   apiUrl?: string;
-  position?: "bottom-right" | "bottom-left";
+  position?: "bottom-center" | "bottom-right" | "bottom-left";
   primaryColor?: string;
   greeting?: string;
   title?: string;
@@ -62,7 +65,7 @@ export interface WidgetConfig {
  */
 const DEFAULT_CONFIG: Omit<Required<WidgetConfig>, "projectId"> = {
   apiUrl: "https://api.supportbase.app",
-  position: "bottom-right",
+  position: "bottom-center",
   primaryColor: "#0a0a0a",
   greeting: "Hi! How can I help you today?",
   title: "Chat with us",
@@ -75,7 +78,6 @@ class ChatbotWidget {
   private config!: Required<WidgetConfig>;
   private container: HTMLElement | null = null;
   private shadowRoot: ShadowRoot | null = null;
-  private bubble: Bubble | null = null;
   private chatWindow: ChatWindow | null = null;
   private isOpen = false;
   private leadCaptureConfig: Record<string, unknown> | null = null;
@@ -141,14 +143,7 @@ class ChatbotWidget {
     wrapper.className = `chatbot-widget ${this.config.position}`;
     this.shadowRoot.appendChild(wrapper);
 
-    // Create bubble
-    this.bubble = new Bubble({
-      onClick: () => this.toggle(),
-      primaryColor: this.config.primaryColor,
-    });
-    wrapper.appendChild(this.bubble.element);
-
-    // Create chat window
+    // Create chat window (pill + panel architecture)
     this.chatWindow = new ChatWindow({
       projectId: this.config.projectId,
       apiUrl: this.config.apiUrl,
@@ -180,7 +175,7 @@ class ChatbotWidget {
       console.log("[Chatbot Widget] Initialized", {
         projectId: this.config.projectId,
         apiUrl: this.config.apiUrl,
-        realtimeEnabled: !!(window as Record<string, unknown>).__WIDGET_CONFIG__,
+        realtimeEnabled: !!(window as unknown as Record<string, unknown>).__WIDGET_CONFIG__,
         proactiveEnabled: !!this.proactiveConfig?.enabled,
       });
     }
@@ -231,7 +226,7 @@ class ChatbotWidget {
 
       // Store realtime config for realtime.ts to use
       if (data.realtime?.supabaseUrl && data.realtime?.supabaseAnonKey) {
-        (window as Record<string, unknown>).__WIDGET_CONFIG__ = {
+        (window as unknown as Record<string, unknown>).__WIDGET_CONFIG__ = {
           supabaseUrl: data.realtime.supabaseUrl,
           supabaseAnonKey: data.realtime.supabaseAnonKey,
         };
@@ -250,7 +245,7 @@ class ChatbotWidget {
   }
 
   /**
-   * Toggle the chat window
+   * Toggle the chat panel
    */
   toggle(): void {
     if (this.isOpen) {
@@ -261,37 +256,32 @@ class ChatbotWidget {
   }
 
   /**
-   * Open the chat window
+   * Open the chat panel
    */
   open(): void {
     if (this.isOpen) return;
 
     this.isOpen = true;
-    this.chatWindow?.show();
-    this.bubble?.setActive(true);
+    this.chatWindow?.showPanel();
 
     // Proactive engagement: chat opened, dismiss triggers
     this.teaserMessage?.hide();
-    this.bubble?.hideBadge();
+    this.chatWindow?.hidePillNotification();
     this.triggerService?.setChatOpened();
   }
 
   /**
-   * Close the chat window
+   * Close the chat panel (pill stays visible)
    */
   close(): void {
     if (!this.isOpen) return;
 
     this.isOpen = false;
-    this.chatWindow?.hide();
-    this.bubble?.setActive(false);
-
-    // Focus bubble after closing for accessibility
-    this.bubble?.focus();
+    this.chatWindow?.hidePanel();
   }
 
   /**
-   * Check if chat is open
+   * Check if chat panel is open
    */
   isOpened(): boolean {
     return this.isOpen;
@@ -303,7 +293,6 @@ class ChatbotWidget {
   updateConfig(newConfig: Partial<WidgetConfig>): void {
     if (newConfig.primaryColor) {
       this.config.primaryColor = newConfig.primaryColor;
-      this.bubble?.setColor(newConfig.primaryColor);
       this.chatWindow?.setColor(newConfig.primaryColor);
     }
 
@@ -321,10 +310,7 @@ class ChatbotWidget {
   }
 
   /**
-   * Destroy the widget
-   */
-  /**
-   * Initialize proactive engagement: teaser, badge, and trigger service
+   * Initialize proactive engagement: teaser, notification, and trigger service
    */
   private initProactiveEngagement(wrapper: HTMLDivElement): void {
     if (!this.proactiveConfig) return;
@@ -371,12 +357,12 @@ class ChatbotWidget {
       case "teaser":
         this.teaserMessage?.show();
         if (this.proactiveConfig?.badge.enabled) {
-          this.bubble?.showBadge();
+          this.chatWindow?.showPillNotification();
         }
         break;
 
       case "badge":
-        this.bubble?.showBadge();
+        this.chatWindow?.showPillNotification();
         break;
 
       case "auto_open":
@@ -390,7 +376,7 @@ class ChatbotWidget {
         } else {
           this.teaserMessage?.show();
           if (this.proactiveConfig?.badge.enabled) {
-            this.bubble?.showBadge();
+            this.chatWindow?.showPillNotification();
           }
         }
         break;
@@ -474,7 +460,6 @@ class ChatbotWidget {
       this.container.remove();
       this.container = null;
       this.shadowRoot = null;
-      this.bubble = null;
       this.chatWindow = null;
       this.isOpen = false;
     }

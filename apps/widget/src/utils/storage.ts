@@ -106,6 +106,8 @@ export interface LeadCaptureLocalState {
   hasCompletedForm: boolean;
   hasCompletedQualifying: boolean;
   firstMessage?: string;
+  hasProvidedEmail?: boolean;
+  captureSource?: string;
 }
 
 export function getLeadCaptureState(projectId: string): LeadCaptureLocalState | null {

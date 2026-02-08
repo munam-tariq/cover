@@ -1,13 +1,24 @@
 /**
- * Chat Window Component
+ * Chat Window Component — Pill Bar + Panel Architecture
  *
- * The main chat interface that contains header, messages, and input.
+ * The main chat interface with a horizontal pill bar (always visible)
+ * and a slide-up conversation panel.
+ *
+ * Structure:
+ *   .chatbot-wrapper
+ *     .chatbot-panel  (hidden until first message)
+ *       .chatbot-header
+ *       .chatbot-messages
+ *     .chatbot-pill   (always visible — contains input)
+ *       .cb-pill-icon
+ *       .chatbot-input-area
+ *
  * Features:
  * - Message history with persistence
  * - Typing indicator during API calls
  * - Auto-scroll to new messages
  * - Focus trap for accessibility
- * - Escape key to close
+ * - Escape key to minimize panel
  * - Error handling with user-friendly messages
  */
 
@@ -77,6 +88,7 @@ export interface LeadRecoveryConfig {
   return_visit?: { enabled: boolean; max_visits_before_stop: number; welcome_back_message: string };
   high_intent_override?: { enabled: boolean; keywords: string[]; override_cooldowns: boolean };
   conversation_summary_hook?: { enabled: boolean; min_messages: number; prompt: string };
+  exit_intent_overlay?: { enabled: boolean; headline?: string; subtext?: string };
 }
 
 export interface ChatWindowOptions {
@@ -93,6 +105,8 @@ export interface ChatWindowOptions {
 
 export class ChatWindow {
   element: HTMLElement;
+  private panel: HTMLElement;
+  private pill: HTMLElement;
   private messagesContainer: HTMLElement;
   private input: Input;
   private typingIndicator: TypingIndicator;
@@ -100,6 +114,7 @@ export class ChatWindow {
   private messages: StoredMessage[] = [];
   private visitorId: string;
   private sessionId: string | null = null;
+  private isPanelVisible = false;
   private isVisible = false;
   private focusableElements: HTMLElement[] = [];
   private lastFocusedElement: HTMLElement | null = null;
@@ -147,6 +162,8 @@ export class ChatWindow {
     this.presenceManager = new PresenceManager(options.apiUrl, this.visitorId);
 
     this.element = this.createElement();
+    this.panel = this.element.querySelector(".chatbot-panel") as HTMLElement;
+    this.pill = this.element.querySelector(".chatbot-pill") as HTMLElement;
     this.messagesContainer = this.element.querySelector(
       ".chatbot-messages"
     ) as HTMLElement;
@@ -156,9 +173,11 @@ export class ChatWindow {
       onClick: () => this.handleHumanButtonClick(),
       text: "Talk to a human",
     });
-    // Insert human button before input container
-    const inputContainer = this.element.querySelector(".chatbot-input-container")!;
-    inputContainer.parentNode?.insertBefore(this.humanButton.element, inputContainer);
+    // Insert human button before the messages bottom (inside panel)
+    this.messagesContainer.parentNode?.insertBefore(
+      this.humanButton.element,
+      this.messagesContainer.nextSibling
+    );
 
     // Create input
     this.input = new Input({
@@ -168,7 +187,12 @@ export class ChatWindow {
       voiceEnabled: !!options.voiceConfig?.enabled,
       onVoiceClick: () => this.initiateVoiceCall(),
     });
-    inputContainer.appendChild(this.input.element);
+    // Mount input inside the pill's input area
+    const inputArea = this.pill.querySelector(".chatbot-input-area") as HTMLElement;
+    inputArea.appendChild(this.input.element);
+
+    // Wire up pill state management based on input focus/content
+    this.setupPillStateManagement();
 
     // Create typing indicator
     this.typingIndicator = new TypingIndicator();
@@ -181,7 +205,7 @@ export class ChatWindow {
       primaryColor: options.primaryColor,
     });
     this.offlineForm.hide();
-    // Insert offline form in the messages container (will replace chat when shown)
+    // Insert offline form in the panel (after messages container)
     this.messagesContainer.parentNode?.insertBefore(
       this.offlineForm.element,
       this.messagesContainer.nextSibling
@@ -246,7 +270,6 @@ export class ChatWindow {
         }
       } else {
         // If status check fails but we have session, still check if we should poll
-        // This handles the case where conversation exists but status endpoint fails
         if (process.env.NODE_ENV === "development") {
           console.log("[Widget] Status check failed, session exists:", this.sessionId);
         }
@@ -359,21 +382,24 @@ export class ChatWindow {
   }
 
   private createElement(): HTMLElement {
-    const window = document.createElement("div");
-    window.className = "chatbot-window";
-    window.setAttribute("role", "dialog");
-    window.setAttribute("aria-label", "Chat window");
-    window.setAttribute("aria-modal", "true");
-    window.setAttribute("tabindex", "-1");
+    const wrapper = document.createElement("div");
+    wrapper.className = "chatbot-wrapper";
 
-    window.innerHTML = `
-      <div class="chatbot-header" style="background-color: ${this.options.primaryColor}">
+    // ---- Panel (conversation, hidden by default) ----
+    const panel = document.createElement("div");
+    panel.className = "chatbot-panel";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", "Chat conversation");
+    panel.setAttribute("tabindex", "-1");
+
+    panel.innerHTML = `
+      <div class="chatbot-header">
         <div class="chatbot-header-left">
-          <div class="chatbot-avatar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          <button class="cb-panel-back" aria-label="Minimize chat" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
-          </div>
+          </button>
           <div class="chatbot-header-info">
             <span class="chatbot-title">${this.escapeHtml(this.options.title)}</span>
             <span class="chatbot-status">
@@ -404,26 +430,43 @@ export class ChatWindow {
               <line x1="3" y1="21" x2="10" y2="14"></line>
             </svg>
           </button>
-          <button class="chatbot-close" aria-label="Close chat" type="button">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
         </div>
       </div>
       <div class="chatbot-messages" role="log" aria-live="polite" aria-label="Chat messages"></div>
-      <div class="chatbot-input-container"></div>
     `;
 
-    // Attach close handler
-    const closeBtn = window.querySelector(".chatbot-close") as HTMLElement;
-    closeBtn.addEventListener("click", () => {
-      this.options.onClose();
+    wrapper.appendChild(panel);
+
+    // ---- Pill (always visible — contains input) ----
+    const pill = document.createElement("div");
+    pill.className = "chatbot-pill";
+
+    // Sparkle / AI icon
+    const pillIcon = document.createElement("div");
+    pillIcon.className = "cb-pill-icon";
+    pillIcon.setAttribute("aria-hidden", "true");
+    pillIcon.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"></path>
+      </svg>
+    `;
+    pill.appendChild(pillIcon);
+
+    // Input area placeholder (Input component will be mounted here)
+    const inputArea = document.createElement("div");
+    inputArea.className = "chatbot-input-area";
+    pill.appendChild(inputArea);
+
+    wrapper.appendChild(pill);
+
+    // Attach panel back/minimize handler
+    const backBtn = panel.querySelector(".cb-panel-back") as HTMLElement;
+    backBtn.addEventListener("click", () => {
+      this.hidePanel();
     });
 
     // Attach expand/collapse handler
-    const expandBtn = window.querySelector(".cb-expand-btn");
+    const expandBtn = panel.querySelector(".cb-expand-btn");
     if (expandBtn) {
       expandBtn.addEventListener("click", () => {
         this.toggleExpanded();
@@ -431,14 +474,39 @@ export class ChatWindow {
     }
 
     // Attach voice header button handler
-    const voiceHeaderBtn = window.querySelector(".cb-voice-header-btn");
+    const voiceHeaderBtn = panel.querySelector(".cb-voice-header-btn");
     if (voiceHeaderBtn) {
       voiceHeaderBtn.addEventListener("click", () => {
         this.initiateVoiceCall();
       });
     }
 
-    return window;
+    return wrapper;
+  }
+
+  /**
+   * Set up pill state classes based on textarea focus and content
+   */
+  private setupPillStateManagement(): void {
+    // Get the textarea inside the input component
+    const textarea = this.pill.querySelector("textarea") as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    // Focus → add .focused to pill
+    textarea.addEventListener("focus", () => {
+      this.pill.classList.add("focused");
+    });
+
+    // Blur → remove .focused if no content
+    textarea.addEventListener("blur", () => {
+      this.pill.classList.remove("focused");
+    });
+
+    // Input → toggle .has-content
+    textarea.addEventListener("input", () => {
+      const hasContent = textarea.value.trim().length > 0;
+      this.pill.classList.toggle("has-content", hasContent);
+    });
   }
 
   private escapeHtml(text: string): string {
@@ -558,6 +626,14 @@ export class ChatWindow {
     // Track total user messages
     this.totalUserMessages++;
 
+    // Auto-show panel on first message send
+    if (!this.isPanelVisible) {
+      this.showPanel();
+    }
+
+    // Clear .has-content from pill since we just sent
+    this.pill.classList.remove("has-content");
+
     // Create user message
     const userMessage: StoredMessage = {
       id: generateId(),
@@ -574,8 +650,9 @@ export class ChatWindow {
     // Save to storage
     setStoredMessages(this.options.projectId, this.messages);
 
-    // Show typing indicator
+    // Show typing indicator + thinking state on pill
     this.typingIndicator.show();
+    this.pill.classList.add("thinking");
     this.input.setLoading(true);
     this.scrollToBottom();
 
@@ -656,6 +733,7 @@ export class ChatWindow {
       setStoredMessages(this.options.projectId, this.messages);
     } finally {
       this.typingIndicator.hide();
+      this.pill.classList.remove("thinking");
       this.input.setLoading(false);
       this.scrollToBottom();
     }
@@ -718,6 +796,8 @@ export class ChatWindow {
 
     // Show lead capture form immediately if enabled and not completed
     if (this.shouldShowLeadCaptureForm()) {
+      // Show panel first so the form is visible
+      this.showPanel();
       setTimeout(() => this.showLeadCaptureForm(), 400);
     }
   }
@@ -944,16 +1024,16 @@ export class ChatWindow {
         ? "Complete the form above to start a voice call"
         : "Voice call";
 
-    // Header voice button
-    const headerBtn = this.element.querySelector(".cb-voice-header-btn") as HTMLButtonElement | null;
+    // Header voice button (in panel)
+    const headerBtn = this.panel.querySelector(".cb-voice-header-btn") as HTMLButtonElement | null;
     if (headerBtn) {
       headerBtn.disabled = disabled;
       headerBtn.classList.toggle("cb-voice-btn-disabled", disabled);
       headerBtn.title = tooltip;
     }
 
-    // Input voice button
-    const inputBtn = this.element.querySelector(".cb-voice-input-btn") as HTMLButtonElement | null;
+    // Input voice button (in pill)
+    const inputBtn = this.pill.querySelector(".cb-voice-input-btn") as HTMLButtonElement | null;
     if (inputBtn) {
       inputBtn.disabled = disabled;
       inputBtn.classList.toggle("cb-voice-btn-disabled", disabled);
@@ -992,6 +1072,11 @@ export class ChatWindow {
         this.voicePermissionPrompt = null;
       },
     });
+
+    // Show panel if not visible, then insert prompt
+    if (!this.isPanelVisible) {
+      this.showPanel();
+    }
 
     // Show over the messages area
     this.messagesContainer.insertBefore(
@@ -1063,6 +1148,8 @@ export class ChatWindow {
     }
 
     this.isVoiceCallActive = true;
+    // Add voice-active state to pill
+    this.pill.classList.add("voice-active");
 
     // Create and show the voice overlay
     this.voiceOverlay?.destroy();
@@ -1073,7 +1160,7 @@ export class ChatWindow {
       onBackToChat: () => this.dismissVoiceOverlay(),
     });
 
-    // Insert overlay into the chat window (covers messages + input)
+    // Insert overlay into the wrapper (covers panel + pill)
     this.element.appendChild(this.voiceOverlay.element);
     this.voiceOverlay.show();
 
@@ -1101,6 +1188,7 @@ export class ChatWindow {
       vapi.on("call-end", () => {
         this.voiceOverlay?.setState("ended");
         this.isVoiceCallActive = false;
+        this.pill.classList.remove("voice-active");
 
         // Re-enable text input
         this.input.setDisabled(false);
@@ -1119,7 +1207,6 @@ export class ChatWindow {
         setStoredMessages(this.options.projectId, this.messages);
 
         // Refresh lead capture status after voice call (P6)
-        // Give server time to extract qualifying answers from transcript
         setTimeout(async () => {
           try {
             const status = await getLeadCaptureStatus(
@@ -1177,6 +1264,7 @@ export class ChatWindow {
         console.error("[Widget] Vapi error:", err);
         this.voiceOverlay?.setState("error");
         this.isVoiceCallActive = false;
+        this.pill.classList.remove("voice-active");
       });
 
       // Build assistant overrides: use fresh config from API (includes dynamic system prompt)
@@ -1207,6 +1295,7 @@ export class ChatWindow {
       console.error("[Widget] Failed to start voice call:", error);
       this.voiceOverlay?.setState("error");
       this.isVoiceCallActive = false;
+      this.pill.classList.remove("voice-active");
     }
   }
 
@@ -1240,6 +1329,7 @@ export class ChatWindow {
     this.voiceOverlay?.destroy();
     this.voiceOverlay = null;
     this.isVoiceCallActive = false;
+    this.pill.classList.remove("voice-active");
   }
 
   private scrollToBottom(): void {
@@ -1292,15 +1382,17 @@ export class ChatWindow {
   }
 
   private setupKeyboardHandling(): void {
-    // Escape key to close
+    // Escape key to minimize panel (not close widget — pill stays)
     this.element.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        this.options.onClose();
+        if (this.isPanelVisible) {
+          this.hidePanel();
+        }
       }
 
-      // Tab trap
-      if (e.key === "Tab") {
+      // Tab trap (only when panel is open)
+      if (e.key === "Tab" && this.isPanelVisible) {
         this.handleTabKey(e);
       }
     });
@@ -1442,7 +1534,6 @@ export class ChatWindow {
       this.startMessagePolling();
 
       // Fetch messages from server to get the system message that was broadcast
-      // This ensures customer sees "You're now connected with a support agent."
       await this.fetchAndSyncMessages();
     } catch (error) {
       console.error("[Widget] Failed to trigger handoff:", error);
@@ -1470,15 +1561,16 @@ export class ChatWindow {
   private showOfflineForm(): void {
     if (!this.offlineForm) return;
 
+    // Ensure panel is visible to show the form
+    if (!this.isPanelVisible) {
+      this.showPanel();
+    }
+
     this.showingOfflineForm = true;
 
     // Hide chat elements
     this.messagesContainer.style.display = "none";
     this.humanButton?.hide();
-    const inputContainer = this.element.querySelector(".chatbot-input-container") as HTMLElement;
-    if (inputContainer) {
-      inputContainer.style.display = "none";
-    }
 
     // Show offline form
     this.offlineForm.show();
@@ -1494,10 +1586,6 @@ export class ChatWindow {
 
     // Show chat elements
     this.messagesContainer.style.display = "flex";
-    const inputContainer = this.element.querySelector(".chatbot-input-container") as HTMLElement;
-    if (inputContainer) {
-      inputContainer.style.display = "block";
-    }
 
     // Hide offline form
     this.offlineForm.hide();
@@ -1530,7 +1618,7 @@ export class ChatWindow {
     this.presenceManager.start(this.sessionId);
 
     // Check if realtime config is available
-    const config = (window as Record<string, unknown>).__WIDGET_CONFIG__ as Record<string, string> | undefined;
+    const config = (window as unknown as Record<string, unknown>).__WIDGET_CONFIG__ as Record<string, string> | undefined;
     const hasRealtimeConfig = !!(config?.supabaseUrl && config?.supabaseAnonKey);
 
     // Try realtime if enabled and config available
@@ -1564,13 +1652,11 @@ export class ChatWindow {
           this.handleRealtimeStatusChange(status);
         },
         onAgentJoined: (agent: { id: string; name: string }) => {
-          // Show system message when agent joins (if not already shown via message)
           if (process.env.NODE_ENV === "development") {
             console.log("[Widget] Agent joined via realtime:", agent);
           }
         },
         onTyping: (data: { participant: { type: string; name?: string }; isTyping: boolean }) => {
-          // Handle agent typing indicator
           if (data.participant.type === "agent") {
             if (data.isTyping) {
               this.typingIndicator.show();
@@ -1584,7 +1670,6 @@ export class ChatWindow {
             console.log("[Widget] Realtime connection:", connected ? "connected" : "disconnected");
           }
 
-          // If disconnected and we're in handoff mode, fallback to polling
           if (!connected && this.isInHandoffState()) {
             console.warn("[Widget] Realtime disconnected, falling back to polling");
             this.useRealtime = false;
@@ -1593,7 +1678,6 @@ export class ChatWindow {
         },
         onError: (error: Error) => {
           console.error("[Widget] Realtime error:", error);
-          // Fallback to polling on error
           this.useRealtime = false;
           this.startPolling();
         },
@@ -1619,18 +1703,14 @@ export class ChatWindow {
     // Skip customer messages (we already have those from sending)
     if (message.senderType === "customer") return;
 
-    // Determine role based on sender type
-    let role: "user" | "assistant" = "assistant";
-    if (message.senderType === "customer") {
-      role = "user";
-    }
+    // Role is always assistant since customer messages are filtered above
+    const role: "user" | "assistant" = "assistant";
 
     const storedMsg: StoredMessage = {
       id: message.id,
       content: message.content,
       role,
       timestamp: new Date(message.createdAt).getTime(),
-      // Add agent name for agent messages
       ...(message.senderType === "agent" && message.senderName
         ? { agentName: message.senderName }
         : {}),
@@ -1640,6 +1720,11 @@ export class ChatWindow {
     this.addMessageToDOM(storedMsg);
     setStoredMessages(this.options.projectId, this.messages);
     this.scrollToBottom();
+
+    // Auto-show panel when receiving a message
+    if (!this.isPanelVisible) {
+      this.showPanel();
+    }
 
     if (process.env.NODE_ENV === "development") {
       console.log("[Widget] Received realtime message:", message);
@@ -1658,16 +1743,13 @@ export class ChatWindow {
       console.log("[Widget] Realtime status change:", status);
     }
 
-    // If resolved or returned to AI, cleanup and show button again
     if (status.status === "resolved" || status.status === "closed" || status.status === "ai_active") {
-      // If was in handoff state and now resolved/ai_active, fetch any system messages
       if (previousStatus === "agent_active" || previousStatus === "waiting") {
         this.fetchAndSyncMessages();
       }
 
       this.stopMessagePolling();
 
-      // Show the "Talk to human" button again if returned to AI
       if (status.status === "ai_active") {
         this.checkAvailability();
       }
@@ -1687,7 +1769,6 @@ export class ChatWindow {
   private startPolling(): void {
     if (this.messagePollingInterval) return;
 
-    // Poll every 2 seconds for new messages
     this.messagePollingInterval = window.setInterval(async () => {
       if (!this.sessionId) return;
 
@@ -1700,10 +1781,8 @@ export class ChatWindow {
 
         if (newMessages.length > 0) {
           for (const msg of newMessages) {
-            // Skip if we already have this message
             if (this.messages.some((m) => m.id === msg.id)) continue;
 
-            // Determine role based on sender type
             let role: "user" | "assistant" = "assistant";
             if (msg.senderType === "customer") {
               role = "user";
@@ -1714,7 +1793,6 @@ export class ChatWindow {
               content: msg.content,
               role,
               timestamp: new Date(msg.createdAt).getTime(),
-              // Add agent name for agent messages
               ...(msg.senderType === "agent" && msg.senderName
                 ? { agentName: msg.senderName }
                 : {}),
@@ -1724,16 +1802,18 @@ export class ChatWindow {
             this.addMessageToDOM(storedMsg);
           }
 
-          // Update last timestamp
           const lastMsg = newMessages[newMessages.length - 1];
           this.lastMessageTimestamp = lastMsg.createdAt;
 
-          // Save to storage and scroll
           setStoredMessages(this.options.projectId, this.messages);
           this.scrollToBottom();
+
+          // Auto-show panel on new messages
+          if (!this.isPanelVisible) {
+            this.showPanel();
+          }
         }
 
-        // Also check conversation status to see if we should stop polling
         const status = await getConversationStatus(
           this.options.apiUrl,
           this.sessionId
@@ -1743,11 +1823,9 @@ export class ChatWindow {
           this.conversationStatus = status.status;
           this.updateVoiceButtonState();
 
-          // If resolved or closed, stop polling and maybe show button again
           if (status.status === "resolved" || status.status === "closed" || status.status === "ai_active") {
             this.stopMessagePolling();
 
-            // Re-check availability to show button if appropriate
             if (status.status === "ai_active") {
               this.checkAvailability();
             }
@@ -1767,13 +1845,11 @@ export class ChatWindow {
    * Stop polling/realtime for messages
    */
   private stopMessagePolling(): void {
-    // Stop polling
     if (this.messagePollingInterval) {
       clearInterval(this.messagePollingInterval);
       this.messagePollingInterval = null;
     }
 
-    // Disconnect realtime
     if (this.realtimeManager) {
       this.realtimeManager.unsubscribe();
       this.realtimeManager = null;
@@ -1785,9 +1861,8 @@ export class ChatWindow {
   }
 
   private handleTabKey(e: KeyboardEvent): void {
-    if (!this.isVisible) return;
+    if (!this.isPanelVisible) return;
 
-    // Get all focusable elements
     this.focusableElements = Array.from(
       this.element.querySelectorAll(
         'button:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -1800,19 +1875,16 @@ export class ChatWindow {
     const lastElement = this.focusableElements[this.focusableElements.length - 1];
     const activeElement = document.activeElement as HTMLElement;
 
-    // Check if active element is within shadow DOM
     const shadowActiveElement = this.element.getRootNode() instanceof ShadowRoot
       ? (this.element.getRootNode() as ShadowRoot).activeElement
       : activeElement;
 
     if (e.shiftKey) {
-      // Shift + Tab
       if (shadowActiveElement === firstElement) {
         e.preventDefault();
         lastElement.focus();
       }
     } else {
-      // Tab
       if (shadowActiveElement === lastElement) {
         e.preventDefault();
         firstElement.focus();
@@ -1820,32 +1892,76 @@ export class ChatWindow {
     }
   }
 
+  // ─── Panel / Pill visibility ────────────────────────────────────────────────
+
   /**
-   * Show the chat window
+   * Show the conversation panel (slide up from pill)
    */
-  show(): void {
+  showPanel(): void {
+    if (this.isPanelVisible) return;
+
+    this.isPanelVisible = true;
     this.isVisible = true;
-    this.element.classList.add("visible");
+    this.panel.classList.add("visible");
+    this.pill.classList.add("panel-open");
 
     // Store last focused element
     this.lastFocusedElement = document.activeElement as HTMLElement;
 
-    // Focus the input after animation
+    this.scrollToBottom();
+  }
+
+  /**
+   * Hide the conversation panel (pill stays visible)
+   */
+  hidePanel(): void {
+    if (!this.isPanelVisible) return;
+
+    this.isPanelVisible = false;
+    this.isVisible = false;
+    this.panel.classList.remove("visible");
+    this.pill.classList.remove("panel-open");
+
+    // Focus textarea in pill after hiding panel
     setTimeout(() => {
       this.input.focus();
     }, 250);
   }
 
   /**
-   * Hide the chat window
+   * Show the chat (alias for showPanel — called by widget.ts open())
+   */
+  show(): void {
+    this.showPanel();
+  }
+
+  /**
+   * Hide the chat (alias for hidePanel — called by widget.ts close())
    */
   hide(): void {
-    this.isVisible = false;
-    this.element.classList.remove("visible");
+    this.hidePanel();
+  }
 
-    // Restore focus
-    if (this.lastFocusedElement) {
-      this.lastFocusedElement.focus();
+  /**
+   * Show notification dot on pill icon
+   */
+  showPillNotification(): void {
+    const icon = this.pill.querySelector(".cb-pill-icon");
+    if (icon && !icon.querySelector(".cb-pill-notification")) {
+      const dot = document.createElement("span");
+      dot.className = "cb-pill-notification";
+      dot.setAttribute("aria-hidden", "true");
+      icon.appendChild(dot);
+    }
+  }
+
+  /**
+   * Hide notification dot from pill icon
+   */
+  hidePillNotification(): void {
+    const dot = this.pill.querySelector(".cb-pill-notification");
+    if (dot) {
+      dot.remove();
     }
   }
 
@@ -1854,12 +1970,13 @@ export class ChatWindow {
    */
   private toggleExpanded(): void {
     this.isExpanded = !this.isExpanded;
-    this.element.classList.toggle("cb-expanded", this.isExpanded);
+    this.panel.classList.toggle("cb-expanded", this.isExpanded);
+    this.pill.classList.toggle("expanded", this.isExpanded);
 
     // Toggle icon visibility
-    const expandIcon = this.element.querySelector(".cb-expand-icon") as HTMLElement;
-    const collapseIcon = this.element.querySelector(".cb-collapse-icon") as HTMLElement;
-    const expandBtn = this.element.querySelector(".cb-expand-btn") as HTMLElement;
+    const expandIcon = this.panel.querySelector(".cb-expand-icon") as HTMLElement;
+    const collapseIcon = this.panel.querySelector(".cb-collapse-icon") as HTMLElement;
+    const expandBtn = this.panel.querySelector(".cb-expand-btn") as HTMLElement;
 
     if (expandIcon && collapseIcon && expandBtn) {
       expandIcon.style.display = this.isExpanded ? "none" : "block";
@@ -1870,17 +1987,17 @@ export class ChatWindow {
   }
 
   /**
-   * Check if window is visible
+   * Check if panel is visible
    */
   getVisible(): boolean {
-    return this.isVisible;
+    return this.isPanelVisible;
   }
 
   /**
    * Update title
    */
   setTitle(title: string): void {
-    const titleEl = this.element.querySelector(".chatbot-title");
+    const titleEl = this.panel.querySelector(".chatbot-title");
     if (titleEl) {
       titleEl.textContent = title;
     }
@@ -1890,10 +2007,8 @@ export class ChatWindow {
    * Update primary color
    */
   setColor(color: string): void {
-    const header = this.element.querySelector(".chatbot-header") as HTMLElement;
-    if (header) {
-      header.style.backgroundColor = color;
-    }
+    // Set accent color as CSS custom property — applies to both panel and pill
+    this.element.style.setProperty("--widget-accent", color);
     this.input.setColor(color);
   }
 
