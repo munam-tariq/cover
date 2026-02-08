@@ -29,7 +29,7 @@ embedRouter.get(
     // Check if widget is enabled for this project
     const { data: project, error } = await supabaseAdmin
       .from("projects")
-      .select("settings")
+      .select("settings, plan")
       .eq("id", projectId)
       .single();
 
@@ -85,8 +85,8 @@ embedRouter.get(
         const lr = settings.lead_recovery as Record<string, unknown> | undefined;
         return lr?.enabled ? lr : { enabled: false };
       })(),
-      // Voice config
-      voice: settings.voice_enabled === true
+      // Voice config (requires pro plan)
+      voice: settings.voice_enabled === true && project?.plan === "pro"
         ? {
             enabled: true,
             vapiPublicKey: process.env.VAPI_PUBLIC_KEY || "",

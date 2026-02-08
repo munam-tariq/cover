@@ -10,6 +10,7 @@ const STORAGE_KEY = "cover_selected_project_id";
 export interface Project {
   id: string;
   name: string;
+  plan?: string;
   systemPrompt: string;
   settings: Record<string, unknown>;
   createdAt: string;

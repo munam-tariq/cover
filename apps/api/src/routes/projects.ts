@@ -39,7 +39,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
     // Fetch owned projects
     const { data: ownedProjects, error: ownedError } = await supabase
       .from("projects")
-      .select("id, name, settings, created_at, updated_at, user_id")
+      .select("id, name, settings, plan, created_at, updated_at, user_id")
       .eq("user_id", userId)
       .is("deleted_at", null)
       .order("created_at", { ascending: true });
@@ -52,7 +52,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
     // Fetch projects where user is an active member
     const { data: memberships, error: memberError } = await supabase
       .from("project_members")
-      .select("project_id, role, projects!inner(id, name, settings, created_at, updated_at, user_id, deleted_at)")
+      .select("project_id, role, projects!inner(id, name, settings, plan, created_at, updated_at, user_id, deleted_at)")
       .eq("user_id", userId)
       .eq("status", "active");
 
@@ -73,6 +73,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
           id: string;
           name: string;
           settings: Record<string, unknown> | null;
+          plan: string;
           created_at: string;
           updated_at: string;
           user_id: string;
@@ -81,6 +82,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
           id: proj.id,
           name: proj.name,
           settings: proj.settings,
+          plan: proj.plan,
           created_at: proj.created_at,
           updated_at: proj.updated_at,
           user_id: proj.user_id,
@@ -103,6 +105,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
         const projectData: Record<string, unknown> = {
           id: project.id,
           name: project.name,
+          plan: project.plan || "free",
           systemPrompt: project.settings?.systemPrompt || "",
           settings: project.settings || {},
           createdAt: project.created_at,
@@ -160,7 +163,7 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
     // Fetch project (without user_id filter - we'll check access separately)
     const { data: project, error } = await supabase
       .from("projects")
-      .select("id, name, settings, created_at, updated_at, user_id")
+      .select("id, name, settings, plan, created_at, updated_at, user_id")
       .eq("id", id)
       .is("deleted_at", null)
       .single();
@@ -193,6 +196,7 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
     const projectResponse: Record<string, unknown> = {
       id: project.id,
       name: project.name,
+      plan: project.plan || "free",
       systemPrompt: project.settings?.systemPrompt || "",
       settings: project.settings || {},
       createdAt: project.created_at,
@@ -275,7 +279,7 @@ router.post("/", authMiddleware, async (req: Request, res: Response) => {
         name: trimmedName,
         settings,
       })
-      .select("id, name, settings, created_at, updated_at")
+      .select("id, name, settings, plan, created_at, updated_at")
       .single();
 
     if (error) {
@@ -287,6 +291,7 @@ router.post("/", authMiddleware, async (req: Request, res: Response) => {
       project: {
         id: project.id,
         name: project.name,
+        plan: project.plan || "free",
         systemPrompt: project.settings?.systemPrompt || "",
         settings: project.settings || {},
         createdAt: project.created_at,
@@ -354,7 +359,7 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
     // Get current project
     const { data: currentProject, error: fetchError } = await supabase
       .from("projects")
-      .select("id, settings")
+      .select("id, settings, plan")
       .eq("id", id)
       .eq("user_id", userId)
       .is("deleted_at", null)
@@ -362,6 +367,16 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
 
     if (fetchError || !currentProject) {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Project not found" } });
+    }
+
+    // Guard: cannot enable voice on free plan
+    if (newSettings?.voice_enabled === true && currentProject.plan !== "pro") {
+      return res.status(403).json({
+        error: {
+          code: "PLAN_REQUIRED",
+          message: "Upgrade to Pro to enable voice calls",
+        },
+      });
     }
 
     // Guard: cannot enable widget without a knowledge base
@@ -412,7 +427,7 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
       .from("projects")
       .update(updates)
       .eq("id", currentProject.id)
-      .select("id, name, settings, updated_at")
+      .select("id, name, settings, plan, updated_at")
       .single();
 
     if (updateError) {

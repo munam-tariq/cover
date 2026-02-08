@@ -96,7 +96,7 @@ router.get("/config/:projectId", async (req: Request, res: Response) => {
     // Fetch project settings
     const { data: project, error } = await supabaseAdmin
       .from("projects")
-      .select("id, name, settings")
+      .select("id, name, settings, plan")
       .eq("id", projectId)
       .is("deleted_at", null)
       .single();
@@ -110,6 +110,13 @@ router.get("/config/:projectId", async (req: Request, res: Response) => {
     const settings = (project.settings as Record<string, unknown>) || {};
     const voiceEnabled = settings.voice_enabled === true;
     const widgetEnabled = settings.widget_enabled !== false;
+
+    // Voice requires pro plan (defense-in-depth — dashboard should prevent toggling)
+    if (project.plan !== "pro") {
+      return res.json({
+        voiceEnabled: false,
+      });
+    }
 
     // Voice requires widget to be enabled
     if (!voiceEnabled || !widgetEnabled) {
