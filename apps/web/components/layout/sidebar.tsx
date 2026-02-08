@@ -10,7 +10,7 @@ import { useInboxPollingOptional } from "@/contexts/inbox-polling-context";
 // Navigation items with role requirements
 // roles: undefined = all, "owner" = owner only, "owner_admin" = owner or admin, "agent_only" = agents (not owners viewing their own project)
 const allNavItems = [
-  { href: "/", label: "Dashboard", icon: "home", roles: undefined },
+  { href: "/dashboard", label: "Dashboard", icon: "home", roles: undefined },
   { href: "/inbox", label: "Inbox", icon: "inbox", roles: undefined },
   { href: "/team", label: "Team", icon: "users", roles: undefined },
   { href: "/projects", label: "Agents", icon: "folder", roles: "owner" as const },

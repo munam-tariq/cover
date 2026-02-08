@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bot, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { Bot, ArrowLeft, ArrowRight, Loader2, ChevronDown } from "lucide-react";
 import { Button, Input, Textarea, Label } from "@chatbot/ui";
 import { StepCard, StepHeader, StepActions } from "../../components/step-card";
 import { OnboardingProgress, ONBOARDING_STEPS } from "../../components/onboarding-progress";
@@ -21,6 +21,22 @@ export default function AgentNamePage() {
   const [personality, setPersonality] = useState(state.systemPrompt || "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPresets, setShowPresets] = useState(false);
+
+  const systemPromptPresets = [
+    {
+      name: "Customer Support",
+      prompt: "You are a helpful customer support agent. Answer support questions, help troubleshoot issues, and guide customers through common problems. Be friendly, patient, and thorough in your responses. If you don't know the answer, offer to connect the customer with a human agent."
+    },
+    {
+      name: "Sales",
+      prompt: "You are a knowledgeable sales assistant. Help potential customers understand our products and services, answer questions about pricing and features, and guide them toward solutions that fit their needs. Be persuasive but honest, and focus on understanding customer requirements before making recommendations."
+    },
+    {
+      name: "Shopping Assistant",
+      prompt: "You are a friendly shopping assistant. Help customers find products, compare options, check availability, and answer questions about orders and shipping. Provide personalized recommendations based on customer preferences and help them make informed purchasing decisions."
+    }
+  ];
 
   const handleBack = () => {
     router.push("/onboarding");
@@ -101,15 +117,46 @@ export default function AgentNamePage() {
         {/* Personality / System Prompt */}
         <div className="space-y-2">
           <Label htmlFor="personality">Personality <span className="text-muted-foreground font-normal">(optional)</span></Label>
-          <Textarea
-            id="personality"
-            value={personality}
-            onChange={(e) => setPersonality(e.target.value)}
-            placeholder="e.g., You are a friendly sales assistant for our company. Be helpful, professional, and guide visitors to learn about our products. If you don't know something, offer to connect them with our team."
-            disabled={isLoading}
-            rows={4}
-            className="resize-none"
-          />
+          <div className="relative">
+            <Textarea
+              id="personality"
+              value={personality}
+              onChange={(e) => setPersonality(e.target.value)}
+              placeholder="e.g., You are a friendly sales assistant for our company. Be helpful, professional, and guide visitors to learn about our products. If you don't know something, offer to connect them with our team."
+              disabled={isLoading}
+              rows={4}
+              className="resize-none pb-10"
+            />
+            <div className="absolute bottom-2 right-2">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowPresets(!showPresets)}
+                  className="flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground bg-background border border-input rounded-md hover:bg-muted transition-colors"
+                >
+                  Presets
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+                {showPresets && (
+                  <div className="absolute bottom-full right-0 mb-1 w-48 bg-background border border-input rounded-md shadow-lg z-10">
+                    {systemPromptPresets.map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => {
+                          setPersonality(preset.prompt);
+                          setShowPresets(false);
+                        }}
+                        className="block w-full px-4 py-2 text-left text-sm hover:bg-muted first:rounded-t-md last:rounded-b-md"
+                      >
+                        {preset.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
           <p className="text-xs text-muted-foreground">
             Describe how your agent should behave and respond to visitors.
           </p>

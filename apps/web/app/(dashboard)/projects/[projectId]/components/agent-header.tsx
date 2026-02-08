@@ -285,8 +285,8 @@ export function AgentHeader({ project }: AgentHeaderProps) {
           </div>
         </div>
 
-        {/* Voice Calls Toggle */}
-        <TooltipProvider>
+        {/* Voice Calls Toggle — parked, re-enable when voice feature is ready */}
+        {/* <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-3 px-4 py-2 rounded-lg border bg-card">
@@ -328,7 +328,7 @@ export function AgentHeader({ project }: AgentHeaderProps) {
               </TooltipContent>
             )}
           </Tooltip>
-        </TooltipProvider>
+        </TooltipProvider> */}
 
         {/* Quick stats */}
         <div className="hidden md:flex items-center gap-6 text-sm">
