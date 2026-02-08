@@ -7,7 +7,7 @@
  *
  * Events handled:
  * - knowledge-base-request:   Query our RAG pipeline (same as chat)
- * - tool-calls:               Handle custom tools (captureLead, handoffToHuman)
+ * - tool-calls:               Handle custom tools (searchKnowledgeBase, captureLead, handoffToHuman)
  * - end-of-call-report:       Store transcript, duration, cost; create summary message
  * - status-update:            Create voice conversation on call start, log status changes
  * - transcript:               Log individual voice messages to the conversation (so they appear in inbox)
@@ -229,7 +229,23 @@ async function handleToolCalls(
   const conversationId = getConversationId(message.call);
   const results = [];
 
-  for (const toolCall of toolCallList) {
+  for (const rawToolCall of toolCallList) {
+    // Normalize: Vapi may send flat { name, arguments } or nested OpenAI
+    // format { function: { name, arguments } } depending on tool config
+    const fn = (rawToolCall as Record<string, unknown>).function as
+      | { name?: string; arguments?: string | Record<string, unknown> }
+      | undefined;
+    const toolCall = {
+      id: rawToolCall.id,
+      name: rawToolCall.name || fn?.name || "unknown",
+      arguments:
+        rawToolCall.arguments ??
+        (typeof fn?.arguments === "string"
+          ? JSON.parse(fn.arguments)
+          : fn?.arguments) ??
+        {},
+    };
+
     logger.info(`[Vapi] Tool call: ${toolCall.name}`, {
       ...logCtx,
       args: JSON.stringify(toolCall.arguments),
@@ -365,6 +381,39 @@ async function handleToolCalls(
               success: true,
               message: "A human agent will follow up. Thank you for your patience.",
             }),
+          });
+        }
+        break;
+      }
+
+      case "searchKnowledgeBase": {
+        const query = (toolCall.arguments as { query?: string }).query;
+        if (projectId && query) {
+          try {
+            const ragResult = await retrieve(projectId, query, {
+              topK: 5,
+              threshold: 0.15,
+              useHybridSearch: true,
+            });
+            const context = ragResult.chunks
+              .map((c) => c.content)
+              .join("\n\n---\n\n");
+            logger.info(`[Vapi] KB search: "${query}" → ${ragResult.chunks.length} chunks`, logCtx);
+            results.push({
+              toolCallId: toolCall.id,
+              result: context || "No relevant information found in the knowledge base.",
+            });
+          } catch (error) {
+            logger.error("[Vapi] KB search failed", error as Error, logCtx);
+            results.push({
+              toolCallId: toolCall.id,
+              result: "Sorry, I couldn't search the knowledge base right now.",
+            });
+          }
+        } else {
+          results.push({
+            toolCallId: toolCall.id,
+            result: "No relevant information found.",
           });
         }
         break;

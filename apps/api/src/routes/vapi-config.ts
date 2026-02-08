@@ -171,12 +171,85 @@ router.get("/config/:projectId", async (req: Request, res: Response) => {
         model: {
           provider: process.env.VAPI_LLM_PROVIDER || "openai",
           model: process.env.VAPI_LLM_MODEL || "gpt-4o-mini",
+          temperature: 0.7,
+          maxTokens: 500,
           messages: [
             {
               role: "system" as const,
               content: voiceSystemPrompt,
             },
           ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "searchKnowledgeBase",
+                description:
+                  "Search the company's knowledge base for information. ALWAYS use this tool before answering any question about the company, its products, services, pricing, or features. This is your primary source of truth.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    query: {
+                      type: "string",
+                      description:
+                        "The search query — use the caller's question or key phrases from it",
+                    },
+                  },
+                  required: ["query"],
+                },
+              },
+            },
+            {
+              type: "function",
+              function: {
+                name: "captureLead",
+                description:
+                  "Save the caller's contact information so the team can follow up.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string", description: "The caller's name" },
+                    email: {
+                      type: "string",
+                      description: "The caller's email address",
+                    },
+                    phone: {
+                      type: "string",
+                      description: "The caller's phone number",
+                    },
+                  },
+                },
+              },
+            },
+            {
+              type: "function",
+              function: {
+                name: "handoffToHuman",
+                description:
+                  "Connect the caller to a human team member when they ask for one or seem frustrated.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    reason: {
+                      type: "string",
+                      description: "Brief summary of why handoff is needed",
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+        // Override voice/TTS settings so .env changes take effect at runtime
+        voice: {
+          provider: process.env.VAPI_TTS_PROVIDER || "deepgram",
+          voiceId: process.env.VAPI_TTS_VOICE_ID || "apollo",
+          model: process.env.VAPI_TTS_MODEL || "aura-2",
+          ...(process.env.VAPI_TTS_PROVIDER === "11labs" && {
+            stability: 0.5,
+            similarityBoost: 0.75,
+            optimizeStreamingLatency: 4,
+          }),
         },
         // Pass project metadata as variable values (used by webhook for context)
         variableValues: {
