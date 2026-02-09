@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bot, Edit2, Check, X, Copy, CheckCheck, Loader2, AlertTriangle } from "lucide-react";
-import { Button, Input, Badge, Switch, Label } from "@chatbot/ui";
+import { Bot, Edit2, Check, X, Copy, CheckCheck, Loader2, AlertTriangle, Phone, Lock } from "lucide-react";
+import { Button, Input, Badge, Switch, Label, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@chatbot/ui";
 import { useProject, type Project } from "@/contexts/project-context";
 import { apiClient } from "@/lib/api-client";
 import Image from "next/image";
@@ -41,10 +41,17 @@ export function AgentHeader({ project }: AgentHeaderProps) {
   const [widgetEnabled, setWidgetEnabled] = useState(true);
   const [savingWidgetStatus, setSavingWidgetStatus] = useState(false);
 
-  // Initialize widget status from project
+  // Voice status state
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [savingVoiceStatus, setSavingVoiceStatus] = useState(false);
+  const [voiceGreeting, setVoiceGreeting] = useState("");
+
+  // Initialize widget & voice status from project
   useEffect(() => {
     const settings = project.settings as Record<string, unknown> | null;
     setWidgetEnabled(settings?.widget_enabled !== false);
+    setVoiceEnabled(settings?.voice_enabled === true);
+    setVoiceGreeting((settings?.voice_greeting as string) || "");
   }, [project]);
 
   const handleSave = async () => {
@@ -92,6 +99,9 @@ export function AgentHeader({ project }: AgentHeaderProps) {
   // Whether the widget can be enabled (requires at least one knowledge source)
   const hasKnowledge = (project.knowledgeCount ?? 0) > 0;
 
+  // Voice requires pro plan
+  const canEnableVoice = (project.plan || "free") !== "free";
+
   // Handle widget status toggle
   const handleWidgetStatusChange = async (enabled: boolean) => {
     if (enabled && !hasKnowledge) {
@@ -122,6 +132,39 @@ export function AgentHeader({ project }: AgentHeaderProps) {
       setWidgetEnabled(!enabled);
     } finally {
       setSavingWidgetStatus(false);
+    }
+  };
+
+  // Handle voice status toggle
+  const handleVoiceStatusChange = async (enabled: boolean) => {
+    if (enabled && !widgetEnabled) {
+      return; // Voice requires widget to be enabled
+    }
+
+    setVoiceEnabled(enabled);
+    setSavingVoiceStatus(true);
+
+    try {
+      const existingSettings = (project.settings as Record<string, unknown>) || {};
+      const updatedSettings = {
+        ...existingSettings,
+        voice_enabled: enabled,
+      };
+
+      await apiClient<ProjectUpdateResponse>(`/api/projects/${project.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: project.name,
+          settings: updatedSettings,
+        }),
+      });
+
+      await refreshProjects();
+    } catch (error) {
+      console.error("Error updating voice status:", error);
+      setVoiceEnabled(!enabled);
+    } finally {
+      setSavingVoiceStatus(false);
     }
   };
 
@@ -241,6 +284,51 @@ export function AgentHeader({ project }: AgentHeaderProps) {
             />
           </div>
         </div>
+
+        {/* Voice Calls Toggle — parked, re-enable when voice feature is ready */}
+        {/* <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-3 px-4 py-2 rounded-lg border bg-card">
+                <div className="flex flex-col">
+                  <Label htmlFor="voice-toggle" className="text-sm font-medium flex items-center gap-1.5">
+                    <Phone className="h-3.5 w-3.5" />
+                    Voice
+                  </Label>
+                  {!canEnableVoice ? (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Lock className="h-3 w-3" />
+                      Upgrade to Pro
+                    </span>
+                  ) : !widgetEnabled ? (
+                    <span className="text-xs text-amber-600 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Enable widget first
+                    </span>
+                  ) : (
+                    <span className={`text-xs ${voiceEnabled ? "text-green-600" : "text-muted-foreground"}`}>
+                      {voiceEnabled ? "Active" : "Off"}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {savingVoiceStatus && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                  <Switch
+                    id="voice-toggle"
+                    checked={voiceEnabled}
+                    onCheckedChange={handleVoiceStatusChange}
+                    disabled={savingVoiceStatus || !widgetEnabled || !canEnableVoice}
+                  />
+                </div>
+              </div>
+            </TooltipTrigger>
+            {!canEnableVoice && (
+              <TooltipContent>
+                <p>Upgrade your subscription to enable voice calls</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider> */}
 
         {/* Quick stats */}
         <div className="hidden md:flex items-center gap-6 text-sm">

@@ -1,60 +1,51 @@
 import { Metadata } from "next";
-import { Hero } from "./components/hero";
-import { StatsBar } from "./components/stats-bar";
-import { HowItWorks } from "./components/how-it-works";
-import { FeaturesBento } from "./components/features-bento";
-import { Pricing } from "./components/pricing";
-import { FAQ } from "./components/faq";
-import { TrustSection } from "./components/trust-section";
-import { FinalCTA } from "./components/final-cta";
+import { HeroSection } from "./components/hero-section";
+import { MetricsBar } from "./components/metrics-bar";
+import { ShowcaseSection } from "./components/showcase-section";
+import { CapabilitiesSection } from "./components/capabilities-section";
+import { CodeSection } from "./components/code-section";
+import { PricingSection } from "./components/pricing-section";
+import { CTASection } from "./components/cta-section";
 import { Footer } from "./components/footer";
 
 export const metadata: Metadata = {
-  title: "SupportBase - AI Customer Support for Small Business | Live in 5 Minutes",
+  title: "SupportBase — AI Lead Capture for Your Website",
   description:
-    "Train an AI chatbot on your FAQ and docs. Answer customer questions 24/7. Human handoff when needed. Free to start. Setup in 5 minutes.",
+    "Put an AI agent on your website that knows your product, captures leads, and qualifies visitors 24/7. Free during beta.",
   keywords: [
-    "AI chatbot",
-    "customer support chatbot",
-    "AI customer service",
-    "chatbot for website",
-    "small business chatbot",
-    "customer support automation",
-    "AI support for ecommerce",
-    "shopify chatbot",
-    "human handoff chatbot",
+    "AI lead capture",
+    "AI sales agent",
+    "website chatbot",
+    "lead generation",
+    "AI SDR",
+    "conversational lead capture",
   ],
   openGraph: {
-    title: "SupportBase - AI Customer Support for Small Business",
-    description: "Train an AI chatbot on your FAQ and docs. Answer customer questions 24/7. Human handoff when needed. Free to start.",
+    title: "SupportBase — AI Lead Capture for Your Website",
+    description:
+      "Put an AI agent on your website that knows your product, captures leads, and qualifies visitors 24/7.",
     url: "https://supportbase.app",
     siteName: "SupportBase",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SupportBase - AI Customer Support for Small Business",
-    description: "Train an AI chatbot on your FAQ and docs. Answer customer questions 24/7. Human handoff when needed.",
+    title: "SupportBase — AI Lead Capture for Your Website",
+    description:
+      "Put an AI agent on your website that knows your product, captures leads, and qualifies visitors 24/7.",
   },
 };
 
 export default function LandingPage() {
   return (
     <main>
-      <Hero />
-      <StatsBar />
-      <section id="how-it-works">
-        <HowItWorks />
-      </section>
-      <section id="features">
-        <FeaturesBento />
-      </section>
-      <Pricing />
-      <section id="faq">
-        <FAQ />
-      </section>
-      <TrustSection />
-      <FinalCTA />
+      <HeroSection />
+      <MetricsBar />
+      <ShowcaseSection />
+      <CapabilitiesSection />
+      <CodeSection />
+      <PricingSection />
+      <CTASection />
       <Footer />
     </main>
   );

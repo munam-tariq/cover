@@ -47,6 +47,17 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
   }
+
+  /* Marketing light theme */
+  .marketing-light {
+    --mk-bg: #ffffff;
+    --mk-surface: #fafafa;
+    --mk-border: rgba(0, 0, 0, 0.06);
+    --mk-text: #09090b;
+    --mk-text-secondary: #52525b;
+    --mk-text-tertiary: #a1a1aa;
+    --mk-accent: #3b82f6;
+  }
 }
 
 @layer base {

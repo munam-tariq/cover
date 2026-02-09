@@ -6,92 +6,91 @@ import { ArrowRight } from "lucide-react";
 
 export function FinalCTA() {
   return (
-    <section className="py-32 bg-gradient-to-b from-white to-slate-50 border-t border-slate-100 relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl" />
-      </div>
+    <section className="py-32 bg-[#050505] relative overflow-hidden">
+      {/* Subtle accent glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-blue-500/[0.07] blur-[100px] rounded-full pointer-events-none"></div>
 
       <div className="max-w-4xl mx-auto px-6 relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
           viewport={{ once: true }}
           className="text-center"
         >
-          <h2 className="text-4xl md:text-6xl font-bold text-slate-900 mb-6">
-            Ready to stop answering the same questions?
+          {/* Headline */}
+          <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+            Stop losing leads to silence.
           </h2>
-          <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
-            Let AI handle customer support while you focus on your business.
-            Free to start.
+
+          {/* Subtitle */}
+          <p className="text-xl text-zinc-400 mb-10 max-w-2xl mx-auto">
+            Put an AI agent on your website today. Free during beta.
           </p>
 
           {/* CTA Button */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
+          <div className="mb-8">
             <Link
               href="/login"
-              className="group inline-flex items-center gap-2 px-10 py-5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-lg font-medium rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
+              className="bg-blue-600 hover:bg-blue-500 text-white text-lg font-medium px-10 py-5 rounded-xl inline-flex items-center gap-2 transition-colors"
             >
-              Get Started Free
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              Start Free — No Credit Card
+              <ArrowRight className="w-5 h-5" />
             </Link>
-          </motion.div>
+          </div>
 
-          {/* Trust Indicators */}
-          <div className="flex flex-wrap items-center justify-center gap-6 mt-10 text-sm text-slate-500">
-            <span className="flex items-center gap-2">
+          {/* Trust line */}
+          <div className="flex items-center justify-center gap-4 text-sm text-zinc-500 flex-wrap">
+            <div className="flex items-center gap-1.5">
               <svg
-                className="w-4 h-4 text-green-500"
+                className="w-4 h-4 text-green-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
+                strokeWidth={2}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={2}
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              No credit card required
-            </span>
-            <span className="flex items-center gap-2">
+              <span>5-min setup</span>
+            </div>
+            <span className="text-zinc-700">·</span>
+            <div className="flex items-center gap-1.5">
               <svg
-                className="w-4 h-4 text-green-500"
+                className="w-4 h-4 text-green-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
+                strokeWidth={2}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={2}
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              Setup in under 5 minutes
-            </span>
-            <span className="flex items-center gap-2">
+              <span>Works on any website</span>
+            </div>
+            <span className="text-zinc-700">·</span>
+            <div className="flex items-center gap-1.5">
               <svg
-                className="w-4 h-4 text-green-500"
+                className="w-4 h-4 text-green-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
+                strokeWidth={2}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={2}
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              Human handoff included
-            </span>
+              <span>Human handoff included</span>
+            </div>
           </div>
         </motion.div>
       </div>

@@ -1,38 +1,32 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Upload, Code2, Rocket } from "lucide-react";
+import { Brain, Code2, UserPlus } from "lucide-react";
 
 const steps = [
   {
-    number: "01",
-    title: "Upload Your Knowledge",
+    icon: Brain,
+    title: "Train",
     description:
-      "Upload your FAQ, policies, product info, or website URL. We train your chatbot automatically.",
-    icon: Upload,
-    gradient: "from-blue-500 to-cyan-500",
+      "Upload your docs, FAQ, or website URL. The AI learns your product, pricing, and policies automatically.",
   },
   {
-    number: "02",
-    title: "Add to Your Website",
-    description:
-      "One line of code. Works on Shopify, WordPress, Wix, or any website. We can help you install it.",
     icon: Code2,
-    gradient: "from-purple-500 to-pink-500",
+    title: "Deploy",
+    description:
+      "Add one line of code to your website. Works on Shopify, WordPress, Wix, or any site.",
   },
   {
-    number: "03",
-    title: "Let AI Handle Support",
+    icon: UserPlus,
+    title: "Capture",
     description:
-      "Your chatbot answers customers 24/7. When it can't help, it hands off to your team or captures leads.",
-    icon: Rocket,
-    gradient: "from-orange-500 to-red-500",
+      "Your AI agent talks to every visitor, qualifies interest, and captures leads — around the clock.",
   },
 ];
 
-const container = {
+const containerVariants = {
   hidden: { opacity: 0 },
-  show: {
+  visible: {
     opacity: 1,
     transition: {
       staggerChildren: 0.2,
@@ -40,70 +34,80 @@ const container = {
   },
 };
 
-const item = {
-  hidden: { opacity: 0, y: 30 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+    },
+  },
 };
 
 export function HowItWorks() {
   return (
-    <section className="py-32 bg-white border-t border-slate-100">
+    <section className="bg-[#050505] py-32">
       <div className="max-w-6xl mx-auto px-6">
-        {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-20"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={containerVariants}
+          className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-            From zero to 89% automated in 5 minutes
-          </h2>
-          <p className="text-xl text-slate-600">
-            Three steps. No complexity. Just results.
-          </p>
+          <motion.p
+            variants={itemVariants}
+            className="text-blue-400 text-sm font-medium tracking-wider uppercase mb-4"
+          >
+            HOW IT WORKS
+          </motion.p>
+          <motion.h2
+            variants={itemVariants}
+            className="text-3xl md:text-5xl font-bold text-white mb-4"
+          >
+            Live in 5 minutes. No code required.
+          </motion.h2>
+          <motion.p variants={itemVariants} className="text-lg text-zinc-400">
+            Three steps to start capturing leads.
+          </motion.p>
         </motion.div>
 
-        {/* Steps */}
         <motion.div
-          variants={container}
           initial="hidden"
-          whileInView="show"
+          whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
-          className="relative grid md:grid-cols-3 gap-8"
+          variants={containerVariants}
+          className="grid md:grid-cols-3 gap-8 relative"
         >
-          {/* Connecting Line (desktop only) */}
-          <div className="hidden md:block absolute top-24 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-blue-200 via-purple-200 to-orange-200" />
+          {/* Connecting lines */}
+          <div className="hidden md:block absolute top-8 left-[16.66%] right-[16.66%] h-px bg-white/[0.08]" />
 
-          {steps.map((step, index) => (
-            <motion.div
-              key={step.number}
-              variants={item}
-              className="relative"
-            >
-              <div className="flex flex-col items-center text-center">
-                {/* Icon Container */}
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            return (
+              <motion.div
+                key={step.title}
+                variants={itemVariants}
+                className="flex flex-col items-center text-center"
+              >
                 <div className="relative mb-6">
-                  <div className={`absolute -inset-4 bg-gradient-to-r ${step.gradient} rounded-full blur-xl opacity-20`} />
-                  <div className="relative w-20 h-20 bg-white border-2 border-slate-100 rounded-2xl flex items-center justify-center shadow-lg">
-                    <step.icon className="w-8 h-8 text-slate-700" />
+                  <div className="w-16 h-16 rounded-2xl bg-[#111] border border-white/[0.08] flex items-center justify-center">
+                    <Icon className="w-7 h-7 text-blue-500" />
                   </div>
-                  {/* Step Number */}
-                  <span className={`absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r ${step.gradient} rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg`}>
+                  <div className="absolute -top-2 -right-2 w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
                     {index + 1}
-                  </span>
+                  </div>
                 </div>
-
-                {/* Content */}
-                <h3 className="text-xl font-semibold text-slate-900 mb-3">
+                <h3 className="text-xl font-semibold text-white mb-3">
                   {step.title}
                 </h3>
-                <p className="text-slate-600 leading-relaxed max-w-xs">
+                <p className="text-zinc-400 leading-relaxed max-w-xs">
                   {step.description}
                 </p>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </motion.div>
       </div>
     </section>

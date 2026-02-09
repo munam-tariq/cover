@@ -62,7 +62,7 @@ export default function CompletePage() {
     // Clear onboarding state
     reset();
     // Navigate to dashboard
-    router.push("/");
+    router.push("/dashboard");
   };
 
   return (

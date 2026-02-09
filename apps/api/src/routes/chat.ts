@@ -13,6 +13,7 @@ import {
   validateChatInput,
   ChatError,
 } from "../services/chat-engine";
+import { getOrCreateConversation } from "../services/conversation";
 import { supabaseAdmin } from "../lib/supabase";
 import { getGeoFromIP } from "../services/ip-geo";
 import { logger } from "../lib/logger";
@@ -442,6 +443,41 @@ chatRouter.get("/feedback", async (req: Request, res: Response) => {
         code: "INTERNAL_ERROR",
         message: "Failed to get feedback",
       },
+    });
+  }
+});
+
+/**
+ * POST /api/chat/ensure-conversation
+ *
+ * Creates a conversation if one doesn't exist for this visitor.
+ * Used by the widget before starting a voice call when no text messages
+ * have been sent yet, to avoid orphaned voice conversations.
+ *
+ * Request body:
+ * - projectId: string (required)
+ * - visitorId: string (required)
+ *
+ * Response:
+ * - conversationId: string
+ */
+chatRouter.post("/ensure-conversation", async (req: Request, res: Response) => {
+  try {
+    const { projectId, visitorId } = req.body;
+
+    if (!projectId || !visitorId) {
+      return res.status(400).json({
+        error: { code: "INVALID_INPUT", message: "projectId and visitorId are required" },
+      });
+    }
+
+    const conversationId = await getOrCreateConversation(projectId, visitorId);
+
+    res.json({ conversationId });
+  } catch (error) {
+    logger.error("Ensure conversation error", error, { requestId: req.requestId });
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Failed to ensure conversation" },
     });
   }
 });

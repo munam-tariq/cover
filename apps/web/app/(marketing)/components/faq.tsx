@@ -4,116 +4,111 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-const faqs = [
-  {
-    question: "How fast can I set this up?",
-    answer:
-      "5 minutes. Upload your docs, copy one line of code, done. Need help? We'll set it up for you, free.",
-  },
-  {
-    question: "What if the chatbot can't answer a question?",
-    answer:
-      "You choose: Lead Capture saves their email for follow-up. Human Handoff connects them to your team instantly. Either way, no customer falls through the cracks.",
-  },
-  {
-    question: "How accurate are the answers?",
-    answer:
-      "89% accuracy on average. Your chatbot only answers from YOUR docs—zero hallucinations. Not sure? It admits it and hands off to your team.",
-  },
-  {
-    question: "Can it connect to my other tools?",
-    answer:
-      "Yes. API integrations let your chatbot check order status, look up accounts, pull live data. Your chatbot becomes a real support agent, not just a FAQ bot.",
-  },
-  {
-    question: "What file types can I upload?",
-    answer:
-      "PDFs, Word docs, text files, or just a website URL—we crawl it automatically. Most customers are trained and live in under 5 minutes.",
-  },
-  {
-    question: "Is it really free?",
-    answer:
-      "100% free during beta. No credit card. No catch. Beta users get locked-in pricing when we launch paid plans.",
-  },
-];
-
-function FAQItem({
-  faq,
-  isOpen,
-  onClick,
-}: {
-  faq: { question: string; answer: string };
-  isOpen: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <div className="border-b border-slate-100 last:border-b-0">
-      <button
-        onClick={onClick}
-        className="w-full py-6 flex items-center justify-between text-left group"
-      >
-        <span className="text-lg font-medium text-slate-900 group-hover:text-blue-600 transition-colors pr-8">
-          {faq.question}
-        </span>
-        <ChevronDown
-          className={`w-5 h-5 text-slate-400 transition-transform duration-200 flex-shrink-0 ${
-            isOpen ? "rotate-180 text-blue-600" : ""
-          }`}
-        />
-      </button>
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <p className="pb-6 text-slate-600 leading-relaxed">{faq.answer}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 export function FAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [openIndex, setOpenIndex] = useState(0);
+
+  const faqs = [
+    {
+      question: "How is this different from a regular chatbot?",
+      answer:
+        "Regular chatbots answer FAQs and dead-end. SupportBase is built to capture leads. It knows your product, qualifies visitor intent, and captures contact info naturally — turning conversations into pipeline.",
+    },
+    {
+      question: "How fast can I set this up?",
+      answer:
+        "5 minutes. Upload your docs or website URL, copy one line of code, and you're live. Or use our MCP integration to deploy entirely from Cursor or Claude.",
+    },
+    {
+      question: "How accurate are the answers?",
+      answer:
+        "We use RAG (Retrieval-Augmented Generation) so the AI only answers from YOUR documents. No hallucinations. If it doesn't know something, it says so and offers to connect the visitor with your team.",
+    },
+    {
+      question: "What happens when the AI can't answer?",
+      answer:
+        "Two options: it captures the visitor's email for follow-up, or it hands off to a human agent on your team — with full conversation context. No customer falls through the cracks.",
+    },
+    {
+      question: "Can it integrate with my other tools?",
+      answer:
+        "Yes. Configure API endpoints so the AI can check order status, look up accounts, or pull live data. It becomes a real agent, not just a FAQ bot.",
+    },
+    {
+      question: "Is it really free?",
+      answer:
+        "100% free during beta. No credit card, no catch. We're building in public and want early adopters to help shape the product. Beta users get locked-in pricing when paid plans launch.",
+    },
+  ];
+
+  const toggleFAQ = (index: number) => {
+    setOpenIndex(openIndex === index ? -1 : index);
+  };
 
   return (
-    <section className="py-32 bg-white border-t border-slate-100">
+    <section className="py-32 bg-[#050505]">
       <div className="max-w-3xl mx-auto px-6">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
+        <div className="text-center mb-12">
+          <div className="text-blue-400 text-sm font-medium tracking-wider uppercase mb-4">
+            FAQ
+          </div>
+          <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
             Questions? We've got answers.
           </h2>
-          <p className="text-xl text-slate-600">
+          <p className="text-lg text-zinc-400">
             Everything you need to know about SupportBase.
           </p>
-        </motion.div>
+        </div>
 
-        {/* FAQ List */}
+        {/* FAQ Accordion */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.1 }}
-          className="bg-slate-50 border border-slate-100 rounded-2xl px-6"
+          className="bg-[#111] border border-white/[0.08] rounded-2xl px-6"
         >
           {faqs.map((faq, index) => (
-            <FAQItem
+            <div
               key={index}
-              faq={faq}
-              isOpen={openIndex === index}
-              onClick={() => setOpenIndex(openIndex === index ? null : index)}
-            />
+              className={`border-b border-white/[0.08] ${
+                index === faqs.length - 1 ? "border-b-0" : ""
+              }`}
+            >
+              {/* Question */}
+              <button
+                onClick={() => toggleFAQ(index)}
+                className="py-6 flex justify-between items-center w-full text-left group"
+              >
+                <span className="text-lg font-medium text-white group-hover:text-blue-400 transition-colors pr-4">
+                  {faq.question}
+                </span>
+                <ChevronDown
+                  className={`w-5 h-5 flex-shrink-0 transition-all duration-300 ${
+                    openIndex === index
+                      ? "rotate-180 text-blue-400"
+                      : "text-zinc-500"
+                  }`}
+                />
+              </button>
+
+              {/* Answer */}
+              <AnimatePresence initial={false}>
+                {openIndex === index && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pb-6 text-zinc-400 leading-relaxed">
+                      {faq.answer}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           ))}
         </motion.div>
       </div>

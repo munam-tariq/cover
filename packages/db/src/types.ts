@@ -713,6 +713,151 @@ export type Database = {
         };
         Relationships: [];
       };
+      pulse_campaigns: {
+        Row: {
+          id: string;
+          project_id: string;
+          type: "nps" | "poll" | "sentiment" | "feedback";
+          question: string;
+          config: Json;
+          targeting: Json;
+          styling: Json;
+          status: "draft" | "active" | "paused" | "completed";
+          response_count: number;
+          response_goal: number | null;
+          starts_at: string | null;
+          ends_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          type: "nps" | "poll" | "sentiment" | "feedback";
+          question: string;
+          config?: Json;
+          targeting?: Json;
+          styling?: Json;
+          status?: "draft" | "active" | "paused" | "completed";
+          response_count?: number;
+          response_goal?: number | null;
+          starts_at?: string | null;
+          ends_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          type?: "nps" | "poll" | "sentiment" | "feedback";
+          question?: string;
+          config?: Json;
+          targeting?: Json;
+          styling?: Json;
+          status?: "draft" | "active" | "paused" | "completed";
+          response_count?: number;
+          response_goal?: number | null;
+          starts_at?: string | null;
+          ends_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pulse_campaigns_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      pulse_responses: {
+        Row: {
+          id: string;
+          campaign_id: string;
+          project_id: string;
+          answer: Json;
+          page_url: string | null;
+          visitor_id: string | null;
+          session_id: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          campaign_id: string;
+          project_id: string;
+          answer: Json;
+          page_url?: string | null;
+          visitor_id?: string | null;
+          session_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          campaign_id?: string;
+          project_id?: string;
+          answer?: Json;
+          page_url?: string | null;
+          visitor_id?: string | null;
+          session_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pulse_responses_campaign_id_fkey";
+            columns: ["campaign_id"];
+            isOneToOne: false;
+            referencedRelation: "pulse_campaigns";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pulse_responses_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      pulse_summaries: {
+        Row: {
+          id: string;
+          campaign_id: string;
+          summary_text: string;
+          themes: Json;
+          response_count: number;
+          generated_at: string;
+        };
+        Insert: {
+          id?: string;
+          campaign_id: string;
+          summary_text: string;
+          themes?: Json;
+          response_count: number;
+          generated_at?: string;
+        };
+        Update: {
+          id?: string;
+          campaign_id?: string;
+          summary_text?: string;
+          themes?: Json;
+          response_count?: number;
+          generated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pulse_summaries_campaign_id_fkey";
+            columns: ["campaign_id"];
+            isOneToOne: false;
+            referencedRelation: "pulse_campaigns";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -887,3 +1032,122 @@ export type ApiEndpointAuthType =
 // Function return types
 export type MatchKnowledgeChunksResult =
   Database["public"]["Functions"]["match_knowledge_chunks"]["Returns"][number];
+
+// Pulse types
+export type PulseCampaign =
+  Database["public"]["Tables"]["pulse_campaigns"]["Row"];
+export type PulseCampaignInsert =
+  Database["public"]["Tables"]["pulse_campaigns"]["Insert"];
+export type PulseCampaignUpdate =
+  Database["public"]["Tables"]["pulse_campaigns"]["Update"];
+
+export type PulseResponse =
+  Database["public"]["Tables"]["pulse_responses"]["Row"];
+export type PulseResponseInsert =
+  Database["public"]["Tables"]["pulse_responses"]["Insert"];
+export type PulseResponseUpdate =
+  Database["public"]["Tables"]["pulse_responses"]["Update"];
+
+export type PulseSummary =
+  Database["public"]["Tables"]["pulse_summaries"]["Row"];
+export type PulseSummaryInsert =
+  Database["public"]["Tables"]["pulse_summaries"]["Insert"];
+export type PulseSummaryUpdate =
+  Database["public"]["Tables"]["pulse_summaries"]["Update"];
+
+export type PulseCampaignType = "nps" | "poll" | "sentiment" | "feedback";
+export type PulseCampaignStatus = "draft" | "active" | "paused" | "completed";
+
+// Pulse JSONB config shapes (typed versions of the Json columns)
+export interface PulseNpsConfig {
+  follow_up_question?: string;
+}
+
+export interface PulsePollConfig {
+  options: string[];
+  allow_other?: boolean;
+}
+
+export interface PulseSentimentConfig {
+  emojis?: number;
+  follow_up_question?: string;
+}
+
+export interface PulseFeedbackConfig {
+  placeholder?: string;
+  max_length?: number;
+}
+
+export type PulseConfig =
+  | PulseNpsConfig
+  | PulsePollConfig
+  | PulseSentimentConfig
+  | PulseFeedbackConfig;
+
+export interface PulseTargeting {
+  pages?: string[];
+  delay_seconds?: number;
+  scroll_depth?: number;
+  audience?: "all" | "new" | "returning";
+}
+
+export type PulseShape =
+  | "blob"
+  | "petal"
+  | "diamond"
+  | "cloud"
+  | "squircle"
+  | "leaf"
+  | "random";
+
+export type PulsePosition =
+  | "bottom-left"
+  | "bottom-right"
+  | "top-left"
+  | "top-right"
+  | "smart";
+
+export interface PulseStyling {
+  accent_color?: string;
+  theme?: "light" | "dark" | "auto";
+  shape?: PulseShape;
+  position?: PulsePosition;
+}
+
+// Pulse answer shapes per campaign type
+export interface PulseNpsAnswer {
+  score: number;
+  follow_up?: string;
+}
+
+export interface PulsePollAnswer {
+  option: string;
+  other_text?: string;
+}
+
+export interface PulseSentimentAnswer {
+  emoji: string;
+  follow_up?: string;
+}
+
+export interface PulseFeedbackAnswer {
+  text: string;
+}
+
+export type PulseAnswer =
+  | PulseNpsAnswer
+  | PulsePollAnswer
+  | PulseSentimentAnswer
+  | PulseFeedbackAnswer;
+
+export interface PulseResponseMetadata {
+  scroll_depth?: number;
+  time_on_page?: number;
+  referrer?: string;
+}
+
+export interface PulseSummaryTheme {
+  label: string;
+  count: number;
+  sentiment?: string;
+}

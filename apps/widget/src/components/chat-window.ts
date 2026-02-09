@@ -51,6 +51,18 @@ import {
 } from "../utils/storage";
 import { generateId } from "../utils/helpers";
 import { detectHighIntent } from "../utils/high-intent-detector";
+import { VoiceCallOverlay, type VoiceCallState } from "./voice-call-overlay";
+import { VoicePermissionPrompt } from "./voice-permission-prompt";
+import type { VoiceConfig } from "../widget";
+
+/** Minimal Vapi SDK instance typing for dynamic imports */
+interface VapiInstance {
+  on(event: string, callback: (...args: unknown[]) => void): void;
+  start(assistantId: string, overrides?: Record<string, unknown>): Promise<unknown>;
+  stop(): void;
+  setMuted(muted: boolean): void;
+  isMuted(): boolean;
+}
 import {
   WidgetRealtimeManager,
   getRealtimeManager,
@@ -76,6 +88,7 @@ export interface ChatWindowOptions {
   onClose: () => void;
   leadCaptureConfig?: Record<string, unknown> | null;
   leadRecoveryConfig?: LeadRecoveryConfig | null;
+  voiceConfig?: VoiceConfig | null;
 }
 
 export class ChatWindow {
@@ -115,6 +128,16 @@ export class ChatWindow {
   private summaryHookShown = false;
   private totalUserMessages = 0;
 
+  // Expand/collapse
+  private isExpanded = false;
+
+  // Voice
+  private voiceOverlay: VoiceCallOverlay | null = null;
+  private voicePermissionPrompt: VoicePermissionPrompt | null = null;
+  private vapiInstance: unknown = null;
+  private vapiModule: unknown = null;
+  private isVoiceCallActive = false;
+
   constructor(private options: ChatWindowOptions) {
     this.visitorId = getVisitorId();
     this.sessionId = getSessionId(options.projectId);
@@ -142,6 +165,8 @@ export class ChatWindow {
       onSend: (message) => this.handleSend(message),
       primaryColor: options.primaryColor,
       onInput: () => this.handleUserTyping(),
+      voiceEnabled: !!options.voiceConfig?.enabled,
+      onVoiceClick: () => this.initiateVoiceCall(),
     });
     inputContainer.appendChild(this.input.element);
 
@@ -178,6 +203,9 @@ export class ChatWindow {
     // Check conversation status first (if we have a session)
     // This determines if we should show the human button
     this.initializeConversationState();
+
+    // Set initial voice button state (disabled if lead capture pending)
+    this.updateVoiceButtonState();
   }
 
   /**
@@ -202,6 +230,7 @@ export class ChatWindow {
 
       if (status) {
         this.conversationStatus = status.status;
+        this.updateVoiceButtonState();
 
         // If in handoff state (waiting or agent_active), hide button and start polling
         if (status.status === "waiting" || status.status === "agent_active") {
@@ -353,12 +382,35 @@ export class ChatWindow {
             </span>
           </div>
         </div>
-        <button class="chatbot-close" aria-label="Close chat" type="button">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+        <div class="chatbot-header-actions">
+          ${this.options.voiceConfig?.enabled ? `
+          <button class="cb-voice-header-btn" aria-label="Start voice call" type="button" title="Voice call">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+          </button>
+          ` : ""}
+          <button class="cb-expand-btn" aria-label="Expand chat" type="button" title="Expand">
+            <svg class="cb-expand-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <polyline points="9 21 3 21 3 15"></polyline>
+              <line x1="21" y1="3" x2="14" y2="10"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+            <svg class="cb-collapse-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="display:none">
+              <polyline points="4 14 10 14 10 20"></polyline>
+              <polyline points="20 10 14 10 14 4"></polyline>
+              <line x1="14" y1="10" x2="21" y2="3"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+          </button>
+          <button class="chatbot-close" aria-label="Close chat" type="button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
       </div>
       <div class="chatbot-messages" role="log" aria-live="polite" aria-label="Chat messages"></div>
       <div class="chatbot-input-container"></div>
@@ -369,6 +421,22 @@ export class ChatWindow {
     closeBtn.addEventListener("click", () => {
       this.options.onClose();
     });
+
+    // Attach expand/collapse handler
+    const expandBtn = window.querySelector(".cb-expand-btn");
+    if (expandBtn) {
+      expandBtn.addEventListener("click", () => {
+        this.toggleExpanded();
+      });
+    }
+
+    // Attach voice header button handler
+    const voiceHeaderBtn = window.querySelector(".cb-voice-header-btn");
+    if (voiceHeaderBtn) {
+      voiceHeaderBtn.addEventListener("click", () => {
+        this.initiateVoiceCall();
+      });
+    }
 
     return window;
   }
@@ -629,6 +697,9 @@ export class ChatWindow {
           hasCompletedQualifying: status.hasCompletedQualifying,
         };
 
+        // Enable voice buttons now that form is confirmed complete
+        this.updateVoiceButtonState();
+
         if (process.env.NODE_ENV === "development") {
           console.log("[Widget] Lead capture: returning user (server)");
         }
@@ -809,6 +880,9 @@ export class ChatWindow {
         this.isLeadCaptureActive = false;
         this.input.setDisabled(false);
 
+        // Enable voice buttons now that lead form is complete
+        this.updateVoiceButtonState();
+
         // Re-check handoff availability to show "Talk to Human" button now that form is complete
         this.checkAvailability();
 
@@ -834,6 +908,338 @@ export class ChatWindow {
       console.error("[Widget] Lead form submit error:", error);
       this.leadCaptureForm.setLoading(false);
     }
+  }
+
+  // ─── Voice Call Methods ────────────────────────────────────────────────────
+
+  /**
+   * Initiate voice call flow:
+   * Voice buttons are disabled until lead form is completed (if lead capture enabled),
+   * so by the time this runs, we can go straight to the permission prompt.
+   */
+  private initiateVoiceCall(): void {
+    if (this.isVoiceCallActive) return;
+    if (!this.options.voiceConfig?.enabled) return;
+    if (this.conversationStatus === "waiting" || this.conversationStatus === "agent_active") return;
+    this.showVoicePermissionPrompt();
+  }
+
+  /**
+   * Update disabled/enabled state of voice call buttons (header + input).
+   * Buttons are disabled when lead capture is enabled but form hasn't been submitted.
+   */
+  private updateVoiceButtonState(): void {
+    if (!this.options.voiceConfig?.enabled) return;
+
+    const lcConfig = this.options.leadCaptureConfig;
+    const leadCaptureEnabled = lcConfig?.enabled === true;
+    const formCompleted = this.leadCaptureLocalState?.hasCompletedForm === true;
+    const isInHandoff = this.conversationStatus === "waiting" ||
+                         this.conversationStatus === "agent_active";
+    const disabled = (leadCaptureEnabled && !formCompleted) || isInHandoff;
+
+    const tooltip = isInHandoff
+      ? "Voice calls unavailable during agent conversation"
+      : (leadCaptureEnabled && !formCompleted)
+        ? "Complete the form above to start a voice call"
+        : "Voice call";
+
+    // Header voice button
+    const headerBtn = this.element.querySelector(".cb-voice-header-btn") as HTMLButtonElement | null;
+    if (headerBtn) {
+      headerBtn.disabled = disabled;
+      headerBtn.classList.toggle("cb-voice-btn-disabled", disabled);
+      headerBtn.title = tooltip;
+    }
+
+    // Input voice button
+    const inputBtn = this.element.querySelector(".cb-voice-input-btn") as HTMLButtonElement | null;
+    if (inputBtn) {
+      inputBtn.disabled = disabled;
+      inputBtn.classList.toggle("cb-voice-btn-disabled", disabled);
+      inputBtn.title = tooltip;
+    }
+  }
+
+  /**
+   * Show microphone permission prompt (skips if already granted)
+   */
+  private async showVoicePermissionPrompt(): Promise<void> {
+    // Check if microphone permission is already granted
+    try {
+      const result = await navigator.permissions.query({ name: "microphone" as PermissionName });
+      if (result.state === "granted") {
+        // Already have permission — skip the prompt, start the call directly
+        this.startVoiceCall();
+        return;
+      }
+    } catch {
+      // permissions.query not supported (e.g. Firefox) — fall through to show prompt
+    }
+
+    // Remove existing prompt if any
+    this.voicePermissionPrompt?.destroy();
+
+    this.voicePermissionPrompt = new VoicePermissionPrompt({
+      primaryColor: this.options.primaryColor,
+      onAllow: () => {
+        this.voicePermissionPrompt?.destroy();
+        this.voicePermissionPrompt = null;
+        this.startVoiceCall();
+      },
+      onCancel: () => {
+        this.voicePermissionPrompt?.destroy();
+        this.voicePermissionPrompt = null;
+      },
+    });
+
+    // Show over the messages area
+    this.messagesContainer.insertBefore(
+      this.voicePermissionPrompt.element,
+      this.typingIndicator.element
+    );
+    this.scrollToBottom();
+  }
+
+  /**
+   * Load the Vapi SDK dynamically (only when needed)
+   */
+  private async loadVapiSDK(): Promise<Record<string, unknown>> {
+    if (!this.vapiModule) {
+      this.vapiModule = await import("@vapi-ai/web");
+    }
+    return this.vapiModule as Record<string, unknown>;
+  }
+
+  /**
+   * Fetch fresh voice config from the API (includes dynamic system prompt)
+   */
+  private async fetchVoiceCallConfig(): Promise<{
+    vapiPublicKey: string;
+    assistantId: string;
+    greeting: string;
+    assistantOverrides: Record<string, unknown>;
+  } | null> {
+    try {
+      const response = await fetch(
+        `${this.options.apiUrl}/api/vapi/config/${this.options.projectId}?visitorId=${encodeURIComponent(this.visitorId)}`
+      );
+      if (!response.ok) return null;
+      const data = await response.json();
+      if (!data.voiceEnabled || !data.vapiPublicKey || !data.assistantId) return null;
+      return data;
+    } catch (error) {
+      console.error("[Widget] Failed to fetch voice call config:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Start the actual Vapi voice call
+   */
+  private async startVoiceCall(): Promise<void> {
+    const voiceConfig = this.options.voiceConfig;
+    if (!voiceConfig?.vapiPublicKey || !voiceConfig?.assistantId) {
+      console.error("[Widget] Voice config missing vapiPublicKey or assistantId");
+      return;
+    }
+
+    // Ensure a conversation exists before starting voice call (P5)
+    if (!this.sessionId) {
+      try {
+        const resp = await fetch(`${this.options.apiUrl}/api/chat/ensure-conversation`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId: this.options.projectId, visitorId: this.visitorId }),
+        });
+        const data = await resp.json();
+        if (data.conversationId) {
+          this.sessionId = data.conversationId;
+          setSessionId(this.options.projectId, data.conversationId);
+        }
+      } catch (error) {
+        console.error("[Widget] Failed to ensure conversation before voice call:", error);
+      }
+    }
+
+    this.isVoiceCallActive = true;
+
+    // Create and show the voice overlay
+    this.voiceOverlay?.destroy();
+    this.voiceOverlay = new VoiceCallOverlay({
+      primaryColor: this.options.primaryColor,
+      onEndCall: () => this.endVoiceCall(),
+      onMuteToggle: () => this.toggleVoiceMute(),
+      onBackToChat: () => this.dismissVoiceOverlay(),
+    });
+
+    // Insert overlay into the chat window (covers messages + input)
+    this.element.appendChild(this.voiceOverlay.element);
+    this.voiceOverlay.show();
+
+    // Disable text input during voice call
+    this.input.setDisabled(true, "Voice call in progress");
+
+    try {
+      // Fetch fresh voice config (includes dynamic system prompt with personality + qualifying Qs)
+      const freshConfig = await this.fetchVoiceCallConfig();
+
+      // Dynamically load Vapi SDK
+      const VapiModule = await this.loadVapiSDK();
+      // Handle CJS/ESM interop: module.default could be the class itself or { default: class }
+      const VapiClass = typeof VapiModule.default === "function"
+        ? VapiModule.default
+        : (VapiModule.default as Record<string, unknown>)?.default || VapiModule;
+      const vapi = new (VapiClass as new (key: string) => VapiInstance)(voiceConfig.vapiPublicKey);
+      this.vapiInstance = vapi;
+
+      // Wire up Vapi events (call methods on vapi directly to preserve `this` context)
+      vapi.on("call-start", () => {
+        this.voiceOverlay?.setState("active-listening");
+      });
+
+      vapi.on("call-end", () => {
+        this.voiceOverlay?.setState("ended");
+        this.isVoiceCallActive = false;
+
+        // Re-enable text input
+        this.input.setDisabled(false);
+
+        // Add a system message to the chat
+        const duration = this.voiceOverlay?.getDuration() || 0;
+        const durationStr = `${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, "0")}`;
+        const summaryMsg: StoredMessage = {
+          id: generateId(),
+          content: `Voice call ended (${durationStr}). You can continue chatting below.`,
+          role: "assistant",
+          timestamp: Date.now(),
+        };
+        this.messages.push(summaryMsg);
+        this.addMessageToDOM(summaryMsg);
+        setStoredMessages(this.options.projectId, this.messages);
+
+        // Refresh lead capture status after voice call (P6)
+        // Give server time to extract qualifying answers from transcript
+        setTimeout(async () => {
+          try {
+            const status = await getLeadCaptureStatus(
+              this.options.apiUrl,
+              this.options.projectId,
+              this.visitorId
+            );
+            if (status.hasCompletedQualifying) {
+              this.leadCaptureLocalState = { hasCompletedForm: true, hasCompletedQualifying: true };
+              setLeadCaptureState(this.options.projectId, this.leadCaptureLocalState);
+            }
+          } catch (err) {
+            console.error("[Widget] Failed to refresh lead capture status after voice call:", err);
+          }
+        }, 5000);
+      });
+
+      vapi.on("speech-start", () => {
+        this.voiceOverlay?.setState("active-speaking");
+      });
+
+      vapi.on("speech-end", () => {
+        this.voiceOverlay?.setState("active-listening");
+      });
+
+      vapi.on("message", (msg: unknown) => {
+        const message = msg as Record<string, unknown>;
+        if (message.type === "transcript" && message.transcriptType === "final") {
+          const role = message.role === "user" ? "user" : "assistant";
+          const text = message.transcript as string;
+
+          // Show in voice overlay transcript
+          this.voiceOverlay?.addTranscript(role as "user" | "assistant", text);
+
+          // Also add to main chat messages so they appear in conversation history
+          if (text?.trim()) {
+            const chatMsg: StoredMessage = {
+              id: generateId(),
+              content: text,
+              role: role as "user" | "assistant",
+              timestamp: Date.now(),
+            };
+            this.messages.push(chatMsg);
+            this.addMessageToDOM(chatMsg);
+            setStoredMessages(this.options.projectId, this.messages);
+          }
+        }
+      });
+
+      vapi.on("volume-level", (level: unknown) => {
+        this.voiceOverlay?.setAmplitude((level as number) / 100);
+      });
+
+      vapi.on("error", (err: unknown) => {
+        console.error("[Widget] Vapi error:", err);
+        this.voiceOverlay?.setState("error");
+        this.isVoiceCallActive = false;
+      });
+
+      // Build assistant overrides: use fresh config from API (includes dynamic system prompt)
+      // or fall back to basic metadata
+      const overrides = freshConfig?.assistantOverrides
+        ? {
+            ...freshConfig.assistantOverrides,
+            // Always inject visitorId and conversationId from the widget
+            variableValues: {
+              ...(freshConfig.assistantOverrides.variableValues as Record<string, string> || {}),
+              visitorId: this.visitorId,
+              conversationId: this.sessionId || "",
+            },
+          }
+        : {
+            variableValues: {
+              companyName: document.title || "Support",
+              projectId: this.options.projectId,
+              visitorId: this.visitorId,
+              conversationId: this.sessionId || "",
+              greeting: voiceConfig.greeting || "Hi! How can I help you today?",
+            },
+          };
+
+      // Start the call with dynamic assistant overrides
+      await vapi.start(voiceConfig.assistantId, overrides);
+    } catch (error) {
+      console.error("[Widget] Failed to start voice call:", error);
+      this.voiceOverlay?.setState("error");
+      this.isVoiceCallActive = false;
+    }
+  }
+
+  /**
+   * End the current voice call
+   */
+  private endVoiceCall(): void {
+    if (this.vapiInstance) {
+      (this.vapiInstance as VapiInstance).stop();
+    }
+  }
+
+  /**
+   * Toggle mute on the voice call
+   */
+  private toggleVoiceMute(): void {
+    if (this.vapiInstance) {
+      const vapi = this.vapiInstance as VapiInstance;
+      const muted = vapi.isMuted();
+      vapi.setMuted(!muted);
+    }
+  }
+
+  /**
+   * Dismiss the voice overlay and return to chat
+   */
+  private dismissVoiceOverlay(): void {
+    if (this.isVoiceCallActive) {
+      this.endVoiceCall();
+    }
+    this.voiceOverlay?.destroy();
+    this.voiceOverlay = null;
+    this.isVoiceCallActive = false;
   }
 
   private scrollToBottom(): void {
@@ -1246,6 +1652,7 @@ export class ChatWindow {
   private handleRealtimeStatusChange(status: RealtimeStatusChange): void {
     const previousStatus = this.conversationStatus;
     this.conversationStatus = status.status;
+    this.updateVoiceButtonState();
 
     if (process.env.NODE_ENV === "development") {
       console.log("[Widget] Realtime status change:", status);
@@ -1334,6 +1741,7 @@ export class ChatWindow {
 
         if (status) {
           this.conversationStatus = status.status;
+          this.updateVoiceButtonState();
 
           // If resolved or closed, stop polling and maybe show button again
           if (status.status === "resolved" || status.status === "closed" || status.status === "ai_active") {
@@ -1438,6 +1846,26 @@ export class ChatWindow {
     // Restore focus
     if (this.lastFocusedElement) {
       this.lastFocusedElement.focus();
+    }
+  }
+
+  /**
+   * Toggle expanded/collapsed state
+   */
+  private toggleExpanded(): void {
+    this.isExpanded = !this.isExpanded;
+    this.element.classList.toggle("cb-expanded", this.isExpanded);
+
+    // Toggle icon visibility
+    const expandIcon = this.element.querySelector(".cb-expand-icon") as HTMLElement;
+    const collapseIcon = this.element.querySelector(".cb-collapse-icon") as HTMLElement;
+    const expandBtn = this.element.querySelector(".cb-expand-btn") as HTMLElement;
+
+    if (expandIcon && collapseIcon && expandBtn) {
+      expandIcon.style.display = this.isExpanded ? "none" : "block";
+      collapseIcon.style.display = this.isExpanded ? "block" : "none";
+      expandBtn.setAttribute("aria-label", this.isExpanded ? "Collapse chat" : "Expand chat");
+      expandBtn.title = this.isExpanded ? "Collapse" : "Expand";
     }
   }
 

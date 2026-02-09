@@ -1,195 +1,289 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
-import { VibeCodeShowcase } from "./vibe-code-showcase";
+import { ArrowRight } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
-// Floating particles component
-function FloatingParticles() {
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {[...Array(20)].map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-2 h-2 rounded-full"
-          style={{
-            background: `hsl(${220 + i * 10}, 70%, 60%)`,
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-          }}
-          animate={{
-            y: [-20, 20, -20],
-            x: [-10, 10, -10],
-            opacity: [0.3, 0.6, 0.3],
-            scale: [1, 1.2, 1],
-          }}
-          transition={{
-            duration: 4 + Math.random() * 4,
-            repeat: Infinity,
-            delay: Math.random() * 2,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
-    </div>
-  );
+interface Message {
+  role: "bot" | "user";
+  text: string;
 }
 
-// Animated gradient mesh
-function GradientMesh() {
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      {/* Primary gradient blob */}
-      <motion.div
-        className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full opacity-30"
-        style={{
-          background: "radial-gradient(circle, rgba(59,130,246,0.5) 0%, transparent 70%)",
-        }}
-        animate={{
-          scale: [1, 1.2, 1],
-          x: [0, 50, 0],
-          y: [0, -30, 0],
-        }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
-      {/* Secondary gradient blob */}
-      <motion.div
-        className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full opacity-25"
-        style={{
-          background: "radial-gradient(circle, rgba(168,85,247,0.5) 0%, transparent 70%)",
-        }}
-        animate={{
-          scale: [1.2, 1, 1.2],
-          x: [0, -30, 0],
-          y: [0, 50, 0],
-        }}
-        transition={{
-          duration: 10,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
-      {/* Accent gradient blob */}
-      <motion.div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full opacity-20"
-        style={{
-          background: "radial-gradient(ellipse, rgba(236,72,153,0.4) 0%, transparent 60%)",
-        }}
-        animate={{
-          scale: [1, 1.1, 1],
-          rotate: [0, 5, 0],
-        }}
-        transition={{
-          duration: 12,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
-    </div>
-  );
-}
-
-// Grid pattern overlay
-function GridPattern() {
-  return (
-    <div
-      className="absolute inset-0 opacity-[0.03]"
-      style={{
-        backgroundImage: `
-          linear-gradient(to right, #64748b 1px, transparent 1px),
-          linear-gradient(to bottom, #64748b 1px, transparent 1px)
-        `,
-        backgroundSize: "60px 60px",
-      }}
-    />
-  );
-}
+const MESSAGES: Message[] = [
+  { role: "bot", text: "Hi! Welcome to TechStore. What can I help you with today?" },
+  { role: "user", text: "What plans do you have?" },
+  {
+    role: "bot",
+    text: "We have three plans:\n\n• Starter — $29/mo for individuals\n• Pro — $79/mo for small teams\n• Enterprise — Custom pricing\n\nAre you looking for a team or personal plan?",
+  },
+  { role: "user", text: "Team plan for about 15 people" },
+  {
+    role: "bot",
+    text: "The Pro plan would be perfect for 15 people. It includes unlimited projects, team collaboration, and priority support.\n\nWant me to send you a detailed comparison?",
+  },
+  { role: "user", text: "Yes please" },
+  { role: "bot", text: "I'll send that right over! What's the best email to reach you?" },
+  { role: "user", text: "sarah@company.com" },
+];
 
 export function Hero() {
+  const [displayedMessages, setDisplayedMessages] = useState<Message[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showLeadCaptured, setShowLeadCaptured] = useState(false);
+  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = chatContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [displayedMessages, isTyping]);
+
+  const startConversation = useCallback(() => {
+    // Clear any existing timeouts
+    timeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+    timeoutsRef.current = [];
+
+    // Reset state
+    setDisplayedMessages([]);
+    setIsTyping(false);
+    setShowLeadCaptured(false);
+
+    let currentDelay = 1000;
+
+    MESSAGES.forEach((message, index) => {
+      if (message.role === "bot") {
+        // Show typing indicator
+        const typingTimeout = setTimeout(() => {
+          setIsTyping(true);
+        }, currentDelay);
+        timeoutsRef.current.push(typingTimeout);
+
+        currentDelay += 800;
+
+        // Show bot message
+        const messageTimeout = setTimeout(() => {
+          setIsTyping(false);
+          setDisplayedMessages((prev) => [...prev, message]);
+        }, currentDelay);
+        timeoutsRef.current.push(messageTimeout);
+
+        currentDelay += 2000;
+      } else {
+        // Show user message
+        const messageTimeout = setTimeout(() => {
+          setDisplayedMessages((prev) => [...prev, message]);
+        }, currentDelay);
+        timeoutsRef.current.push(messageTimeout);
+
+        currentDelay += 1500;
+      }
+    });
+
+    // Show lead captured banner
+    const leadCapturedTimeout = setTimeout(() => {
+      setShowLeadCaptured(true);
+    }, currentDelay);
+    timeoutsRef.current.push(leadCapturedTimeout);
+
+    // Restart conversation
+    const restartTimeout = setTimeout(() => {
+      startConversation();
+    }, currentDelay + 4000);
+    timeoutsRef.current.push(restartTimeout);
+  }, []);
+
+  useEffect(() => {
+    startConversation();
+
+    return () => {
+      timeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+    };
+  }, [startConversation]);
+
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
-      {/* Animated Background */}
-      <GradientMesh />
-      <GridPattern />
-      <FloatingParticles />
+    <section className="relative min-h-screen overflow-hidden bg-[#050505] pt-32 pb-20">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          {/* Left Side - Copy */}
+          <div className="space-y-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0 }}
+            >
+              <span className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full px-4 py-1.5 text-sm font-medium">
+                AI-Powered Lead Capture
+              </span>
+            </motion.div>
 
-      <div className="relative z-10 max-w-5xl mx-auto px-6 pt-32 pb-12 text-center">
-        {/* Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full border border-blue-200 bg-blue-50 text-sm text-blue-700"
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>5-Minute Setup</span>
-        </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.1]"
+            >
+              Your website is
+              <br />
+              leaking leads.
+            </motion.h1>
 
-        {/* Headline */}
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 mb-6"
-        >
-          <span>Stop Answering the Same Questions.</span>
-          <br />
-          <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Let AI Handle It.
-          </span>
-        </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-lg text-zinc-400 max-w-lg leading-relaxed"
+            >
+              89% of visitors leave without saying a word. SupportBase puts an AI agent on every page — one that knows your product, captures intent, and turns browsers into buyers. 24/7.
+            </motion.p>
 
-        {/* Subheadline */}
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-12"
-        >
-          Your team is stretched thin. Customers expect instant answers.
-          SupportBase answers 89% of questions automatically—so you can focus on what matters.
-        </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="flex flex-col sm:flex-row gap-4"
+            >
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-xl font-medium transition-colors"
+              >
+                Start Free — No Credit Card
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="#demo"
+                className="inline-flex items-center justify-center gap-2 border border-white/[0.08] hover:border-white/[0.15] text-zinc-300 hover:text-white px-8 py-4 rounded-xl transition-colors"
+              >
+                See How It Works
+              </Link>
+            </motion.div>
 
-        {/* CTA Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
-        >
-          <Link
-            href="/login"
-            className="group relative inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105"
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="text-sm text-zinc-500"
+            >
+              Free during beta · 5-min setup · Works on any website
+            </motion.p>
+          </div>
+
+          {/* Right Side - Chat Widget Demo */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="relative"
           >
-            Start Free - No Credit Card
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
-          <Link
-            href="#demo"
-            className="inline-flex items-center gap-2 px-8 py-4 text-slate-700 hover:text-slate-900 font-medium rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
-          >
-            Watch Demo
-          </Link>
-        </motion.div>
+            {/* Glow effect */}
+            <div className="absolute inset-0 bg-blue-500/10 blur-3xl" />
 
-        {/* Trust Indicator */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="text-sm text-slate-500"
-        >
-          No credit card • 5-minute setup • Works on any website
-        </motion.p>
+            {/* Chat Widget */}
+            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111] overflow-hidden shadow-2xl max-w-md mx-auto">
+              {/* Header */}
+              <div className="bg-blue-600 px-4 py-3 flex items-center gap-3">
+                <div className="w-2 h-2 bg-green-400 rounded-full" />
+                <span className="text-white font-medium">AI Assistant</span>
+                <span className="text-blue-100 text-sm ml-auto">Online</span>
+              </div>
+
+              {/* Messages Area */}
+              <div ref={chatContainerRef} className="bg-[#0a0a0a] p-4 space-y-3 h-[500px] overflow-y-auto">
+                <AnimatePresence mode="popLayout">
+                  {displayedMessages.map((message, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[85%] px-3 py-2 text-sm whitespace-pre-wrap ${
+                          message.role === "bot"
+                            ? "bg-[#1a1a1a] text-zinc-200 rounded-xl rounded-bl-sm"
+                            : "bg-blue-600 text-white rounded-xl rounded-br-sm"
+                        }`}
+                      >
+                        {message.text}
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {isTyping && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="flex justify-start"
+                    >
+                      <div className="bg-[#1a1a1a] rounded-xl rounded-bl-sm px-4 py-3 flex gap-1">
+                        <motion.div
+                          className="w-2 h-2 bg-zinc-400 rounded-full"
+                          animate={{ y: [0, -6, 0] }}
+                          transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
+                        />
+                        <motion.div
+                          className="w-2 h-2 bg-zinc-400 rounded-full"
+                          animate={{ y: [0, -6, 0] }}
+                          transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
+                        />
+                        <motion.div
+                          className="w-2 h-2 bg-zinc-400 rounded-full"
+                          animate={{ y: [0, -6, 0] }}
+                          transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {showLeadCaptured && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 space-y-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <span className="text-green-400 font-medium text-sm">Lead Captured: sarah@company.com</span>
+                      </div>
+                      <p className="text-green-300/70 text-xs pl-7">
+                        Qualified: Team of 15, interested in Pro plan
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <div />
+              </div>
+
+              {/* Input Bar */}
+              <div className="bg-[#111] border-t border-white/[0.08] p-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Type a message..."
+                    disabled
+                    className="flex-1 bg-[#0a0a0a] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-zinc-400 placeholder:text-zinc-600 cursor-not-allowed"
+                  />
+                  <button
+                    disabled
+                    className="bg-blue-600/50 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </div>
-
-      {/* Vibe Code Demo */}
-      <VibeCodeShowcase />
     </section>
   );
 }

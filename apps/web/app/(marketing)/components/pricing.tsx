@@ -2,116 +2,94 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Check, Sparkles, ArrowRight } from "lucide-react";
-
-const features = [
-  "Unlimited chatbots",
-  "Unlimited knowledge sources",
-  "Connect to your tools",
-  "Lead capture",
-  "Analytics dashboard",
-  "Human handoff to your team",
-  "Custom branding",
-  "Priority support",
-];
+import { Check, ArrowRight } from "lucide-react";
 
 export function Pricing() {
+  const features = [
+    "Unlimited AI conversations",
+    "Knowledge base (docs, URLs, files)",
+    "Lead capture & qualification",
+    "Human handoff",
+    "Analytics dashboard",
+    "Custom branding",
+    "API & MCP access",
+    "Priority support",
+  ];
+
   return (
-    <section id="pricing" className="py-32 bg-gradient-to-b from-slate-50 to-white border-t border-slate-100">
-      <div className="max-w-4xl mx-auto px-6">
+    <section id="pricing" className="py-32 bg-[#050505]">
+      <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-16"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 rounded-full bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100">
-            <Sparkles className="w-4 h-4 text-blue-600" />
-            <span className="text-sm font-medium text-blue-700">Limited Time Offer</span>
+        <div className="text-center mb-16">
+          <div className="text-blue-400 text-sm font-medium tracking-wider uppercase mb-4">
+            PRICING
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-            Free while we're in beta
+          <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
+            Free while we're in beta.
           </h2>
-          <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-            Get full access to all features at no cost. Help us build the perfect chatbot platform,
-            and lock in early adopter benefits.
+          <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
+            Full access. No credit card. Help us build the perfect AI agent, and
+            lock in early adopter pricing forever.
           </p>
-        </motion.div>
+        </div>
 
         {/* Pricing Card */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.1 }}
-          className="relative"
+          className="max-w-lg mx-auto"
         >
-          {/* Glow effect */}
-          <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-3xl blur-xl" />
-
-          <div className="relative bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xl">
-            {/* Beta Badge */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-center py-3">
-              <p className="text-sm font-medium">
-                Beta Access • No Credit Card Required
-              </p>
+          <div className="bg-[#111] border border-blue-500/30 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(59,130,246,0.1)]">
+            {/* Top banner */}
+            <div className="bg-blue-600 text-center py-2.5">
+              <div className="text-sm font-medium text-white">
+                Beta Access · No Credit Card Required
+              </div>
             </div>
 
-            <div className="p-8 md:p-12">
-              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-10">
-                <div>
-                  <p className="text-slate-500 text-sm font-medium uppercase tracking-wider mb-2">
-                    Beta Pricing
-                  </p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-6xl font-bold text-slate-900">$0</span>
-                    <span className="text-slate-500">/month</span>
-                  </div>
-                  <p className="text-slate-500 mt-2">
-                    <span className="line-through">$49/month</span>
-                    <span className="ml-2 text-green-600 font-medium">100% off during beta</span>
-                  </p>
-                </div>
-
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Link
-                    href="/login"
-                    className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
-                  >
-                    Get Started Free
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                </motion.div>
+            {/* Price */}
+            <div className="p-8 text-center border-b border-white/[0.08]">
+              <div className="mb-2">
+                <span className="text-6xl font-bold text-white">$0</span>
+                <span className="text-zinc-500">/month</span>
               </div>
+              <div className="flex items-center justify-center gap-3">
+                <span className="line-through text-zinc-600">$49/month</span>
+                <span className="text-green-400 text-sm font-medium">
+                  100% off during beta
+                </span>
+              </div>
+            </div>
 
-              {/* Features Grid */}
+            {/* CTA */}
+            <div className="p-8 border-b border-white/[0.08]">
+              <Link
+                href="/login"
+                className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-xl w-full text-center font-medium flex items-center justify-center gap-2 transition-colors"
+              >
+                Start Free
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </div>
+
+            {/* Features */}
+            <div className="p-8 border-b border-white/[0.08]">
               <div className="grid sm:grid-cols-2 gap-4">
                 {features.map((feature, index) => (
-                  <motion.div
-                    key={feature}
-                    initial={{ opacity: 0, x: -10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.1 + index * 0.05 }}
-                    className="flex items-center gap-3"
-                  >
-                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                      <Check className="w-3 h-3 text-green-600" />
-                    </div>
-                    <span className="text-slate-700">{feature}</span>
-                  </motion.div>
+                  <div key={index} className="flex items-start gap-3">
+                    <Check className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-zinc-300 text-sm">{feature}</span>
+                  </div>
                 ))}
               </div>
             </div>
 
-            {/* Footer note */}
-            <div className="px-8 md:px-12 py-6 bg-slate-50 border-t border-slate-100">
-              <p className="text-sm text-slate-500 text-center">
-                No commitments. Cancel anytime. Early adopters get grandfathered pricing when we launch.
+            {/* Footer */}
+            <div className="py-4 text-center">
+              <p className="text-sm text-zinc-500">
+                Early adopters get grandfathered pricing at launch.
               </p>
             </div>
           </div>

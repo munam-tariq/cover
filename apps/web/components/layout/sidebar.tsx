@@ -10,13 +10,14 @@ import { useInboxPollingOptional } from "@/contexts/inbox-polling-context";
 // Navigation items with role requirements
 // roles: undefined = all, "owner" = owner only, "owner_admin" = owner or admin, "agent_only" = agents (not owners viewing their own project)
 const allNavItems = [
-  { href: "/", label: "Dashboard", icon: "home", roles: undefined },
+  { href: "/dashboard", label: "Dashboard", icon: "home", roles: undefined },
   { href: "/inbox", label: "Inbox", icon: "inbox", roles: undefined },
   { href: "/team", label: "Team", icon: "users", roles: undefined },
   { href: "/projects", label: "Agents", icon: "folder", roles: "owner" as const },
   { href: "/leads", label: "Leads", icon: "user-plus", roles: "owner" as const },
   { href: "/analytics", label: "Analytics", icon: "bar-chart", roles: "owner" as const },
   { href: "/feedback", label: "Feedback", icon: "thumbs-up", roles: "owner" as const },
+  { href: "/pulse", label: "Pulse", icon: "activity", roles: "owner" as const },
   { href: "/playground", label: "Playground", icon: "sparkles", roles: "owner_admin" as const },
   { href: "/knowledge", label: "Knowledge Base", icon: "book", roles: "owner_admin" as const },
   { href: "/api-endpoints", label: "API Endpoints", icon: "code", roles: "owner" as const },
@@ -86,6 +87,11 @@ const icons: Record<string, React.FC<{ className?: string }>> = {
   "thumbs-up": ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+    </svg>
+  ),
+  activity: ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M22 12h-4l-3 9L9 3l-3 9H2" />
     </svg>
   ),
 };

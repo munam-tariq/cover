@@ -23,6 +23,7 @@ import {
   type ProactiveEngagementConfig,
   type TriggerAction,
 } from "./utils/engagement-triggers";
+import { PulseManager } from "./utils/pulse-manager";
 
 // CSS is injected at build time
 declare const __WIDGET_CSS__: string;
@@ -33,6 +34,16 @@ declare global {
     __CHATBOT_WIDGET_LOADED__?: boolean;
     ChatbotWidget?: typeof ChatbotWidget;
   }
+}
+
+/**
+ * Voice configuration from API
+ */
+export interface VoiceConfig {
+  enabled: boolean;
+  vapiPublicKey?: string;
+  assistantId?: string;
+  greeting?: string;
 }
 
 /**
@@ -74,6 +85,8 @@ class ChatbotWidget {
   private teaserMessage: TeaserMessage | null = null;
   private exitOverlay: ExitOverlay | null = null;
   private leadRecoveryConfig: LeadRecoveryConfig | null = null;
+  private voiceConfig: VoiceConfig | null = null;
+  private pulseManager: PulseManager | null = null;
 
   constructor(config: WidgetConfig) {
     // Validate required config
@@ -147,6 +160,7 @@ class ChatbotWidget {
       onClose: () => this.close(),
       leadCaptureConfig: this.leadCaptureConfig,
       leadRecoveryConfig: this.leadRecoveryConfig,
+      voiceConfig: this.voiceConfig,
     });
     wrapper.appendChild(this.chatWindow.element);
 
@@ -162,6 +176,9 @@ class ChatbotWidget {
     if (this.leadRecoveryConfig?.enabled && this.leadRecoveryConfig.exit_intent_overlay?.enabled) {
       this.initExitOverlay(wrapper);
     }
+
+    // Initialize Pulse micro-surveys
+    this.initPulse(wrapper);
 
     // Log initialization
     if (process.env.NODE_ENV === "development") {
@@ -212,6 +229,11 @@ class ChatbotWidget {
         this.leadRecoveryConfig = data.leadRecovery as LeadRecoveryConfig;
       }
 
+      // Store voice config
+      if (data.voice?.enabled) {
+        this.voiceConfig = data.voice as VoiceConfig;
+      }
+
       // Store realtime config for realtime.ts to use
       if (data.realtime?.supabaseUrl && data.realtime?.supabaseAnonKey) {
         (window as Record<string, unknown>).__WIDGET_CONFIG__ = {
@@ -257,6 +279,7 @@ class ChatbotWidget {
     this.teaserMessage?.hide();
     this.bubble?.hideBadge();
     this.triggerService?.setChatOpened();
+    this.pulseManager?.onChatOpened();
   }
 
   /**
@@ -445,13 +468,28 @@ class ChatbotWidget {
     return !!(state?.hasProvidedEmail || state?.hasCompletedForm);
   }
 
+  /**
+   * Initialize Pulse micro-survey popups
+   */
+  private initPulse(wrapper: HTMLDivElement): void {
+    this.pulseManager = new PulseManager({
+      projectId: this.config.projectId,
+      apiUrl: this.config.apiUrl,
+      parentElement: wrapper,
+      isChatOpen: () => this.isOpen,
+    });
+    this.pulseManager.start();
+  }
+
   destroy(): void {
     this.triggerService?.destroy();
     this.teaserMessage?.destroy();
     this.exitOverlay?.destroy();
+    this.pulseManager?.destroy();
     this.triggerService = null;
     this.teaserMessage = null;
     this.exitOverlay = null;
+    this.pulseManager = null;
 
     if (this.container) {
       this.container.remove();
