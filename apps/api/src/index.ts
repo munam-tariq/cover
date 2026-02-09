@@ -22,6 +22,7 @@ import { mcpRouter } from "./routes/mcp";
 import { onboardingRouter } from "./routes/onboarding";
 import { projectsRouter } from "./routes/projects";
 import { teamRouter } from "./routes/team";
+import { pulseRouter, pulseWidgetRouter } from "./routes/pulse";
 import { vapiRouter } from "./routes/vapi";
 import { vapiConfigRouter } from "./routes/vapi-config";
 
@@ -84,6 +85,7 @@ app.use("/api/projects", dashboardCors, projectsRouter);
 app.use("/api/projects", dashboardCors, handoffSettingsRouter); // Handoff settings routes: /api/projects/:id/handoff-settings
 app.use("/api/projects", dashboardCors, teamRouter); // Team routes: /api/projects/:id/members/*
 app.use("/api/projects", dashboardCors, leadsRouter); // Leads routes: /api/projects/:id/leads
+app.use("/api/projects", dashboardCors, pulseRouter); // Pulse dashboard routes: /api/projects/:id/pulse/*
 app.use("/api/onboarding", dashboardCors, onboardingRouter); // Onboarding routes for new users
 
 // Vapi webhook routes (open CORS - called from Vapi servers)
@@ -94,6 +96,7 @@ app.use("/api/vapi", widgetCors, vapiConfigRouter);
 // These come AFTER specific dashboard routes to avoid blocking PUT/DELETE
 app.use("/api/chat", widgetCors, chatRouter);
 app.use("/api/chat", widgetCors, leadCaptureRouter); // Lead capture V2 widget routes: submit-form, skip, status
+app.use("/api/pulse", widgetCors, pulseWidgetRouter); // Pulse widget routes: get campaigns, submit responses
 app.use("/api/widget/conversations", widgetCors, conversationsRouter); // Widget conversation routes (POST to create)
 app.use("/api", widgetCors, handoffRouter); // Widget handoff routes: handoff-availability, trigger handoff
 app.use("/api/customers", widgetCors, customersRouter); // Widget customer routes: identify

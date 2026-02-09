@@ -2353,3 +2353,571 @@
     animation: none;
   }
 }
+
+/* ============================================
+   Pulse — Micro-Survey Popups
+   ============================================ */
+
+/* Container */
+.pulse-popup {
+  position: fixed;
+  z-index: var(--widget-z-index);
+  opacity: 0;
+  transform: scale(0.85) translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-family: var(--widget-font);
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1a1a1a;
+}
+
+.pulse-popup.visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+  animation: pulse-entrance 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pulse-entrance {
+  0% { opacity: 0; transform: scale(0.8) translateY(16px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Idle float */
+.pulse-popup.visible .pulse-popup-shape {
+  animation: pulse-float 4s ease-in-out infinite;
+}
+
+@keyframes pulse-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Positioning */
+.pulse-pos-bottom-right { bottom: 28px; right: 28px; }
+.pulse-pos-bottom-left  { bottom: 28px; left: 28px; }
+.pulse-pos-top-right    { top: 28px; right: 28px; }
+.pulse-pos-top-left     { top: 28px; left: 28px; }
+
+/* Shape container — base */
+.pulse-popup-shape {
+  position: relative;
+  background: #ffffff;
+  padding: 20px;
+  min-width: 240px;
+  max-width: 320px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: visible;
+  border-radius: 12px;
+}
+
+/* ─── Shape: Sticky Note ─────────────────────── */
+.pulse-shape-sticky {
+  background: linear-gradient(145deg, #fff9c4 0%, #fff176 60%, #ffee58 100%);
+  border-radius: 3px;
+  transform: rotate(-1.5deg);
+  padding: 28px 20px 20px;
+  box-shadow:
+    2px 3px 15px rgba(0, 0, 0, 0.12),
+    1px 1px 3px rgba(0, 0, 0, 0.08),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.03);
+}
+.pulse-shape-sticky::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle at 40% 35%, #ff8a80, #e53935 60%, #b71c1c 100%);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 -1px 2px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  z-index: 2;
+}
+.pulse-shape-sticky::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 22px 22px;
+  border-color: transparent transparent #f0e060 transparent;
+  filter: drop-shadow(-1px -1px 1px rgba(0, 0, 0, 0.06));
+}
+.pulse-shape-sticky .pulse-question,
+.pulse-shape-sticky .pulse-nps-labels span,
+.pulse-shape-sticky .pulse-nps-btn {
+  color: #5d4e37;
+}
+
+/* ─── Shape: Holographic Card ────────────────── */
+.pulse-shape-holo {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)) padding-box,
+    conic-gradient(from 45deg, #ff6b9d, #c084fc, #60a5fa, #34d399, #fbbf24, #ff6b9d) border-box;
+  border: 2.5px solid transparent;
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 0 20px rgba(147, 130, 220, 0.12);
+  padding: 22px;
+  overflow: hidden;
+}
+.pulse-shape-holo::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.5) 50%, transparent 60%);
+  animation: pulse-shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ─── Shape: Envelope ────────────────────────── */
+.pulse-shape-envelope {
+  background: linear-gradient(180deg, #fffdf7 0%, #faf6ee 100%);
+  border-radius: 4px;
+  border: 1px solid #e0d5c5;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.06);
+  margin-top: 24px;
+  padding: 24px 20px 20px;
+}
+.pulse-shape-envelope::before {
+  content: '';
+  position: absolute;
+  top: -24px;
+  left: -1px;
+  right: -1px;
+  height: 28px;
+  background: var(--pulse-accent, #6366f1);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.pulse-shape-envelope::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 26px;
+  background: var(--pulse-accent, #6366f1);
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  z-index: 2;
+}
+
+/* ─── Shape: Notebook Page ───────────────────── */
+.pulse-shape-notebook {
+  background:
+    repeating-linear-gradient(transparent 0px, transparent 27px, #e8e8f0 27px, #e8e8f0 28px),
+    linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+  border-radius: 2px 8px 8px 2px;
+  border: 1px solid #e0e0e0;
+  border-left: 4px solid var(--pulse-accent, #6366f1);
+  padding: 20px 20px 20px 36px;
+  box-shadow: 3px 3px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.pulse-shape-notebook::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 12px;
+  width: 10px;
+  height: calc(100% - 24px);
+  background-image: radial-gradient(circle, #aaa 3.5px, transparent 3.5px);
+  background-size: 10px 22px;
+  background-repeat: repeat-y;
+  background-position: center;
+}
+.pulse-shape-notebook::after {
+  content: '';
+  position: absolute;
+  left: 30px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #ffb3b3;
+}
+
+/* ─── Shape: Ticket ──────────────────────────── */
+.pulse-shape-ticket {
+  background: #fff;
+  border-radius: 12px;
+  border: 2px solid var(--pulse-accent, #6366f1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 32px 20px 20px;
+}
+.pulse-shape-ticket::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  height: 8px;
+  background: linear-gradient(90deg, var(--pulse-accent, #6366f1), #ff6b9d);
+  border-radius: 12px 12px 0 0;
+}
+.pulse-shape-ticket::after {
+  content: '';
+  position: absolute;
+  top: 16px;
+  left: 10px;
+  right: 10px;
+  border-top: 2px dashed rgba(0, 0, 0, 0.1);
+}
+
+/* ─── Shape: Polaroid ────────────────────────── */
+.pulse-shape-polaroid {
+  background: #fff;
+  border-radius: 4px;
+  transform: rotate(1.5deg);
+  padding: 16px 16px 40px;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    4px 6px 0px -1px #f5f5f0,
+    6px 8px 8px rgba(0, 0, 0, 0.08);
+}
+.pulse-shape-polaroid::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  bottom: 36px;
+  border: 1px solid #eee;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.01), rgba(0, 0, 0, 0.03));
+  pointer-events: none;
+}
+.pulse-shape-polaroid::after {
+  content: '';
+  position: absolute;
+  bottom: 16px;
+  left: 24px;
+  right: 24px;
+  height: 1px;
+  background: #e0e0e0;
+}
+
+/* ─── Shape float overrides for rotated shapes ── */
+.pulse-popup.visible .pulse-shape-sticky {
+  animation: pulse-float-left 4s ease-in-out infinite;
+}
+.pulse-popup.visible .pulse-shape-polaroid {
+  animation: pulse-float-right 4s ease-in-out infinite;
+}
+
+@keyframes pulse-float-left {
+  0%, 100% { transform: rotate(-1.5deg) translateY(0); }
+  50% { transform: rotate(-1.5deg) translateY(-6px); }
+}
+@keyframes pulse-float-right {
+  0%, 100% { transform: rotate(1.5deg) translateY(0); }
+  50% { transform: rotate(1.5deg) translateY(-6px); }
+}
+@keyframes pulse-shimmer {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+
+/* Close button */
+.pulse-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+  z-index: 1;
+}
+
+.pulse-close:hover {
+  background: rgba(0, 0, 0, 0.12);
+  color: #333;
+}
+
+/* Question text */
+.pulse-question {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 14px;
+  padding-right: 20px;
+}
+
+/* ─── NPS Scale ────────────────────────────────── */
+.pulse-nps-scale {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pulse-nps-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #555;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.pulse-nps-btn:hover {
+  border-color: var(--pulse-accent, #6366f1);
+  color: var(--pulse-accent, #6366f1);
+  transform: scale(1.1);
+}
+
+.pulse-nps-btn.selected {
+  background: var(--pulse-accent, #6366f1);
+  border-color: var(--pulse-accent, #6366f1);
+  color: #fff;
+  transform: scale(1.15);
+}
+
+.pulse-nps-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.pulse-nps-followup {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: pulse-entrance 0.3s ease;
+}
+
+/* ─── Poll Options ─────────────────────────────── */
+.pulse-poll-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pulse-poll-option {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  text-align: left;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.pulse-poll-option:hover {
+  border-color: var(--pulse-accent, #6366f1);
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.pulse-poll-option.selected {
+  border-color: var(--pulse-accent, #6366f1);
+  background: var(--pulse-accent, #6366f1);
+  color: #fff;
+}
+
+.pulse-poll-other {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+}
+
+.pulse-other-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  color: #333;
+}
+
+.pulse-other-input:focus {
+  border-color: var(--pulse-accent, #6366f1);
+}
+
+/* ─── Sentiment Emojis ─────────────────────────── */
+.pulse-sentiment-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.pulse-emoji-btn {
+  width: 42px;
+  height: 42px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  font-size: 24px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pulse-emoji-btn:hover {
+  transform: scale(1.25);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.pulse-emoji-btn.selected {
+  transform: scale(1.35);
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--pulse-accent, #6366f1);
+}
+
+/* ─── Feedback Textarea ────────────────────────── */
+.pulse-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  color: #333;
+  background: #fff;
+  transition: border-color 0.15s ease;
+}
+
+.pulse-textarea:focus {
+  border-color: var(--pulse-accent, #6366f1);
+}
+
+/* ─── Submit Button ────────────────────────────── */
+.pulse-submit-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--pulse-accent, #6366f1);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  font-family: inherit;
+}
+
+.pulse-submit-btn:hover {
+  opacity: 0.9;
+}
+
+.pulse-submit-btn:active {
+  transform: scale(0.97);
+}
+
+/* ─── Thank You State ──────────────────────────── */
+.pulse-thank-you {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--pulse-accent, #6366f1);
+  padding: 12px 0;
+  animation: pulse-entrance 0.3s ease;
+}
+
+.pulse-check {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--pulse-accent, #6366f1);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* ─── Pulse Mobile ─────────────────────────────── */
+@media (max-width: 640px) {
+  .pulse-popup-shape {
+    min-width: 200px;
+    max-width: calc(100vw - 56px);
+  }
+
+  .pulse-pos-bottom-right,
+  .pulse-pos-bottom-left {
+    bottom: 20px;
+    left: 16px;
+    right: 16px;
+  }
+
+  .pulse-pos-top-right,
+  .pulse-pos-top-left {
+    top: 20px;
+    left: 16px;
+    right: 16px;
+  }
+
+  .pulse-nps-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+
+  .pulse-emoji-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 22px;
+  }
+}
+
+/* ─── Pulse Reduced Motion ─────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .pulse-popup,
+  .pulse-popup.visible,
+  .pulse-popup.visible .pulse-popup-shape {
+    transition: none;
+    animation: none;
+  }
+
+  .pulse-shape-holo::after {
+    animation: none;
+  }
+
+  .pulse-nps-btn,
+  .pulse-emoji-btn,
+  .pulse-poll-option,
+  .pulse-submit-btn {
+    transition: none;
+  }
+}
