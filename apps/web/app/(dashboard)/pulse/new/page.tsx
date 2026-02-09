@@ -303,6 +303,8 @@ function PopupPreview({
   allowOther,
   accentColor,
   shape,
+  avatarUrl,
+  avatarName,
 }: {
   campaignType: CampaignType | null;
   question: string;
@@ -310,6 +312,8 @@ function PopupPreview({
   allowOther: boolean;
   accentColor: string;
   shape: string;
+  avatarUrl?: string;
+  avatarName?: string;
 }) {
   const resolvedShape = shape === "random" ? "sticky" : shape;
   const textColor = resolvedShape === "sticky" ? "#5d4e37" : "#1a1a1a";
@@ -329,6 +333,25 @@ function PopupPreview({
         <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/5 flex items-center justify-center text-gray-400 text-xs pointer-events-none z-10">
           &times;
         </div>
+
+        {/* Avatar */}
+        {avatarUrl && (
+          <div className="flex items-center gap-2 mb-2 pr-5">
+            <img
+              src={avatarUrl}
+              alt=""
+              className="w-7 h-7 rounded-full object-cover border-2 border-white/80 shadow-sm flex-shrink-0"
+            />
+            {avatarName && (
+              <span
+                className="text-[10px] font-semibold"
+                style={{ color: resolvedShape === "sticky" ? "#5d4e37" : "#555" }}
+              >
+                {avatarName}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Question */}
         <p
@@ -442,6 +465,8 @@ export default function NewCampaignPage() {
   const [accentColor, setAccentColor] = useState("#6366f1");
   const [shape, setShape] = useState("random");
   const [position, setPosition] = useState("smart");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarName, setAvatarName] = useState("");
   const [publishNow, setPublishNow] = useState(true);
 
   const stepIndex = STEPS.indexOf(step);
@@ -509,11 +534,13 @@ export default function NewCampaignPage() {
           .filter(Boolean);
       }
 
-      const styling = {
+      const styling: Record<string, unknown> = {
         accent_color: accentColor,
         shape,
         position,
       };
+      if (avatarUrl.trim()) styling.avatar_url = avatarUrl.trim();
+      if (avatarName.trim()) styling.avatar_name = avatarName.trim();
 
       await apiClient(
         `/api/projects/${currentProject.id}/pulse/campaigns`,
@@ -831,6 +858,41 @@ export default function NewCampaignPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Avatar */}
+              <div className="border-t pt-4">
+                <label className="text-sm font-medium mb-1 block">
+                  Avatar (optional)
+                </label>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Add a personal touch — surveys with a face get higher response rates.
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    {avatarUrl && (
+                      <img
+                        src={avatarUrl}
+                        alt=""
+                        className="w-10 h-10 rounded-full object-cover border-2 border-muted shadow-sm flex-shrink-0"
+                      />
+                    )}
+                    <input
+                      type="text"
+                      value={avatarUrl}
+                      onChange={(e) => setAvatarUrl(e.target.value)}
+                      placeholder="Avatar image URL"
+                      className="flex-1 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={avatarName}
+                    onChange={(e) => setAvatarName(e.target.value)}
+                    placeholder="Display name (e.g. Sarah from Product)"
+                    className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -842,6 +904,8 @@ export default function NewCampaignPage() {
               allowOther={allowOther}
               accentColor={accentColor}
               shape={shape}
+              avatarUrl={avatarUrl || undefined}
+              avatarName={avatarName || undefined}
             />
           </div>
         </div>
@@ -890,6 +954,12 @@ export default function NewCampaignPage() {
                     {position.replace("-", " ")}
                   </span>
                 </div>
+                {avatarName && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Avatar</span>
+                    <span className="text-sm">{avatarName}</span>
+                  </div>
+                )}
               </div>
 
               <label className="flex items-center gap-2 text-sm">
@@ -912,6 +982,8 @@ export default function NewCampaignPage() {
               allowOther={allowOther}
               accentColor={accentColor}
               shape={shape}
+              avatarUrl={avatarUrl || undefined}
+              avatarName={avatarName || undefined}
             />
           </div>
         </div>

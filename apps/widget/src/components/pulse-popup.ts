@@ -15,6 +15,8 @@ export interface PulseCampaignData {
     theme?: "light" | "dark" | "auto";
     shape?: string;
     position?: string;
+    avatar_url?: string;
+    avatar_name?: string;
   };
 }
 
@@ -99,13 +101,25 @@ export class PulsePopup {
     const accentColor =
       this.options.campaign.styling.accent_color || "#6366f1";
 
+    const avatarUrl = this.options.campaign.styling.avatar_url;
+    const avatarName = this.options.campaign.styling.avatar_name;
+    const avatarHtml = avatarUrl
+      ? `<div class="pulse-avatar-header">
+           <img class="pulse-avatar-img" src="${this.escapeHtml(avatarUrl)}" alt="" loading="lazy" />
+           ${avatarName ? `<span class="pulse-avatar-name">${this.escapeHtml(avatarName)}</span>` : ""}
+         </div>`
+      : "";
+
     el.innerHTML = `
       <div class="pulse-popup-shape pulse-shape-${this.shape}" style="--pulse-accent: ${accentColor}; ${SHAPE_STYLES[this.shape] || ""}">
         <button class="pulse-close" aria-label="Dismiss">&times;</button>
+        ${avatarHtml}
         <div class="pulse-question">${this.escapeHtml(this.options.campaign.question)}</div>
         <div class="pulse-body">${this.renderBody()}</div>
         <div class="pulse-thank-you" style="display:none;">
-          <span class="pulse-check">✓</span> Thanks!
+          <span class="pulse-check">✓</span>
+          <span>Thanks!</span>
+          <span class="pulse-thank-you-text">Your feedback matters</span>
         </div>
       </div>
     `;
@@ -332,15 +346,46 @@ export class PulsePopup {
     const question = this.element.querySelector(
       ".pulse-question"
     ) as HTMLElement;
+    const avatarHeader = this.element.querySelector(
+      ".pulse-avatar-header"
+    ) as HTMLElement;
 
     if (body) body.style.display = "none";
     if (question) question.style.display = "none";
+    if (avatarHeader) avatarHeader.style.display = "none";
     if (thankYou) thankYou.style.display = "flex";
+
+    // Confetti burst
+    this.spawnConfetti();
 
     this.options.onSubmit(this.options.campaign.id, answer);
 
-    // Auto-dismiss after 1.5s
-    this.dismissTimer = setTimeout(() => this.hide(), 1500);
+    // Auto-dismiss after 2s
+    this.dismissTimer = setTimeout(() => this.hide(), 2000);
+  }
+
+  private spawnConfetti(): void {
+    const shape = this.element.querySelector(".pulse-popup-shape");
+    if (!shape) return;
+
+    const colors = ["#6366f1", "#ec4899", "#f59e0b", "#22c55e", "#3b82f6", "#a855f7"];
+    const count = 12;
+
+    for (let i = 0; i < count; i++) {
+      const confetti = document.createElement("div");
+      confetti.className = "pulse-confetti";
+      confetti.style.background = colors[i % colors.length];
+      confetti.style.left = `${30 + Math.random() * 40}%`;
+      confetti.style.top = `${20 + Math.random() * 30}%`;
+      confetti.style.animationDelay = `${Math.random() * 0.3}s`;
+      confetti.style.animationDuration = `${0.6 + Math.random() * 0.4}s`;
+      const angle = -60 + Math.random() * 120;
+      confetti.style.setProperty("--confetti-x", `${angle}px`);
+      shape.appendChild(confetti);
+
+      // Clean up after animation
+      setTimeout(() => confetti.remove(), 1200);
+    }
   }
 
   private dismiss(): void {
