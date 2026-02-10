@@ -3,17 +3,17 @@ import { Header } from "../components/header";
 import { Footer } from "../components/footer";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | SupportBase",
+  title: "Privacy Policy | FrontFace",
   description:
-    "Learn how SupportBase collects, uses, and protects your personal information. Our privacy policy covers data collection, usage, and your rights under GDPR and CCPA.",
+    "Learn how FrontFace collects, uses, and protects your personal information. Our privacy policy covers data collection, usage, and your rights under GDPR and CCPA.",
   openGraph: {
-    title: "Privacy Policy | SupportBase",
-    description: "How SupportBase handles your data and protects your privacy.",
-    url: "https://supportbase.app/privacy",
+    title: "Privacy Policy | FrontFace",
+    description: "How FrontFace handles your data and protects your privacy.",
+    url: "https://frontface.app/privacy",
     type: "website",
   },
   alternates: {
-    canonical: "https://supportbase.app/privacy",
+    canonical: "https://frontface.app/privacy",
   },
 };
 
@@ -39,7 +39,7 @@ export default function PrivacyPage() {
                 1. Introduction
               </h2>
               <p className="text-slate-700 leading-relaxed mb-4">
-                SupportBase (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is committed to protecting
+                FrontFace (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is committed to protecting
                 your privacy. This Privacy Policy explains how we collect, use,
                 disclose, and safeguard your information when you use our
                 AI-powered customer support platform and related services
@@ -242,10 +242,10 @@ export default function PrivacyPage() {
               <p className="text-slate-700 leading-relaxed">
                 To exercise any of these rights, please contact us at{" "}
                 <a
-                  href="mailto:hello@supportbase.app"
+                  href="mailto:hello@frontface.app"
                   className="text-blue-600 hover:underline"
                 >
-                  hello@supportbase.app
+                  hello@frontface.app
                 </a>
                 .
               </p>
@@ -300,10 +300,10 @@ export default function PrivacyPage() {
                 <strong>We do not sell your personal information.</strong> To
                 exercise your CCPA rights, contact us at{" "}
                 <a
-                  href="mailto:hello@supportbase.app"
+                  href="mailto:hello@frontface.app"
                   className="text-blue-600 hover:underline"
                 >
-                  hello@supportbase.app
+                  hello@frontface.app
                 </a>
                 .
               </p>
@@ -383,10 +383,10 @@ export default function PrivacyPage() {
                 that information promptly. If you believe we have collected
                 information from a child under 16, please contact us at{" "}
                 <a
-                  href="mailto:hello@supportbase.app"
+                  href="mailto:hello@frontface.app"
                   className="text-blue-600 hover:underline"
                 >
-                  hello@supportbase.app
+                  hello@frontface.app
                 </a>
                 .
               </p>
@@ -434,10 +434,10 @@ export default function PrivacyPage() {
               <p className="text-slate-700 leading-relaxed">
                 <strong>Email:</strong>{" "}
                 <a
-                  href="mailto:hello@supportbase.app"
+                  href="mailto:hello@frontface.app"
                   className="text-blue-600 hover:underline"
                 >
-                  hello@supportbase.app
+                  hello@frontface.app
                 </a>
               </p>
             </section>

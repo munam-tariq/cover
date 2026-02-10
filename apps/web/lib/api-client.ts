@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.supportbase.app";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.frontface.app";
 
 /**
  * Get the current Supabase access token

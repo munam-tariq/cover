@@ -5,9 +5,9 @@ import { Footer } from "../components/footer";
 import { Code, ExternalLink } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Integrations | Works on Any Website | SupportBase",
+  title: "Integrations | Works on Any Website | FrontFace",
   description:
-    "Add SupportBase to Shopify, WordPress, Wix, Squarespace, or any website. One line of code, 5-minute setup. Connect with Slack, HubSpot, and more.",
+    "Add FrontFace to Shopify, WordPress, Wix, Squarespace, or any website. One line of code, 5-minute setup. Connect with Slack, HubSpot, and more.",
   keywords: [
     "Shopify chatbot",
     "WordPress chatbot",
@@ -18,18 +18,18 @@ export const metadata: Metadata = {
     "HubSpot integration",
   ],
   openGraph: {
-    title: "SupportBase Integrations",
+    title: "FrontFace Integrations",
     description: "Works on any website. Shopify, WordPress, Wix, and more.",
-    url: "https://supportbase.app/integrations",
+    url: "https://frontface.app/integrations",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SupportBase Integrations",
+    title: "FrontFace Integrations",
     description: "Works on any website. Shopify, WordPress, Wix, and more.",
   },
   alternates: {
-    canonical: "https://supportbase.app/integrations",
+    canonical: "https://frontface.app/integrations",
   },
 };
 
@@ -121,7 +121,7 @@ const integrations = [
   {
     name: "Zapier",
     description:
-      "Connect SupportBase to 5,000+ apps. Automate lead capture, notifications, and more.",
+      "Connect FrontFace to 5,000+ apps. Automate lead capture, notifications, and more.",
     category: "Automation",
     status: "Coming Soon",
   },
@@ -178,7 +178,7 @@ export default function IntegrationsPage() {
             Works on Any Website
           </h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            Shopify, WordPress, Wix, Squarespace, or custom site—SupportBase
+            Shopify, WordPress, Wix, Squarespace, or custom site—FrontFace
             works everywhere. Just paste one line of code and you&apos;re live.
           </p>
         </section>
@@ -223,7 +223,7 @@ export default function IntegrationsPage() {
               All Integrations
             </h2>
             <p className="text-slate-600 text-center mb-8 max-w-2xl mx-auto">
-              Growing ecosystem of integrations to connect SupportBase with your
+              Growing ecosystem of integrations to connect FrontFace with your
               entire stack.
             </p>
 
@@ -290,7 +290,7 @@ export default function IntegrationsPage() {
                 One Line of Code
               </h2>
               <p className="text-slate-400 leading-relaxed mb-6">
-                Adding SupportBase to your website is as simple as copying and
+                Adding FrontFace to your website is as simple as copying and
                 pasting one line of code. No technical skills required. Works
                 with any website builder or custom site.
               </p>
@@ -311,7 +311,7 @@ export default function IntegrationsPage() {
                   &lt;script
                 </div>
                 <div className="text-green-400 pl-4">
-                  src=&quot;https://supportbase.app/widget.js&quot;
+                  src=&quot;https://frontface.app/widget.js&quot;
                 </div>
                 <div className="text-green-400 pl-4">
                   data-id=&quot;your-chatbot-id&quot;
@@ -344,7 +344,7 @@ export default function IntegrationsPage() {
                 Get Started Free
               </Link>
               <a
-                href="mailto:hello@supportbase.app"
+                href="mailto:hello@frontface.app"
                 className="px-8 py-4 bg-blue-500/30 text-white font-semibold rounded-lg hover:bg-blue-500/40 transition-colors border border-white/20"
               >
                 Request Integration

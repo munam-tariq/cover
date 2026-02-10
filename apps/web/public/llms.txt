@@ -1,8 +1,8 @@
-# SupportBase
+# FrontFace
 
-> SupportBase is an AI chatbot platform built for developers using AI coding tools like Cursor, Claude Code, and Windsurf. It enables adding customer support chatbots to any website with a single line of code. The platform features MCP (Model Context Protocol) integration, allowing developers to manage chatbots entirely from within their AI editor without context switching.
+> FrontFace is an AI chatbot platform built for developers using AI coding tools like Cursor, Claude Code, and Windsurf. It enables adding customer support chatbots to any website with a single line of code. The platform features MCP (Model Context Protocol) integration, allowing developers to manage chatbots entirely from within their AI editor without context switching.
 
-SupportBase lets you create AI chatbots that answer customer questions using your knowledge base (PDFs, text, URLs). Key differentiators:
+FrontFace lets you create AI chatbots that answer customer questions using your knowledge base (PDFs, text, URLs). Key differentiators:
 
 - **MCP-First**: Manage everything via AI tools (Cursor, Claude Code, Windsurf) without leaving your editor
 - **One-Line Install**: Single `<script>` tag embeds the chat widget on any website
@@ -12,16 +12,16 @@ SupportBase lets you create AI chatbots that answer customer questions using you
 
 ## Getting Started
 
-- [Sign Up](https://supportbase.app/login): Create a free account with magic link authentication
-- [Dashboard](https://supportbase.app/dashboard): Manage projects, knowledge base, and settings
-- [Embed Guide](https://supportbase.app/embed): Get your widget embed code with customization options
+- [Sign Up](https://frontface.app/login): Create a free account with magic link authentication
+- [Dashboard](https://frontface.app/dashboard): Manage projects, knowledge base, and settings
+- [Embed Guide](https://frontface.app/embed): Get your widget embed code with customization options
 
 ## Features
 
-- [Knowledge Base](https://supportbase.app/knowledge): Upload PDFs, text files, or scrape URLs to train your chatbot
-- [API Endpoints](https://supportbase.app/api-endpoints): Connect external APIs for real-time data (order status, inventory, etc.)
-- [Analytics](https://supportbase.app/analytics): View conversation metrics, top questions, and trends
-- [Playground](https://supportbase.app/playground): Test your chatbot before deploying
+- [Knowledge Base](https://frontface.app/knowledge): Upload PDFs, text files, or scrape URLs to train your chatbot
+- [API Endpoints](https://frontface.app/api-endpoints): Connect external APIs for real-time data (order status, inventory, etc.)
+- [Analytics](https://frontface.app/analytics): View conversation metrics, top questions, and trends
+- [Playground](https://frontface.app/playground): Test your chatbot before deploying
 
 ## MCP Integration
 
@@ -29,9 +29,9 @@ Connect AI coding tools to manage your chatbot via natural language:
 
 ```json
 {
-  "supportbase": {
+  "frontface": {
     "type": "http",
-    "url": "https://api.supportbase.app/mcp",
+    "url": "https://api.frontface.app/mcp",
     "headers": {
       "X-API-Key": "YOUR_API_KEY"
     }
@@ -72,5 +72,5 @@ Configuration options: `data-project-id` (required), `data-api-url`, `data-posit
 
 ## Contact
 
-- Website: https://supportbase.app
-- Support: hello@supportbase.app
+- Website: https://frontface.app
+- Support: hello@frontface.app

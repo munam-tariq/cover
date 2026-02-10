@@ -14,13 +14,13 @@ export default function MarketingLayout({
       <CursorGlow />
       <Header />
       {children}
-      {/* SupportBase Help Chat Widget */}
+      {/* FrontFace Help Chat Widget */}
       <Script
         src="https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets/widget.js"
         data-project-id="ad7d8196-e719-4522-9f08-a9a3beb4c3d8"
-        data-api-url="https://api.supportbase.app"
+        data-api-url="https://api.frontface.app"
         data-title="Help"
-        data-greeting="Hi! Have questions about SupportBase? I'm here to help."
+        data-greeting="Hi! Have questions about FrontFace? I'm here to help."
         data-primary-color="#3b82f6"
         data-position="bottom-right"
         strategy="lazyOnload"

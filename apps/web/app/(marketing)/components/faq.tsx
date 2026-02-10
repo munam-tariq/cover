@@ -11,7 +11,7 @@ export function FAQ() {
     {
       question: "How is this different from a regular chatbot?",
       answer:
-        "Regular chatbots answer FAQs and dead-end. SupportBase is built to capture leads. It knows your product, qualifies visitor intent, and captures contact info naturally — turning conversations into pipeline.",
+        "Regular chatbots answer FAQs and dead-end. FrontFace is built to capture leads. It knows your product, qualifies visitor intent, and captures contact info naturally — turning conversations into pipeline.",
     },
     {
       question: "How fast can I set this up?",
@@ -56,7 +56,7 @@ export function FAQ() {
             Questions? We've got answers.
           </h2>
           <p className="text-lg text-zinc-400">
-            Everything you need to know about SupportBase.
+            Everything you need to know about FrontFace.
           </p>
         </div>
 

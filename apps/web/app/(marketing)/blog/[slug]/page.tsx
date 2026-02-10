@@ -35,16 +35,16 @@ export async function generateMetadata({
       post.category.toLowerCase(),
       "AI chatbot",
       "customer support",
-      "SupportBase",
+      "FrontFace",
     ],
-    authors: [{ name: "SupportBase Team" }],
+    authors: [{ name: "FrontFace Team" }],
     openGraph: {
       title: post.title,
       description: post.description,
-      url: `https://supportbase.app/blog/${post.slug}`,
+      url: `https://frontface.app/blog/${post.slug}`,
       type: "article",
       publishedTime: post.date,
-      authors: ["SupportBase Team"],
+      authors: ["FrontFace Team"],
       images: [
         {
           url: post.image,
@@ -61,7 +61,7 @@ export async function generateMetadata({
       images: [post.image],
     },
     alternates: {
-      canonical: `https://supportbase.app/blog/${post.slug}`,
+      canonical: `https://frontface.app/blog/${post.slug}`,
     },
   };
 }
@@ -93,25 +93,25 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     "@type": "Article",
     headline: post.title,
     description: post.description,
-    image: `https://supportbase.app${post.image}`,
+    image: `https://frontface.app${post.image}`,
     datePublished: post.date,
     dateModified: post.date,
     author: {
       "@type": "Organization",
-      name: "SupportBase",
-      url: "https://supportbase.app",
+      name: "FrontFace",
+      url: "https://frontface.app",
     },
     publisher: {
       "@type": "Organization",
-      name: "SupportBase",
+      name: "FrontFace",
       logo: {
         "@type": "ImageObject",
-        url: "https://supportbase.app/logo.png",
+        url: "https://frontface.app/logo.png",
       },
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `https://supportbase.app/blog/${post.slug}`,
+      "@id": `https://frontface.app/blog/${post.slug}`,
     },
   };
 
@@ -124,19 +124,19 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://supportbase.app",
+        item: "https://frontface.app",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Blog",
-        item: "https://supportbase.app/blog",
+        item: "https://frontface.app/blog",
       },
       {
         "@type": "ListItem",
         position: 3,
         name: post.title,
-        item: `https://supportbase.app/blog/${post.slug}`,
+        item: `https://frontface.app/blog/${post.slug}`,
       },
     ],
   };
@@ -273,7 +273,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 href="/login"
                 className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg transition-all shadow-md hover:shadow-lg"
               >
-                Try SupportBase Free
+                Try FrontFace Free
               </Link>
             </div>
           </div>
@@ -337,7 +337,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               Ready to Add AI Support?
             </h2>
             <p className="text-blue-100 mb-8 text-lg">
-              Get started with SupportBase in minutes. No credit card required.
+              Get started with FrontFace in minutes. No credit card required.
             </p>
             <Link
               href="/login"

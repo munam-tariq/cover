@@ -424,9 +424,9 @@ export default function SettingsPage() {
     const apiKeyValue = newApiKey || "YOUR_API_KEY_HERE";
     const mcpConfig = JSON.stringify(
       {
-        "supportbase": {
+        "frontface": {
           type: "http",
-          url: `${process.env.NEXT_PUBLIC_API_URL || "https://api.supportbase.app"}/mcp`,
+          url: `${process.env.NEXT_PUBLIC_API_URL || "https://api.frontface.app"}/mcp`,
           headers: {
             "X-API-Key": apiKeyValue,
           },
@@ -1064,9 +1064,9 @@ export default function SettingsPage() {
               <div className="relative">
                 <pre className="p-4 bg-muted rounded-md overflow-x-auto text-sm font-mono">
 {`{
-  "supportbase": {
+  "frontface": {
     "type": "http",
-    "url": "${process.env.NEXT_PUBLIC_API_URL || "https://api.supportbase.app"}/mcp",
+    "url": "${process.env.NEXT_PUBLIC_API_URL || "https://api.frontface.app"}/mcp",
     "headers": {
       "X-API-Key": "${newApiKey || (apiKeyInfo ? apiKeyInfo.prefix : "YOUR_API_KEY_HERE")}"
     }

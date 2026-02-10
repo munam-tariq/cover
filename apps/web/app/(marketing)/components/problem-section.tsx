@@ -81,7 +81,7 @@ export function ProblemSection() {
                 <Check className="w-5 h-5 text-green-400" />
               </div>
               <h3 className="text-xl font-semibold text-white">
-                SupportBase AI Agent
+                FrontFace AI Agent
               </h3>
             </div>
             <ul className="space-y-3">

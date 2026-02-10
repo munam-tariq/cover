@@ -19,19 +19,19 @@ export const metadata: Metadata = {
     "MCP protocol",
   ],
   openGraph: {
-    title: "SupportBase Blog | AI Chatbot Insights",
+    title: "FrontFace Blog | AI Chatbot Insights",
     description:
       "Expert insights on AI chatbots and customer support automation.",
-    url: "https://supportbase.app/blog",
+    url: "https://frontface.app/blog",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SupportBase Blog",
+    title: "FrontFace Blog",
     description: "Expert insights on AI chatbots and customer support automation.",
   },
   alternates: {
-    canonical: "https://supportbase.app/blog",
+    canonical: "https://frontface.app/blog",
   },
 };
 

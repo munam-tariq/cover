@@ -15,7 +15,7 @@ export const onboardingTours: Tour[] = [
         title: "One-Time Setup",
         content: (
           <>
-            Welcome to SupportBase! After this quick 2-minute setup, you can
+            Welcome to FrontFace! After this quick 2-minute setup, you can
             manage your chatbot entirely from your IDE.
           </>
         ),
@@ -63,7 +63,7 @@ export const onboardingTours: Tour[] = [
         title: "Copy MCP Config",
         content: (
           <>
-            This configuration tells your AI tool how to connect to SupportBase.
+            This configuration tells your AI tool how to connect to FrontFace.
             Copy it - you&apos;ll paste it into your IDE settings next.
           </>
         ),

@@ -51,7 +51,7 @@ export function HeroSection() {
           transition={{ duration: 0.8, delay: 1.2 }}
           className="text-lg md:text-xl text-zinc-500 max-w-2xl mx-auto leading-relaxed mb-12"
         >
-          SupportBase puts an AI agent on every page — one that knows your
+          FrontFace puts an AI agent on every page — one that knows your
           product, captures intent, and turns browsers into buyers. Around the
           clock.
         </motion.p>

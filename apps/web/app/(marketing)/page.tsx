@@ -9,7 +9,7 @@ import { CTASection } from "./components/cta-section";
 import { Footer } from "./components/footer";
 
 export const metadata: Metadata = {
-  title: "SupportBase — AI Lead Capture for Your Website",
+  title: "FrontFace — AI Lead Capture for Your Website",
   description:
     "Put an AI agent on your website that knows your product, captures leads, and qualifies visitors 24/7. Free during beta.",
   keywords: [
@@ -21,16 +21,16 @@ export const metadata: Metadata = {
     "conversational lead capture",
   ],
   openGraph: {
-    title: "SupportBase — AI Lead Capture for Your Website",
+    title: "FrontFace — AI Lead Capture for Your Website",
     description:
       "Put an AI agent on your website that knows your product, captures leads, and qualifies visitors 24/7.",
-    url: "https://supportbase.app",
-    siteName: "SupportBase",
+    url: "https://frontface.app",
+    siteName: "FrontFace",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SupportBase — AI Lead Capture for Your Website",
+    title: "FrontFace — AI Lead Capture for Your Website",
     description:
       "Put an AI agent on your website that knows your product, captures leads, and qualifies visitors 24/7.",
   },

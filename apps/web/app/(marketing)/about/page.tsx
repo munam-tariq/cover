@@ -5,28 +5,28 @@ import { Footer } from "../components/footer";
 import { Target, Users, Zap, Heart } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "About SupportBase | AI Customer Support for Small Business",
+  title: "About FrontFace | AI Customer Support for Small Business",
   description:
-    "SupportBase helps small businesses stop answering the same questions. AI chatbot that answers 89% of customer questions automatically.",
+    "FrontFace helps small businesses stop answering the same questions. AI chatbot that answers 89% of customer questions automatically.",
   keywords: [
-    "about SupportBase",
+    "about FrontFace",
     "AI chatbot company",
     "small business customer support",
     "automated customer service",
   ],
   openGraph: {
-    title: "About SupportBase",
+    title: "About FrontFace",
     description: "AI customer support for small businesses.",
-    url: "https://supportbase.app/about",
+    url: "https://frontface.app/about",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "About SupportBase",
+    title: "About FrontFace",
     description: "AI customer support for small businesses.",
   },
   alternates: {
-    canonical: "https://supportbase.app/about",
+    canonical: "https://frontface.app/about",
   },
 };
 
@@ -35,7 +35,7 @@ const values = [
     icon: <Zap className="w-6 h-6" />,
     title: "Speed Over Everything",
     description:
-      "Your time is valuable. That's why SupportBase takes 5 minutes to set up—not days or weeks. No consultants, no complicated setup.",
+      "Your time is valuable. That's why FrontFace takes 5 minutes to set up—not days or weeks. No consultants, no complicated setup.",
   },
   {
     icon: <Target className="w-6 h-6" />,
@@ -47,7 +47,7 @@ const values = [
     icon: <Users className="w-6 h-6" />,
     title: "Built for Small Business",
     description:
-      "We know small business owners are stretched thin. SupportBase handles the repetitive questions so you can focus on what you do best.",
+      "We know small business owners are stretched thin. FrontFace handles the repetitive questions so you can focus on what you do best.",
   },
   {
     icon: <Heart className="w-6 h-6" />,
@@ -78,7 +78,7 @@ export default function AboutPage() {
             AI Customer Support for Small Business
           </h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            SupportBase exists because we believe every small business deserves
+            FrontFace exists because we believe every small business deserves
             great customer support—without hiring a team or spending thousands
             on enterprise software.
           </p>
@@ -91,7 +91,7 @@ export default function AboutPage() {
           </h2>
           <div className="prose prose-lg prose-slate max-w-none">
             <p className="text-slate-700 leading-relaxed mb-6">
-              SupportBase started with a simple observation: small business
+              FrontFace started with a simple observation: small business
               owners spend hours every week answering the same questions over
               and over. &quot;What are your hours?&quot; &quot;What&apos;s your return policy?&quot;
               &quot;Where&apos;s my order?&quot;
@@ -108,7 +108,7 @@ export default function AboutPage() {
               isn&apos;t realistic when you&apos;re running a small team.
             </p>
             <p className="text-slate-700 leading-relaxed">
-              We built SupportBase to change that. An AI chatbot that actually
+              We built FrontFace to change that. An AI chatbot that actually
               learns from YOUR content, answers 89% of questions automatically,
               and takes just 5 minutes to set up. No technical skills required.
               No enterprise pricing. Just upload your FAQs and go.
