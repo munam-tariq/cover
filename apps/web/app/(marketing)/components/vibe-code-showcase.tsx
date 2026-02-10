@@ -285,7 +285,7 @@ export function VibeCodeShowcase() {
                       <MessageCircle className="w-4 h-4 text-white" />
                     </div>
                     <span className="text-sm font-semibold text-slate-900">
-                      SupportBase Dashboard
+                      FrontFace Dashboard
                     </span>
                   </div>
                   <div className="flex items-center gap-2">

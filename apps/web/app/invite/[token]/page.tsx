@@ -225,7 +225,7 @@ export default function InvitePage() {
             </div>
             <h1 className="text-2xl font-semibold mb-2">You're Invited!</h1>
             <p className="text-muted-foreground">
-              Join <strong>{invitation?.projectName}</strong> on SupportBase
+              Join <strong>{invitation?.projectName}</strong> on FrontFace
             </p>
           </div>
 

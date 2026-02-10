@@ -6,7 +6,7 @@ import { useEffect, useState, useRef } from "react";
 const codeLines = [
   { text: "<!-- Add to your website -->", color: "text-zinc-400" },
   { text: '<script', color: "text-blue-600" },
-  { text: '  src="https://cdn.supportbase.app/widget.js"', color: "text-emerald-600" },
+  { text: '  src="https://cdn.frontface.app/widget.js"', color: "text-emerald-600" },
   { text: '  data-project-id="your-project-id"', color: "text-amber-600" },
   { text: "></script>", color: "text-blue-600" },
   { text: "", color: "" },
@@ -56,7 +56,7 @@ export function CodeSection() {
               means zero style conflicts.
             </p>
             <p className="text-zinc-500 leading-relaxed">
-              Or deploy entirely from your editor — SupportBase has native MCP
+              Or deploy entirely from your editor — FrontFace has native MCP
               integration for Cursor, Claude, and Windsurf.
             </p>
           </motion.div>

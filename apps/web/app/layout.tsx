@@ -14,10 +14,10 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://supportbase.app"),
+  metadataBase: new URL("https://frontface.app"),
   title: {
-    default: "SupportBase - AI Customer Support for Small Business | Live in 5 Minutes",
-    template: "%s | SupportBase",
+    default: "FrontFace - AI Customer Support for Small Business | Live in 5 Minutes",
+    template: "%s | FrontFace",
   },
   description:
     "Train an AI chatbot on your FAQ and docs. Answer customer questions 24/7. Human handoff when needed. Free to start. Setup in 5 minutes.",
@@ -38,23 +38,23 @@ export const metadata: Metadata = {
     "no-code chatbot",
     "human handoff chatbot",
   ],
-  authors: [{ name: "SupportBase Team" }],
-  creator: "SupportBase",
-  publisher: "SupportBase",
+  authors: [{ name: "FrontFace Team" }],
+  creator: "FrontFace",
+  publisher: "FrontFace",
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
   alternates: {
-    canonical: "https://supportbase.app",
+    canonical: "https://frontface.app",
   },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://supportbase.app",
-    siteName: "SupportBase",
-    title: "SupportBase - AI Customer Support for Small Business",
+    url: "https://frontface.app",
+    siteName: "FrontFace",
+    title: "FrontFace - AI Customer Support for Small Business",
     description:
       "Train an AI chatbot on your FAQ and docs. Answer customer questions 24/7. Human handoff when needed. Free to start.",
     images: [
@@ -62,17 +62,17 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "SupportBase - AI Chatbot Platform",
+        alt: "FrontFace - AI Chatbot Platform",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SupportBase - AI Customer Support for Small Business",
+    title: "FrontFace - AI Customer Support for Small Business",
     description:
       "Train an AI chatbot on your FAQ and docs. Answer customer questions 24/7. Human handoff when needed.",
     images: ["/og-image.png"],
-    creator: "@supportbase",
+    creator: "@frontface",
   },
   robots: {
     index: true,
@@ -97,15 +97,15 @@ export const metadata: Metadata = {
 const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "SupportBase",
-  url: "https://supportbase.app",
-  logo: "https://supportbase.app/logo.png",
+  name: "FrontFace",
+  url: "https://frontface.app",
+  logo: "https://frontface.app/logo.png",
   description:
     "AI customer support for small businesses. Answer questions 24/7 with human handoff when needed.",
   foundingDate: "2025",
   sameAs: [
-    "https://twitter.com/supportbase",
-    "https://github.com/supportbase",
+    "https://twitter.com/frontface",
+    "https://github.com/frontface",
   ],
 };
 
@@ -113,7 +113,7 @@ const organizationSchema = {
 const softwareSchema = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "SupportBase",
+  name: "FrontFace",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   offers: {

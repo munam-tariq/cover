@@ -55,7 +55,7 @@ export function Header() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5">
           <span className="text-lg font-semibold text-zinc-900 tracking-tight">
-            SupportBase
+            FrontFace
           </span>
           <span className="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-zinc-400 border border-black/[0.08] rounded">
             Beta

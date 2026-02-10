@@ -138,7 +138,7 @@ Plus the intangible benefits:
 
 The best time to add AI support was yesterday. The second best time is now.
 
-Modern platforms like SupportBase make it possible to go from zero to live chatbot in under 15 minutes. Upload your docs, customize the widget, and paste one line of code.
+Modern platforms like FrontFace make it possible to go from zero to live chatbot in under 15 minutes. Upload your docs, customize the widget, and paste one line of code.
 
 Your customers are waiting. Your support team will thank you. Your bottom line will improve.
 
@@ -483,7 +483,7 @@ Building RAG from scratch requires:
 - Prompt engineering
 - UI development
 
-Platforms like SupportBase handle all this. Upload your docs, get a working chatbot.
+Platforms like FrontFace handle all this. Upload your docs, get a working chatbot.
 
 ## Common RAG Challenges
 
@@ -695,7 +695,7 @@ If you're building developer tools, understand this audience:
 - They want one-line implementations
 - They appreciate good defaults
 
-This is why SupportBase exists. Vibe coders don't want to spend days building customer support. They want to describe what they need and ship it.
+This is why FrontFace exists. Vibe coders don't want to spend days building customer support. They want to describe what they need and ship it.
 
 "Add an AI chatbot that knows my docs" → One line of code → Done.
 
@@ -871,7 +871,7 @@ Basic structure:
 3. Expose via MCP protocol
 4. Connect to MCP hosts
 
-### Example: SupportBase MCP
+### Example: FrontFace MCP
 
 We built an MCP server that lets AI assistants:
 - Create and manage chatbot projects
@@ -1245,7 +1245,7 @@ The best time to add lead capture was before your last 1,000 visitors. The secon
 
 Every day without intelligent lead capture is potential customers lost.
 
-Tools like SupportBase make it easy:
+Tools like FrontFace make it easy:
 1. Upload your docs
 2. Configure lead capture
 3. Connect your CRM

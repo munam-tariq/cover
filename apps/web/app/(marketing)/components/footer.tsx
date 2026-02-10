@@ -21,7 +21,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row justify-between gap-8">
           {/* Brand */}
           <div>
-            <p className="text-sm font-medium text-zinc-900 mb-2">SupportBase</p>
+            <p className="text-sm font-medium text-zinc-900 mb-2">FrontFace</p>
             <p className="text-xs text-zinc-400 max-w-xs">
               AI-powered lead capture for your website. Turn visitors into
               customers, 24/7.
@@ -52,7 +52,7 @@ export function Footer() {
 
         <div className="mt-12 pt-6 border-t border-black/[0.04]">
           <p className="text-[11px] text-zinc-400">
-            &copy; {new Date().getFullYear()} SupportBase
+            &copy; {new Date().getFullYear()} FrontFace
           </p>
         </div>
       </div>

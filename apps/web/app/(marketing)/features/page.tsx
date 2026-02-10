@@ -18,9 +18,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Features | AI Customer Support for Small Business | SupportBase",
+  title: "Features | AI Customer Support for Small Business | FrontFace",
   description:
-    "SupportBase features: AI that answers from your docs, human handoff when needed, lead capture, and 5-minute setup. Perfect for small businesses, consultants, and ecommerce stores.",
+    "FrontFace features: AI that answers from your docs, human handoff when needed, lead capture, and 5-minute setup. Perfect for small businesses, consultants, and ecommerce stores.",
   keywords: [
     "AI chatbot for small business",
     "customer support automation",
@@ -31,18 +31,18 @@ export const metadata: Metadata = {
     "human handoff chatbot",
   ],
   openGraph: {
-    title: "SupportBase Features",
+    title: "FrontFace Features",
     description: "Everything you need to automate customer support for your small business.",
-    url: "https://supportbase.app/features",
+    url: "https://frontface.app/features",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SupportBase Features",
+    title: "FrontFace Features",
     description: "Everything you need to automate customer support for your small business.",
   },
   alternates: {
-    canonical: "https://supportbase.app/features",
+    canonical: "https://frontface.app/features",
   },
 };
 

@@ -136,7 +136,7 @@ export function Hero() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="text-lg text-zinc-400 max-w-lg leading-relaxed"
             >
-              89% of visitors leave without saying a word. SupportBase puts an AI agent on every page — one that knows your product, captures intent, and turns browsers into buyers. 24/7.
+              89% of visitors leave without saying a word. FrontFace puts an AI agent on every page — one that knows your product, captures intent, and turns browsers into buyers. 24/7.
             </motion.p>
 
             <motion.div

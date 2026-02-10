@@ -139,7 +139,7 @@ export function Sidebar() {
           <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
             <MessageSquare className="w-4 h-4 text-white" />
           </div>
-          <span className="text-xl font-bold">SupportBase</span>
+          <span className="text-xl font-bold">FrontFace</span>
         </Link>
       </div>
 

@@ -3,17 +3,17 @@ import { Header } from "../components/header";
 import { Footer } from "../components/footer";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | SupportBase",
+  title: "Terms of Service | FrontFace",
   description:
-    "Read the Terms of Service for SupportBase. These terms govern your use of our AI-powered customer support platform.",
+    "Read the Terms of Service for FrontFace. These terms govern your use of our AI-powered customer support platform.",
   openGraph: {
-    title: "Terms of Service | SupportBase",
-    description: "Terms and conditions for using SupportBase.",
-    url: "https://supportbase.app/terms",
+    title: "Terms of Service | FrontFace",
+    description: "Terms and conditions for using FrontFace.",
+    url: "https://frontface.app/terms",
     type: "website",
   },
   alternates: {
-    canonical: "https://supportbase.app/terms",
+    canonical: "https://frontface.app/terms",
   },
 };
 
@@ -39,7 +39,7 @@ export default function TermsPage() {
                 1. Acceptance of Terms
               </h2>
               <p className="text-slate-700 leading-relaxed mb-4">
-                By accessing or using SupportBase (&quot;the Service&quot;), you agree to
+                By accessing or using FrontFace (&quot;the Service&quot;), you agree to
                 be bound by these Terms of Service (&quot;Terms&quot;). If you do not
                 agree to these Terms, you may not access or use the Service.
               </p>
@@ -58,7 +58,7 @@ export default function TermsPage() {
                 2. Description of Service
               </h2>
               <p className="text-slate-700 leading-relaxed mb-4">
-                SupportBase is an AI-powered customer support platform that
+                FrontFace is an AI-powered customer support platform that
                 enables businesses to create intelligent chatbots trained on
                 their own content. The Service includes:
               </p>
@@ -107,10 +107,10 @@ export default function TermsPage() {
                 We appreciate your feedback during this beta period. Please
                 report any issues to{" "}
                 <a
-                  href="mailto:hello@supportbase.app"
+                  href="mailto:hello@frontface.app"
                   className="text-blue-600 hover:underline"
                 >
-                  hello@supportbase.app
+                  hello@frontface.app
                 </a>
                 .
               </p>
@@ -241,13 +241,13 @@ export default function TermsPage() {
               <p className="text-slate-700 leading-relaxed mb-4">
                 The Service and its original content, features, and
                 functionality are and will remain the exclusive property of
-                SupportBase and its licensors. The Service is protected by
+                FrontFace and its licensors. The Service is protected by
                 copyright, trademark, and other laws.
               </p>
               <p className="text-slate-700 leading-relaxed">
                 Our trademarks and trade dress may not be used in connection
                 with any product or service without the prior written consent of
-                SupportBase.
+                FrontFace.
               </p>
             </section>
 
@@ -337,7 +337,7 @@ export default function TermsPage() {
               </p>
               <ul className="list-disc pl-6 mb-4 text-slate-700 space-y-2">
                 <li>
-                  IN NO EVENT SHALL SUPPORTBASE BE LIABLE FOR ANY INDIRECT,
+                  IN NO EVENT SHALL FRONTFACE BE LIABLE FOR ANY INDIRECT,
                   INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES,
                   INCLUDING WITHOUT LIMITATION, LOSS OF PROFITS, DATA, USE,
                   GOODWILL, OR OTHER INTANGIBLE LOSSES
@@ -366,7 +366,7 @@ export default function TermsPage() {
               </h2>
               <p className="text-slate-700 leading-relaxed mb-4">
                 THE SERVICE IS PROVIDED ON AN &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; BASIS.
-                SUPPORTBASE EXPRESSLY DISCLAIMS ALL WARRANTIES OF ANY KIND,
+                FRONTFACE EXPRESSLY DISCLAIMS ALL WARRANTIES OF ANY KIND,
                 WHETHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO:
               </p>
               <ul className="list-disc pl-6 mb-4 text-slate-700 space-y-2">
@@ -390,7 +390,7 @@ export default function TermsPage() {
                 13. Indemnification
               </h2>
               <p className="text-slate-700 leading-relaxed">
-                You agree to defend, indemnify, and hold harmless SupportBase
+                You agree to defend, indemnify, and hold harmless FrontFace
                 and its officers, directors, employees, and agents from and
                 against any claims, damages, obligations, losses, liabilities,
                 costs, or expenses (including attorney&apos;s fees) arising from: (a)
@@ -408,10 +408,10 @@ export default function TermsPage() {
               <p className="text-slate-700 leading-relaxed mb-4">
                 You may terminate your account at any time by contacting us at{" "}
                 <a
-                  href="mailto:hello@supportbase.app"
+                  href="mailto:hello@frontface.app"
                   className="text-blue-600 hover:underline"
                 >
-                  hello@supportbase.app
+                  hello@frontface.app
                 </a>{" "}
                 or through your account settings.
               </p>
@@ -452,17 +452,17 @@ export default function TermsPage() {
                 agree to first try to resolve the dispute informally by
                 contacting us at{" "}
                 <a
-                  href="mailto:hello@supportbase.app"
+                  href="mailto:hello@frontface.app"
                   className="text-blue-600 hover:underline"
                 >
-                  hello@supportbase.app
+                  hello@frontface.app
                 </a>
                 .
               </p>
               <p className="text-slate-700 leading-relaxed">
                 We will attempt to resolve any disputes through informal
                 negotiation within sixty (60) days. If the dispute cannot be
-                resolved informally, you and SupportBase agree to resolve any
+                resolved informally, you and FrontFace agree to resolve any
                 claim through binding arbitration, except that either party may
                 bring claims in small claims court if they qualify.
               </p>
@@ -505,7 +505,7 @@ export default function TermsPage() {
               </h2>
               <p className="text-slate-700 leading-relaxed">
                 These Terms, together with our Privacy Policy, constitute the
-                entire agreement between you and SupportBase regarding the
+                entire agreement between you and FrontFace regarding the
                 Service and supersede all prior agreements and understandings,
                 whether written or oral.
               </p>
@@ -523,10 +523,10 @@ export default function TermsPage() {
               <p className="text-slate-700 leading-relaxed">
                 <strong>Email:</strong>{" "}
                 <a
-                  href="mailto:hello@supportbase.app"
+                  href="mailto:hello@frontface.app"
                   className="text-blue-600 hover:underline"
                 >
-                  hello@supportbase.app
+                  hello@frontface.app
                 </a>
               </p>
             </section>

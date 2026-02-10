@@ -14,9 +14,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Use Cases | AI Customer Support for Small Business | SupportBase",
+  title: "Use Cases | AI Customer Support for Small Business | FrontFace",
   description:
-    "See how consultants, lawyers, ecommerce stores, and small businesses use SupportBase to answer 89% of customer questions automatically.",
+    "See how consultants, lawyers, ecommerce stores, and small businesses use FrontFace to answer 89% of customer questions automatically.",
   keywords: [
     "AI chatbot for consultants",
     "chatbot for lawyers",
@@ -26,18 +26,18 @@ export const metadata: Metadata = {
     "professional services chatbot",
   ],
   openGraph: {
-    title: "SupportBase Use Cases",
+    title: "FrontFace Use Cases",
     description: "AI customer support for consultants, ecommerce, and small business.",
-    url: "https://supportbase.app/use-cases",
+    url: "https://frontface.app/use-cases",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SupportBase Use Cases",
+    title: "FrontFace Use Cases",
     description: "AI customer support for consultants, ecommerce, and small business.",
   },
   alternates: {
-    canonical: "https://supportbase.app/use-cases",
+    canonical: "https://frontface.app/use-cases",
   },
 };
 
@@ -150,7 +150,7 @@ export default function UseCasesPage() {
             Stop Answering the Same Questions
           </h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            Whether you&apos;re a consultant, store owner, or founder—SupportBase
+            Whether you&apos;re a consultant, store owner, or founder—FrontFace
             handles 89% of customer questions automatically so you can focus
             on what matters.
           </p>
@@ -236,7 +236,7 @@ export default function UseCasesPage() {
               Don&apos;t See Your Industry?
             </h2>
             <p className="text-slate-400 mb-8 max-w-2xl mx-auto">
-              SupportBase is flexible enough to work with any business that
+              FrontFace is flexible enough to work with any business that
               needs intelligent customer support. Our RAG technology adapts to
               your unique content and use case.
             </p>

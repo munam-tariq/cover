@@ -9,14 +9,14 @@ export function ForDevelopers() {
   const sectionRef = useRef<HTMLDivElement>(null);
 
   const codeLines = [
-    { text: "> Add a SupportBase chatbot to my Next.js app", color: "text-white" },
+    { text: "> Add a FrontFace chatbot to my Next.js app", color: "text-white" },
     { text: "", color: "text-white" },
     { text: "  Creating project \"My App Support\"...", color: "text-zinc-400" },
     { text: "  Uploading docs from ./docs...", color: "text-zinc-400" },
     { text: "  Generating embed code...", color: "text-zinc-400" },
     { text: "", color: "text-white" },
     { text: "  Done! Add this to your layout:", color: "text-zinc-400" },
-    { text: "  <script src=\"https://cdn.supportbase.app/widget.js\"", color: "text-green-400" },
+    { text: "  <script src=\"https://cdn.frontface.app/widget.js\"", color: "text-green-400" },
     { text: "         data-project-id=\"abc123\"></script>", color: "text-green-400" },
   ];
 
@@ -110,7 +110,7 @@ export function ForDevelopers() {
               Deploy from your editor. Literally.
             </h2>
             <p className="text-lg text-zinc-400 leading-relaxed mb-6">
-              SupportBase is the only AI agent platform with native MCP integration.
+              FrontFace is the only AI agent platform with native MCP integration.
               Ask Cursor or Claude to add a chatbot — it creates the project, uploads
               your docs, and gives you the embed code. No dashboard required.
             </p>
