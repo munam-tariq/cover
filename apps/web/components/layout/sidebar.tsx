@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Inbox, Users } from "lucide-react";
+import { Inbox, Users } from "lucide-react";
 import { useAgent } from "@/contexts/agent-context";
 import { useProject } from "@/contexts/project-context";
 import { useInboxPollingOptional } from "@/contexts/inbox-polling-context";
@@ -136,8 +137,8 @@ export function Sidebar() {
     <aside className="w-64 bg-card border-r min-h-screen p-4">
       <div className="mb-8">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-            <MessageSquare className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
+            <Image src="/logo.png" alt="FrontFace logo" width={20} height={20} className="h-5 w-5 object-contain" priority />
           </div>
           <span className="text-xl font-bold">FrontFace</span>
         </Link>
