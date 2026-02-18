@@ -24,11 +24,20 @@ export const metadata: Metadata = {
       "Expert insights on AI chatbots and customer support automation.",
     url: "https://frontface.app/blog",
     type: "website",
+    images: [
+      {
+        url: "https://frontface.app/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "FrontFace — AI Lead Capture & Sales Agent",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "FrontFace Blog",
     description: "Expert insights on AI chatbots and customer support automation.",
+    images: ["https://frontface.app/og-image.png"],
   },
   alternates: {
     canonical: "https://frontface.app/blog",
