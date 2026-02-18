@@ -11,6 +11,20 @@ export const metadata: Metadata = {
     description: "Terms and conditions for using FrontFace.",
     url: "https://frontface.app/terms",
     type: "website",
+    images: [
+      {
+        url: "https://frontface.app/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "FrontFace — AI Lead Capture & Sales Agent",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Terms of Service | FrontFace",
+    description: "Terms and conditions for using FrontFace.",
+    images: ["https://frontface.app/og-image.png"],
   },
   alternates: {
     canonical: "https://frontface.app/terms",

@@ -20,11 +20,20 @@ export const metadata: Metadata = {
     description: "AI lead capture and sales agent for your website. Captures leads, qualifies visitors, and answers product questions 24/7.",
     url: "https://frontface.app/about",
     type: "website",
+    images: [
+      {
+        url: "https://frontface.app/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "FrontFace — AI Lead Capture & Sales Agent",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "About FrontFace",
     description: "AI lead capture and sales agent for your website. Captures leads, qualifies visitors, and answers product questions 24/7.",
+    images: ["https://frontface.app/og-image.png"],
   },
   alternates: {
     canonical: "https://frontface.app/about",

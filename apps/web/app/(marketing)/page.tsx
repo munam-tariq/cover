@@ -10,9 +10,9 @@ import { CTASection } from "./components/cta-section";
 import { Footer } from "./components/footer";
 
 export const metadata: Metadata = {
-  title: "AI Lead Capture & Sales Agent for Your Website",
+  title: "FrontFace — AI Lead Capture & Sales Agent",
   description:
-    "Put an AI agent on your website that knows your product, captures leads, qualifies visitors, and answers product questions 24/7. Free during beta.",
+    "Deploy an AI agent on your website that captures leads, qualifies visitors, and answers product questions 24/7 using your knowledge base. Free to start.",
   keywords: [
     "AI lead capture",
     "AI sales agent",
@@ -24,18 +24,29 @@ export const metadata: Metadata = {
     "lead qualification AI",
   ],
   openGraph: {
-    title: "FrontFace — AI Lead Capture & Sales Agent for Your Website",
-    description:
-      "Put an AI agent on your website that knows your product, captures leads, qualifies visitors, and answers product questions 24/7.",
+    type: "website",
+    locale: "en_US",
     url: "https://frontface.app",
     siteName: "FrontFace",
-    type: "website",
+    title: "FrontFace — AI Lead Capture & Sales Agent",
+    description:
+      "Deploy an AI agent on your website that captures leads, qualifies visitors, and answers product questions 24/7 using your knowledge base. Free to start.",
+    images: [
+      {
+        url: "https://frontface.app/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "FrontFace — AI Lead Capture & Sales Agent",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "FrontFace — AI Lead Capture & Sales Agent for Your Website",
+    title: "FrontFace — AI Lead Capture & Sales Agent",
     description:
-      "Put an AI agent on your website that knows your product, captures leads, qualifies visitors, and answers product questions 24/7.",
+      "Deploy an AI agent on your website that captures leads, qualifies visitors, and answers product questions 24/7.",
+    images: ["https://frontface.app/og-image.png"],
+    creator: "@frontface",
   },
 };
 

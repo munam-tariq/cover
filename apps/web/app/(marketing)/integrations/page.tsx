@@ -22,11 +22,20 @@ export const metadata: Metadata = {
     description: "Works on any website. Shopify, WordPress, Wix, and more.",
     url: "https://frontface.app/integrations",
     type: "website",
+    images: [
+      {
+        url: "https://frontface.app/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "FrontFace — AI Lead Capture & Sales Agent",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "FrontFace Integrations",
     description: "Works on any website. Shopify, WordPress, Wix, and more.",
+    images: ["https://frontface.app/og-image.png"],
   },
   alternates: {
     canonical: "https://frontface.app/integrations",
