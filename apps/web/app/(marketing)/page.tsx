@@ -10,7 +10,7 @@ import { CTASection } from "./components/cta-section";
 import { Footer } from "./components/footer";
 
 export const metadata: Metadata = {
-  title: "FrontFace — AI Lead Capture & Sales Agent for Your Website",
+  title: "AI Lead Capture & Sales Agent for Your Website",
   description:
     "Put an AI agent on your website that knows your product, captures leads, qualifies visitors, and answers product questions 24/7. Free during beta.",
   keywords: [

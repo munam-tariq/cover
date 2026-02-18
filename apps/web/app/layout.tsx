@@ -16,7 +16,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://frontface.app"),
   title: {
-    default: "FrontFace — AI Lead Capture & Sales Agent for Your Website",
+    default: "FrontFace — AI Lead Capture & Sales Agent",
     template: "%s | FrontFace",
   },
   description:
@@ -54,12 +54,12 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://frontface.app",
     siteName: "FrontFace",
-    title: "FrontFace — AI Lead Capture & Sales Agent for Your Website",
+    title: "FrontFace — AI Lead Capture & Sales Agent",
     description:
       "Deploy an AI agent on your website that captures leads, qualifies visitors, and answers product questions 24/7 using your knowledge base. Free to start.",
     images: [
       {
-        url: "/og-image.png",
+        url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
         alt: "FrontFace — AI Lead Capture & Sales Agent",
@@ -68,10 +68,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "FrontFace — AI Lead Capture & Sales Agent for Your Website",
+    title: "FrontFace — AI Lead Capture & Sales Agent",
     description:
       "Deploy an AI agent on your website that captures leads, qualifies visitors, and answers product questions 24/7.",
-    images: ["/og-image.png"],
+    images: ["https://frontface.app/og-image.png"],
     creator: "@frontface",
   },
   robots: {
