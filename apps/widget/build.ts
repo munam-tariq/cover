@@ -41,7 +41,7 @@ async function build() {
       global: "globalThis",
     },
     banner: {
-      js: `/* SupportBase Widget v${version} */`,
+      js: `/* FrontFace Widget v${version} */`,
     },
   });
 
@@ -58,7 +58,7 @@ async function build() {
         __WIDGET_VERSION__: JSON.stringify(version),
       },
       banner: {
-        js: `/* SupportBase Loader */`,
+        js: `/* FrontFace Loader */`,
       },
     });
   }

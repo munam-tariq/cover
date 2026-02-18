@@ -209,6 +209,38 @@ export class ChatWindow {
   }
 
   /**
+   * Enter handoff mode in a single place so both button-triggered and
+   * keyword-triggered flows keep widget state in sync.
+   */
+  private async enterHandoffMode(options?: {
+    preferredStatus?: ConversationStatus;
+    syncMessages?: boolean;
+  }): Promise<boolean> {
+    if (!this.sessionId) return false;
+
+    let status = options?.preferredStatus;
+    if (status !== "waiting" && status !== "agent_active") {
+      const current = await getConversationStatus(this.options.apiUrl, this.sessionId);
+      status = current?.status;
+    }
+
+    if (status !== "waiting" && status !== "agent_active") {
+      return false;
+    }
+
+    this.conversationStatus = status;
+    this.updateVoiceButtonState();
+    this.humanButton?.hide();
+    this.startMessagePolling();
+
+    if (options?.syncMessages) {
+      await this.fetchAndSyncMessages();
+    }
+
+    return true;
+  }
+
+  /**
    * Initialize conversation state on load
    * Checks existing conversation status and sets up polling if needed
    */
@@ -574,10 +606,12 @@ export class ChatWindow {
     // Save to storage
     setStoredMessages(this.options.projectId, this.messages);
 
-    // Show typing indicator
-    this.typingIndicator.show();
-    this.input.setLoading(true);
-    this.scrollToBottom();
+    // Show typing indicator only for AI responses (not in handoff mode)
+    if (!this.isInHandoffState()) {
+      this.typingIndicator.show();
+      this.input.setLoading(true);
+      this.scrollToBottom();
+    }
 
     try {
       // Build conversation history (last 10 messages)
@@ -615,6 +649,20 @@ export class ChatWindow {
         this.messages.push(assistantMessage);
         this.addMessageToDOM(assistantMessage);
         setStoredMessages(this.options.projectId, this.messages);
+      }
+
+      const shouldEnterHandoffMode =
+        response.handoff?.triggered === true ||
+        (!!response.handoff?.reason &&
+          !response.response?.trim() &&
+          (response.handoff.reason === "in_queue" ||
+            response.handoff.reason === "agent_handling"));
+
+      if (shouldEnterHandoffMode && this.sessionId && !this.isInHandoffState()) {
+        const preferredStatus = response.handoff?.reason === "agent_handling"
+          ? "agent_active"
+          : "waiting";
+        await this.enterHandoffMode({ preferredStatus, syncMessages: true });
       }
 
       // Track first message (used for lead metadata)
@@ -1355,6 +1403,14 @@ export class ChatWindow {
     this.humanButton.setLoading(true);
 
     try {
+      if (this.sessionId) {
+        const alreadyInHandoff = await this.enterHandoffMode({ syncMessages: true });
+        if (alreadyInHandoff) {
+          this.scrollToBottom();
+          return;
+        }
+      }
+
       // We need a conversation ID to trigger handoff
       // If we don't have one yet, send a message first to create the conversation
       if (!this.sessionId) {
@@ -1393,23 +1449,20 @@ export class ChatWindow {
 
         // Check if handoff was already triggered by the chat engine
         if (response.handoff?.triggered) {
-          // Handoff was triggered automatically, show the response
-          const assistantMessage: StoredMessage = {
-            id: generateId(),
-            content: response.response,
-            role: "assistant",
-            timestamp: Date.now(),
-          };
-          this.messages.push(assistantMessage);
-          this.addMessageToDOM(assistantMessage);
-          setStoredMessages(this.options.projectId, this.messages);
+          // Handoff was triggered automatically, show AI response if present
+          if (response.response?.trim()) {
+            const assistantMessage: StoredMessage = {
+              id: generateId(),
+              content: response.response,
+              role: "assistant",
+              timestamp: Date.now(),
+            };
+            this.messages.push(assistantMessage);
+            this.addMessageToDOM(assistantMessage);
+            setStoredMessages(this.options.projectId, this.messages);
+          }
 
-          // Hide the human button since we're now in handoff mode
-          this.humanButton.hide();
-          this.humanButton.setLoading(false);
-          this.conversationStatus = "waiting";
-          this.lastMessageTimestamp = new Date().toISOString();
-          this.startMessagePolling();
+          await this.enterHandoffMode({ syncMessages: true });
           this.scrollToBottom();
           return;
         }
@@ -1434,16 +1487,13 @@ export class ChatWindow {
         return;
       }
 
-      // Hide the human button
-      this.humanButton.hide();
-      this.conversationStatus = result.status === "agent_active" ? "agent_active" : "waiting";
-
-      // Start realtime/polling for messages
-      this.startMessagePolling();
-
-      // Fetch messages from server to get the system message that was broadcast
-      // This ensures customer sees "You're now connected with a support agent."
-      await this.fetchAndSyncMessages();
+      await this.enterHandoffMode({
+        preferredStatus:
+          result.status === "waiting" || result.status === "agent_active"
+            ? result.status
+            : undefined,
+        syncMessages: true,
+      });
     } catch (error) {
       console.error("[Widget] Failed to trigger handoff:", error);
 
@@ -1530,7 +1580,7 @@ export class ChatWindow {
     this.presenceManager.start(this.sessionId);
 
     // Check if realtime config is available
-    const config = (window as Record<string, unknown>).__WIDGET_CONFIG__ as Record<string, string> | undefined;
+    const config = ((window as unknown) as Record<string, unknown>).__WIDGET_CONFIG__ as Record<string, string> | undefined;
     const hasRealtimeConfig = !!(config?.supabaseUrl && config?.supabaseAnonKey);
 
     // Try realtime if enabled and config available
@@ -1621,9 +1671,6 @@ export class ChatWindow {
 
     // Determine role based on sender type
     let role: "user" | "assistant" = "assistant";
-    if (message.senderType === "customer") {
-      role = "user";
-    }
 
     const storedMsg: StoredMessage = {
       id: message.id,

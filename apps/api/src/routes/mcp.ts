@@ -46,7 +46,7 @@ const sessions: Record<
 const WIDGET_CDN_URL =
   process.env.CDN_URL ||
   "https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets";
-const API_URL = process.env.API_URL || "https://api.supportbase.app";
+const API_URL = process.env.API_URL || "https://api.frontface.app";
 const MAX_SOURCES_PER_PROJECT = 20;
 const MAX_ENDPOINTS_PER_PROJECT = 10;
 const MAX_TEXT_LENGTH = 100000;
@@ -163,7 +163,7 @@ async function resolveProjectId(
  */
 function createMcpServer(userId: string): McpServer {
   const server = new McpServer({
-    name: "supportbase",
+    name: "frontface",
     version: "1.0.0",
   });
 

@@ -508,18 +508,29 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
         // V3 Recovery: High-intent override + Summary hook (server-side)
         const recoverySettings = (await getProjectRecoverySettings(input.projectId));
         if (recoverySettings && state) {
-          const emailCaptured = !!(state as Record<string, unknown>).email ||
+          const stateRecord = state as unknown as Record<string, unknown>;
+          const highIntentOverride = recoverySettings.high_intent_override as {
+            enabled?: boolean;
+            keywords?: string[];
+          } | undefined;
+          const summaryHook = recoverySettings.conversation_summary_hook as {
+            enabled?: boolean;
+            min_messages?: number;
+            prompt?: string;
+          } | undefined;
+
+          const emailCaptured = !!stateRecord.email ||
             state.lead_capture_status === "qualified" ||
             state.lead_capture_status === "form_completed";
 
           if (!emailCaptured) {
             // High-intent override: detect high-intent keywords in user message
-            if (recoverySettings.high_intent_override?.enabled) {
-              const keywords = recoverySettings.high_intent_override.keywords || [];
+            if (highIntentOverride?.enabled) {
+              const keywords = highIntentOverride.keywords || [];
               const defaultKeywords = ["pricing", "demo", "trial", "contact", "sales", "buy", "subscribe", "cost", "price", "plan", "enterprise", "quote"];
               const keywordList = keywords.length > 0 ? keywords : defaultKeywords;
               const lowerMessage = sanitizedMessage.toLowerCase();
-              const isHighIntent = keywordList.some(kw => lowerMessage.includes(kw.toLowerCase()));
+              const isHighIntent = keywordList.some((kw: string) => lowerMessage.includes(kw.toLowerCase()));
 
               if (isHighIntent && (state.lead_capture_status === "deferred" || state.lead_capture_status === "pending" || state.lead_capture_status === "skipped")) {
                 // Flag high intent in customer state
@@ -540,16 +551,15 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
             }
 
             // Summary hook: after N messages, offer to email a summary
-            if (recoverySettings.conversation_summary_hook?.enabled) {
-              const minMessages = recoverySettings.conversation_summary_hook.min_messages || 3;
+            if (summaryHook?.enabled) {
+              const minMessages = summaryHook.min_messages || 3;
               const messageCount = (input.conversationHistory?.length || 0) + 1;
 
               if (messageCount >= minMessages * 2) { // *2 because history has both user and assistant
-                const hookPrompt = recoverySettings.conversation_summary_hook.prompt ||
+                const hookPrompt = summaryHook.prompt ||
                   "Want me to email you a summary of this conversation?";
 
                 // Only append if we haven't already appended a high-intent message
-                const stateRecord = state as Record<string, unknown>;
                 if (!stateRecord.high_intent_detected && !stateRecord.summary_hook_shown) {
                   finalResponse = finalResponse + `\n\n${hookPrompt}`;
 
@@ -842,9 +852,18 @@ async function getProjectConfig(
 
   const config: ProjectConfig = {
     name: project.name,
-    systemPrompt: (settings.system_prompt as string) || null,
-    supportEmail: (settings.support_email as string) || undefined,
-    supportUrl: (settings.support_url as string) || undefined,
+    systemPrompt:
+      (settings.systemPrompt as string) ||
+      (settings.system_prompt as string) ||
+      null,
+    supportEmail:
+      (settings.supportEmail as string) ||
+      (settings.support_email as string) ||
+      undefined,
+    supportUrl:
+      (settings.supportUrl as string) ||
+      (settings.support_url as string) ||
+      undefined,
   };
 
   // Cache the result
