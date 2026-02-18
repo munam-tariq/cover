@@ -5,25 +5,26 @@ import { Footer } from "../components/footer";
 import { Target, Users, Zap, Heart } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "About FrontFace | AI Customer Support for Small Business",
+  title: "About FrontFace | AI Lead Capture & Sales Agent for Your Website",
   description:
-    "FrontFace helps small businesses stop answering the same questions. AI chatbot that answers 89% of customer questions automatically.",
+    "FrontFace puts an AI agent on your website that captures leads, qualifies visitors, and answers product questions 24/7 from your knowledge base.",
   keywords: [
     "about FrontFace",
-    "AI chatbot company",
-    "small business customer support",
-    "automated customer service",
+    "AI lead capture company",
+    "AI sales agent platform",
+    "website AI agent",
+    "knowledge base AI",
   ],
   openGraph: {
     title: "About FrontFace",
-    description: "AI customer support for small businesses.",
+    description: "AI lead capture and sales agent for your website. Captures leads, qualifies visitors, and answers product questions 24/7.",
     url: "https://frontface.app/about",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "About FrontFace",
-    description: "AI customer support for small businesses.",
+    description: "AI lead capture and sales agent for your website. Captures leads, qualifies visitors, and answers product questions 24/7.",
   },
   alternates: {
     canonical: "https://frontface.app/about",

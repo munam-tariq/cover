@@ -63,13 +63,13 @@ async function sendInvitationEmail(params: {
   invitationUrl: string;
 }): Promise<{ success: boolean; error?: string }> {
   const { email, inviterName, projectName, role, invitationUrl } = params;
-  const fromAddress = process.env.EMAIL_FROM_ADDRESS || "hello@supportbase.app";
+  const fromAddress = process.env.EMAIL_FROM_ADDRESS || "hello@frontface.app";
 
   try {
     const { error } = await resend.emails.send({
-      from: `SupportBase <${fromAddress}>`,
+      from: `FrontFace <${fromAddress}>`,
       to: email,
-      subject: `You've been invited to join ${projectName} on SupportBase`,
+      subject: `You've been invited to join ${projectName} on FrontFace`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -83,7 +83,7 @@ async function sendInvitationEmail(params: {
               You're invited! 🎉
             </h1>
             <p style="margin: 0 0 24px 0; color: #6b7280;">
-              <strong>${inviterName}</strong> has invited you to join <strong>${projectName}</strong> as ${role === "admin" ? "an" : "a"} <strong>${role}</strong> on SupportBase.
+              <strong>${inviterName}</strong> has invited you to join <strong>${projectName}</strong> as ${role === "admin" ? "an" : "a"} <strong>${role}</strong> on FrontFace.
             </p>
 
             <div style="background: #f3f4f6; border-radius: 6px; padding: 16px; margin-bottom: 24px;">
@@ -106,14 +106,14 @@ async function sendInvitationEmail(params: {
 
           <div style="margin-top: 24px; text-align: center; color: #9ca3af; font-size: 12px;">
             <p style="margin: 0;">
-              © SupportBase - AI-powered customer support
+              © FrontFace - AI-powered customer support
             </p>
           </div>
         </body>
         </html>
       `,
       text: `
-You're invited to join ${projectName} on SupportBase!
+You're invited to join ${projectName} on FrontFace!
 
 ${inviterName} has invited you to join as ${role === "admin" ? "an" : "a"} ${role}.
 
@@ -127,7 +127,7 @@ ${invitationUrl}
 This invitation will expire in 7 days.
 
 ---
-SupportBase - AI-powered customer support
+FrontFace - AI-powered customer support
       `.trim(),
     });
 

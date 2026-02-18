@@ -21,7 +21,7 @@
   // Get the current script to read data attributes
   const currentScript = document.currentScript as HTMLScriptElement;
   if (!currentScript) {
-    console.error('[SupportBase] Could not find loader script');
+    console.error('[FrontFace] Could not find loader script');
     return;
   }
 

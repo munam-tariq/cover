@@ -14,27 +14,27 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Use Cases | AI Customer Support for Small Business | FrontFace",
+  title: "Use Cases | AI Lead Capture & Sales Agent for Every Industry | FrontFace",
   description:
-    "See how consultants, lawyers, ecommerce stores, and small businesses use FrontFace to answer 89% of customer questions automatically.",
+    "See how consultants, lawyers, ecommerce stores, and small businesses use FrontFace to capture leads, qualify visitors, and answer product questions automatically.",
   keywords: [
-    "AI chatbot for consultants",
-    "chatbot for lawyers",
-    "e-commerce chatbot",
-    "small business customer support",
-    "automated FAQ chatbot",
-    "professional services chatbot",
+    "AI lead capture for consultants",
+    "AI agent for lawyers",
+    "e-commerce lead capture",
+    "small business AI agent",
+    "lead generation for professional services",
+    "knowledge base chatbot for business",
   ],
   openGraph: {
-    title: "FrontFace Use Cases",
-    description: "AI customer support for consultants, ecommerce, and small business.",
+    title: "FrontFace Use Cases — AI Lead Capture for Every Industry",
+    description: "Capture leads, qualify visitors, and answer product questions automatically — for consultants, ecommerce, and small businesses.",
     url: "https://frontface.app/use-cases",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "FrontFace Use Cases",
-    description: "AI customer support for consultants, ecommerce, and small business.",
+    title: "FrontFace Use Cases — AI Lead Capture for Every Industry",
+    description: "Capture leads, qualify visitors, and answer product questions automatically — for consultants, ecommerce, and small businesses.",
   },
   alternates: {
     canonical: "https://frontface.app/use-cases",

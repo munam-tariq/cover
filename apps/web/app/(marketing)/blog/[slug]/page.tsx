@@ -33,8 +33,8 @@ export async function generateMetadata({
     description: post.description,
     keywords: [
       post.category.toLowerCase(),
-      "AI chatbot",
-      "customer support",
+      "AI agent",
+      "AI lead capture",
       "FrontFace",
     ],
     authors: [{ name: "FrontFace Team" }],
@@ -334,7 +334,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         <section className="bg-gradient-to-r from-blue-600 to-purple-600 py-16">
           <div className="max-w-4xl mx-auto px-6 text-center">
             <h2 className="text-3xl font-bold text-white mb-4">
-              Ready to Add AI Support?
+              Ready to Capture Leads with AI?
             </h2>
             <p className="text-blue-100 mb-8 text-lg">
               Get started with FrontFace in minutes. No credit card required.

@@ -1,0 +1,16 @@
+{
+  "name": "FrontFace",
+  "short_name": "FrontFace",
+  "description": "AI Lead Capture & Sales Agent for Your Website",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ]
+}

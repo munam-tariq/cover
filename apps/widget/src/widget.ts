@@ -62,7 +62,7 @@ export interface WidgetConfig {
  * Default configuration values
  */
 const DEFAULT_CONFIG: Omit<Required<WidgetConfig>, "projectId"> = {
-  apiUrl: "https://api.supportbase.app",
+  apiUrl: "https://api.frontface.app",
   position: "bottom-right",
   primaryColor: "#0a0a0a",
   greeting: "Hi! How can I help you today?",

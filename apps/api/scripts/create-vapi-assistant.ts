@@ -15,7 +15,7 @@
 
 const VAPI_API_URL = "https://api.vapi.ai";
 const VAPI_PRIVATE_KEY = process.env.VAPI_PRIVATE_KEY;
-const API_BASE_URL = process.env.API_BASE_URL || "https://api.supportbase.app";
+const API_BASE_URL = process.env.API_BASE_URL || "https://api.frontface.app";
 
 if (!VAPI_PRIVATE_KEY) {
   console.error("Error: VAPI_PRIVATE_KEY environment variable is required");
@@ -27,7 +27,7 @@ async function createAssistant() {
   console.log(`Server URL: ${API_BASE_URL}/api/vapi/webhook`);
 
   const assistantConfig = {
-    name: "SupportBase Voice Agent",
+    name: "FrontFace Voice Agent",
     model: {
       provider: process.env.VAPI_LLM_PROVIDER || "openai",
       model: process.env.VAPI_LLM_MODEL || "gpt-4o-mini",
@@ -191,7 +191,7 @@ Voice conversation rules:
       },
       body: JSON.stringify({
         provider: "custom-knowledge-base",
-        name: "SupportBase Knowledge Base",
+        name: "FrontFace Knowledge Base",
         server: {
           url: `${API_BASE_URL}/api/vapi/webhook`,
         },

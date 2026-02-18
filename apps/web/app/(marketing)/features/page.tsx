@@ -18,21 +18,22 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Features | AI Customer Support for Small Business | FrontFace",
+  title: "Features | AI Lead Capture, Sales Qualification & Knowledge Base | FrontFace",
   description:
-    "FrontFace features: AI that answers from your docs, human handoff when needed, lead capture, and 5-minute setup. Perfect for small businesses, consultants, and ecommerce stores.",
+    "FrontFace features: AI that captures leads, qualifies visitors, answers from your knowledge base, and hands off to humans when needed. 5-minute setup on any website.",
   keywords: [
-    "AI chatbot for small business",
-    "customer support automation",
-    "AI FAQ chatbot",
-    "ecommerce chatbot",
-    "Shopify chatbot",
-    "lead capture chatbot",
+    "AI lead capture features",
+    "lead qualification AI",
+    "knowledge base chatbot",
+    "AI sales agent features",
+    "website AI agent",
+    "ecommerce lead capture",
+    "Shopify AI agent",
     "human handoff chatbot",
   ],
   openGraph: {
-    title: "FrontFace Features",
-    description: "Everything you need to automate customer support for your small business.",
+    title: "FrontFace Features — AI Lead Capture & Knowledge Base",
+    description: "Capture leads, qualify visitors, and answer product questions 24/7. 5-minute setup on any website.",
     url: "https://frontface.app/features",
     type: "website",
   },
