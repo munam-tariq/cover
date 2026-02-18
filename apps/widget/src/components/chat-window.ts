@@ -498,6 +498,15 @@ export class ChatWindow {
       this.messages.forEach((msg) => this.addMessageToDOM(msg));
     }
 
+    // Re-insert lead capture form if it was active (its element uses chatbot-message
+    // class so it gets removed by the querySelectorAll above)
+    if (this.isLeadCaptureActive && this.leadCaptureForm) {
+      this.messagesContainer.insertBefore(
+        this.leadCaptureForm.element,
+        this.typingIndicator.element
+      );
+    }
+
     this.scrollToBottom();
   }
 
