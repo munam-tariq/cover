@@ -329,7 +329,7 @@ leadsRouter.get(
         .range(offset, offset + limit - 1);
 
       // Filter by status if provided
-      if (status && ["form_completed", "qualifying", "qualified", "skipped", "deferred"].includes(status)) {
+      if (status && ["form_completed", "qualifying", "qualified", "not_qualified", "skipped", "deferred"].includes(status)) {
         query = query.eq("qualification_status", status);
       }
 
@@ -347,6 +347,7 @@ leadsRouter.get(
           qualifyingAnswers: lead.qualifying_answers,
           lateQualifyingAnswers: lead.late_qualifying_answers || [],
           qualificationStatus: lead.qualification_status,
+          qualificationReasoning: lead.qualification_reasoning || null,
           captureSource: lead.capture_source || null,
           firstMessage: lead.first_message,
           formSubmittedAt: lead.form_submitted_at,

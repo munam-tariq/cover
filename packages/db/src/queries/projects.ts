@@ -55,7 +55,14 @@ export interface ProjectSettings {
       field_2?: { enabled: boolean; label: string; required: boolean };
       field_3?: { enabled: boolean; label: string; required: boolean };
     };
-    qualifying_questions?: Array<{ question: string; enabled: boolean }>;
+    qualifying_questions?: Array<{
+      question: string;
+      enabled: boolean;
+      mandatory?: boolean;
+      qualified_response?: string;
+      followup_questions?: string;
+      probe_question?: string;
+    }>;
     notification_email?: string | null;
     notifications_enabled?: boolean;
     // V3 cascade fields

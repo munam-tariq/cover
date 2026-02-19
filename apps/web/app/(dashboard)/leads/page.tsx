@@ -21,9 +21,10 @@ interface Lead {
   id: string;
   email: string;
   formData: Record<string, { label: string; value: string }>;
-  qualifyingAnswers: Array<{ question: string; answer: string }>;
+  qualifyingAnswers: Array<{ question: string; answer: string; actual_question?: string }>;
   lateQualifyingAnswers: LateQualifyingAnswer[];
   qualificationStatus: string;
+  qualificationReasoning: string | null;
   captureSource: string | null;
   firstMessage: string | null;
   createdAt: string;
@@ -36,6 +37,7 @@ interface LeadsResponse {
 
 const STATUS_LABELS: Record<string, string> = {
   qualified: "Qualified",
+  not_qualified: "Not Qualified",
   qualifying: "In Progress",
   form_completed: "Form Only",
   skipped: "Skipped",
@@ -44,6 +46,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   qualified: "default",
+  not_qualified: "destructive",
   qualifying: "secondary",
   form_completed: "outline",
   skipped: "destructive",
@@ -158,7 +161,7 @@ export default function LeadsPage() {
           />
         </div>
         <div className="flex gap-1">
-          {["all", "qualified", "qualifying", "form_completed", "deferred"].map((status) => (
+          {["all", "qualified", "not_qualified", "qualifying", "form_completed", "deferred"].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -277,6 +280,11 @@ export default function LeadsPage() {
                                 return (
                                   <div key={i} className="text-sm">
                                     <p className="text-muted-foreground">{qa.question}</p>
+                                    {qa.actual_question && (
+                                      <p className="text-xs text-muted-foreground/70 italic mt-0.5">
+                                        Asked as: &quot;{qa.actual_question}&quot;
+                                      </p>
+                                    )}
                                     <div className="flex items-center gap-2">
                                       <p className={`font-medium ${isSkipped && !lateAnswer ? "text-muted-foreground italic" : ""}`}>
                                         {displayAnswer}
@@ -302,6 +310,14 @@ export default function LeadsPage() {
                         <div className="mt-4 pt-3 border-t">
                           <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">First Message</h4>
                           <p className="text-sm">{lead.firstMessage}</p>
+                        </div>
+                      )}
+
+                      {/* Qualification Notes */}
+                      {lead.qualificationReasoning && (
+                        <div className="mt-4 pt-3 border-t">
+                          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">Qualification Notes</h4>
+                          <p className="text-sm text-muted-foreground italic">{lead.qualificationReasoning}</p>
                         </div>
                       )}
                     </div>

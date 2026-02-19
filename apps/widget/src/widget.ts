@@ -234,6 +234,14 @@ class ChatbotWidget {
         this.voiceConfig = data.voice as VoiceConfig;
       }
 
+      // Apply server config — overrides script-tag defaults with project settings
+      if (data.config) {
+        if (data.config.greeting) this.config.greeting = data.config.greeting;
+        if (data.config.primaryColor) this.config.primaryColor = data.config.primaryColor;
+        if (data.config.title) this.config.title = data.config.title;
+        if (data.config.position) this.config.position = data.config.position;
+      }
+
       // Store realtime config for realtime.ts to use
       if (data.realtime?.supabaseUrl && data.realtime?.supabaseAnonKey) {
         (window as Record<string, unknown>).__WIDGET_CONFIG__ = {

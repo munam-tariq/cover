@@ -5,6 +5,13 @@ import { logger } from "../lib/logger";
 
 export const embedRouter = Router();
 
+function buildGreeting(agentName?: string | null): string {
+  if (agentName) {
+    return `Hi! I'm ${agentName}. How can I help you today?`;
+  }
+  return "Hi! How can I help you today?";
+}
+
 // Get embed code for a project
 embedRouter.get("/code/:projectId", async (req, res) => {
   const { projectId } = req.params;
@@ -29,7 +36,7 @@ embedRouter.get(
     // Check if widget is enabled for this project
     const { data: project, error } = await supabaseAdmin
       .from("projects")
-      .select("settings, plan")
+      .select("settings, plan, name")
       .eq("id", projectId)
       .single();
 
@@ -66,9 +73,10 @@ embedRouter.get(
       projectId,
       enabled: widgetEnabled,
       config: {
-        primaryColor: "#000000",
+        primaryColor: (settings?.primary_color as string) || "#0a0a0a",
         position: "bottom-right",
-        greeting: "Hello! How can I help you today?",
+        greeting: buildGreeting(project?.name),
+        title: project?.name || "Chat with us",
         placeholder: "Type a message...",
       },
       // Supabase credentials for realtime (public anon key is safe to expose)
@@ -102,9 +110,9 @@ embedRouter.get(
       projectId,
       enabled: true,
       config: {
-        primaryColor: "#000000",
+        primaryColor: "#0a0a0a",
         position: "bottom-right",
-        greeting: "Hello! How can I help you today?",
+        greeting: "Hi! How can I help you today?",
         placeholder: "Type a message...",
       },
       realtime: {

@@ -484,15 +484,20 @@ export class ChatWindow {
     const existingMessages = this.messagesContainer.querySelectorAll(".chatbot-message");
     existingMessages.forEach((el) => el.remove());
 
-    // Add greeting if no messages
+    // Add greeting if no messages (suppress when lead capture form is pending)
     if (this.messages.length === 0) {
-      const greeting: StoredMessage = {
-        id: "greeting",
-        role: "assistant",
-        content: this.options.greeting,
-        timestamp: Date.now(),
-      };
-      this.addMessageToDOM(greeting);
+      const lcConfig = this.options.leadCaptureConfig;
+      const formPending = lcConfig?.enabled && !this.leadCaptureLocalState?.hasCompletedForm;
+
+      if (!formPending) {
+        const greeting: StoredMessage = {
+          id: "greeting",
+          role: "assistant",
+          content: this.options.greeting,
+          timestamp: Date.now(),
+        };
+        this.addMessageToDOM(greeting);
+      }
     } else {
       // Render stored messages
       this.messages.forEach((msg) => this.addMessageToDOM(msg));
@@ -954,6 +959,20 @@ export class ChatWindow {
           this.messages.push(qMsg);
           this.addMessageToDOM(qMsg);
           setStoredMessages(this.options.projectId, this.messages);
+        } else if (result.nextAction === "none") {
+          // No qualifying questions — show greeting now to start normal chat
+          setTimeout(() => {
+            const greetingMsg: StoredMessage = {
+              id: generateId(),
+              content: this.options.greeting,
+              role: "assistant",
+              timestamp: Date.now(),
+            };
+            this.messages.push(greetingMsg);
+            this.addMessageToDOM(greetingMsg);
+            setStoredMessages(this.options.projectId, this.messages);
+            this.scrollToBottom();
+          }, 500);
         }
 
         this.scrollToBottom();
