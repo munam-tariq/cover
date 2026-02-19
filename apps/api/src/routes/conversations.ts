@@ -26,7 +26,7 @@ const router = Router();
 const CreateConversationSchema = z.object({
   projectId: z.string().uuid("Invalid project ID"),
   visitorId: z.string().min(1).max(100),
-  source: z.enum(["widget", "playground", "mcp", "api", "voice"]).default("widget"),
+  source: z.enum(["widget", "playground", "mcp", "api"]).default("widget"),
   metadata: z.record(z.unknown()).optional(),
 });
 
@@ -259,8 +259,6 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
       queueEnteredAt: conv.queue_entered_at,
       claimedAt: conv.claimed_at,
       resolvedAt: conv.resolved_at,
-      isVoiceCall: conv.is_voice_call || false,
-      voiceDurationSeconds: conv.voice_duration_seconds || null,
     }));
 
     res.json({
@@ -388,11 +386,6 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
         createdAt: conversation.created_at,
         updatedAt: conversation.updated_at,
         lastMessageAt: conversation.last_message_at,
-        isVoiceCall: conversation.is_voice_call || false,
-        voiceDurationSeconds: conversation.voice_duration_seconds || null,
-        voiceCallId: conversation.voice_call_id || null,
-        voiceRecordingUrl: conversation.voice_recording_url || null,
-        voiceEndedReason: conversation.voice_ended_reason || null,
       },
     });
   } catch (error) {

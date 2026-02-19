@@ -10,9 +10,7 @@
   },
   "dependencies": {
     "@chatbot/shared": "workspace:*",
-    "@supabase/realtime-js": "^2.90.1",
-    "@vapi-ai/web": "^2.3.0",
-    "events": "^3.3.0"
+    "@supabase/realtime-js": "^2.90.1"
   },
   "devDependencies": {
     "@chatbot/eslint-config": "workspace:*",

@@ -369,16 +369,6 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Project not found" } });
     }
 
-    // Guard: cannot enable voice on free plan
-    if (newSettings?.voice_enabled === true && currentProject.plan !== "pro") {
-      return res.status(403).json({
-        error: {
-          code: "PLAN_REQUIRED",
-          message: "Upgrade to Pro to enable voice calls",
-        },
-      });
-    }
-
     // Guard: cannot enable widget without a knowledge base
     if (newSettings?.widget_enabled === true) {
       const { count } = await supabase

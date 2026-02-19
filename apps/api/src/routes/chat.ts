@@ -451,8 +451,6 @@ chatRouter.get("/feedback", async (req: Request, res: Response) => {
  * POST /api/chat/ensure-conversation
  *
  * Creates a conversation if one doesn't exist for this visitor.
- * Used by the widget before starting a voice call when no text messages
- * have been sent yet, to avoid orphaned voice conversations.
  *
  * Request body:
  * - projectId: string (required)

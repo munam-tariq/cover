@@ -37,16 +37,6 @@ declare global {
 }
 
 /**
- * Voice configuration from API
- */
-export interface VoiceConfig {
-  enabled: boolean;
-  vapiPublicKey?: string;
-  assistantId?: string;
-  greeting?: string;
-}
-
-/**
  * Widget configuration options
  */
 export interface WidgetConfig {
@@ -85,7 +75,6 @@ class ChatbotWidget {
   private teaserMessage: TeaserMessage | null = null;
   private exitOverlay: ExitOverlay | null = null;
   private leadRecoveryConfig: LeadRecoveryConfig | null = null;
-  private voiceConfig: VoiceConfig | null = null;
   private pulseManager: PulseManager | null = null;
 
   constructor(config: WidgetConfig) {
@@ -160,7 +149,6 @@ class ChatbotWidget {
       onClose: () => this.close(),
       leadCaptureConfig: this.leadCaptureConfig,
       leadRecoveryConfig: this.leadRecoveryConfig,
-      voiceConfig: this.voiceConfig,
     });
     wrapper.appendChild(this.chatWindow.element);
 
@@ -227,11 +215,6 @@ class ChatbotWidget {
       // Store lead recovery config
       if (data.leadRecovery?.enabled) {
         this.leadRecoveryConfig = data.leadRecovery as LeadRecoveryConfig;
-      }
-
-      // Store voice config
-      if (data.voice?.enabled) {
-        this.voiceConfig = data.voice as VoiceConfig;
       }
 
       // Store realtime config for realtime.ts to use

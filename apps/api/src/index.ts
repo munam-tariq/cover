@@ -23,8 +23,6 @@ import { onboardingRouter } from "./routes/onboarding";
 import { projectsRouter } from "./routes/projects";
 import { teamRouter } from "./routes/team";
 import { pulseRouter, pulseWidgetRouter } from "./routes/pulse";
-import { vapiRouter } from "./routes/vapi";
-import { vapiConfigRouter } from "./routes/vapi-config";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -87,10 +85,6 @@ app.use("/api/projects", dashboardCors, teamRouter); // Team routes: /api/projec
 app.use("/api/projects", dashboardCors, leadsRouter); // Leads routes: /api/projects/:id/leads
 app.use("/api/projects", dashboardCors, pulseRouter); // Pulse dashboard routes: /api/projects/:id/pulse/*
 app.use("/api/onboarding", dashboardCors, onboardingRouter); // Onboarding routes for new users
-
-// Vapi webhook routes (open CORS - called from Vapi servers)
-app.use("/api/vapi", widgetCors, vapiRouter);
-app.use("/api/vapi", widgetCors, vapiConfigRouter);
 
 // Widget/Public API routes (open CORS - can be called from any domain)
 // These come AFTER specific dashboard routes to avoid blocking PUT/DELETE
