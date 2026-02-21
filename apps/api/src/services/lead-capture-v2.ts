@@ -56,6 +56,7 @@ export interface QualifyingAnswer {
   qualified?: boolean;   // did answer meet qualified_response criteria?
   mandatory?: boolean;   // was this question mandatory?
   actual_question?: string;  // set when an alternate question was used to elicit the answer
+  answer_reasoning?: string;  // LLM reasoning for this answer
 }
 
 export interface LeadCaptureState {
@@ -202,8 +203,7 @@ async function findOrCreateCustomer(
  *
  * New behaviour:
  * - "new_question" intent is treated as "answer" — we don't pause qualifying for general questions
- * - Mandatory questions are never skipped; off-topic redirects politely back to the question
- * - Non-mandatory off-topic responses skip to next question
+ * - All questions loop until answered (mandatory flag only affects qualification status, not flow)
  * - Human handoff keywords (checked at step 4.5) still pass through to the handoff trigger
  */
 export async function leadCaptureV2Interceptor(
@@ -290,7 +290,6 @@ export async function leadCaptureV2Interceptor(
       alternateQuestion2: currentQuestion.probe_question,      // DB key stays as probe_question
       nextQuestion: nextQuestion?.question ?? null,
       isLastQuestion,
-      isMandatory: currentQuestion.mandatory ?? false,
       retryCount,
       userMessage: message,
       recentMessages: (conversationHistory || []).slice(-6),  // last 3 exchanges for context
@@ -321,8 +320,8 @@ export async function leadCaptureV2Interceptor(
       retryCount,
     });
 
-    // 7a. Redirect: off-topic on mandatory question.
-    // Does NOT increment retryCount — mandatory questions loop until answered.
+    // 7a. Redirect: user is off-topic and has no remaining alternates — loop back.
+    // Does NOT increment retryCount; user must answer to proceed.
     if (result.action === "redirect") {
       return { response: result.response, sessionId };
     }
@@ -357,6 +356,7 @@ export async function leadCaptureV2Interceptor(
       qualified: result.qualified ?? undefined,
       mandatory: currentQuestion.mandatory,
       ...(lastAskedQuestion !== currentQuestion.question ? { actual_question: lastAskedQuestion } : {}),
+      ...(result.answer_reasoning ? { answer_reasoning: result.answer_reasoning } : {}),
     };
 
     await saveQualifyingAnswer(customer.id, projectId, state, thisAnswer);
@@ -827,6 +827,7 @@ async function processQualifyingMessage(
     response: input.nextQuestion
       ? `Thanks! ${input.nextQuestion}`
       : "Thanks for that! Now, how can I help you today?",
+    answer_reasoning: undefined,
   };
 
   try {
@@ -837,7 +838,7 @@ async function processQualifyingMessage(
         { role: "system", content: msgs.system },
         { role: "user", content: msgs.user },
       ],
-      max_tokens: 300,
+      max_tokens: 450,
       temperature: 0.3,
       response_format: { type: "json_object" },
     });
@@ -902,12 +903,19 @@ export async function finalizeQualification(
   const finalStatus: LeadCaptureState["lead_capture_status"] =
     mandatoryFailures.length > 0 ? "not_qualified" : "qualified";
 
+  const questionSummaries = allAnswers.map((a, i) => {
+    const status = a.qualified === true ? "✓" : a.qualified === false ? "✗" : "–";
+    const mandatoryNote = a.mandatory ? " [mandatory]" : "";
+    const reasoning = a.answer_reasoning ? ` — ${a.answer_reasoning}` : "";
+    return `${i + 1}. ${a.question.substring(0, 60)}${mandatoryNote}: "${a.answer}"${reasoning} ${status}`;
+  }).join("\n");
+
   const reasoning =
     mandatoryFailures.length > 0
-      ? `Not qualified: mandatory question(s) not answered satisfactorily — "${mandatoryFailures.map(f => f.question.substring(0, 60)).join('"; "')}"`
+      ? `Not qualified: mandatory question(s) not satisfactorily answered.\n\n${questionSummaries}`
       : mandatoryPassed.length > 0
-        ? `Qualified: all ${mandatoryPassed.length} mandatory question(s) answered satisfactorily`
-        : "Qualified: no mandatory questions configured";
+        ? `Qualified: all ${mandatoryPassed.length} mandatory question(s) answered satisfactorily.\n\n${questionSummaries}`
+        : `Qualified: no mandatory questions configured.\n\n${questionSummaries}`;
 
   // Update customer state
   const { data: customer } = await supabaseAdmin

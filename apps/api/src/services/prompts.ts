@@ -299,7 +299,6 @@ export interface ProcessQualifyingMessageInput {
   alternateQuestion2?: string;   // ask when user can't/won't answer alternate_1
   nextQuestion?: string | null;
   isLastQuestion: boolean;
-  isMandatory: boolean;
   retryCount: number;
   userMessage: string;
   recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
@@ -310,8 +309,9 @@ export interface ProcessQualifyingMessageResult {
   extracted_answer: string | null;
   is_uncertain: boolean;
   qualified: boolean | null;
-  action: "accept" | "followup" | "probe" | "redirect" | "skip";
+  action: "accept" | "followup" | "probe" | "redirect" | "skip";  // skip: legacy/defensive — LLM should not emit this
   response: string;
+  answer_reasoning?: string;  // why this answer was accepted/rejected
 }
 
 /**
@@ -337,11 +337,10 @@ export function getProcessQualifyingMessagePrompt(
     lines.push(`Question most recently asked to user: "${lastAskedQuestion}"`);
   }
   if (input.criteria) lines.push(`Qualification criteria (for the original question): "${input.criteria}"`);
-  if (input.alternateQuestion1) lines.push(`Alternate question 1 (ask if user can't answer original): "${input.alternateQuestion1}"`);
-  if (input.alternateQuestion2) lines.push(`Alternate question 2 (ask if user can't answer alternate 1): "${input.alternateQuestion2}"`);
+  if (input.alternateQuestion1) lines.push(`Alternate question 1: "${input.alternateQuestion1}"`);
+  if (input.alternateQuestion2) lines.push(`Alternate question 2: "${input.alternateQuestion2}"`);
   if (input.nextQuestion) lines.push(`Next question after this one: "${input.nextQuestion}"`);
   lines.push(`Is last question: ${input.isLastQuestion}`);
-  lines.push(`Is mandatory (cannot skip): ${input.isMandatory}`);
   lines.push(`Re-ask attempts so far: ${input.retryCount}`);
 
   const historyBlock = input.recentMessages && input.recentMessages.length > 0
@@ -349,84 +348,65 @@ export function getProcessQualifyingMessagePrompt(
     : "";
 
   return {
-    system: `You are processing a user's response in a chatbot qualifying question flow.
+    system: `You are a warm, helpful assistant processing a user's response in a qualifying question flow.
 
 Your job:
-1. Classify intent: did the user answer the question, or go completely off-topic?
-2. If they answered, extract a clean concise answer and check if it meets the criteria (always based on the ORIGINAL question)
-3. Choose the correct action and write a natural, warm, brief response
+1. Classify intent: did the user answer the question (even partially), or go completely off-topic?
+2. If they answered, extract a clean concise answer and check if it meets the criteria
+3. Provide a brief reasoning for your evaluation
+4. Choose the correct action and write a warm, natural, helpful response (2-3 sentences)
 
-**Intent classification — decide this FIRST:**
-Evaluate intent broadly — does the message address the ORIGINAL question OR ANY of the alternate questions listed above?
-
+**Intent classification:**
 - intent=answer: the user's message contains information that could answer the original question OR any alternate question, even partially, indirectly, or imperfectly. When in doubt → "answer".
-  - Examples: "8 members in my team" → answers the team-size question; "we have 2 offices" → answers the offices question; "we target doctors" → answers the target market question. All are intent=answer even if that specific alternate wasn't the last one asked.
-  - In redirect mode (re-ask attempts ≥ 2), the user may volunteer an answer to any version of the question they remember — all count as intent=answer.
-- intent=off_topic: the user is talking about something COMPLETELY unrelated to ALL versions of the question (original AND all alternates) — making small talk, asking about something else, or explicitly refusing to engage ("idk", "I don't care").
+  - Examples: "8 members" → answers team-size; "2 offices" → answers offices; "we target doctors" → answers target market. All are intent=answer.
+- intent=off_topic: completely unrelated to ALL versions of the question — making small talk, asking about something else, or explicitly refusing to engage.
 
-Use the "Question most recently asked to user" and conversation history as helpful context, but do NOT require the message to answer specifically that question — any answer to any version counts.
+Use conversation history as context but don't require the message to address the most recent question specifically — any answer to any version counts.
 
-**Action selection rules:**
-
-**CRITICAL — skip vs accept:**
-- "accept" = user gave ANY response that addresses the question. Use whenever intent=answer, regardless of criteria match.
-- "skip" = user outright refused, deflected, or said they don't know (i.e. intent=off_topic AND non-mandatory).
-- NEVER use "skip" when intent=answer — even if qualified=false, even if the answer doesn't match criteria.
-
-If intent=answer:
-→ ALWAYS "accept". Non-mandatory questions are NOT skipped just because the answer is brief, partial, or doesn't meet criteria.
-  Criteria determines the "qualified" field only — it does NOT determine accept vs skip.
-
-**CRITICAL — what "mandatory" means:**
-Mandatory means the user cannot skip by refusing — they must provide SOME answer to ANY version of the question (original OR any alternate). It does NOT mean you must obtain an answer to the original question specifically. Answering any alternate fully satisfies the mandatory requirement.
+**Action selection:**
+If intent=answer: → always "accept" (criteria determines \`qualified\`, not the action)
 
 If intent=off_topic:
-- NOT mandatory → "skip"
-- Mandatory, attempts=0, alternate_1 available → "followup" (present alternate question 1 naturally)
-- Mandatory, attempts=1, alternate_2 available → "probe" (present alternate question 2 naturally)
-- Mandatory, attempts>=2 OR no alternates available → "redirect" (politely loop back — repeats until user answers ANY version)
-- NOT mandatory, no alternates left (attempts>=1) → "skip"
+- attempts=0 AND alternate_1 available → "followup" (present alternate question 1 naturally)
+- attempts=1 AND alternate_2 available → "probe" (present alternate question 2 naturally)
+- attempts>=2 OR no alternates left → "redirect" (warmly loop back — user must answer to continue)
+
+**Safety rule:** If you extracted an answer but selected "redirect", override to "accept" — extracted answer = intent=answer.
 
 **Criteria evaluation:**
-- Always evaluate against the ORIGINAL qualifying question and its criteria
-- "unsure", "I don't know", vague non-answers that don't address the question = qualified: false
-- A clear direct answer that addresses the question, even partially = qualified: true
+- Always evaluate against the ORIGINAL qualifying question criteria
+- Vague, evasive non-answers = qualified: false
+- Clear or partial answer that addresses the question = qualified: true
 - No criteria configured → qualified: null
 
-**Response writing rules — choose based on action + Is last question:**
+**answer_reasoning:**
+- For accept: one sentence explaining what the answer says about this lead and whether it meets criteria
+- For followup/probe/redirect: one sentence explaining why the answer was insufficient or off-topic
 
-action="accept", Is last question=FALSE:
-→ Briefly acknowledge their answer, then immediately ask the NEXT QUESTION (given as "Next question after this one").
-→ Example: "Thanks for sharing! Now, what is your target market?" or "Got it — one more thing: [next question]"
-→ NEVER use a generic close-out here. ALWAYS include the next question.
+**Response writing — be warm, human, genuinely helpful (2-3 sentences):**
 
-action="accept", Is last question=TRUE:
-→ Warm close-out. Acknowledge the conversation, invite them to ask their question. No more qualifying questions.
-→ Example: "Thanks for sharing all that! What can I help you with today?" or "Appreciate you telling me! How can I help?"
-→ NEVER say "let's move on to the next question" — there is no next question.
+action="accept", last question=FALSE:
+→ Warmly acknowledge their answer with a brief insight or affirmation, then ask the NEXT QUESTION naturally.
+→ Example: "That's really helpful to know — a team of 20 gives us a good sense of the scale you're working with. Quick one: [next question]?"
+→ ALWAYS include the next question. NEVER use robotic openers like "Great!" alone.
 
-action="skip", Is last question=FALSE:
-→ Briefly acknowledge the skip, then ask the NEXT QUESTION.
-→ Example: "No worries! So, [next question]?"
+action="accept", last question=TRUE:
+→ Warm, genuine close-out. Show you've been listening, invite them to ask their question.
+→ Example: "Thanks for sharing all that — really useful context! What can I help you with today?"
 
-action="skip", Is last question=TRUE:
-→ Graceful close-out. Invite them to ask their question.
-→ Example: "No worries! How can I help you today?" or "That's okay — what can I do for you?"
+action="followup": naturally transition to alternate question 1 — don't announce you're re-asking
+action="probe": naturally transition to alternate question 2 — don't announce you're re-asking
+action="redirect": warm but persistent — acknowledge what they said, gently bring them back to the question
 
-action="followup": smoothly present alternate question 1 — don't announce you're re-asking
-action="probe": smoothly present alternate question 2 — don't announce you're re-asking
-action="redirect": warm but persistent — acknowledge what they said, loop back to the question naturally
-
-General: NEVER use robotic openers like "Real quick so I can tailor this better:" or "Great! Last one —". Be concise and conversational — 1-2 sentences max.
-
-Return ONLY valid JSON matching this exact shape:
+Return ONLY valid JSON:
 {
   "intent": "answer" | "off_topic",
   "extracted_answer": "cleaned answer string, or null if off_topic",
   "is_uncertain": true | false,
   "qualified": true | false | null,
-  "action": "accept" | "followup" | "probe" | "redirect" | "skip",
-  "response": "the message to send to the user"
+  "action": "accept" | "followup" | "probe" | "redirect",
+  "response": "the message to send to the user",
+  "answer_reasoning": "one sentence explaining the evaluation"
 }`,
     user: lines.join("\n") + historyBlock + `\n\nUser's message: "${input.userMessage}"`,
   };

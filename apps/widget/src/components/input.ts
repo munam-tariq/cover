@@ -181,8 +181,10 @@ export class Input {
 
   private autoResize(): void {
     this.textarea.style.height = "auto";
-    const newHeight = Math.min(this.textarea.scrollHeight, 120);
-    this.textarea.style.height = `${newHeight}px`;
+    const scrollH = this.textarea.scrollHeight;
+    this.textarea.style.height = `${Math.min(scrollH, 120)}px`;
+    this.textarea.style.overflowY = scrollH > 120 ? "auto" : "hidden";
+    this.element.classList.toggle("has-content", this.textarea.value.trim().length > 0);
   }
 
   private updateCharCount(): void {
@@ -232,6 +234,7 @@ export class Input {
   clear(): void {
     this.textarea.value = "";
     this.textarea.style.height = "auto";
+    this.element.classList.remove("has-content");
 
     // Remove character count if visible
     if (this.charCount) {

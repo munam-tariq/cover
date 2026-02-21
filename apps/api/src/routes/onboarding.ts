@@ -63,6 +63,7 @@ function getBrandfetchLogoUrl(domain: string): string {
 // Validation schemas
 const startSchema = z.object({
   agentName: z.string().min(1, "Agent name is required").max(50, "Agent name too long"),
+  companyName: z.string().min(1, "Company name is required").max(100, "Company name too long"),
   systemPrompt: z.string().max(2000, "System prompt too long").optional(),
 });
 
@@ -93,7 +94,7 @@ onboardingRouter.post("/start", async (req: AuthenticatedRequest, res: Response)
       });
     }
 
-    const { agentName, systemPrompt } = validation.data;
+    const { agentName, companyName, systemPrompt } = validation.data;
 
     // Check if user already has projects (shouldn't be in onboarding)
     const { data: existingProjects, error: fetchError } = await supabaseAdmin
@@ -139,6 +140,7 @@ onboardingRouter.post("/start", async (req: AuthenticatedRequest, res: Response)
       .insert({
         user_id: req.userId,
         name: agentName,
+        company_name: companyName,
         settings: projectSettings,
       })
       .select("id, name")

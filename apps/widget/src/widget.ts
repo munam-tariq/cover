@@ -74,6 +74,7 @@ const DEFAULT_CONFIG: Omit<Required<WidgetConfig>, "projectId"> = {
  */
 class ChatbotWidget {
   private config!: Required<WidgetConfig>;
+  private explicitPrimaryColor: boolean = false; // true if set via script attribute
   private container: HTMLElement | null = null;
   private shadowRoot: ShadowRoot | null = null;
   private bubble: Bubble | null = null;
@@ -87,6 +88,7 @@ class ChatbotWidget {
   private leadRecoveryConfig: LeadRecoveryConfig | null = null;
   private voiceConfig: VoiceConfig | null = null;
   private pulseManager: PulseManager | null = null;
+  private greetingIntro: string = "";
 
   constructor(config: WidgetConfig) {
     // Validate required config
@@ -100,6 +102,10 @@ class ChatbotWidget {
       ...DEFAULT_CONFIG,
       ...config,
     };
+
+    // Track if caller explicitly provided a primary color (script attribute)
+    // so fetchConfig won't override it with the server default
+    this.explicitPrimaryColor = !!config.primaryColor;
 
     // Initialize when DOM is ready
     if (document.readyState === "loading") {
@@ -138,6 +144,9 @@ class ChatbotWidget {
     style.textContent = __WIDGET_CSS__;
     this.shadowRoot.appendChild(style);
 
+    // Set primary color as CSS variable so animations/focus rings pick it up
+    this.container.style.setProperty("--widget-primary", this.config.primaryColor);
+
     // Create widget wrapper
     const wrapper = document.createElement("div");
     wrapper.className = `chatbot-widget ${this.config.position}`;
@@ -155,6 +164,7 @@ class ChatbotWidget {
       projectId: this.config.projectId,
       apiUrl: this.config.apiUrl,
       greeting: this.config.greeting,
+      greetingIntro: this.greetingIntro || undefined,
       title: this.config.title,
       primaryColor: this.config.primaryColor,
       onClose: () => this.close(),
@@ -235,9 +245,11 @@ class ChatbotWidget {
       }
 
       // Apply server config — overrides script-tag defaults with project settings
+      // Exception: explicit script-tag attributes (e.g. data-primary-color) take precedence
       if (data.config) {
         if (data.config.greeting) this.config.greeting = data.config.greeting;
-        if (data.config.primaryColor) this.config.primaryColor = data.config.primaryColor;
+        if (data.config.greetingIntro) this.greetingIntro = data.config.greetingIntro;
+        if (data.config.primaryColor && !this.explicitPrimaryColor) this.config.primaryColor = data.config.primaryColor;
         if (data.config.title) this.config.title = data.config.title;
         if (data.config.position) this.config.position = data.config.position;
       }
@@ -317,6 +329,7 @@ class ChatbotWidget {
   updateConfig(newConfig: Partial<WidgetConfig>): void {
     if (newConfig.primaryColor) {
       this.config.primaryColor = newConfig.primaryColor;
+      this.container?.style.setProperty("--widget-primary", newConfig.primaryColor);
       this.bubble?.setColor(newConfig.primaryColor);
       this.chatWindow?.setColor(newConfig.primaryColor);
     }

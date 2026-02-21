@@ -16,8 +16,9 @@ import { apiClient } from "@/lib/api-client";
  */
 export default function AgentNamePage() {
   const router = useRouter();
-  const { state, setAgentName, setSystemPrompt, setProjectId } = useOnboarding();
+  const { state, setAgentName, setCompanyName, setSystemPrompt, setProjectId } = useOnboarding();
   const [name, setName] = useState(state.agentName || "");
+  const [company, setCompany] = useState(state.companyName || "");
   const [personality, setPersonality] = useState(state.systemPrompt || "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +54,16 @@ export default function AgentNamePage() {
       return;
     }
 
+    if (!company.trim()) {
+      setError("Please enter your company name");
+      return;
+    }
+
+    if (company.length > 100) {
+      setError("Company name must be 100 characters or less");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -61,12 +72,14 @@ export default function AgentNamePage() {
         method: "POST",
         body: JSON.stringify({
           agentName: name.trim(),
+          companyName: company.trim(),
           systemPrompt: personality.trim() || undefined,
         }),
       });
 
       // Store in context
       setAgentName(name.trim());
+      setCompanyName(company.trim());
       setSystemPrompt(personality.trim());
       setProjectId(data.projectId);
 
@@ -111,6 +124,23 @@ export default function AgentNamePage() {
             disabled={isLoading}
             className="h-11"
             autoFocus
+          />
+        </div>
+
+        {/* Company Name */}
+        <div className="space-y-2">
+          <Label htmlFor="company-name">Company Name</Label>
+          <Input
+            id="company-name"
+            value={company}
+            onChange={(e) => {
+              setCompany(e.target.value);
+              setError(null);
+            }}
+            placeholder="e.g., Acme Corp, TechStartup Inc"
+            disabled={isLoading}
+            className="h-11"
+            maxLength={100}
           />
         </div>
 
@@ -185,7 +215,7 @@ export default function AgentNamePage() {
         </Button>
         <Button
           onClick={handleContinue}
-          disabled={isLoading || !name.trim()}
+          disabled={isLoading || !name.trim() || !company.trim()}
           className="flex-1 gap-2"
         >
           {isLoading ? (

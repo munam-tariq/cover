@@ -5,11 +5,79 @@ import { logger } from "../lib/logger";
 
 export const embedRouter = Router();
 
-function buildGreeting(agentName?: string | null): string {
-  if (agentName) {
-    return `Hi! I'm ${agentName}. How can I help you today?`;
-  }
-  return "Hi! How can I help you today?";
+function buildGreeting(
+  agentName?: string | null,
+  companyName?: string | null,
+): { full: string; intro: string } {
+  const templates = [
+    (name?: string | null) => ({
+      intro: name && companyName
+        ? `Hi, I'm ${name} from ${companyName} 👋 I'm really glad you reached out.`
+        : name
+          ? `Hi, I'm ${name} 👋 I'm really glad you reached out.`
+          : `Hi 👋 I'm really glad you reached out.`,
+      full: name && companyName
+        ? `Hi, I'm ${name} from ${companyName} 👋 I'm really glad you reached out. Take your time and let me know what you're looking for.`
+        : name
+          ? `Hi, I'm ${name} 👋 I'm really glad you reached out. Take your time and let me know what you're looking for.`
+          : `Hi 👋 I'm really glad you reached out. Take your time and let me know what you're looking for.`,
+    }),
+
+    (name?: string | null) => ({
+      intro: name && companyName
+        ? `Hello, I'm ${name} from ${companyName}. It's great to have you here.`
+        : name
+          ? `Hello, I'm ${name}. It's great to have you here.`
+          : `Hello. It's great to have you here.`,
+      full: name && companyName
+        ? `Hello, I'm ${name} from ${companyName}. It's great to have you here. What would you like to talk about?`
+        : name
+          ? `Hello, I'm ${name}. It's great to have you here. What would you like to talk about?`
+          : `Hello. It's great to have you here. What would you like to talk about?`,
+    }),
+
+    (name?: string | null) => ({
+      intro: name && companyName
+        ? `Hey — ${name} here from ${companyName} 👋.`
+        : name
+          ? `Hey — ${name} here 👋.`
+          : `Hey 👋`,
+      full: name && companyName
+        ? `Hey — ${name} here from ${companyName} 👋. What's been on your mind?`
+        : name
+          ? `Hey — ${name} here 👋. What's been on your mind?`
+          : `Hey 👋. What's been on your mind?`,
+    }),
+
+    (name?: string | null) => ({
+      intro: name && companyName
+        ? `Hi, I'm ${name} from ${companyName}. Thanks for stopping by.`
+        : name
+          ? `Hi, I'm ${name}. Thanks for stopping by.`
+          : `Hi there 👋 Thanks for stopping by.`,
+      full: name && companyName
+        ? `Hi, I'm ${name} from ${companyName}. Thanks for stopping by. How can I make things easier for you today?`
+        : name
+          ? `Hi, I'm ${name}. Thanks for stopping by. How can I make things easier for you today?`
+          : `Hi there 👋 Thanks for stopping by. How can I make things easier for you today?`,
+    }),
+
+    (name?: string | null) => ({
+      intro: name && companyName
+        ? `Welcome — I'm ${name} from ${companyName}. I'm here with you.`
+        : name
+          ? `Welcome — I'm ${name}. I'm here with you.`
+          : `Welcome 👋 I'm here with you.`,
+      full: name && companyName
+        ? `Welcome — I'm ${name} from ${companyName}. I'm here with you. Tell me a little about what you need and we'll figure it out together.`
+        : name
+          ? `Welcome — I'm ${name}. I'm here with you. Tell me a little about what you need and we'll figure it out together.`
+          : `Welcome 👋 I'm here with you. Tell me a little about what you need and we'll figure it out together.`,
+    }),
+  ];
+
+  const selected = templates[Math.floor(Math.random() * templates.length)];
+  return selected(agentName);
 }
 
 // Get embed code for a project
@@ -36,7 +104,7 @@ embedRouter.get(
     // Check if widget is enabled for this project
     const { data: project, error } = await supabaseAdmin
       .from("projects")
-      .select("settings, plan, name")
+      .select("settings, plan, name, company_name")
       .eq("id", projectId)
       .single();
 
@@ -68,6 +136,9 @@ embedRouter.get(
       ? proactiveSettings
       : { enabled: false };
 
+    // Build greeting once so both parts share the same randomly-selected template
+    const greeting = buildGreeting(project?.name, project?.company_name);
+
     // Return widget config including enabled status
     res.json({
       projectId,
@@ -75,7 +146,8 @@ embedRouter.get(
       config: {
         primaryColor: (settings?.primary_color as string) || "#0a0a0a",
         position: "bottom-right",
-        greeting: buildGreeting(project?.name),
+        greeting: greeting.full,
+        greetingIntro: greeting.intro,
         title: project?.name || "Chat with us",
         placeholder: "Type a message...",
       },

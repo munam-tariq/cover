@@ -21,7 +21,7 @@ interface Lead {
   id: string;
   email: string;
   formData: Record<string, { label: string; value: string }>;
-  qualifyingAnswers: Array<{ question: string; answer: string; actual_question?: string }>;
+  qualifyingAnswers: Array<{ question: string; answer: string; actual_question?: string; answer_reasoning?: string }>;
   lateQualifyingAnswers: LateQualifyingAnswer[];
   qualificationStatus: string;
   qualificationReasoning: string | null;
@@ -295,6 +295,11 @@ export default function LeadsPage() {
                                         </Badge>
                                       )}
                                     </div>
+                                    {qa.answer_reasoning && !isSkipped && (
+                                      <p className="text-xs text-muted-foreground/70 italic mt-0.5">
+                                        {qa.answer_reasoning}
+                                      </p>
+                                    )}
                                   </div>
                                 );
                               })}

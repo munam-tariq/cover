@@ -347,7 +347,7 @@ router.get(
       let leadData = null;
       const leadQuery = supabaseAdmin
         .from("qualified_leads")
-        .select("id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, capture_source, first_message, form_submitted_at")
+        .select("id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, qualification_reasoning, capture_source, first_message, form_submitted_at")
         .eq("project_id", conversation.project_id);
 
       // Try to find by conversation_id first, then by customer_id, then by visitor_id
@@ -366,7 +366,7 @@ router.get(
       if (!leadData && customer?.id) {
         const { data: leadByCustomer } = await supabaseAdmin
           .from("qualified_leads")
-          .select("id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, capture_source, first_message, form_submitted_at")
+          .select("id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, qualification_reasoning, capture_source, first_message, form_submitted_at")
           .eq("project_id", conversation.project_id)
           .eq("customer_id", customer.id)
           .order("created_at", { ascending: false })
@@ -381,7 +381,7 @@ router.get(
       if (!leadData && conversation.visitor_id) {
         const { data: leadByVisitor } = await supabaseAdmin
           .from("qualified_leads")
-          .select("id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, capture_source, first_message, form_submitted_at")
+          .select("id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, qualification_reasoning, capture_source, first_message, form_submitted_at")
           .eq("project_id", conversation.project_id)
           .eq("visitor_id", conversation.visitor_id)
           .order("created_at", { ascending: false })
@@ -427,6 +427,7 @@ router.get(
               qualifyingAnswers: leadData.qualifying_answers || [],
               lateQualifyingAnswers: leadData.late_qualifying_answers || [],
               qualificationStatus: leadData.qualification_status,
+              qualificationReasoning: leadData.qualification_reasoning || null,
               captureSource: leadData.capture_source,
               firstMessage: leadData.first_message,
               formSubmittedAt: leadData.form_submitted_at,
