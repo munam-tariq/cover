@@ -37,13 +37,12 @@ declare global {
 }
 
 /**
- * Voice configuration from API
+ * Voice configuration from API.
+ * Credentials are not included here — they are fetched at call time
+ * from /api/voice/config/:projectId to keep tokens short-lived.
  */
 export interface VoiceConfig {
   enabled: boolean;
-  vapiPublicKey?: string;
-  assistantId?: string;
-  greeting?: string;
 }
 
 /**

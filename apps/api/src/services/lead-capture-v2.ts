@@ -873,10 +873,17 @@ export async function saveQualifyingAnswer(
 
   if (lead) {
     const currentAnswers = (lead.qualifying_answers as QualifyingAnswer[]) || [];
+    // Upsert by question: replace an existing answer for the same question rather than
+    // appending. This prevents duplicate entries when Deepgram sends rapid successive
+    // LLM calls for partial ASR transcripts of the same user utterance.
+    const existingIndex = currentAnswers.findIndex(a => a.question === answer.question);
+    const updatedAnswers = existingIndex !== -1
+      ? currentAnswers.map((a, i) => i === existingIndex ? answer : a)
+      : [...currentAnswers, answer];
     await supabaseAdmin
       .from("qualified_leads")
       .update({
-        qualifying_answers: [...currentAnswers, answer],
+        qualifying_answers: updatedAnswers,
         qualification_status: "qualifying",
         updated_at: new Date().toISOString(),
       })

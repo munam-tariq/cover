@@ -163,6 +163,8 @@ export interface LeadCaptureSubmitResponse {
   leadId?: string;
   nextAction: "qualifying_question" | "none";
   qualifyingQuestion?: string;
+  assembledGreeting?: string;
+  sessionId?: string;
 }
 
 export interface LeadCaptureStatusResponse {

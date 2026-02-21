@@ -53,25 +53,8 @@ import { generateId } from "../utils/helpers";
 import { VoiceCallOverlay, type VoiceCallState } from "./voice-call-overlay";
 import { VoicePermissionPrompt } from "./voice-permission-prompt";
 import type { VoiceConfig } from "../widget";
+import { DeepgramVoiceManager } from "../utils/deepgram-voice";
 
-// Transition phrases used to bridge the greeting and the first qualifying question.
-// These are assembled on the frontend so the API only needs to return the raw question.
-const TRANSITION_MESSAGES = [
-  "I just have a quick question to better understand your needs.",
-  "Let me ask you something quick so I can guide you properly.",
-  "Before we continue, I just need one quick detail.",
-  "To make sure I give you the right info, I need to ask:",
-  "Quick question so I can help you better:",
-] as const;
-
-/** Minimal Vapi SDK instance typing for dynamic imports */
-interface VapiInstance {
-  on(event: string, callback: (...args: unknown[]) => void): void;
-  start(assistantId: string, overrides?: Record<string, unknown>): Promise<unknown>;
-  stop(): void;
-  setMuted(muted: boolean): void;
-  isMuted(): boolean;
-}
 import {
   WidgetRealtimeManager,
   getRealtimeManager,
@@ -144,9 +127,9 @@ export class ChatWindow {
   // Voice
   private voiceOverlay: VoiceCallOverlay | null = null;
   private voicePermissionPrompt: VoicePermissionPrompt | null = null;
-  private vapiInstance: unknown = null;
-  private vapiModule: unknown = null;
+  private deepgramVoice: DeepgramVoiceManager | null = null;
   private isVoiceCallActive = false;
+  private voiceTranscript: Array<{ role: "user" | "assistant"; content: string }> = [];
 
   constructor(private options: ChatWindowOptions) {
     this.visitorId = getVisitorId();
@@ -175,8 +158,6 @@ export class ChatWindow {
       onSend: (message) => this.handleSend(message),
       primaryColor: options.primaryColor,
       onInput: () => this.handleUserTyping(),
-      voiceEnabled: !!options.voiceConfig?.enabled,
-      onVoiceClick: () => this.initiateVoiceCall(),
     });
     inputContainer.appendChild(this.input.element);
 
@@ -942,6 +923,13 @@ export class ChatWindow {
         // Show success state on form
         this.leadCaptureForm.showSuccess(formData.email);
 
+        // Store the session ID returned by the form-submit endpoint so subsequent
+        // requests (voice, chat messages) use the conversation created during form submit.
+        if (result.sessionId && !this.sessionId) {
+          this.sessionId = result.sessionId;
+          setSessionId(this.options.projectId, result.sessionId);
+        }
+
         // Cache locally
         setLeadCaptureState(this.options.projectId, {
           hasCompletedForm: true,
@@ -963,13 +951,11 @@ export class ChatWindow {
         // Re-check handoff availability to show "Talk to Human" button now that form is complete
         this.checkAvailability();
 
-        // If there's a qualifying question, show it as an assistant message
+        // If there's a qualifying question, show it as an assistant message.
+        // Use the backend-assembled greeting (greetingIntro + transition + question) so
+        // the DB and the UI are always in sync.
         if (result.nextAction === "qualifying_question" && result.qualifyingQuestion) {
-          const transition = TRANSITION_MESSAGES[Math.floor(Math.random() * TRANSITION_MESSAGES.length)];
-          // Use greetingIntro (without the open-ended question) when available,
-          // so the combined message doesn't read "What would you like to talk about? [transition] [question]"
-          const greetingPart = this.options.greetingIntro || this.options.greeting;
-          const combinedContent = `${greetingPart}\n${transition}\n${result.qualifyingQuestion}`;
+          const combinedContent = result.assembledGreeting || result.qualifyingQuestion;
           const qMsg: StoredMessage = {
             id: generateId(),
             content: combinedContent,
@@ -1047,14 +1033,6 @@ export class ChatWindow {
       headerBtn.classList.toggle("cb-voice-btn-disabled", disabled);
       headerBtn.title = tooltip;
     }
-
-    // Input voice button
-    const inputBtn = this.element.querySelector(".cb-voice-input-btn") as HTMLButtonElement | null;
-    if (inputBtn) {
-      inputBtn.disabled = disabled;
-      inputBtn.classList.toggle("cb-voice-btn-disabled", disabled);
-      inputBtn.title = tooltip;
-    }
   }
 
   /**
@@ -1098,49 +1076,13 @@ export class ChatWindow {
   }
 
   /**
-   * Load the Vapi SDK dynamically (only when needed)
-   */
-  private async loadVapiSDK(): Promise<Record<string, unknown>> {
-    if (!this.vapiModule) {
-      this.vapiModule = await import("@vapi-ai/web");
-    }
-    return this.vapiModule as Record<string, unknown>;
-  }
-
-  /**
-   * Fetch fresh voice config from the API (includes dynamic system prompt)
-   */
-  private async fetchVoiceCallConfig(): Promise<{
-    vapiPublicKey: string;
-    assistantId: string;
-    greeting: string;
-    assistantOverrides: Record<string, unknown>;
-  } | null> {
-    try {
-      const response = await fetch(
-        `${this.options.apiUrl}/api/vapi/config/${this.options.projectId}?visitorId=${encodeURIComponent(this.visitorId)}`
-      );
-      if (!response.ok) return null;
-      const data = await response.json();
-      if (!data.voiceEnabled || !data.vapiPublicKey || !data.assistantId) return null;
-      return data;
-    } catch (error) {
-      console.error("[Widget] Failed to fetch voice call config:", error);
-      return null;
-    }
-  }
-
-  /**
-   * Start the actual Vapi voice call
+   * Start a Deepgram Voice Agent call.
+   * Config and token are fetched fresh from /api/voice/config/:projectId before each call.
    */
   private async startVoiceCall(): Promise<void> {
-    const voiceConfig = this.options.voiceConfig;
-    if (!voiceConfig?.vapiPublicKey || !voiceConfig?.assistantId) {
-      console.error("[Widget] Voice config missing vapiPublicKey or assistantId");
-      return;
-    }
+    if (!this.options.voiceConfig?.enabled) return;
 
-    // Ensure a conversation exists before starting voice call (P5)
+    // Ensure a conversation exists before starting voice call
     if (!this.sessionId) {
       try {
         const resp = await fetch(`${this.options.apiUrl}/api/chat/ensure-conversation`, {
@@ -1168,141 +1110,98 @@ export class ChatWindow {
       onMuteToggle: () => this.toggleVoiceMute(),
       onBackToChat: () => this.dismissVoiceOverlay(),
     });
-
-    // Insert overlay into the chat window (covers messages + input)
     this.element.appendChild(this.voiceOverlay.element);
     this.voiceOverlay.show();
 
     // Disable text input during voice call
     this.input.setDisabled(true, "Voice call in progress");
 
-    try {
-      // Fetch fresh voice config (includes dynamic system prompt with personality + qualifying Qs)
-      const freshConfig = await this.fetchVoiceCallConfig();
+    // State map: Deepgram → overlay
+    const stateMap: Record<string, VoiceCallState> = {
+      connecting:  "connecting",
+      listening:   "active-listening",
+      thinking:    "active-thinking",
+      speaking:    "active-speaking",
+      ended:       "ended",
+      error:       "error",
+    };
 
-      // Dynamically load Vapi SDK
-      const VapiModule = await this.loadVapiSDK();
-      // Handle CJS/ESM interop: module.default could be the class itself or { default: class }
-      const VapiClass = typeof VapiModule.default === "function"
-        ? VapiModule.default
-        : (VapiModule.default as Record<string, unknown>)?.default || VapiModule;
-      const vapi = new (VapiClass as new (key: string) => VapiInstance)(voiceConfig.vapiPublicKey);
-      this.vapiInstance = vapi;
+    this.voiceTranscript = [];
 
-      // Wire up Vapi events (call methods on vapi directly to preserve `this` context)
-      vapi.on("call-start", () => {
-        this.voiceOverlay?.setState("active-listening");
-      });
+    this.deepgramVoice = new DeepgramVoiceManager({
+      projectId: this.options.projectId,
+      apiUrl: this.options.apiUrl,
+      visitorId: this.visitorId,
+      sessionId: this.sessionId,
+      onStateChange: (state) => {
+        const overlayState = stateMap[state];
+        if (overlayState) this.voiceOverlay?.setState(overlayState);
 
-      vapi.on("call-end", () => {
-        this.voiceOverlay?.setState("ended");
-        this.isVoiceCallActive = false;
-
-        // Re-enable text input
-        this.input.setDisabled(false);
-
-        // Add a system message to the chat
-        const duration = this.voiceOverlay?.getDuration() || 0;
-        const durationStr = `${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, "0")}`;
-        const summaryMsg: StoredMessage = {
+        if (state === "ended" || state === "error") {
+          this.isVoiceCallActive = false;
+          this.input.setDisabled(false);
+          // Send transcript to backend, then sync full conversation from DB into text chat
+          this.notifyVoiceSessionEnd()
+            .then(() => new Promise<void>(resolve => setTimeout(resolve, 300)))
+            .then(() => this.fetchAndSyncMessages())
+            .catch(() => this.addVoiceCallSummary()); // fallback if sync fails
+          // Refresh lead capture status (qualifying answers may have been recorded during call)
+          setTimeout(async () => {
+            try {
+              const status = await getLeadCaptureStatus(
+                this.options.apiUrl,
+                this.options.projectId,
+                this.visitorId
+              );
+              if (status.hasCompletedQualifying) {
+                this.leadCaptureLocalState = { hasCompletedForm: true, hasCompletedQualifying: true };
+                setLeadCaptureState(this.options.projectId, this.leadCaptureLocalState);
+              }
+            } catch {
+              // Non-critical — ignore
+            }
+          }, 5000);
+        }
+      },
+      onTranscript: (role, text) => {
+        this.voiceOverlay?.addTranscript(role, text);
+        if (text?.trim()) {
+          this.voiceTranscript.push({ role, content: text.trim() });
+          // Not added to text chat DOM in real-time — chat syncs from DB after call ends
+        }
+      },
+      onInjectMessage: (text) => {
+        // Add to voiceTranscript so probe is saved to DB at session-end and
+        // survives the post-call fetchAndSyncMessages() replacement.
+        // The session-end exact-duplicate filter handles the case where
+        // ConversationText also fires for the probe (WS was open).
+        this.voiceTranscript.push({ role: "assistant", content: text });
+        // Show immediately in text chat
+        const msg: StoredMessage = {
           id: generateId(),
-          content: `Voice call ended (${durationStr}). You can continue chatting below.`,
+          content: text,
           role: "assistant",
           timestamp: Date.now(),
         };
-        this.messages.push(summaryMsg);
-        this.addMessageToDOM(summaryMsg);
+        this.messages.push(msg);
+        this.addMessageToDOM(msg);
         setStoredMessages(this.options.projectId, this.messages);
+      },
+      onError: (err) => {
+        console.error("[Widget] Deepgram voice error:", err);
+      },
+      onEnded: () => {
+        // Handled in onStateChange("ended")
+      },
+    });
 
-        // Refresh lead capture status after voice call (P6)
-        // Give server time to extract qualifying answers from transcript
-        setTimeout(async () => {
-          try {
-            const status = await getLeadCaptureStatus(
-              this.options.apiUrl,
-              this.options.projectId,
-              this.visitorId
-            );
-            if (status.hasCompletedQualifying) {
-              this.leadCaptureLocalState = { hasCompletedForm: true, hasCompletedQualifying: true };
-              setLeadCaptureState(this.options.projectId, this.leadCaptureLocalState);
-            }
-          } catch (err) {
-            console.error("[Widget] Failed to refresh lead capture status after voice call:", err);
-          }
-        }, 5000);
-      });
-
-      vapi.on("speech-start", () => {
-        this.voiceOverlay?.setState("active-speaking");
-      });
-
-      vapi.on("speech-end", () => {
-        this.voiceOverlay?.setState("active-listening");
-      });
-
-      vapi.on("message", (msg: unknown) => {
-        const message = msg as Record<string, unknown>;
-        if (message.type === "transcript" && message.transcriptType === "final") {
-          const role = message.role === "user" ? "user" : "assistant";
-          const text = message.transcript as string;
-
-          // Show in voice overlay transcript
-          this.voiceOverlay?.addTranscript(role as "user" | "assistant", text);
-
-          // Also add to main chat messages so they appear in conversation history
-          if (text?.trim()) {
-            const chatMsg: StoredMessage = {
-              id: generateId(),
-              content: text,
-              role: role as "user" | "assistant",
-              timestamp: Date.now(),
-            };
-            this.messages.push(chatMsg);
-            this.addMessageToDOM(chatMsg);
-            setStoredMessages(this.options.projectId, this.messages);
-          }
-        }
-      });
-
-      vapi.on("volume-level", (level: unknown) => {
-        this.voiceOverlay?.setAmplitude((level as number) / 100);
-      });
-
-      vapi.on("error", (err: unknown) => {
-        console.error("[Widget] Vapi error:", err);
-        this.voiceOverlay?.setState("error");
-        this.isVoiceCallActive = false;
-      });
-
-      // Build assistant overrides: use fresh config from API (includes dynamic system prompt)
-      // or fall back to basic metadata
-      const overrides = freshConfig?.assistantOverrides
-        ? {
-            ...freshConfig.assistantOverrides,
-            // Always inject visitorId and conversationId from the widget
-            variableValues: {
-              ...(freshConfig.assistantOverrides.variableValues as Record<string, string> || {}),
-              visitorId: this.visitorId,
-              conversationId: this.sessionId || "",
-            },
-          }
-        : {
-            variableValues: {
-              companyName: document.title || "Support",
-              projectId: this.options.projectId,
-              visitorId: this.visitorId,
-              conversationId: this.sessionId || "",
-              greeting: voiceConfig.greeting || "Hi! How can I help you today?",
-            },
-          };
-
-      // Start the call with dynamic assistant overrides
-      await vapi.start(voiceConfig.assistantId, overrides);
+    try {
+      await this.deepgramVoice.start();
     } catch (error) {
       console.error("[Widget] Failed to start voice call:", error);
       this.voiceOverlay?.setState("error");
       this.isVoiceCallActive = false;
+      this.input.setDisabled(false);
     }
   }
 
@@ -1310,20 +1209,56 @@ export class ChatWindow {
    * End the current voice call
    */
   private endVoiceCall(): void {
-    if (this.vapiInstance) {
-      (this.vapiInstance as VapiInstance).stop();
-    }
+    this.deepgramVoice?.stop();
   }
 
   /**
    * Toggle mute on the voice call
    */
   private toggleVoiceMute(): void {
-    if (this.vapiInstance) {
-      const vapi = this.vapiInstance as VapiInstance;
-      const muted = vapi.isMuted();
-      vapi.setMuted(!muted);
-    }
+    // The overlay tracks mute state internally; we pass the inverse to the manager
+    const currentlyMuted = (this.voiceOverlay as unknown as { isMuted?: boolean })?.isMuted ?? false;
+    this.deepgramVoice?.mute(!currentlyMuted);
+  }
+
+  /**
+   * Add a "Voice call ended" summary message to the chat after a call finishes
+   */
+  private addVoiceCallSummary(): void {
+    const duration = this.voiceOverlay?.getDuration() || 0;
+    const mins = Math.floor(duration / 60);
+    const secs = (duration % 60).toString().padStart(2, "0");
+    const summaryMsg: StoredMessage = {
+      id: generateId(),
+      content: `Voice call ended (${mins}:${secs}). You can continue chatting below.`,
+      role: "assistant",
+      timestamp: Date.now(),
+    };
+    this.messages.push(summaryMsg);
+    this.addMessageToDOM(summaryMsg);
+    setStoredMessages(this.options.projectId, this.messages);
+  }
+
+  /**
+   * Notify the backend that the voice session has ended (updates conversation record)
+   */
+  private notifyVoiceSessionEnd(): Promise<void> {
+    if (!this.sessionId) return Promise.resolve();
+    const duration = this.voiceOverlay?.getDuration() || 0;
+    return fetch(`${this.options.apiUrl}/api/voice/session-end`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId: this.options.projectId,
+        visitorId: this.visitorId,
+        sessionId: this.sessionId,
+        durationSeconds: Math.round(duration),
+        transcript: this.voiceTranscript,
+        keyId: this.deepgramVoice?.getKeyId() ?? undefined,
+      }),
+    }).then(() => {}).catch((err) => {
+      console.error("[Widget] Failed to notify voice session end:", err);
+    });
   }
 
   /**

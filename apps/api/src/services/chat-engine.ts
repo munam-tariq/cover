@@ -64,7 +64,7 @@ import {
 /**
  * Valid sources for chat sessions
  */
-export type ChatSource = "widget" | "playground" | "mcp" | "api";
+export type ChatSource = "widget" | "playground" | "mcp" | "api" | "voice";
 
 /**
  * Context metadata from the widget/client for analytics
@@ -196,7 +196,8 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     // 1.1. Check if conversation is in handoff state (agent_active or waiting)
     // This MUST run BEFORE the Lead Capture interceptor to ensure agent sees all messages
     // even if the customer is mid-qualifying-questions flow
-    if (input.sessionId) {
+    // Skipped for voice calls — handoff is not supported in voice mode
+    if (input.sessionId && input.source !== "voice") {
       const handoffState = await checkConversationHandoffState(input.sessionId);
       if (handoffState.isInHandoff) {
         // Store the customer message in the messages table
@@ -236,17 +237,19 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
         input.context
       );
 
-      // Log the qualifying question conversation
-      logConversation(
-        input.projectId,
-        sessionId,
-        sanitizedMessage,
-        lcV2Result.response,
-        0,
-        0,
-        input.context,
-        requestId
-      ).catch((err) => logger.error("Failed to log qualifying conversation", err, logCtx));
+      // Skip DB writes for voice — transcripts are batch-saved at session end
+      if (input.source !== "voice") {
+        logConversation(
+          input.projectId,
+          sessionId,
+          sanitizedMessage,
+          lcV2Result.response,
+          0,
+          0,
+          input.context,
+          requestId
+        ).catch((err) => logger.error("Failed to log qualifying conversation", err, logCtx));
+      }
 
       return {
         response: lcV2Result.response,
@@ -265,12 +268,15 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     }
 
     // 2.5. Check for handoff trigger BEFORE processing with AI
-    const handoffResult = await checkHandoffTrigger(
-      input.projectId,
-      sanitizedMessage,
-      input.visitorId,
-      input.sessionId
-    );
+    // Skipped for voice calls — handoff is not supported in voice mode
+    const handoffResult = input.source !== "voice"
+      ? await checkHandoffTrigger(
+          input.projectId,
+          sanitizedMessage,
+          input.visitorId,
+          input.sessionId
+        )
+      : { triggered: false as const };
 
     if (handoffResult.triggered) {
       // Use the conversation ID from handoff result if available
@@ -351,12 +357,15 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     });
 
     // 3.5. Check for low confidence handoff trigger AFTER RAG
-    const lowConfidenceResult = await checkLowConfidenceHandoff(
-      input.projectId,
-      input.visitorId,
-      retrievedChunks,
-      input.sessionId
-    );
+    // Skipped for voice calls — handoff is not supported in voice mode
+    const lowConfidenceResult = input.source !== "voice"
+      ? await checkLowConfidenceHandoff(
+          input.projectId,
+          input.visitorId,
+          retrievedChunks,
+          input.sessionId
+        )
+      : { triggered: false as const };
 
     if (lowConfidenceResult.triggered) {
       // Use the conversation ID from handoff result if available
@@ -462,10 +471,12 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     );
 
     // 11. Lead Capture Flow
+    // Email appending is skipped for voice calls — no forms or email prompts in voice
+    // (Qualifying questions V2 still run via the interceptor above)
     let finalResponse = response;
     let leadCaptureResult: LeadCaptureResult | undefined;
 
-    try {
+    if (input.source !== "voice") try {
       // Get lead capture settings
       const leadSettings = await getLeadCaptureSettings(input.projectId);
 
@@ -601,19 +612,21 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     } catch (leadError) {
       // Log but don't fail the chat if lead capture has issues
       logger.error("Lead capture error", leadError, { ...logCtx, step: "lead_capture" });
-    }
+    } // end if (input.source !== "voice")
 
-    // 12. Log conversation asynchronously
-    logConversation(
-      input.projectId,
-      sessionId,
-      sanitizedMessage,
-      finalResponse,
-      retrievedChunks.length,
-      toolCallsInfo.length,
-      input.context,
-      requestId
-    ).catch((err) => logger.error("Failed to log conversation", err, logCtx));
+    // 12. Log conversation asynchronously (skip for voice — transcripts are batch-saved at session end)
+    if (input.source !== "voice") {
+      logConversation(
+        input.projectId,
+        sessionId,
+        sanitizedMessage,
+        finalResponse,
+        retrievedChunks.length,
+        toolCallsInfo.length,
+        input.context,
+        requestId
+      ).catch((err) => logger.error("Failed to log conversation", err, logCtx));
+    }
 
     logger.info("Chat processing completed", {
       ...logCtx,
@@ -1078,7 +1091,7 @@ export function validateChatInput(input: unknown): ChatInput {
     `anon_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
   // Validate source if provided
-  const validSources: ChatSource[] = ["widget", "playground", "mcp", "api"];
+  const validSources: ChatSource[] = ["widget", "playground", "mcp", "api", "voice"];
   const source = validSources.includes(data.source as ChatSource)
     ? (data.source as ChatSource)
     : "widget";

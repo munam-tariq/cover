@@ -5,7 +5,7 @@ import { logger } from "../lib/logger";
 
 export const embedRouter = Router();
 
-function buildGreeting(
+export function buildGreeting(
   agentName?: string | null,
   companyName?: string | null,
 ): { full: string; intro: string } {
@@ -104,7 +104,7 @@ embedRouter.get(
     // Check if widget is enabled for this project
     const { data: project, error } = await supabaseAdmin
       .from("projects")
-      .select("settings, plan, name, company_name")
+      .select("settings, plan, name, company_name, voice_enabled, voice_greeting")
       .eq("id", projectId)
       .single();
 
@@ -165,14 +165,9 @@ embedRouter.get(
         const lr = settings.lead_recovery as Record<string, unknown> | undefined;
         return lr?.enabled ? lr : { enabled: false };
       })(),
-      // Voice config (requires pro plan)
-      voice: settings.voice_enabled === true && project?.plan === "pro"
-        ? {
-            enabled: true,
-            vapiPublicKey: process.env.VAPI_PUBLIC_KEY || "",
-            assistantId: process.env.VAPI_ASSISTANT_ID || "",
-            greeting: (settings.voice_greeting as string) || "Hi! How can I help you today?",
-          }
+      // Voice config — credentials are fetched at call time from /api/voice/config/:projectId
+      voice: project?.voice_enabled === true
+        ? { enabled: true }
         : { enabled: false },
     });
   } catch (err) {
