@@ -11,17 +11,10 @@
 import { openai } from "../lib/openai";
 import { supabaseAdmin } from "../lib/supabase";
 import { logger, type LogContext } from "../lib/logger";
-import { extractEmbeddedAnswer } from "./late-answer-detector";
 import {
-  pickRandom,
-  UNCERTAIN_ACKNOWLEDGMENTS,
-  getFirstQuestionMessage,
-  getNextQuestionMessage,
-  getSkipMessage,
-  getQualifyingCompleteMessage,
-  getExtractAnswerMessages,
-  getClassifyIntentMessages,
   getVoiceTranscriptExtractionMessages,
+  getProcessQualifyingMessagePrompt,
+  type ProcessQualifyingMessageResult,
 } from "./prompts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -36,6 +29,10 @@ export interface LeadCaptureV2Settings {
   qualifying_questions: Array<{
     question: string;
     enabled: boolean;
+    mandatory?: boolean;           // required for lead to be "qualified"
+    qualified_response?: string;   // what counts as a passing answer
+    followup_questions?: string;   // prompts when answer is unclear
+    probe_question?: string;       // alternative question if user truly can't answer
   }>;
   notification_email?: string;
   notifications_enabled?: boolean;
@@ -56,10 +53,14 @@ export interface QualifyingAnswer {
   question: string;
   answer: string;
   raw_response: string;
+  qualified?: boolean;   // did answer meet qualified_response criteria?
+  mandatory?: boolean;   // was this question mandatory?
+  actual_question?: string;  // set when an alternate question was used to elicit the answer
+  answer_reasoning?: string;  // LLM reasoning for this answer
 }
 
 export interface LeadCaptureState {
-  lead_capture_status: "pending" | "form_shown" | "form_completed" | "qualifying" | "qualified" | "skipped" | "deferred";
+  lead_capture_status: "pending" | "form_shown" | "form_completed" | "qualifying" | "qualified" | "not_qualified" | "skipped" | "deferred";
   form_data: FormData;
   qualifying_status: "pending" | "in_progress" | "completed" | "skipped";
   qualifying_answers: QualifyingAnswer[];
@@ -74,9 +75,8 @@ export interface LeadCaptureState {
   deferred_at?: string;
   inline_email_shown?: boolean;
   inline_email_skipped?: boolean;
-  // V3 qualifying question pause/resume fields
-  qualifying_paused?: boolean;       // True when user asked a new question mid-qualifying
-  qualifying_retry_count?: number;   // Track retries to avoid infinite re-ask loops
+  question_retry_count?: number;    // Track re-asks on current question (off-topic or non-qualifying answer)
+  qualification_reasoning?: string;  // Why the lead was marked qualified/not_qualified
 }
 
 export interface LeadFormSubmitResult {
@@ -104,8 +104,6 @@ interface InterceptorResult {
 }
 
 // SDR messages and prompt builders are centralized in ./prompts.ts
-// Re-export getReaskIntro for external consumers (chat-engine)
-export { getReaskIntro } from "./prompts";
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
@@ -202,12 +200,18 @@ async function findOrCreateCustomer(
  *
  * Returns a response if the message is part of qualifying flow.
  * Returns null if normal chat should proceed.
+ *
+ * New behaviour:
+ * - "new_question" intent is treated as "answer" — we don't pause qualifying for general questions
+ * - All questions loop until answered (mandatory flag only affects qualification status, not flow)
+ * - Human handoff keywords (checked at step 4.5) still pass through to the handoff trigger
  */
 export async function leadCaptureV2Interceptor(
   projectId: string,
   visitorId: string,
   sessionId: string | undefined,
-  message: string
+  message: string,
+  conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>
 ): Promise<InterceptorResult | null> {
   const logCtx: LogContext = { projectId, visitorId, step: "lc_v2_interceptor" };
 
@@ -268,151 +272,124 @@ export async function leadCaptureV2Interceptor(
 
     if (currentIndex >= enabledQuestions.length) {
       // All questions answered - shouldn't happen, but handle gracefully
-      await markAsQualified(customer.id, projectId);
+      await finalizeQualification(customer.id, projectId, state.qualifying_answers);
       return null;
     }
 
     const currentQuestion = enabledQuestions[currentIndex];
-
-    // 6. Classify user intent before extracting answer
-    const classification = await classifyQualifyingIntent(currentQuestion.question, message);
-    logger.info("Qualifying intent classification", {
-      ...logCtx,
-      intent: classification.intent,
-      confidence: classification.confidence,
-      reason: classification.reason
-    });
-
-    // 7. Handle based on intent
-    if (classification.intent === "new_question" && classification.confidence >= 0.7) {
-      // Check for embedded answer before pausing
-      // Example: "We have 500 orders, but what's your refund policy?"
-      const embeddedAnswer = await extractEmbeddedAnswer(currentQuestion.question, message);
-
-      if (embeddedAnswer && embeddedAnswer.confidence > 0.6) {
-        // User provided an answer AND asked a new question - capture the answer
-        logger.info("Extracted embedded answer from new_question", {
-          ...logCtx,
-          answer: embeddedAnswer.answer,
-          confidence: embeddedAnswer.confidence,
-        });
-
-        // Save the embedded answer
-        await saveQualifyingAnswer(customer.id, projectId, state, {
-          question: currentQuestion.question,
-          answer: embeddedAnswer.answer,
-          raw_response: `[Embedded in: ${message}]`,
-        });
-
-        // Check if there are more questions
-        const nextIndex = currentIndex + 1;
-
-        if (nextIndex < enabledQuestions.length) {
-          // More questions - move to next (don't re-ask current since we got answer)
-          const nextQuestion = enabledQuestions[nextIndex];
-
-          const updatedState: LeadCaptureState = {
-            ...state,
-            current_qualifying_index: nextIndex,
-            qualifying_answers: [
-              ...state.qualifying_answers,
-              { question: currentQuestion.question, answer: embeddedAnswer.answer, raw_response: `[Embedded in: ${message}]` },
-            ],
-            qualifying_paused: true, // Still pause to let their question be answered
-            qualifying_retry_count: 0,
-          };
-
-          await supabaseAdmin
-            .from("customers")
-            .update({ lead_capture_state: updatedState })
-            .eq("id", customer.id);
-
-          // Return null to let chat handle their question
-          // The re-ask hook will ask the NEXT question, not re-ask this one
-          return null;
-        } else {
-          // No more questions - mark as qualified, but still let their question be answered
-          await markAsQualified(customer.id, projectId);
-
-          // Return null so their question gets answered
-          return null;
-        }
-      }
-
-      // No embedded answer found - use existing pause logic
-      const updatedState: LeadCaptureState = {
-        ...state,
-        qualifying_paused: true,
-        qualifying_retry_count: state.qualifying_retry_count || 0,
-      };
-
-      await supabaseAdmin
-        .from("customers")
-        .update({ lead_capture_state: updatedState })
-        .eq("id", customer.id);
-
-      logger.info("Qualifying paused - user asked new question", logCtx);
-      return null; // Let normal chat flow handle their question
-    }
-
-    if (classification.intent === "off_topic") {
-      // User is going off-topic - skip this question gracefully
-      logger.info("Skipping qualifying question - off-topic response", logCtx);
-      return await skipCurrentQualifyingQuestion(customer.id, projectId, state, enabledQuestions);
-    }
-
-    // 8. Intent is "answer" (or low-confidence new_question) - extract and save answer
-    const extracted = await extractQualifyingAnswer(currentQuestion.question, message);
-
-    // Save the answer
-    await saveQualifyingAnswer(customer.id, projectId, state, {
-      question: currentQuestion.question,
-      answer: extracted.answer,
-      raw_response: message,
-    });
-
-    // Check if there are more questions
     const nextIndex = currentIndex + 1;
+    const nextQuestion = enabledQuestions[nextIndex] ?? null;
+    const isLastQuestion = nextIndex >= enabledQuestions.length;
+    const retryCount = state.question_retry_count || 0;
 
-    if (nextIndex < enabledQuestions.length) {
-      // More questions - ask the next one
-      const nextQuestion = enabledQuestions[nextIndex];
+    // 6. Single unified LLM call: classifies intent, extracts answer, checks criteria, generates response
+    const result = await processQualifyingMessage({
+      question: currentQuestion.question,
+      criteria: currentQuestion.qualified_response,
+      alternateQuestion1: currentQuestion.followup_questions,  // DB key stays as followup_questions
+      alternateQuestion2: currentQuestion.probe_question,      // DB key stays as probe_question
+      nextQuestion: nextQuestion?.question ?? null,
+      isLastQuestion,
+      retryCount,
+      userMessage: message,
+      recentMessages: (conversationHistory || []).slice(-6),  // last 3 exchanges for context
+    });
 
-      // Update state with next index (also reset pause/retry state)
+    // Safety override: if LLM extracted an answer but chose redirect, it contradicted itself —
+    // the user clearly answered something, so force accept and fix the response.
+    if (result.action === "redirect" && result.extracted_answer) {
+      logger.info("Overriding redirect→accept: LLM extracted answer but chose redirect", {
+        ...logCtx,
+        extracted_answer: result.extracted_answer,
+      });
+      result.action = "accept";
+      result.intent = "answer";
+      // Replace the redirect response with a proper accept/transition response
+      result.response = isLastQuestion
+        ? "Thanks for sharing all that! Now, what can I help you with today?"
+        : nextQuestion
+          ? `Thanks for that! ${nextQuestion}`
+          : "Thanks for sharing! How can I help you today?";
+    }
+
+    logger.info("Qualifying message processed", {
+      ...logCtx,
+      action: result.action,
+      intent: result.intent,
+      qualified: result.qualified,
+      retryCount,
+    });
+
+    // 7a. Redirect: user is off-topic and has no remaining alternates — loop back.
+    // Does NOT increment retryCount; user must answer to proceed.
+    if (result.action === "redirect") {
+      return { response: result.response, sessionId };
+    }
+
+    // 7b. Followup/probe: present alternate question (only triggered when user is off-topic/unable to answer).
+    // Increments retryCount — each alternate question is used at most once.
+    if (result.action === "followup" || result.action === "probe") {
       const updatedState: LeadCaptureState = {
         ...state,
-        current_qualifying_index: nextIndex,
-        qualifying_answers: [
-          ...state.qualifying_answers,
-          { question: currentQuestion.question, answer: extracted.answer, raw_response: message },
-        ],
-        qualifying_paused: false,
-        qualifying_retry_count: 0,
+        question_retry_count: retryCount + 1,
       };
-
       await supabaseAdmin
         .from("customers")
         .update({ lead_capture_state: updatedState })
         .eq("id", customer.id);
-
-      const isLastQuestion = nextIndex === enabledQuestions.length - 1;
-      // Use uncertain acknowledgment if the user wasn't sure
-      const ack = extracted.isUncertain ? pickRandom(UNCERTAIN_ACKNOWLEDGMENTS) : undefined;
-      return {
-        response: ack
-          ? `${ack} ${getNextQuestionMessage(nextQuestion.question, isLastQuestion)}`
-          : getNextQuestionMessage(nextQuestion.question, isLastQuestion),
-        sessionId,
-      };
+      return { response: result.response, sessionId };
     }
 
-    // All questions answered - mark as qualified
-    await markAsQualified(customer.id, projectId);
+    // 8. action is "accept" or "skip" — record answer and advance
+    // Determine which question the user actually responded to (may differ from original if alternate was used)
+    let lastAskedQuestion = currentQuestion.question;
+    if (retryCount >= 2 && currentQuestion.probe_question) {
+      lastAskedQuestion = currentQuestion.probe_question;
+    } else if (retryCount >= 1 && currentQuestion.followup_questions) {
+      lastAskedQuestion = currentQuestion.followup_questions;
+    }
 
-    return {
-      response: getQualifyingCompleteMessage(),
-      sessionId,
+    const thisAnswer: QualifyingAnswer = {
+      question: currentQuestion.question,
+      answer: result.action === "skip" ? "[skipped]" : (result.extracted_answer || "N/A"),
+      raw_response: message,
+      qualified: result.qualified ?? undefined,
+      mandatory: currentQuestion.mandatory,
+      ...(lastAskedQuestion !== currentQuestion.question ? { actual_question: lastAskedQuestion } : {}),
+      ...(result.answer_reasoning ? { answer_reasoning: result.answer_reasoning } : {}),
     };
+
+    await saveQualifyingAnswer(customer.id, projectId, state, thisAnswer);
+
+    const allAnswers = [...state.qualifying_answers, thisAnswer];
+
+    if (isLastQuestion) {
+      // All questions done — finalize
+      const updatedState: LeadCaptureState = {
+        ...state,
+        qualifying_answers: allAnswers,
+        question_retry_count: 0,
+      };
+      await supabaseAdmin
+        .from("customers")
+        .update({ lead_capture_state: updatedState })
+        .eq("id", customer.id);
+      await finalizeQualification(customer.id, projectId, allAnswers);
+      return { response: result.response, sessionId };
+    }
+
+    // Advance to next question
+    const updatedState: LeadCaptureState = {
+      ...state,
+      current_qualifying_index: nextIndex,
+      qualifying_answers: allAnswers,
+      question_retry_count: 0,
+    };
+    await supabaseAdmin
+      .from("customers")
+      .update({ lead_capture_state: updatedState })
+      .eq("id", customer.id);
+    return { response: result.response, sessionId };
   } catch (err) {
     logger.error("Lead capture V2 interceptor error", err, logCtx);
     return null; // On error, fall through to normal chat
@@ -545,7 +522,7 @@ export async function submitLeadForm(
         success: true,
         leadId,
         nextAction: "qualifying_question",
-        qualifyingQuestion: getFirstQuestionMessage(firstQuestion.question),
+        qualifyingQuestion: firstQuestion.question,
       };
     }
 
@@ -747,7 +724,7 @@ export async function submitInlineEmail(
         success: true,
         leadId: lead.id,
         nextAction: "qualifying_question",
-        qualifyingQuestion: getFirstQuestionMessage(firstQuestion.question),
+        qualifyingQuestion: firstQuestion.question,
       };
     }
 
@@ -831,216 +808,47 @@ export async function updateVisitCount(
 /**
  * Extract a clean answer from free-text user response using OpenAI.
  */
-async function extractQualifyingAnswer(
-  question: string,
-  userResponse: string
-): Promise<{ answer: string; isUncertain: boolean }> {
-  try {
-    const msgs = getExtractAnswerMessages(question, userResponse);
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: msgs.system },
-        { role: "user", content: msgs.user },
-      ],
-      max_tokens: 100,
-      temperature: 0,
-      response_format: { type: "json_object" },
-    });
-
-    const content = completion.choices[0]?.message?.content?.trim() || "{}";
-    const result = JSON.parse(content);
-    return {
-      answer: result.answer || "N/A",
-      isUncertain: result.isUncertain === true,
-    };
-  } catch (err) {
-    logger.error("Failed to extract qualifying answer", err, { step: "extract_answer" });
-    return { answer: userResponse.trim().substring(0, 200), isUncertain: false };
-  }
-}
-
-// ─── Intent Classification ───────────────────────────────────────────────────
-
-type QualifyingIntent = "answer" | "new_question" | "off_topic";
-
-interface IntentClassification {
-  intent: QualifyingIntent;
-  confidence: number;
-  reason: string;
-}
+// ─── Unified Qualifying Message Processor ────────────────────────────────────
 
 /**
- * Classify user's message intent during qualifying question flow.
- * Determines if user is answering the question, asking a new question, or going off-topic.
+ * Single LLM call that handles intent classification, answer extraction,
+ * criteria checking, and natural response generation for the qualifying flow.
+ * Replaces the previous 3-call approach (classify → extract → check).
  */
-async function classifyQualifyingIntent(
-  question: string,
-  userMessage: string
-): Promise<IntentClassification> {
+async function processQualifyingMessage(
+  input: Parameters<typeof getProcessQualifyingMessagePrompt>[0]
+): Promise<ProcessQualifyingMessageResult> {
+  const fallback: ProcessQualifyingMessageResult = {
+    intent: "answer",
+    extracted_answer: input.userMessage.substring(0, 200),
+    is_uncertain: false,
+    qualified: null,
+    action: "accept",
+    response: input.nextQuestion
+      ? `Thanks! ${input.nextQuestion}`
+      : "Thanks for that! Now, how can I help you today?",
+    answer_reasoning: undefined,
+  };
+
   try {
-    const msgs = getClassifyIntentMessages(question, userMessage);
+    const msgs = getProcessQualifyingMessagePrompt(input);
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: msgs.system },
         { role: "user", content: msgs.user },
       ],
-      max_tokens: 100,
-      temperature: 0,
+      max_tokens: 450,
+      temperature: 0.3,
       response_format: { type: "json_object" },
     });
-
     const content = completion.choices[0]?.message?.content || "{}";
-    const result = JSON.parse(content);
-
-    return {
-      intent: result.intent || "answer",
-      confidence: typeof result.confidence === "number" ? result.confidence : 0.5,
-      reason: result.reason || "",
-    };
+    const result = JSON.parse(content) as ProcessQualifyingMessageResult;
+    if (!result.action || !result.response) return fallback;
+    return result;
   } catch (err) {
-    logger.error("Failed to classify qualifying intent", err, { step: "classify_intent" });
-    // Default to treating as answer on error (preserves existing behavior)
-    return { intent: "answer", confidence: 0.5, reason: "classification_error" };
-  }
-}
-
-/**
- * Skip the current qualifying question and move to the next one (or complete if none left).
- * Used when user goes off-topic or max retries reached.
- */
-async function skipCurrentQualifyingQuestion(
-  customerId: string,
-  projectId: string,
-  state: LeadCaptureState,
-  enabledQuestions: Array<{ question: string; enabled: boolean }>
-): Promise<InterceptorResult | null> {
-  const currentIndex = state.current_qualifying_index;
-  const currentQuestion = enabledQuestions[currentIndex];
-  const nextIndex = currentIndex + 1;
-
-  // Record the skipped question in answers (with "skipped" marker)
-  const skippedAnswer: QualifyingAnswer = {
-    question: currentQuestion?.question || "",
-    answer: "[skipped]",
-    raw_response: "[user went off-topic or max retries reached]",
-  };
-
-  if (nextIndex < enabledQuestions.length) {
-    // More questions - skip to the next one
-    const nextQuestion = enabledQuestions[nextIndex];
-
-    const updatedState: LeadCaptureState = {
-      ...state,
-      current_qualifying_index: nextIndex,
-      qualifying_answers: [...state.qualifying_answers, skippedAnswer],
-      qualifying_paused: false,
-      qualifying_retry_count: 0,
-    };
-
-    await supabaseAdmin
-      .from("customers")
-      .update({ lead_capture_state: updatedState })
-      .eq("id", customerId);
-
-    // Sync skipped answer to qualified_leads table
-    await syncSkippedAnswerToLead(customerId, projectId, skippedAnswer);
-
-    return {
-      response: getSkipMessage(nextQuestion.question),
-      sessionId: undefined,
-    };
-  }
-
-  // No more questions - mark as qualified (even with skipped questions)
-  const updatedState: LeadCaptureState = {
-    ...state,
-    qualifying_answers: [...state.qualifying_answers, skippedAnswer],
-    qualifying_paused: false,
-    qualifying_retry_count: 0,
-  };
-
-  await supabaseAdmin
-    .from("customers")
-    .update({ lead_capture_state: updatedState })
-    .eq("id", customerId);
-
-  // Sync skipped answer to qualified_leads table before marking as qualified
-  await syncSkippedAnswerToLead(customerId, projectId, skippedAnswer);
-
-  await markAsQualified(customerId, projectId);
-
-  return {
-    response: getQualifyingCompleteMessage(),
-    sessionId: undefined,
-  };
-}
-
-// ─── Re-ask Qualifying Question After Normal Chat ────────────────────────────
-
-const MAX_QUALIFYING_RETRIES = 2;
-
-/**
- * Check if a qualifying question needs to be re-asked after normal chat response.
- * Called from chat-engine after AI response is generated.
- */
-export async function checkAndReaskQualifyingQuestion(
-  projectId: string,
-  visitorId: string
-): Promise<{ shouldReask: boolean; question?: string }> {
-  try {
-    const customer = await getCustomerByVisitorId(projectId, visitorId);
-    if (!customer?.lead_capture_state?.qualifying_paused) {
-      return { shouldReask: false };
-    }
-
-    const state = customer.lead_capture_state;
-    const retryCount = state.qualifying_retry_count || 0;
-
-    // Check if max retries reached
-    if (retryCount >= MAX_QUALIFYING_RETRIES) {
-      // Too many retries - skip this question
-      const v2Settings = await getLeadCaptureV2Settings(projectId);
-      const enabledQuestions = v2Settings?.qualifying_questions.filter(q => q.enabled && q.question.trim()) || [];
-
-      await skipCurrentQualifyingQuestion(customer.id, projectId, state, enabledQuestions);
-      logger.info("Max retries reached, skipping qualifying question", { projectId, visitorId });
-      return { shouldReask: false };
-    }
-
-    // Get current question
-    const v2Settings = await getLeadCaptureV2Settings(projectId);
-    const enabledQuestions = v2Settings?.qualifying_questions.filter(q => q.enabled && q.question.trim()) || [];
-    const currentQuestion = enabledQuestions[state.current_qualifying_index];
-
-    if (!currentQuestion) {
-      return { shouldReask: false };
-    }
-
-    // Update state: unpause and increment retry count
-    const updatedState: LeadCaptureState = {
-      ...state,
-      qualifying_paused: false,
-      qualifying_retry_count: retryCount + 1,
-    };
-
-    await supabaseAdmin
-      .from("customers")
-      .update({ lead_capture_state: updatedState })
-      .eq("id", customer.id);
-
-    logger.info("Re-asking qualifying question after user question", {
-      projectId,
-      visitorId,
-      retryCount: retryCount + 1,
-      question: currentQuestion.question.substring(0, 50),
-    });
-
-    return { shouldReask: true, question: currentQuestion.question };
-  } catch (err) {
-    logger.error("Error checking for qualifying re-ask", err, { projectId, visitorId });
-    return { shouldReask: false };
+    logger.error("Failed to process qualifying message", err, { step: "process_qualifying" });
+    return fallback;
   }
 }
 
@@ -1050,7 +858,7 @@ export async function checkAndReaskQualifyingQuestion(
 export async function saveQualifyingAnswer(
   customerId: string,
   projectId: string,
-  state: LeadCaptureState,
+  _state: LeadCaptureState,
   answer: QualifyingAnswer
 ): Promise<void> {
   // Update qualified_leads record with new answer
@@ -1077,42 +885,38 @@ export async function saveQualifyingAnswer(
 }
 
 /**
- * Sync a skipped answer to the qualified_leads table.
- * Similar to saveQualifyingAnswer but doesn't change status to "qualifying".
+ * Finalize lead qualification — determines qualified/not_qualified status based on
+ * mandatory question outcomes and stores reasoning.
  */
-async function syncSkippedAnswerToLead(
+export async function finalizeQualification(
   customerId: string,
   projectId: string,
-  answer: QualifyingAnswer
+  allAnswers: QualifyingAnswer[]
 ): Promise<void> {
-  const { data: lead } = await supabaseAdmin
-    .from("qualified_leads")
-    .select("id, qualifying_answers")
-    .eq("customer_id", customerId)
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
+  const mandatoryFailures = allAnswers.filter(
+    a => a.mandatory === true && (a.qualified === false || a.answer === "[skipped]")
+  );
+  const mandatoryPassed = allAnswers.filter(
+    a => a.mandatory === true && a.qualified !== false && a.answer !== "[skipped]"
+  );
 
-  if (lead) {
-    const currentAnswers = (lead.qualifying_answers as QualifyingAnswer[]) || [];
-    await supabaseAdmin
-      .from("qualified_leads")
-      .update({
-        qualifying_answers: [...currentAnswers, answer],
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", lead.id);
-  }
-}
+  const finalStatus: LeadCaptureState["lead_capture_status"] =
+    mandatoryFailures.length > 0 ? "not_qualified" : "qualified";
 
-/**
- * Mark a customer as fully qualified (form + all questions answered).
- */
-export async function markAsQualified(
-  customerId: string,
-  projectId: string
-): Promise<void> {
+  const questionSummaries = allAnswers.map((a, i) => {
+    const status = a.qualified === true ? "✓" : a.qualified === false ? "✗" : "–";
+    const mandatoryNote = a.mandatory ? " [mandatory]" : "";
+    const reasoning = a.answer_reasoning ? ` — ${a.answer_reasoning}` : "";
+    return `${i + 1}. ${a.question.substring(0, 60)}${mandatoryNote}: "${a.answer}"${reasoning} ${status}`;
+  }).join("\n");
+
+  const reasoning =
+    mandatoryFailures.length > 0
+      ? `Not qualified: mandatory question(s) not satisfactorily answered.\n\n${questionSummaries}`
+      : mandatoryPassed.length > 0
+        ? `Qualified: all ${mandatoryPassed.length} mandatory question(s) answered satisfactorily.\n\n${questionSummaries}`
+        : `Qualified: no mandatory questions configured.\n\n${questionSummaries}`;
+
   // Update customer state
   const { data: customer } = await supabaseAdmin
     .from("customers")
@@ -1124,8 +928,9 @@ export async function markAsQualified(
     const state = customer.lead_capture_state as LeadCaptureState;
     const updatedState: LeadCaptureState = {
       ...state,
-      lead_capture_status: "qualified",
+      lead_capture_status: finalStatus,
       qualifying_status: "completed",
+      qualification_reasoning: reasoning,
     };
 
     await supabaseAdmin
@@ -1138,7 +943,8 @@ export async function markAsQualified(
   await supabaseAdmin
     .from("qualified_leads")
     .update({
-      qualification_status: "qualified",
+      qualification_status: finalStatus,
+      qualification_reasoning: reasoning,
       qualification_completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
@@ -1294,8 +1100,10 @@ export async function extractQualifyingAnswersFromVoiceTranscript(
     });
 
     if (allAnswered) {
-      await markAsQualified(freshCustomer.id, projectId);
-      logger.info("[Voice Extract] All qualifying questions answered — marked as qualified", logCtx);
+      const freshState = freshCustomer.lead_capture_state;
+      const finalAnswers = freshState?.qualifying_answers || currentState?.qualifying_answers || [];
+      await finalizeQualification(freshCustomer.id, projectId, finalAnswers);
+      logger.info("[Voice Extract] All qualifying questions answered — finalized qualification", logCtx);
     }
   } catch (err) {
     logger.error("[Voice Extract] LLM extraction failed", err, logCtx);

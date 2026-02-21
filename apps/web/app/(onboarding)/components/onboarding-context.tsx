@@ -10,6 +10,7 @@ import {
 
 interface OnboardingState {
   agentName: string;
+  companyName: string;
   systemPrompt: string;
   websiteUrl: string;
   projectId: string | null;
@@ -21,6 +22,7 @@ interface OnboardingState {
 interface OnboardingContextType {
   state: OnboardingState;
   setAgentName: (name: string) => void;
+  setCompanyName: (name: string) => void;
   setSystemPrompt: (prompt: string) => void;
   setWebsiteUrl: (url: string) => void;
   setProjectId: (id: string) => void;
@@ -32,6 +34,7 @@ interface OnboardingContextType {
 
 const initialState: OnboardingState = {
   agentName: "",
+  companyName: "",
   systemPrompt: "",
   websiteUrl: "",
   projectId: null,
@@ -71,6 +74,17 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     (name: string) => {
       setState((prev) => {
         const newState = { ...prev, agentName: name };
+        persistState(newState);
+        return newState;
+      });
+    },
+    [persistState]
+  );
+
+  const setCompanyName = useCallback(
+    (name: string) => {
+      setState((prev) => {
+        const newState = { ...prev, companyName: name };
         persistState(newState);
         return newState;
       });
@@ -156,6 +170,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       value={{
         state,
         setAgentName,
+        setCompanyName,
         setSystemPrompt,
         setWebsiteUrl,
         setProjectId,

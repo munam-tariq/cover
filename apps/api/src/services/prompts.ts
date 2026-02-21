@@ -11,11 +11,10 @@
  *  1. Chat System Prompts
  *  2. Voice System Prompts
  *  3. SDR Conversational Messages
- *  4. Qualifying Answer Extraction
- *  5. Intent Classification
- *  6. Voice Transcript Extraction
- *  7. Late Answer Detection
- *  8. Embedded Answer Extraction
+ *  4. Voice Transcript Extraction
+ *  5. Late Answer Detection
+ *  6. Embedded Answer Extraction
+ *  7. Unified Qualifying Message Processor
  *
  * Note: RAG context generation and content structuring prompts live in
  * their respective config files (rag/config.ts, content-structurer.ts)
@@ -181,158 +180,12 @@ How to ask naturally:
 
 // ─── 3. SDR Conversational Messages ──────────────────────────────────────────
 
-export const FIRST_QUESTION_INTROS = [
-  "Got it — quick question before we keep going:",
-  "Before we dive in, can I ask you something fast?",
-  "Real quick so I can tailor this better:",
-];
-
-export const NEXT_QUESTION_TRANSITIONS = [
-  "Thanks — that helps. Also,",
-  "Got it. One more thing:",
-  "Super helpful. Quick follow-up:",
-  "Appreciate that. And",
-];
-
-export const ANSWER_ACKNOWLEDGMENTS = [
-  "Perfect!",
-  "Love it!",
-  "Awesome!",
-  "Great!",
-  "That's helpful!",
-];
-
-export const UNCERTAIN_ACKNOWLEDGMENTS = [
-  "No worries, totally understand!",
-  "That's okay, no pressure at all!",
-  "Totally fair, appreciate you letting me know!",
-  "No problem at all!",
-  "All good, thanks for being upfront!",
-];
-
-export const SKIP_TRANSITIONS = [
-  "No worries at all! Let me ask you this instead —",
-  "Totally fine! How about this one —",
-  "All good! Different question —",
-  "No problem! Let's try this —",
-];
-
-export const QUALIFYING_COMPLETE_MESSAGES = [
-  "Awesome, thanks for sharing! Now, how can I help you today?",
-  "Perfect, I really appreciate that! What can I help you with?",
-  "Great, thanks so much! What brings you here today?",
-  "Love it, thanks! So tell me — what can I help you figure out?",
-];
-
-export const REASK_INTROS = [
-  "Oh, one thing I forgot to ask earlier —",
-  "By the way, I'm still curious —",
-  "Quick thing before I forget —",
-  "Oh, and I meant to ask —",
-];
 
 /** Pick a random item from an array for natural variation */
 export function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-export function getFirstQuestionMessage(question: string): string {
-  return `${pickRandom(FIRST_QUESTION_INTROS)} ${question}`;
-}
-
-export function getNextQuestionMessage(question: string, isLastQuestion: boolean): string {
-  if (isLastQuestion) {
-    return `${pickRandom(ANSWER_ACKNOWLEDGMENTS)} Last one — ${question}`;
-  }
-  return `${pickRandom(NEXT_QUESTION_TRANSITIONS)} ${question}`;
-}
-
-export function getSkipMessage(question: string): string {
-  return `${pickRandom(SKIP_TRANSITIONS)} ${question}`;
-}
-
-export function getQualifyingCompleteMessage(): string {
-  return pickRandom(QUALIFYING_COMPLETE_MESSAGES);
-}
-
-export function getReaskIntro(question: string): string {
-  return `${pickRandom(REASK_INTROS)} ${question}`;
-}
-
-// ─── 4. Qualifying Answer Extraction ─────────────────────────────────────────
-
-/**
- * Returns { system, user } messages for extracting a clean answer from a user's response.
- */
-export function getExtractAnswerMessages(question: string, userResponse: string) {
-  return {
-    system: `Extract a concise, normalized answer from the user's response to a qualifying question.
-
-Return ONLY valid JSON: {"answer": "...", "isUncertain": true/false}
-
-Rules:
-- Extract the core answer, removing filler words and conversational noise
-- Normalize numbers: "about five hundred" → "~500", "a couple thousand" → "~2000"
-- If the user gives a range, keep it: "between 100 and 500" → "100-500"
-- If the user says "I don't know", "not sure", or similar → {"answer": "unsure", "isUncertain": true}
-- If the response has no relevant answer at all → {"answer": "N/A", "isUncertain": false}
-
-Examples:
-Q: "How many orders do you process monthly?"
-R: "hmm probably around 500 or so"
-→ {"answer": "~500/month", "isUncertain": false}
-
-Q: "What industry are you in?"
-R: "we're an e-commerce company selling outdoor gear"
-→ {"answer": "E-commerce (outdoor gear)", "isUncertain": false}
-
-Q: "How large is your team?"
-R: "honestly I'm not really sure, maybe like 20?"
-→ {"answer": "~20", "isUncertain": true}`,
-    user: `Question: "${question}"\nUser's response: "${userResponse}"`,
-  };
-}
-
-// ─── 5. Intent Classification ────────────────────────────────────────────────
-
-/**
- * Returns { system, user } messages for classifying user intent during qualifying flow.
- */
-export function getClassifyIntentMessages(question: string, userMessage: string) {
-  return {
-    system: `You classify user messages in a chatbot qualifying flow. The chatbot just asked a qualifying question and the user responded.
-
-Classify into ONE category:
-
-**"answer"** — The user is answering the question (directly, indirectly, partially, or saying "I don't know"). This is the DEFAULT — if the response could plausibly be an answer, classify as "answer".
-- "about 500" → answer (direct)
-- "not sure honestly" → answer (uncertain)
-- "we're a small team" → answer (indirect)
-- "500 orders but what's your pricing?" → answer (contains answer + new question — the answer part matters)
-
-**"new_question"** — The user is ONLY asking an unrelated question with NO answer to the qualifying question whatsoever.
-- "what's your refund policy?" → new_question
-- "how does this integrate with Shopify?" → new_question
-- "can I see a demo?" → new_question
-
-**"off_topic"** — The user is refusing, expressing frustration, or saying something completely irrelevant without asking a question.
-- "I don't want to answer that" → off_topic
-- "stop asking me questions" → off_topic
-- "lol whatever" → off_topic
-
-**Confidence calibration:**
-- 0.9+ = Very clear classification, no ambiguity
-- 0.7-0.89 = Likely correct but some ambiguity
-- 0.5-0.69 = Uncertain, could go either way
-- Below 0.5 = Don't use, default to "answer"
-
-When in doubt, lean toward "answer" — it's better to try extracting an answer than to miss one.
-
-Return JSON: {"intent": "answer"|"new_question"|"off_topic", "confidence": 0.0-1.0, "reason": "brief explanation"}`,
-    user: `Qualifying question: "${question}"
-User's response: "${userMessage}"`,
-  };
-}
 
 // ─── 6. Voice Transcript Extraction ──────────────────────────────────────────
 
@@ -434,5 +287,127 @@ Rules:
 - confidence 0.7+ = clearly answers the question
 - confidence 0.5-0.69 = loosely implied`,
     user: `<user_message>\n${userMessage}\n</user_message>`,
+  };
+}
+
+// ─── 7. Unified Qualifying Message Processor ─────────────────────────────────
+
+export interface ProcessQualifyingMessageInput {
+  question: string;
+  criteria?: string;
+  alternateQuestion1?: string;   // ask when user can't/won't answer original
+  alternateQuestion2?: string;   // ask when user can't/won't answer alternate_1
+  nextQuestion?: string | null;
+  isLastQuestion: boolean;
+  retryCount: number;
+  userMessage: string;
+  recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
+}
+
+export interface ProcessQualifyingMessageResult {
+  intent: "answer" | "off_topic";
+  extracted_answer: string | null;
+  is_uncertain: boolean;
+  qualified: boolean | null;
+  action: "accept" | "followup" | "probe" | "redirect" | "skip";  // skip: legacy/defensive — LLM should not emit this
+  response: string;
+  answer_reasoning?: string;  // why this answer was accepted/rejected
+}
+
+/**
+ * Returns { system, user } messages for the unified qualifying message processor.
+ * Combines intent classification, answer extraction, criteria checking,
+ * and natural response generation into a single LLM call.
+ */
+export function getProcessQualifyingMessagePrompt(
+  input: ProcessQualifyingMessageInput
+): { system: string; user: string } {
+  const lines: string[] = [];
+
+  // Compute which question the user was most recently asked — critical for correct intent classification
+  let lastAskedQuestion = input.question;
+  if (input.retryCount >= 2 && input.alternateQuestion2) {
+    lastAskedQuestion = input.alternateQuestion2;
+  } else if (input.retryCount >= 1 && input.alternateQuestion1) {
+    lastAskedQuestion = input.alternateQuestion1;
+  }
+
+  lines.push(`Original qualifying question: "${input.question}"`);
+  if (input.retryCount > 0) {
+    lines.push(`Question most recently asked to user: "${lastAskedQuestion}"`);
+  }
+  if (input.criteria) lines.push(`Qualification criteria (for the original question): "${input.criteria}"`);
+  if (input.alternateQuestion1) lines.push(`Alternate question 1: "${input.alternateQuestion1}"`);
+  if (input.alternateQuestion2) lines.push(`Alternate question 2: "${input.alternateQuestion2}"`);
+  if (input.nextQuestion) lines.push(`Next question after this one: "${input.nextQuestion}"`);
+  lines.push(`Is last question: ${input.isLastQuestion}`);
+  lines.push(`Re-ask attempts so far: ${input.retryCount}`);
+
+  const historyBlock = input.recentMessages && input.recentMessages.length > 0
+    ? `\n\n<recent_conversation>\n${input.recentMessages.map(m => `${m.role === "assistant" ? "Bot" : "User"}: ${m.content}`).join("\n")}\n</recent_conversation>`
+    : "";
+
+  return {
+    system: `You are a warm, helpful assistant processing a user's response in a qualifying question flow.
+
+Your job:
+1. Classify intent: did the user answer the question (even partially), or go completely off-topic?
+2. If they answered, extract a clean concise answer and check if it meets the criteria
+3. Provide a brief reasoning for your evaluation
+4. Choose the correct action and write a warm, natural, helpful response (2-3 sentences)
+
+**Intent classification:**
+- intent=answer: the user's message contains information that could answer the original question OR any alternate question, even partially, indirectly, or imperfectly. When in doubt → "answer".
+  - Examples: "8 members" → answers team-size; "2 offices" → answers offices; "we target doctors" → answers target market. All are intent=answer.
+- intent=off_topic: completely unrelated to ALL versions of the question — making small talk, asking about something else, or explicitly refusing to engage.
+
+Use conversation history as context but don't require the message to address the most recent question specifically — any answer to any version counts.
+
+**Action selection:**
+If intent=answer: → always "accept" (criteria determines \`qualified\`, not the action)
+
+If intent=off_topic:
+- attempts=0 AND alternate_1 available → "followup" (present alternate question 1 naturally)
+- attempts=1 AND alternate_2 available → "probe" (present alternate question 2 naturally)
+- attempts>=2 OR no alternates left → "redirect" (warmly loop back — user must answer to continue)
+
+**Safety rule:** If you extracted an answer but selected "redirect", override to "accept" — extracted answer = intent=answer.
+
+**Criteria evaluation:**
+- Always evaluate against the ORIGINAL qualifying question criteria
+- Vague, evasive non-answers = qualified: false
+- Clear or partial answer that addresses the question = qualified: true
+- No criteria configured → qualified: null
+
+**answer_reasoning:**
+- For accept: one sentence explaining what the answer says about this lead and whether it meets criteria
+- For followup/probe/redirect: one sentence explaining why the answer was insufficient or off-topic
+
+**Response writing — be warm, human, genuinely helpful (2-3 sentences):**
+
+action="accept", last question=FALSE:
+→ Warmly acknowledge their answer with a brief insight or affirmation, then ask the NEXT QUESTION naturally.
+→ Example: "That's really helpful to know — a team of 20 gives us a good sense of the scale you're working with. Quick one: [next question]?"
+→ ALWAYS include the next question. NEVER use robotic openers like "Great!" alone.
+
+action="accept", last question=TRUE:
+→ Warm, genuine close-out. Show you've been listening, invite them to ask their question.
+→ Example: "Thanks for sharing all that — really useful context! What can I help you with today?"
+
+action="followup": naturally transition to alternate question 1 — don't announce you're re-asking
+action="probe": naturally transition to alternate question 2 — don't announce you're re-asking
+action="redirect": warm but persistent — acknowledge what they said, gently bring them back to the question
+
+Return ONLY valid JSON:
+{
+  "intent": "answer" | "off_topic",
+  "extracted_answer": "cleaned answer string, or null if off_topic",
+  "is_uncertain": true | false,
+  "qualified": true | false | null,
+  "action": "accept" | "followup" | "probe" | "redirect",
+  "response": "the message to send to the user",
+  "answer_reasoning": "one sentence explaining the evaluation"
+}`,
+    user: lines.join("\n") + historyBlock + `\n\nUser's message: "${input.userMessage}"`,
   };
 }

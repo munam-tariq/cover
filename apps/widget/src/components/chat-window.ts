@@ -50,10 +50,19 @@ import {
   LeadCaptureLocalState,
 } from "../utils/storage";
 import { generateId } from "../utils/helpers";
-import { detectHighIntent } from "../utils/high-intent-detector";
 import { VoiceCallOverlay, type VoiceCallState } from "./voice-call-overlay";
 import { VoicePermissionPrompt } from "./voice-permission-prompt";
 import type { VoiceConfig } from "../widget";
+
+// Transition phrases used to bridge the greeting and the first qualifying question.
+// These are assembled on the frontend so the API only needs to return the raw question.
+const TRANSITION_MESSAGES = [
+  "I just have a quick question to better understand your needs.",
+  "Let me ask you something quick so I can guide you properly.",
+  "Before we continue, I just need one quick detail.",
+  "To make sure I give you the right info, I need to ask:",
+  "Quick question so I can help you better:",
+] as const;
 
 /** Minimal Vapi SDK instance typing for dynamic imports */
 interface VapiInstance {
@@ -83,6 +92,7 @@ export interface ChatWindowOptions {
   projectId: string;
   apiUrl: string;
   greeting: string;
+  greetingIntro?: string;
   title: string;
   primaryColor: string;
   onClose: () => void;
@@ -401,11 +411,7 @@ export class ChatWindow {
     window.innerHTML = `
       <div class="chatbot-header" style="background-color: ${this.options.primaryColor}">
         <div class="chatbot-header-left">
-          <div class="chatbot-avatar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-          </div>
+          <div class="chatbot-avatar">${(this.options.title || 'A')[0].toUpperCase()}</div>
           <div class="chatbot-header-info">
             <span class="chatbot-title">${this.escapeHtml(this.options.title)}</span>
             <span class="chatbot-status">
@@ -484,15 +490,20 @@ export class ChatWindow {
     const existingMessages = this.messagesContainer.querySelectorAll(".chatbot-message");
     existingMessages.forEach((el) => el.remove());
 
-    // Add greeting if no messages
+    // Add greeting if no messages (suppress when lead capture form is pending)
     if (this.messages.length === 0) {
-      const greeting: StoredMessage = {
-        id: "greeting",
-        role: "assistant",
-        content: this.options.greeting,
-        timestamp: Date.now(),
-      };
-      this.addMessageToDOM(greeting);
+      const lcConfig = this.options.leadCaptureConfig;
+      const formPending = lcConfig?.enabled && !this.leadCaptureLocalState?.hasCompletedForm;
+
+      if (!formPending) {
+        const greeting: StoredMessage = {
+          id: "greeting",
+          role: "assistant",
+          content: this.options.greeting,
+          timestamp: Date.now(),
+        };
+        this.addMessageToDOM(greeting);
+      }
     } else {
       // Render stored messages
       this.messages.forEach((msg) => this.addMessageToDOM(msg));
@@ -520,6 +531,15 @@ export class ChatWindow {
         ? (messageId, rating) => this.handleFeedback(messageId, rating)
         : undefined,
     });
+
+    // Check if the previous message has the same role → group them
+    const prevMessage = this.typingIndicator.element.previousElementSibling;
+    if (
+      prevMessage?.classList.contains("chatbot-message") &&
+      prevMessage.classList.contains(messageData.role)
+    ) {
+      messageComponent.element.classList.add("grouped");
+    }
 
     // Insert before typing indicator
     this.messagesContainer.insertBefore(
@@ -945,15 +965,34 @@ export class ChatWindow {
 
         // If there's a qualifying question, show it as an assistant message
         if (result.nextAction === "qualifying_question" && result.qualifyingQuestion) {
+          const transition = TRANSITION_MESSAGES[Math.floor(Math.random() * TRANSITION_MESSAGES.length)];
+          // Use greetingIntro (without the open-ended question) when available,
+          // so the combined message doesn't read "What would you like to talk about? [transition] [question]"
+          const greetingPart = this.options.greetingIntro || this.options.greeting;
+          const combinedContent = `${greetingPart}\n${transition}\n${result.qualifyingQuestion}`;
           const qMsg: StoredMessage = {
             id: generateId(),
-            content: result.qualifyingQuestion,
+            content: combinedContent,
             role: "assistant",
             timestamp: Date.now(),
           };
           this.messages.push(qMsg);
           this.addMessageToDOM(qMsg);
           setStoredMessages(this.options.projectId, this.messages);
+        } else if (result.nextAction === "none") {
+          // No qualifying questions — show greeting now to start normal chat
+          setTimeout(() => {
+            const greetingMsg: StoredMessage = {
+              id: generateId(),
+              content: this.options.greeting,
+              role: "assistant",
+              timestamp: Date.now(),
+            };
+            this.messages.push(greetingMsg);
+            this.addMessageToDOM(greetingMsg);
+            setStoredMessages(this.options.projectId, this.messages);
+            this.scrollToBottom();
+          }, 500);
         }
 
         this.scrollToBottom();

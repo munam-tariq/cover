@@ -68,6 +68,7 @@ interface QualifyingAnswer {
   question: string;
   answer: string;
   raw_response?: string;
+  answer_reasoning?: string;
 }
 
 interface LateQualifyingAnswer {
@@ -91,6 +92,7 @@ interface LeadData {
   qualifyingAnswers: QualifyingAnswer[];
   lateQualifyingAnswers: LateQualifyingAnswer[];
   qualificationStatus: string;
+  qualificationReasoning: string | null;
   captureSource: string | null;
   firstMessage: string | null;
   formSubmittedAt: string;
@@ -283,12 +285,19 @@ function CustomerContextPanel({
                   <div key={idx} className="p-2 bg-muted/50 rounded text-sm">
                     <p className="text-xs text-muted-foreground mb-1">Q: {question}</p>
                     {answer ? (
-                      <p className="font-medium">
-                        A: {answer}
-                        {isLateCapture && (
-                          <Badge variant="secondary" className="ml-2 text-xs">Auto-detected</Badge>
+                      <>
+                        <p className="font-medium">
+                          A: {answer}
+                          {isLateCapture && (
+                            <Badge variant="secondary" className="ml-2 text-xs">Auto-detected</Badge>
+                          )}
+                        </p>
+                        {directAnswer?.answer_reasoning && (
+                          <p className="text-xs text-muted-foreground italic mt-1">
+                            {directAnswer.answer_reasoning}
+                          </p>
                         )}
-                      </p>
+                      </>
                     ) : (
                       <p className="text-muted-foreground italic">Not answered</p>
                     )}
@@ -296,6 +305,15 @@ function CustomerContextPanel({
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {leadData?.qualificationReasoning && (
+          <div className="border-t pt-4">
+            <h3 className="font-semibold text-sm mb-2">Qualification Notes</h3>
+            <p className="text-xs text-muted-foreground whitespace-pre-line">
+              {leadData.qualificationReasoning}
+            </p>
           </div>
         )}
 
