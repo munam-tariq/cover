@@ -11,7 +11,7 @@
  * - Error handling with user-friendly messages
  */
 
-import { Message, MessageOptions } from "./message";
+import { Message } from "./message";
 import { Input } from "./input";
 import { TypingIndicator } from "./typing-indicator";
 import { HumanButton } from "./human-button";
@@ -1216,9 +1216,8 @@ export class ChatWindow {
    * Toggle mute on the voice call
    */
   private toggleVoiceMute(): void {
-    // The overlay tracks mute state internally; we pass the inverse to the manager
-    const currentlyMuted = (this.voiceOverlay as unknown as { isMuted?: boolean })?.isMuted ?? false;
-    this.deepgramVoice?.mute(!currentlyMuted);
+    // Overlay already flipped isMuted before calling back — pass the new value directly
+    this.deepgramVoice?.mute(this.voiceOverlay?.isMuted ?? false);
   }
 
   /**

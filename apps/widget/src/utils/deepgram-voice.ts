@@ -49,7 +49,7 @@ export class DeepgramVoiceManager {
   private playbackCtx: AudioContext | null = null;        // single shared playback context (24kHz)
   private nextPlayTime = 0;                               // scheduled end of last chunk
   private isMuted = false;
-  private isAudioGated = false;   // true only during the inactivity injection window
+  private isAudioGated = false;   // true while mic should be suppressed (injection window + agent speaking)
   private probeRetried = false;   // true after the first retry attempt — prevents infinite retry loop
   private pendingSettings: object | null = null; // stored during handshake, sent on Welcome
   private state: DeepgramVoiceState = "idle";
@@ -128,6 +128,7 @@ export class DeepgramVoiceManager {
   /** Mute or unmute microphone capture */
   mute(muted: boolean): void {
     this.isMuted = muted;
+    this.mediaStream?.getAudioTracks().forEach(t => { t.enabled = !muted; });
   }
 
   getState(): DeepgramVoiceState {
@@ -240,6 +241,7 @@ export class DeepgramVoiceManager {
         break;
 
       case "AgentAudioDone":
+        this.isAudioGated = false;
         this.setState("listening");
         if (this.probeRetryTimer !== null) {
           // Probe retry is scheduled — don't start any timer, wait for retry
@@ -406,7 +408,6 @@ export class DeepgramVoiceManager {
       // the last PCM chunk (~64ms ago) is still in the server's VAD pipeline.
       this.secondaryTimer = setTimeout(() => {
         this.injectAgentMessage("Are you still there?");
-        this.isAudioGated = false;
         // Fallback hang-up timer — if AgentAudioDone never fires, stop after this window
         this.secondaryTimer = setTimeout(() => {
           this.stop();
@@ -430,6 +431,18 @@ export class DeepgramVoiceManager {
     }
   }
 
+  private injectAgentMessage(text: string): void {
+    this.options.onInjectMessage?.(text);
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.isAudioGated = true;
+    this.ws.send(
+      JSON.stringify({
+        type: "InjectAgentMessage",
+        content: text,
+      })
+    );
+  }
+
   /**
    * Schedule a retry of InjectAgentMessage after 2.5s.
    * Called when Deepgram rejects the probe because it's still streaming audio.
@@ -440,10 +453,7 @@ export class DeepgramVoiceManager {
     this.clearProbeRetryTimer();
     this.probeRetryTimer = setTimeout(() => {
       this.probeRetryTimer = null;
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({ type: "InjectAgentMessage", message: "Are you still there?" }));
-        this.isAudioGated = false;
-      }
+      this.injectAgentMessage("Are you still there?");
     }, 2500);
   }
 
@@ -467,16 +477,7 @@ export class DeepgramVoiceManager {
     this.probeRetried = false;
   }
 
-  private injectAgentMessage(text: string): void {
-    this.options.onInjectMessage?.(text);
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    this.ws.send(
-      JSON.stringify({
-        type: "InjectAgentMessage",
-        message: text,
-      })
-    );
-  }
+  
 
   // ---------------------------------------------------------------------------
   // Private — cleanup

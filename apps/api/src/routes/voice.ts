@@ -213,7 +213,7 @@ router.get("/config/:projectId", async (req: Request, res: Response) => {
       settings: {
         type: "Settings",
         audio: {
-          input: { encoding: "linear16", sample_rate: 16000 },
+          input: { encoding: "linear16", sample_rate: 12000 },
           output: { encoding: "linear16", sample_rate: 24000, container: "none" },
         },
         agent: {
