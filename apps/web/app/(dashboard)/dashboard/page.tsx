@@ -7,20 +7,30 @@ import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
 import {
   MessageSquare,
-  BookOpen,
-  Code,
-  Zap,
-  ArrowRight,
+  UserPlus,
   CheckCircle2,
   Circle,
-  Sparkles
+  Sparkles,
+  ArrowRight,
+  Target,
+  XCircle,
+  TrendingUp,
 } from "lucide-react";
+import { LeadStatsCard } from "@/components/analytics/lead-stats-card";
 
-interface DashboardStats {
-  totalMessages: number;
-  knowledgeSources: number;
-  apiEndpoints: number;
-  responseRate: number | null;
+interface LeadsSummary {
+  totalConversations: number;
+  totalLeads: number;
+  qualifiedCount: number;
+  completionRate: number;
+  qualificationRate: number;
+  disqualificationRate: number;
+  voiceCallCount: number;
+  trends: {
+    conversationsChange: number;
+    leadsChange: number;
+    qualifiedChange: number;
+  };
 }
 
 interface OnboardingStep {
@@ -45,16 +55,10 @@ interface OnboardingData {
 
 export default function DashboardPage() {
   const { currentProject, isLoading: projectLoading } = useProject();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalMessages: 0,
-    knowledgeSources: 0,
-    apiEndpoints: 0,
-    responseRate: null,
-  });
+  const [leadsSummary, setLeadsSummary] = useState<LeadsSummary | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch dashboard stats and onboarding when currentProject changes
   useEffect(() => {
     const projectId = currentProject?.id;
     if (!projectId) return;
@@ -62,27 +66,14 @@ export default function DashboardPage() {
     async function fetchData() {
       setLoading(true);
       try {
-        // Fetch all data in parallel
-        const [analyticsData, knowledgeData, endpointsData, onboardingData] = await Promise.all([
-          apiClient<{ totalMessages: number; totalConversations: number }>(
-            `/api/analytics/summary?projectId=${projectId}&period=30d`
-          ).catch(() => ({ totalMessages: 0, totalConversations: 0 })),
-          apiClient<{ sources: Array<{ id: string }> }>(
-            `/api/knowledge?projectId=${projectId}`
-          ).catch(() => ({ sources: [] })),
-          apiClient<{ endpoints: Array<{ id: string }> }>(
-            `/api/endpoints?projectId=${projectId}`
-          ).catch(() => ({ endpoints: [] })),
+        const [leadsData, onboardingData] = await Promise.all([
+          apiClient<LeadsSummary>(
+            `/api/analytics/leads-summary?projectId=${projectId}&period=30d`
+          ).catch(() => null),
           apiClient<OnboardingData>(`/api/projects/${projectId}/onboarding`).catch(() => null),
         ]);
 
-        setStats({
-          totalMessages: analyticsData.totalMessages || 0,
-          knowledgeSources: knowledgeData.sources?.length || 0,
-          apiEndpoints: endpointsData.endpoints?.length || 0,
-          responseRate: analyticsData.totalMessages > 0 ? 100 : null,
-        });
-
+        setLeadsSummary(leadsData);
         setOnboarding(onboardingData);
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -94,38 +85,6 @@ export default function DashboardPage() {
     fetchData();
   }, [currentProject?.id]);
 
-  const statCards = [
-    {
-      title: "Total Messages",
-      value: stats.totalMessages,
-      icon: MessageSquare,
-      href: "/analytics",
-      color: "text-blue-600",
-    },
-    {
-      title: "Knowledge Sources",
-      value: stats.knowledgeSources,
-      icon: BookOpen,
-      href: "/knowledge",
-      color: "text-green-600",
-    },
-    {
-      title: "API Endpoints",
-      value: stats.apiEndpoints,
-      icon: Code,
-      href: "/api-endpoints",
-      color: "text-purple-600",
-    },
-    {
-      title: "Response Rate",
-      value: stats.responseRate !== null ? `${stats.responseRate}%` : "-",
-      icon: Zap,
-      href: "/analytics",
-      color: "text-orange-600",
-    },
-  ];
-
-  // Map onboarding steps to their corresponding links
   const stepLinks: Record<string, string> = {
     accountCreated: "/settings",
     knowledgeAdded: "/knowledge",
@@ -135,7 +94,6 @@ export default function DashboardPage() {
 
   const isSetupComplete = onboarding?.progress.percentage === 100;
 
-  // Show loading if project is still loading
   if (projectLoading) {
     return (
       <div className="space-y-6">
@@ -143,16 +101,9 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground">Loading...</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="h-4 w-24 bg-muted animate-pulse rounded" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 w-16 bg-muted animate-pulse rounded" />
-              </CardContent>
-            </Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <LeadStatsCard key={i} title="" value="" icon={MessageSquare} loading />
           ))}
         </div>
       </div>
@@ -172,7 +123,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Setup Progress Card - Only show if not 100% complete */}
+      {/* Setup Progress Card */}
       {onboarding && !isSetupComplete && (
         <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
           <CardHeader className="pb-3">
@@ -191,20 +142,16 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Progress value={onboarding.progress.percentage} className="h-2" />
-
             <div className="grid gap-2">
               {Object.entries(onboarding.steps).map(([key, step]) => {
                 const StepIcon = step.completed ? CheckCircle2 : Circle;
                 const href = stepLinks[key];
-
                 return (
                   <Link
                     key={key}
                     href={href}
                     className={`flex items-center gap-3 p-2 rounded-md transition-colors ${
-                      step.completed
-                        ? "text-muted-foreground"
-                        : "hover:bg-muted/50"
+                      step.completed ? "text-muted-foreground" : "hover:bg-muted/50"
                     }`}
                   >
                     <StepIcon
@@ -231,30 +178,50 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat) => (
-          <Link key={stat.title} href={stat.href}>
-            <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.title}
-                </CardTitle>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="h-8 w-16 bg-muted animate-pulse rounded" />
-                ) : (
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                )}
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+      {/* Stats Grid - 3x2 */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <LeadStatsCard
+          title="Total Conversations"
+          value={leadsSummary?.totalConversations ?? 0}
+          icon={MessageSquare}
+          trend={leadsSummary?.trends.conversationsChange}
+          loading={loading}
+        />
+        <LeadStatsCard
+          title="Total Leads"
+          value={leadsSummary?.totalLeads ?? 0}
+          icon={UserPlus}
+          trend={leadsSummary?.trends.leadsChange}
+          loading={loading}
+        />
+        <LeadStatsCard
+          title="Qualified Prospects"
+          value={leadsSummary?.qualifiedCount ?? 0}
+          icon={CheckCircle2}
+          trend={leadsSummary?.trends.qualifiedChange}
+          loading={loading}
+        />
+        <LeadStatsCard
+          title="Completion Rate"
+          value={`${leadsSummary?.completionRate ?? 0}%`}
+          icon={Target}
+          loading={loading}
+        />
+        <LeadStatsCard
+          title="Qualification Rate"
+          value={`${leadsSummary?.qualificationRate ?? 0}%`}
+          icon={TrendingUp}
+          loading={loading}
+        />
+        <LeadStatsCard
+          title="Disqualification Rate"
+          value={`${leadsSummary?.disqualificationRate ?? 0}%`}
+          icon={XCircle}
+          loading={loading}
+        />
       </div>
 
-      {/* Quick Actions - Show when setup is complete */}
+      {/* Setup Complete */}
       {isSetupComplete && (
         <Card className="border-green-200 bg-green-50/50">
           <CardContent className="py-4">

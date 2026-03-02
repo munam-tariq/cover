@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
@@ -390,8 +390,12 @@ function CustomerContextPanel({
 export default function ConversationPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const conversationId = params.id as string;
   const { currentProject } = useProject();
+  const fromLeads = searchParams.get("from") === "leads";
+  const backHref = fromLeads ? "/leads" : "/inbox";
+  const backLabel = fromLeads ? "Back to Leads" : "Back to Inbox";
   const { agent } = useAgent();
 
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -700,7 +704,7 @@ export default function ConversationPage() {
         method: "POST",
         body: JSON.stringify({ resolution: "resolved" }),
       });
-      router.push("/inbox");
+      router.push(backHref);
     } catch (err) {
       console.error("Failed to resolve:", err);
       setError("Failed to resolve conversation");
@@ -716,7 +720,7 @@ export default function ConversationPage() {
       await apiClient(`/api/conversations/${conversationId}/transfer`, {
         method: "POST",
       });
-      router.push("/inbox");
+      router.push(backHref);
     } catch (err) {
       console.error("Failed to transfer:", err);
       setError("Failed to transfer conversation");
@@ -733,7 +737,7 @@ export default function ConversationPage() {
         method: "POST",
         body: JSON.stringify({ resolution: "resolved", returnToAI: true }),
       });
-      router.push("/inbox");
+      router.push(backHref);
     } catch (err) {
       console.error("Failed to return to AI:", err);
       setError("Failed to return to AI");
@@ -766,9 +770,9 @@ export default function ConversationPage() {
   if (error || !conversation) {
     return (
       <div className="space-y-4">
-        <Link href="/inbox" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+        <Link href={backHref} className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
-          Back to Inbox
+          {backLabel}
         </Link>
         <Card>
           <CardContent className="p-6 text-center">
@@ -791,7 +795,7 @@ export default function ConversationPage() {
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b">
         <div className="flex items-center gap-4">
-          <Link href="/inbox" className="text-muted-foreground hover:text-foreground">
+          <Link href={backHref} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div className="flex items-center gap-3">

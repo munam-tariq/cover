@@ -440,6 +440,128 @@ analyticsRouter.get("/feedback/issues", async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/analytics/leads-summary
+ *
+ * Returns lead qualification metrics including counts, rates, and trends.
+ *
+ * Query params:
+ * - projectId: string (required)
+ * - period: '24h' | '7d' | '30d' (default: '30d')
+ */
+analyticsRouter.get("/leads-summary", async (req: Request, res: Response) => {
+  try {
+    const projectId = req.query.projectId as string;
+    const period = (req.query.period as string) || "30d";
+
+    if (!projectId) {
+      return res.status(400).json({
+        error: { code: "INVALID_INPUT", message: "projectId is required" },
+      });
+    }
+
+    const periodDays = period === "24h" ? 1 : period === "7d" ? 7 : 30;
+    const currentPeriodStart = new Date();
+    currentPeriodStart.setDate(currentPeriodStart.getDate() - periodDays);
+
+    const previousPeriodStart = new Date();
+    previousPeriodStart.setDate(previousPeriodStart.getDate() - periodDays * 2);
+    const previousPeriodEnd = new Date();
+    previousPeriodEnd.setDate(previousPeriodEnd.getDate() - periodDays);
+
+    // Current period leads
+    const { data: currentLeads, error: currentError } = await supabaseAdmin
+      .from("qualified_leads")
+      .select("qualification_status")
+      .eq("project_id", projectId)
+      .gte("created_at", currentPeriodStart.toISOString());
+
+    if (currentError) throw currentError;
+
+    // Previous period leads
+    const { data: previousLeads, error: previousError } = await supabaseAdmin
+      .from("qualified_leads")
+      .select("qualification_status")
+      .eq("project_id", projectId)
+      .gte("created_at", previousPeriodStart.toISOString())
+      .lt("created_at", previousPeriodEnd.toISOString());
+
+    if (previousError) throw previousError;
+
+    // Current period conversations count
+    const { count: currentConversations } = await supabaseAdmin
+      .from("conversations")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .gte("created_at", currentPeriodStart.toISOString());
+
+    // Previous period conversations count
+    const { count: previousConversations } = await supabaseAdmin
+      .from("conversations")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .gte("created_at", previousPeriodStart.toISOString())
+      .lt("created_at", previousPeriodEnd.toISOString());
+
+    // Voice call count
+    const { count: voiceCallCount } = await supabaseAdmin
+      .from("conversations")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .eq("is_voice_call", true)
+      .gte("created_at", currentPeriodStart.toISOString());
+
+    // Calculate current metrics
+    const totalLeads = currentLeads?.length || 0;
+    const qualifiedCount = currentLeads?.filter(l => l.qualification_status === "qualified").length || 0;
+    const notQualifiedCount = currentLeads?.filter(l => l.qualification_status === "not_qualified").length || 0;
+    const terminalLeads = qualifiedCount + notQualifiedCount;
+    const completionRate = totalLeads > 0 ? Math.round((terminalLeads / totalLeads) * 100) : 0;
+    const qualificationRate = terminalLeads > 0 ? Math.round((qualifiedCount / terminalLeads) * 100) : 0;
+    const disqualificationRate = terminalLeads > 0 ? Math.round((notQualifiedCount / terminalLeads) * 100) : 0;
+
+    // Calculate previous metrics for trends
+    const prevTotal = previousLeads?.length || 0;
+    const prevQualified = previousLeads?.filter(l => l.qualification_status === "qualified").length || 0;
+
+    const leadsChange = prevTotal > 0
+      ? Math.round(((totalLeads - prevTotal) / prevTotal) * 100)
+      : totalLeads > 0 ? 100 : 0;
+
+    const qualifiedChange = prevQualified > 0
+      ? Math.round(((qualifiedCount - prevQualified) / prevQualified) * 100)
+      : qualifiedCount > 0 ? 100 : 0;
+
+    const conversationsChange = (previousConversations || 0) > 0
+      ? Math.round((((currentConversations || 0) - (previousConversations || 0)) / (previousConversations || 1)) * 100)
+      : (currentConversations || 0) > 0 ? 100 : 0;
+
+    res.json({
+      totalConversations: currentConversations || 0,
+      totalLeads,
+      qualifiedCount,
+      notQualifiedCount,
+      completionRate,
+      qualificationRate,
+      disqualificationRate,
+      voiceCallCount: voiceCallCount || 0,
+      period,
+      periodStart: currentPeriodStart.toISOString(),
+      periodEnd: new Date().toISOString(),
+      trends: {
+        conversationsChange,
+        leadsChange,
+        qualifiedChange,
+      },
+    });
+  } catch (error) {
+    logger.error("Leads summary error", error, { requestId: req.requestId });
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Failed to get leads summary" },
+    });
+  }
+});
+
+/**
  * GET /api/analytics/timeline
  *
  * Returns daily message and conversation counts for charting.

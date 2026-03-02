@@ -369,6 +369,29 @@ leadsRouter.get(
         throw error;
       }
 
+      // Resolve conversation IDs for leads missing them (via customer_id)
+      const leadsNeedingConv = (leads || []).filter(l => !l.conversation_id && l.customer_id);
+      const customerIds = leadsNeedingConv.map(l => l.customer_id);
+      let convByCustomer: Record<string, string> = {};
+
+      if (customerIds.length > 0) {
+        const { data: convs } = await supabaseAdmin
+          .from("conversations")
+          .select("id, customer_id")
+          .in("customer_id", customerIds)
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false });
+
+        if (convs) {
+          for (const conv of convs) {
+            // Keep the most recent conversation per customer
+            if (!convByCustomer[conv.customer_id]) {
+              convByCustomer[conv.customer_id] = conv.id;
+            }
+          }
+        }
+      }
+
       res.json({
         leads: (leads || []).map((lead) => ({
           id: lead.id,
@@ -380,6 +403,8 @@ leadsRouter.get(
           qualificationReasoning: lead.qualification_reasoning || null,
           captureSource: lead.capture_source || null,
           firstMessage: lead.first_message,
+          conversationId: lead.conversation_id || convByCustomer[lead.customer_id] || null,
+          customerId: lead.customer_id || null,
           formSubmittedAt: lead.form_submitted_at,
           qualificationCompletedAt: lead.qualification_completed_at,
           createdAt: lead.created_at,
