@@ -74,6 +74,7 @@ export class ElevenLabsVoiceManager {
           },
         },
         customLlmExtraBody: {
+          projectId: this.options.projectId,
           visitorId: this.options.visitorId,
           sessionId: this.options.sessionId,
         },
