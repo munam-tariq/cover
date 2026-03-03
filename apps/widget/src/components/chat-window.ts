@@ -53,7 +53,7 @@ import { generateId } from "../utils/helpers";
 import { VoiceCallOverlay, type VoiceCallState } from "./voice-call-overlay";
 import { VoicePermissionPrompt } from "./voice-permission-prompt";
 import type { VoiceConfig } from "../widget";
-import { DeepgramVoiceManager } from "../utils/deepgram-voice";
+import { ElevenLabsVoiceManager } from "../utils/elevenlabs-voice";
 
 import {
   WidgetRealtimeManager,
@@ -127,7 +127,7 @@ export class ChatWindow {
   // Voice
   private voiceOverlay: VoiceCallOverlay | null = null;
   private voicePermissionPrompt: VoicePermissionPrompt | null = null;
-  private deepgramVoice: DeepgramVoiceManager | null = null;
+  private voiceManager: ElevenLabsVoiceManager | null = null;
   private isVoiceCallActive = false;
   private voiceTranscript: Array<{ role: "user" | "assistant"; content: string }> = [];
 
@@ -1076,8 +1076,8 @@ export class ChatWindow {
   }
 
   /**
-   * Start a Deepgram Voice Agent call.
-   * Config and token are fetched fresh from /api/voice/config/:projectId before each call.
+   * Start an ElevenLabs Voice Agent call.
+   * A signed URL is fetched fresh from /api/voice/config/:projectId before each call.
    */
   private async startVoiceCall(): Promise<void> {
     if (!this.options.voiceConfig?.enabled) return;
@@ -1116,11 +1116,11 @@ export class ChatWindow {
     // Disable text input during voice call
     this.input.setDisabled(true, "Voice call in progress");
 
-    // State map: Deepgram → overlay
+    // State map: ElevenLabs → overlay
+    // ElevenLabs Mode only emits "speaking" | "listening" — no separate "thinking" state
     const stateMap: Record<string, VoiceCallState> = {
       connecting:  "connecting",
       listening:   "active-listening",
-      thinking:    "active-thinking",
       speaking:    "active-speaking",
       ended:       "ended",
       error:       "error",
@@ -1128,7 +1128,7 @@ export class ChatWindow {
 
     this.voiceTranscript = [];
 
-    this.deepgramVoice = new DeepgramVoiceManager({
+    this.voiceManager = new ElevenLabsVoiceManager({
       projectId: this.options.projectId,
       apiUrl: this.options.apiUrl,
       visitorId: this.visitorId,
@@ -1170,25 +1170,8 @@ export class ChatWindow {
           // Not added to text chat DOM in real-time — chat syncs from DB after call ends
         }
       },
-      onInjectMessage: (text) => {
-        // Add to voiceTranscript so probe is saved to DB at session-end and
-        // survives the post-call fetchAndSyncMessages() replacement.
-        // The session-end exact-duplicate filter handles the case where
-        // ConversationText also fires for the probe (WS was open).
-        this.voiceTranscript.push({ role: "assistant", content: text });
-        // Show immediately in text chat
-        const msg: StoredMessage = {
-          id: generateId(),
-          content: text,
-          role: "assistant",
-          timestamp: Date.now(),
-        };
-        this.messages.push(msg);
-        this.addMessageToDOM(msg);
-        setStoredMessages(this.options.projectId, this.messages);
-      },
       onError: (err) => {
-        console.error("[Widget] Deepgram voice error:", err);
+        console.error("[Widget] ElevenLabs voice error:", err);
       },
       onEnded: () => {
         // Handled in onStateChange("ended")
@@ -1196,9 +1179,9 @@ export class ChatWindow {
     });
 
     try {
-      await this.deepgramVoice.start();
+      await this.voiceManager.start();
     } catch (error) {
-      console.error("[Widget] Failed to start voice call:", error);
+      console.error("[Widget] Failed to start ElevenLabs voice call:", error);
       this.voiceOverlay?.setState("error");
       this.isVoiceCallActive = false;
       this.input.setDisabled(false);
@@ -1209,7 +1192,7 @@ export class ChatWindow {
    * End the current voice call
    */
   private endVoiceCall(): void {
-    this.deepgramVoice?.stop();
+    this.voiceManager?.stop();
   }
 
   /**
@@ -1217,7 +1200,7 @@ export class ChatWindow {
    */
   private toggleVoiceMute(): void {
     // Overlay already flipped isMuted before calling back — pass the new value directly
-    this.deepgramVoice?.mute(this.voiceOverlay?.isMuted ?? false);
+    this.voiceManager?.mute(this.voiceOverlay?.isMuted ?? false);
   }
 
   /**
@@ -1253,7 +1236,6 @@ export class ChatWindow {
         sessionId: this.sessionId,
         durationSeconds: Math.round(duration),
         transcript: this.voiceTranscript,
-        keyId: this.deepgramVoice?.getKeyId() ?? undefined,
       }),
     }).then(() => {}).catch((err) => {
       console.error("[Widget] Failed to notify voice session end:", err);

@@ -1,13 +1,12 @@
 /**
- * Deepgram Voice Agent Routes
+ * ElevenLabs Voice Agent Routes
  *
- * Replaces the Vapi integration with Deepgram's Voice Agent API.
- * The widget connects directly to Deepgram via WebSocket; Deepgram calls
- * our /api/voice/llm/:projectId endpoint as its LLM provider (OpenAI-compatible).
+ * The widget connects to ElevenLabs via their client SDK; ElevenLabs calls
+ * our /api/voice/llm/:projectId endpoint as its custom LLM provider (OpenAI-compatible).
  *
  * Routes:
- *   GET  /api/voice/config/:projectId  — Returns Deepgram temp token + AgentV1Settings
- *   POST /api/voice/llm/:projectId     — OpenAI-compatible SSE endpoint (called by Deepgram)
+ *   GET  /api/voice/config/:projectId  — Returns ElevenLabs signed URL + greeting
+ *   POST /api/voice/llm/:projectId     — OpenAI-compatible SSE endpoint (called by ElevenLabs)
  *   POST /api/voice/session-end        — Widget notifies us when voice call ends
  */
 
@@ -19,13 +18,29 @@ import { processChat, type ChatOutput } from "../services/chat-engine";
 const router = Router();
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Silence tracking
 // ---------------------------------------------------------------------------
 
 /**
- * Strip markdown and widget-specific fields from a ChatOutput for TTS.
- * Deepgram only needs the plain text response — sources, toolCalls, handoff, etc. are widget-only.
+ * Per-session counter for consecutive silence events.
+ * ElevenLabs sends "..." when the user is silent past the "take turn after
+ * silence" threshold. We intercept these at the route level — no LLM call
+ * needed. First silence → probe, second silence → farewell.
  */
+const silenceCounters = new Map<string, number>();
+
+const SILENCE_PROBE = "Hey, are you still there? Take your time, I'm here whenever you're ready.";
+const SILENCE_FAREWELL = "It was great chatting with you! Feel free to come back anytime. Goodbye!";
+
+/** Check if a message is a silence indicator (only dots/ellipsis/whitespace) */
+function isSilenceMessage(message: string): boolean {
+  return !message.replace(/\./g, "").trim();
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 /** Format seconds as "M:SS" for "Voice call ended" messages */
 function formatVoiceDuration(seconds?: number): string {
   if (!seconds || seconds <= 0) return "0:00";
@@ -34,6 +49,10 @@ function formatVoiceDuration(seconds?: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+/**
+ * Strip markdown and widget-specific fields from a ChatOutput for TTS.
+ * ElevenLabs only needs the plain text response.
+ */
 function formatForVoice(output: ChatOutput): string {
   let text = output.response;
   // Light markdown cleanup for better TTS readability
@@ -45,54 +64,91 @@ function formatForVoice(output: ChatOutput): string {
   text = text.replace(/`{1,3}[^`]*`{1,3}/g, "");        // inline/block code
   text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");  // [link text](url) → link text
   return text.trim();
-  // Intentionally not returned: sources, toolCalls, handoff, processingTime,
-  // tokensUsed, leadCapture, requestId — these are widget-only fields.
 }
 
-/** Create a short-lived Deepgram API key scoped to usage:write.
- *  Returns { key, keyId } where key is used as the WebSocket token
- *  and keyId is stored by the widget for deletion on session end.
+/**
+ * Fetch a signed WebSocket URL from ElevenLabs for starting a conversation.
+ * The signed URL authenticates the client without exposing the API key.
  */
-async function createDeepgramSessionKey(masterKey: string, dgProjectId: string): Promise<{ key: string; keyId: string }> {
-  // Safety-net expiry: 2 hours from now (key is deleted explicitly on session-end)
-  const expiry = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
-
-  const res = await fetch(`https://api.deepgram.com/v1/projects/${dgProjectId}/keys`, {
-    method: "POST",
-    headers: {
-      Authorization: `Token ${masterKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      comment: "cover-widget-voice-session",
-      scopes: ["member"],
-      expiration_date: expiry,
-    }),
-  });
+async function getElevenLabsSignedUrl(apiKey: string, agentId: string): Promise<string> {
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(agentId)}`,
+    {
+      headers: { "xi-api-key": apiKey },
+    }
+  );
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Deepgram key creation failed: ${res.status} ${body}`);
+    throw new Error(`ElevenLabs signed URL failed: ${res.status} ${body}`);
   }
 
-  const data = (await res.json()) as { api_key_id: string; key: string };
-  return { key: data.key, keyId: data.api_key_id };
+  const data = (await res.json()) as { signed_url: string };
+  return data.signed_url;
 }
 
-/** Delete a Deepgram API key. Best-effort — logs but does not throw. */
-async function deleteDeepgramSessionKey(masterKey: string, dgProjectId: string, keyId: string): Promise<void> {
-  try {
-    const res = await fetch(`https://api.deepgram.com/v1/projects/${dgProjectId}/keys/${keyId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Token ${masterKey}` },
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      logger.warn("[Voice] Deepgram key deletion failed", { keyId, status: res.status, body });
-    }
-  } catch (err) {
-    logger.warn("[Voice] Deepgram key deletion error", { keyId, error: String(err) });
+/**
+ * Stream a text response as OpenAI-compatible SSE chunks.
+ * Used by both the normal LLM flow and the silence interceptor.
+ */
+function streamSSEResponse(res: Response, text: string): void {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  const id = `chatcmpl-voice-${Date.now()}`;
+  const words = text.split(/(\s+)/);
+  const chunkSize = 5;
+
+  for (let i = 0; i < words.length; i += chunkSize) {
+    const chunk = words.slice(i, i + chunkSize).join("");
+    res.write(`data: ${JSON.stringify({
+      id,
+      object: "chat.completion.chunk",
+      model: "gpt-4o-mini",
+      choices: [{ index: 0, delta: { content: chunk }, finish_reason: null }],
+    })}\n\n`);
   }
+
+  res.write(`data: ${JSON.stringify({
+    id,
+    object: "chat.completion.chunk",
+    model: "gpt-4o-mini",
+    choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+  })}\n\n`);
+  res.write("data: [DONE]\n\n");
+  res.end();
+}
+
+/**
+ * Load prior text-chat history for context seeding on the first voice turn.
+ * Returns messages in {role, content} format for prepending to conversation history.
+ */
+async function loadPriorChatHistory(
+  sessionId: string
+): Promise<Array<{ role: "user" | "assistant"; content: string }>> {
+  const { data: dbMessages } = await supabaseAdmin
+    .from("messages")
+    .select("sender_type, content, metadata")
+    .eq("conversation_id", sessionId)
+    .in("sender_type", ["customer", "ai"])
+    .order("created_at", { ascending: true })
+    .limit(30);
+
+  if (!dbMessages) return [];
+
+  return dbMessages
+    .filter(m => {
+      const meta = (m.metadata as Record<string, unknown> | null) ?? {};
+      // Exclude housekeeping summaries ("Voice call ended…").
+      // Keep text-chat messages and previous voice-call transcripts so the
+      // qualifying-question interceptor knows what has already been asked/answered.
+      return !meta.voice_summary;
+    })
+    .map(m => ({
+      role: (m.sender_type === "customer" ? "user" : "assistant") as "user" | "assistant",
+      content: m.content as string,
+    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -100,11 +156,11 @@ async function deleteDeepgramSessionKey(masterKey: string, dgProjectId: string, 
 // ---------------------------------------------------------------------------
 
 /**
- * Returns Deepgram short-lived token + full AgentV1Settings JSON.
- * Widget calls this before each voice call, then opens a WebSocket to Deepgram.
+ * Returns an ElevenLabs signed URL + voice greeting.
+ * Widget calls this before each voice call, then connects via the SDK.
  *
  * Query params:
- *   visitorId  (string) — widget visitor ID (forwarded to LLM endpoint headers)
+ *   visitorId  (string) — widget visitor ID
  *   sessionId  (string, optional) — existing conversation ID for continuity
  */
 router.get("/config/:projectId", async (req: Request, res: Response) => {
@@ -141,116 +197,32 @@ router.get("/config/:projectId", async (req: Request, res: Response) => {
       return res.json({ voiceEnabled: false });
     }
 
-    // Check Deepgram API key + project ID are configured
-    if (!process.env.DEEPGRAM_API_KEY || !process.env.DEEPGRAM_PROJECT_ID) {
-      logger.error("[Voice Config] DEEPGRAM_API_KEY or DEEPGRAM_PROJECT_ID not set", {}, { projectId });
+    // Check ElevenLabs credentials are configured
+    if (!process.env.ELEVENLABS_API_KEY || !process.env.ELEVENLABS_AGENT_ID) {
+      logger.error("[Voice Config] ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID not set", {}, { projectId });
       return res.status(500).json({
         error: { code: "CONFIG_ERROR", message: "Voice not configured" },
       });
     }
 
-    const visitorId = req.query.visitorId as string | undefined;
-    const sessionId = req.query.sessionId as string | undefined;
-
     const voiceGreeting = project.voice_greeting || "Hi! How can I help you today?";
 
-    // Create a short-lived Deepgram key for this session (deleted on session-end)
-    const { key: deepgramToken, keyId: deepgramKeyId } = await createDeepgramSessionKey(
-      process.env.DEEPGRAM_API_KEY,
-      process.env.DEEPGRAM_PROJECT_ID
+    // Get a signed URL for the ElevenLabs WebSocket connection
+    const signedUrl = await getElevenLabsSignedUrl(
+      process.env.ELEVENLABS_API_KEY,
+      process.env.ELEVENLABS_AGENT_ID
     );
-    const apiBaseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3001}`;
-
-    // Deepgram forwards these headers to our LLM endpoint on every turn
-    const endpointHeaders: Record<string, string> = {};
-    if (visitorId) endpointHeaders["x-visitor-id"] = visitorId;
-    if (sessionId) endpointHeaders["x-session-id"] = sessionId;
-
-    // Load existing text-chat history to pre-seed Deepgram's context so the agent
-    // is aware of prior conversation from the start of the call.
-    // Deepgram will include these in every messages array it sends to our LLM endpoint,
-    // so the LLM endpoint does not need a separate DB reload.
-    type HistoryMessage = { type: "History"; role: "user" | "assistant"; content: string };
-    let contextMessages: HistoryMessage[] = [];
-    if (sessionId) {
-      const { data: dbMessages } = await supabaseAdmin
-        .from("messages")
-        .select("sender_type, content, metadata")
-        .eq("conversation_id", sessionId)
-        .in("sender_type", ["customer", "ai"])
-        .order("created_at", { ascending: true })
-        .limit(30);
-
-      if (dbMessages) {
-        contextMessages = dbMessages
-          .filter(m => {
-            const meta = (m.metadata as Record<string, unknown> | null) ?? {};
-            // Exclude only housekeeping summaries ("Voice call ended…").
-            // Keep both text-chat messages and previous voice-call transcripts so the
-            // qualifying-question interceptor knows what has already been asked and answered.
-            return !meta.voice_summary;
-          })
-          .map(m => ({
-            type: "History" as const,
-            role: (m.sender_type === "customer" ? "user" : "assistant") as "user" | "assistant",
-            content: m.content as string,
-          }));
-      }
-    }
 
     logger.info("[Voice Config] Voice config served", {
       projectId,
-      visitorId,
-      sessionId,
-      contextMessageCount: contextMessages.length,
+      visitorId: req.query.visitorId as string | undefined,
+      sessionId: req.query.sessionId as string | undefined,
     });
 
-    // Return token + full Deepgram AgentV1Settings
     return res.json({
       voiceEnabled: true,
-      token: deepgramToken,
-      keyId: deepgramKeyId,
-      settings: {
-        type: "Settings",
-        audio: {
-          input: { encoding: "linear16", sample_rate: 12000 },
-          output: { encoding: "linear16", sample_rate: 24000, container: "none" },
-        },
-        agent: {
-          ...(contextMessages.length > 0 ? { context: { messages: contextMessages } } : {}),
-          language: "en",
-          listen: {
-            provider: {
-              type: "deepgram",
-              model: process.env.DEEPGRAM_LISTEN_MODEL || "nova-3",
-              smart_format: true,
-              endpointing: 200,
-            },
-          },
-          think: {
-            provider: {
-              type: "open_ai",
-              model: "gpt-4o-mini",
-              temperature: 0.7,
-            },
-            endpoint: {
-              url: `${apiBaseUrl}/api/voice/llm/${projectId}`,
-              headers: endpointHeaders,
-            },
-            // Brief voice-style directive. The full system prompt and qualifying-question
-            // logic live in processChat() — our custom LLM endpoint handles all of that.
-            prompt: "Respond naturally and conversationally. Keep responses brief and clear for voice. Avoid markdown, bullet points, and lists.",
-            context_length: 6000,
-          },
-          speak: {
-            provider: {
-              type: "deepgram",
-              model: process.env.DEEPGRAM_VOICE_MODEL || "aura-2-thalia-en",
-            },
-          },
-          greeting: voiceGreeting,
-        },
-      },
+      signedUrl,
+      greeting: voiceGreeting,
     });
   } catch (error) {
     logger.error("[Voice Config] Failed to fetch voice config", error as Error, { projectId });
@@ -270,18 +242,29 @@ interface OpenAIMessage {
 }
 
 /**
- * OpenAI-compatible LLM endpoint called by Deepgram on every user turn.
+ * OpenAI-compatible LLM endpoint called by ElevenLabs on every user turn.
  * Receives the full conversation in OpenAI messages format, runs it through
  * our chat engine, and streams the response back as OpenAI SSE.
  *
- * Headers (forwarded by Deepgram from the endpoint config):
- *   x-visitor-id  — widget visitor ID
- *   x-session-id  — existing conversation ID (optional)
+ * ElevenLabs passes visitorId/sessionId via elevenlabs_extra_body
+ * (enabled in agent Security > Overrides > Custom LLM extra body).
  */
-router.post("/llm/:projectId", async (req: Request, res: Response) => {
+router.post("/llm/:projectId/chat/completions", async (req: Request, res: Response) => {
   const { projectId } = req.params;
-  const visitorId = (req.headers["x-visitor-id"] as string) || `voice_anon_${Date.now()}`;
-  const sessionId = (req.headers["x-session-id"] as string) || undefined;
+
+  // Extract visitorId/sessionId from ElevenLabs extra body (preferred)
+  // with fallback to headers for backward compatibility
+  const extraBody = req.body.elevenlabs_extra_body as
+    | { visitorId?: string; sessionId?: string }
+    | undefined;
+  const visitorId =
+    extraBody?.visitorId ||
+    (req.headers["x-visitor-id"] as string) ||
+    `voice_anon_${Date.now()}`;
+  const sessionId =
+    extraBody?.sessionId ||
+    (req.headers["x-session-id"] as string) ||
+    undefined;
 
   const { messages } = req.body as { messages: OpenAIMessage[]; stream?: boolean };
 
@@ -298,12 +281,41 @@ router.post("/llm/:projectId", async (req: Request, res: Response) => {
   }
 
   // Build conversation history from all prior user/assistant turns (exclude last user message).
-  // Deepgram includes agent.context (text-chat history seeded at call start) in every
-  // messages array it sends here, so no separate DB reload is needed.
-  const conversationHistory = messages
+  let conversationHistory = messages
     .filter(m => m.role === "user" || m.role === "assistant")
     .slice(0, -1)
     .map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+  // First-turn context seeding: when ElevenLabs sends the first turn (no prior
+  // user/assistant messages in the array), load text-chat history from DB so
+  // the agent is aware of prior conversation. This replaces Deepgram's
+  // agent.context.messages which were seeded at connection time.
+  if (conversationHistory.length === 0 && sessionId) {
+    const priorMessages = await loadPriorChatHistory(sessionId);
+    if (priorMessages.length > 0) {
+      conversationHistory = priorMessages;
+    }
+  }
+
+  // ── Silence interceptor ───────────────────────────────────────────────
+  // ElevenLabs sends "..." when the user is silent past the "take turn
+  // after silence" threshold. We handle this here — no LLM call needed.
+  if (isSilenceMessage(lastUserMessage) && sessionId) {
+    const count = (silenceCounters.get(sessionId) || 0) + 1;
+    silenceCounters.set(sessionId, count);
+
+    const response = count === 1 ? SILENCE_PROBE : SILENCE_FAREWELL;
+
+    logger.info("[Voice LLM] Silence intercepted", {
+      projectId, visitorId, sessionId, silenceCount: count,
+    });
+
+    streamSSEResponse(res, response);
+    return;
+  }
+
+  // Non-silence message — reset counter
+  if (sessionId) silenceCounters.delete(sessionId);
 
   logger.info("[Voice LLM] processChat called", {
     projectId,
@@ -334,42 +346,7 @@ router.post("/llm/:projectId", async (req: Request, res: Response) => {
     });
 
     // Return as OpenAI SSE stream
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-
-    const id = `chatcmpl-voice-${Date.now()}`;
-    const words = plainText.split(/(\s+)/); // preserve whitespace separators
-    const chunkSize = 5;
-
-    for (let i = 0; i < words.length; i += chunkSize) {
-      const chunk = words.slice(i, i + chunkSize).join("");
-      const payload = {
-        id,
-        object: "chat.completion.chunk",
-        model: "gpt-4o-mini",
-        choices: [
-          {
-            index: 0,
-            delta: { content: chunk },
-            finish_reason: null,
-          },
-        ],
-      };
-      res.write(`data: ${JSON.stringify(payload)}\n\n`);
-    }
-
-    // Final chunk with finish_reason
-    res.write(
-      `data: ${JSON.stringify({
-        id,
-        object: "chat.completion.chunk",
-        model: "gpt-4o-mini",
-        choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
-      })}\n\n`
-    );
-    res.write("data: [DONE]\n\n");
-    res.end();
+    streamSSEResponse(res, plainText);
   } catch (error) {
     logger.error("[Voice LLM] Chat processing failed", error as Error, {
       projectId,
@@ -378,21 +355,7 @@ router.post("/llm/:projectId", async (req: Request, res: Response) => {
     });
 
     // Return a graceful error response in SSE format
-    const id = `chatcmpl-voice-err-${Date.now()}`;
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    const errorText = "I'm sorry, I ran into a problem. Please try again.";
-    res.write(
-      `data: ${JSON.stringify({
-        id,
-        object: "chat.completion.chunk",
-        model: "gpt-4o-mini",
-        choices: [{ index: 0, delta: { content: errorText }, finish_reason: "stop" }],
-      })}\n\n`
-    );
-    res.write("data: [DONE]\n\n");
-    res.end();
+    streamSSEResponse(res, "I'm sorry, I ran into a problem. Please try again.");
   }
 });
 
@@ -404,27 +367,20 @@ router.post("/llm/:projectId", async (req: Request, res: Response) => {
  * Widget calls this when a voice call ends to update the conversation record.
  */
 router.post("/session-end", async (req: Request, res: Response) => {
-  const { projectId, visitorId, sessionId, durationSeconds, transcript, keyId } = req.body as {
+  const { projectId, visitorId, sessionId, durationSeconds, transcript } = req.body as {
     projectId?: string;
     visitorId?: string;
     sessionId?: string;
     durationSeconds?: number;
     transcript?: Array<{ role: "user" | "assistant"; content: string }>;
-    keyId?: string;
   };
 
   if (!sessionId) {
     return res.status(400).json({ error: "sessionId is required" });
   }
 
-  // Delete the short-lived Deepgram key now that the session is over
-  if (keyId && process.env.DEEPGRAM_API_KEY && process.env.DEEPGRAM_PROJECT_ID) {
-    void deleteDeepgramSessionKey(
-      process.env.DEEPGRAM_API_KEY,
-      process.env.DEEPGRAM_PROJECT_ID,
-      keyId
-    );
-  }
+  // Clean up silence tracking for this session
+  silenceCounters.delete(sessionId);
 
   try {
     // Update conversation metadata
@@ -433,7 +389,7 @@ router.post("/session-end", async (req: Request, res: Response) => {
       .update({
         voice_duration_seconds: typeof durationSeconds === "number" ? Math.round(durationSeconds) : null,
         voice_ended_reason: "user_closed",
-        voice_provider: "deepgram",
+        voice_provider: "elevenlabs",
       })
       .eq("id", sessionId);
 
@@ -448,9 +404,9 @@ router.post("/session-end", async (req: Request, res: Response) => {
           return !(prev.role === t.role && prev.content === t.content);
         });
 
-      // Merge consecutive same-role fragments — Deepgram splits each AI response
-      // sentence-by-sentence into multiple ConversationText events. Merging here ensures
-      // each logical AI turn appears as a single chat bubble after post-call sync.
+      // Merge consecutive same-role fragments — ElevenLabs may split responses
+      // into multiple transcript events. Merging ensures each logical AI turn
+      // appears as a single chat bubble after post-call sync.
       const merged = filtered.reduce<Array<{ role: "user" | "assistant"; content: string }>>((acc, turn) => {
         if (acc.length === 0) return [{ ...turn }];
         const prev = acc[acc.length - 1]!;

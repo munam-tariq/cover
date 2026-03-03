@@ -87,7 +87,7 @@ app.use("/api/projects", dashboardCors, leadsRouter); // Leads routes: /api/proj
 app.use("/api/projects", dashboardCors, pulseRouter); // Pulse dashboard routes: /api/projects/:id/pulse/*
 app.use("/api/onboarding", dashboardCors, onboardingRouter); // Onboarding routes for new users
 
-// Deepgram Voice Agent routes (open CORS - config called from widget, LLM called from Deepgram servers)
+// ElevenLabs Voice Agent routes (open CORS - config called from widget, LLM called from ElevenLabs servers)
 app.use("/api/voice", widgetCors, voiceRouter);
 
 // Widget/Public API routes (open CORS - can be called from any domain)

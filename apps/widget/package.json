@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@chatbot/shared": "workspace:*",
-    "@supabase/realtime-js": "^2.90.1",
-    "events": "^3.3.0"
+    "@elevenlabs/client": "^0.15.0",
+    "@supabase/realtime-js": "^2.90.1"
   },
   "devDependencies": {
     "@chatbot/eslint-config": "workspace:*",
