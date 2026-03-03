@@ -1,12 +1,23 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from "@chatbot/ui";
+import { Card, CardContent, CardHeader, CardTitle, Skeleton } from "@chatbot/ui";
 import { apiClient } from "@/lib/api-client";
 import { useProject } from "@/contexts/project-context";
-import { TrendingUp, TrendingDown, MessageSquare, Users, Minus } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  MessageSquare,
+  Users,
+  Minus,
+  UserPlus,
+  CheckCircle2,
+  Target,
+  XCircle,
+} from "lucide-react";
 import { MessagesChart } from "@/components/analytics/messages-chart";
 import { TopQuestionsList } from "@/components/analytics/top-questions-list";
+import { LeadStatsCard } from "@/components/analytics/lead-stats-card";
 
 interface AnalyticsSummary {
   totalMessages: number;
@@ -17,6 +28,21 @@ interface AnalyticsSummary {
   trends: {
     messagesChange: number;
     conversationsChange: number;
+  };
+}
+
+interface LeadsSummary {
+  totalConversations: number;
+  totalLeads: number;
+  qualifiedCount: number;
+  completionRate: number;
+  qualificationRate: number;
+  disqualificationRate: number;
+  voiceCallCount: number;
+  trends: {
+    conversationsChange: number;
+    leadsChange: number;
+    qualifiedChange: number;
   };
 }
 
@@ -38,6 +64,7 @@ export default function AnalyticsPage() {
   const { currentProject, isLoading: projectLoading } = useProject();
   const [period, setPeriod] = useState<Period>("30d");
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [leadsSummary, setLeadsSummary] = useState<LeadsSummary | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [topQuestions, setTopQuestions] = useState<QuestionCluster[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,14 +77,16 @@ export default function AnalyticsPage() {
     setError(null);
 
     try {
-      // Fetch all analytics data in parallel
-      const [summaryData, timelineData, questionsData] = await Promise.all([
+      const days = period === "24h" ? 1 : period === "7d" ? 7 : 30;
+      const [summaryData, leadsData, timelineData, questionsData] = await Promise.all([
         apiClient<AnalyticsSummary>(`/api/analytics/summary?projectId=${currentProject.id}&period=${period}`),
-        apiClient<{ timeline: TimelineEntry[] }>(`/api/analytics/timeline?projectId=${currentProject.id}&days=${period === "24h" ? 1 : period === "7d" ? 7 : 30}`),
-        apiClient<{ questions: QuestionCluster[] }>(`/api/analytics/top-questions?projectId=${currentProject.id}&days=${period === "24h" ? 1 : period === "7d" ? 7 : 30}`),
+        apiClient<LeadsSummary>(`/api/analytics/leads-summary?projectId=${currentProject.id}&period=${period}`).catch(() => null),
+        apiClient<{ timeline: TimelineEntry[] }>(`/api/analytics/timeline?projectId=${currentProject.id}&days=${days}`),
+        apiClient<{ questions: QuestionCluster[] }>(`/api/analytics/top-questions?projectId=${currentProject.id}&days=${days}`),
       ]);
 
       setSummary(summaryData);
+      setLeadsSummary(leadsData);
       setTimeline(timelineData.timeline);
       setTopQuestions(questionsData.questions);
     } catch (err) {
@@ -68,12 +97,11 @@ export default function AnalyticsPage() {
     }
   }, [currentProject?.id, period]);
 
-  // Fetch analytics data when project or period changes
   useEffect(() => {
     if (!currentProject?.id) return;
 
-    // Reset state when project changes
     setSummary(null);
+    setLeadsSummary(null);
     setTimeline([]);
     setTopQuestions([]);
     fetchAnalytics();
@@ -94,7 +122,6 @@ export default function AnalyticsPage() {
         </span>
       );
     }
-
     if (value > 0) {
       return (
         <span className="flex items-center text-green-600 text-sm">
@@ -103,7 +130,6 @@ export default function AnalyticsPage() {
         </span>
       );
     }
-
     return (
       <span className="flex items-center text-red-600 text-sm">
         <TrendingDown className="h-4 w-4 mr-1" />
@@ -122,16 +148,9 @@ export default function AnalyticsPage() {
           </div>
           <Skeleton className="h-10 w-36" />
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {[1, 2].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-4 w-24" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-20" />
-              </CardContent>
-            </Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <LeadStatsCard key={i} title="" value="" icon={MessageSquare} loading />
           ))}
         </div>
       </div>
@@ -156,7 +175,8 @@ export default function AnalyticsPage() {
         <div>
           <h1 className="text-2xl font-bold">Analytics</h1>
           <p className="text-muted-foreground">
-            Track your chatbot's performance and popular questions
+            View conversation metrics and insights for{" "}
+            <span className="font-medium">{currentProject.name}</span>
           </p>
         </div>
         <select
@@ -176,54 +196,50 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Messages</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="h-8 w-24 bg-muted animate-pulse rounded" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {summary?.totalMessages.toLocaleString() ?? 0}
-                </div>
-                <TrendIndicator value={summary?.trends.messagesChange ?? 0} />
-                <p className="text-xs text-muted-foreground mt-1">
-                  vs previous {periodLabels[period].toLowerCase().replace("last ", "")}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conversations</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="h-8 w-24 bg-muted animate-pulse rounded" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {summary?.totalConversations.toLocaleString() ?? 0}
-                </div>
-                <TrendIndicator value={summary?.trends.conversationsChange ?? 0} />
-                <p className="text-xs text-muted-foreground mt-1">
-                  vs previous {periodLabels[period].toLowerCase().replace("last ", "")}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+      {/* Lead Stats Cards - 3x2 grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <LeadStatsCard
+          title="Total Conversations"
+          value={leadsSummary?.totalConversations ?? summary?.totalConversations ?? 0}
+          icon={MessageSquare}
+          trend={leadsSummary?.trends.conversationsChange ?? summary?.trends.conversationsChange}
+          loading={loading}
+        />
+        <LeadStatsCard
+          title="Total Leads"
+          value={leadsSummary?.totalLeads ?? 0}
+          icon={UserPlus}
+          trend={leadsSummary?.trends.leadsChange}
+          loading={loading}
+        />
+        <LeadStatsCard
+          title="Qualified Prospects"
+          value={leadsSummary?.qualifiedCount ?? 0}
+          icon={CheckCircle2}
+          trend={leadsSummary?.trends.qualifiedChange}
+          loading={loading}
+        />
+        <LeadStatsCard
+          title="Completion Rate"
+          value={`${leadsSummary?.completionRate ?? 0}%`}
+          icon={Target}
+          loading={loading}
+        />
+        <LeadStatsCard
+          title="Qualification Rate"
+          value={`${leadsSummary?.qualificationRate ?? 0}%`}
+          icon={TrendingUp}
+          loading={loading}
+        />
+        <LeadStatsCard
+          title="Disqualification Rate"
+          value={`${leadsSummary?.disqualificationRate ?? 0}%`}
+          icon={XCircle}
+          loading={loading}
+        />
       </div>
 
-      {/* Messages Over Time Chart */}
+      {/* Conversations Over Time Chart */}
       <MessagesChart data={timeline} loading={loading} period={period} />
 
       {/* Top Questions */}

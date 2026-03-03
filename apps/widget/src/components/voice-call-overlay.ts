@@ -41,7 +41,7 @@ export class VoiceCallOverlay {
   private endedContainer: HTMLElement;
 
   private state: VoiceCallState = "connecting";
-  private isMuted = false;
+  isMuted = false;
   private timerInterval: number | null = null;
   private callStartTime: number | null = null;
   private callDuration = 0;

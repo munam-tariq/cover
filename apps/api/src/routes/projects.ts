@@ -39,7 +39,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
     // Fetch owned projects
     const { data: ownedProjects, error: ownedError } = await supabase
       .from("projects")
-      .select("id, name, settings, plan, created_at, updated_at, user_id")
+      .select("id, name, settings, plan, voice_enabled, voice_greeting, created_at, updated_at, user_id")
       .eq("user_id", userId)
       .is("deleted_at", null)
       .order("created_at", { ascending: true });
@@ -52,7 +52,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
     // Fetch projects where user is an active member
     const { data: memberships, error: memberError } = await supabase
       .from("project_members")
-      .select("project_id, role, projects!inner(id, name, settings, plan, created_at, updated_at, user_id, deleted_at)")
+      .select("project_id, role, projects!inner(id, name, settings, plan, voice_enabled, voice_greeting, created_at, updated_at, user_id, deleted_at)")
       .eq("user_id", userId)
       .eq("status", "active");
 
@@ -107,7 +107,11 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
           name: project.name,
           plan: project.plan || "free",
           systemPrompt: project.settings?.systemPrompt || "",
-          settings: project.settings || {},
+          settings: {
+            ...(project.settings || {}),
+            voice_enabled: project.voice_enabled,
+            voice_greeting: project.voice_greeting,
+          },
           createdAt: project.created_at,
           updatedAt: project.updated_at,
           role: project.role,
@@ -163,7 +167,7 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
     // Fetch project (without user_id filter - we'll check access separately)
     const { data: project, error } = await supabase
       .from("projects")
-      .select("id, name, settings, plan, created_at, updated_at, user_id")
+      .select("id, name, settings, plan, voice_enabled, voice_greeting, created_at, updated_at, user_id")
       .eq("id", id)
       .is("deleted_at", null)
       .single();
@@ -198,7 +202,11 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
       name: project.name,
       plan: project.plan || "free",
       systemPrompt: project.settings?.systemPrompt || "",
-      settings: project.settings || {},
+      settings: {
+        ...(project.settings || {}),
+        voice_enabled: project.voice_enabled,
+        voice_greeting: project.voice_greeting,
+      },
       createdAt: project.created_at,
       updatedAt: project.updated_at,
       user_id: project.user_id,
@@ -369,16 +377,6 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Project not found" } });
     }
 
-    // Guard: cannot enable voice on free plan
-    if (newSettings?.voice_enabled === true && currentProject.plan !== "pro") {
-      return res.status(403).json({
-        error: {
-          code: "PLAN_REQUIRED",
-          message: "Upgrade to Pro to enable voice calls",
-        },
-      });
-    }
-
     // Guard: cannot enable widget without a knowledge base
     if (newSettings?.widget_enabled === true) {
       const { count } = await supabase
@@ -415,8 +413,12 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
       }
 
       // If newSettings is provided, merge it (allows updating lead_capture_*, etc.)
+      // voice_enabled and voice_greeting are top-level columns — extract them before merging into JSONB
       if (newSettings !== undefined) {
-        mergedSettings = { ...mergedSettings, ...newSettings };
+        const { voice_enabled, voice_greeting, ...settingsRest } = newSettings as Record<string, unknown>;
+        mergedSettings = { ...mergedSettings, ...settingsRest };
+        if (voice_enabled !== undefined) updates.voice_enabled = voice_enabled;
+        if (voice_greeting !== undefined) updates.voice_greeting = voice_greeting;
       }
 
       updates.settings = mergedSettings;
@@ -427,7 +429,7 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
       .from("projects")
       .update(updates)
       .eq("id", currentProject.id)
-      .select("id, name, settings, plan, updated_at")
+      .select("id, name, settings, plan, voice_enabled, voice_greeting, updated_at")
       .single();
 
     if (updateError) {
@@ -440,7 +442,11 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
         id: updatedProject.id,
         name: updatedProject.name,
         systemPrompt: updatedProject.settings?.systemPrompt || "",
-        settings: updatedProject.settings || {},
+        settings: {
+          ...(updatedProject.settings || {}),
+          voice_enabled: updatedProject.voice_enabled,
+          voice_greeting: updatedProject.voice_greeting,
+        },
         updatedAt: updatedProject.updated_at,
       },
     });

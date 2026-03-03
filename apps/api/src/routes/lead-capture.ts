@@ -24,6 +24,15 @@ import {
 import { supabaseAdmin } from "../lib/supabase";
 import { logger } from "../lib/logger";
 import { isValidEmail } from "../services/lead-capture";
+import { buildGreeting } from "./embed";
+
+const TRANSITION_MESSAGES = [
+  "I just have a quick question to better understand your needs.",
+  "Let me ask you something quick so I can guide you properly.",
+  "Before we continue, I just need one quick detail.",
+  "To make sure I give you the right info, I need to ask:",
+  "Quick question so I can help you better:",
+];
 
 export const leadCaptureRouter = Router();
 
@@ -72,7 +81,28 @@ leadCaptureRouter.post(
         firstMessage || ""
       );
 
-      res.json(result);
+      if (!result.success) {
+        return res.json(result);
+      }
+
+      // Build the assembled greeting for DOM display only (not persisted to DB).
+      const { data: project } = await supabaseAdmin
+        .from("projects")
+        .select("name, company_name")
+        .eq("id", projectId)
+        .maybeSingle();
+
+      const greeting = buildGreeting(project?.name, project?.company_name);
+      let assembledGreeting: string;
+
+      if (result.nextAction === "qualifying_question" && result.qualifyingQuestion) {
+        const transition = TRANSITION_MESSAGES[Math.floor(Math.random() * TRANSITION_MESSAGES.length)];
+        assembledGreeting = `${greeting.intro}\n${transition}\n${result.qualifyingQuestion}`;
+      } else {
+        assembledGreeting = greeting.full;
+      }
+
+      res.json({ ...result, assembledGreeting });
     } catch (error) {
       logger.error("Lead form submit error", error, { requestId: req.requestId });
       res.status(500).json({
@@ -339,6 +369,29 @@ leadsRouter.get(
         throw error;
       }
 
+      // Resolve conversation IDs for leads missing them (via customer_id)
+      const leadsNeedingConv = (leads || []).filter(l => !l.conversation_id && l.customer_id);
+      const customerIds = leadsNeedingConv.map(l => l.customer_id);
+      let convByCustomer: Record<string, string> = {};
+
+      if (customerIds.length > 0) {
+        const { data: convs } = await supabaseAdmin
+          .from("conversations")
+          .select("id, customer_id")
+          .in("customer_id", customerIds)
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false });
+
+        if (convs) {
+          for (const conv of convs) {
+            // Keep the most recent conversation per customer
+            if (!convByCustomer[conv.customer_id]) {
+              convByCustomer[conv.customer_id] = conv.id;
+            }
+          }
+        }
+      }
+
       res.json({
         leads: (leads || []).map((lead) => ({
           id: lead.id,
@@ -350,6 +403,8 @@ leadsRouter.get(
           qualificationReasoning: lead.qualification_reasoning || null,
           captureSource: lead.capture_source || null,
           firstMessage: lead.first_message,
+          conversationId: lead.conversation_id || convByCustomer[lead.customer_id] || null,
+          customerId: lead.customer_id || null,
           formSubmittedAt: lead.form_submitted_at,
           qualificationCompletedAt: lead.qualification_completed_at,
           createdAt: lead.created_at,
