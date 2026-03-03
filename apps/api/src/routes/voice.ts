@@ -233,7 +233,7 @@ router.get("/config/:projectId", async (req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
-// Route B: POST /api/voice/llm/:projectId
+// Route B: POST /api/voice/llm/chat/completions
 // ---------------------------------------------------------------------------
 
 interface OpenAIMessage {
@@ -246,17 +246,24 @@ interface OpenAIMessage {
  * Receives the full conversation in OpenAI messages format, runs it through
  * our chat engine, and streams the response back as OpenAI SSE.
  *
- * ElevenLabs passes visitorId/sessionId via elevenlabs_extra_body
+ * ElevenLabs passes projectId/visitorId/sessionId via elevenlabs_extra_body
  * (enabled in agent Security > Overrides > Custom LLM extra body).
+ * This allows a single ElevenLabs agent to serve all projects.
  */
-router.post("/llm/:projectId/chat/completions", async (req: Request, res: Response) => {
-  const { projectId } = req.params;
-
-  // Extract visitorId/sessionId from ElevenLabs extra body (preferred)
-  // with fallback to headers for backward compatibility
+router.post("/llm/chat/completions", async (req: Request, res: Response) => {
+  // Extract projectId/visitorId/sessionId from ElevenLabs extra body
   const extraBody = req.body.elevenlabs_extra_body as
-    | { visitorId?: string; sessionId?: string }
+    | { projectId?: string; visitorId?: string; sessionId?: string }
     | undefined;
+  const projectId =
+    extraBody?.projectId ||
+    (req.headers["x-project-id"] as string) ||
+    undefined;
+
+  if (!projectId) {
+    return res.status(400).json({ error: "projectId is required in elevenlabs_extra_body" });
+  }
+
   const visitorId =
     extraBody?.visitorId ||
     (req.headers["x-visitor-id"] as string) ||
