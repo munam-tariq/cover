@@ -1,10 +1,11 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { OnbordaProvider, Onborda, useOnborda } from "onborda";
-import { onboardingTours } from "./tour-steps";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
+
 import { TourCard } from "./tour-card";
+import { onboardingTours } from "./tour-steps";
 
 const STORAGE_KEY = "supportbase-onboarding-completed";
 

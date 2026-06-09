@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import {
   ComponentPropsWithoutRef,
   useCallback,
@@ -8,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { motion } from "framer-motion";
+
 import { cn } from "@/lib/utils";
 
 interface AnimatedGridPatternProps extends ComponentPropsWithoutRef<"svg"> {

@@ -1,8 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { apiClient } from "@/lib/api-client";
-import { useProject } from "@/contexts/project-context";
 import {
   Button,
   Card,
@@ -22,6 +19,11 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+
+import { useProject } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
+
 import { AddEndpointModal } from "./add-endpoint-modal";
 
 interface ApiEndpoint {

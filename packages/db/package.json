@@ -10,13 +10,13 @@
     "generate-types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0"
+    "@supabase/supabase-js": "2.88.0"
   },
   "devDependencies": {
     "@chatbot/eslint-config": "workspace:*",
     "@chatbot/typescript-config": "workspace:*",
     "eslint": "^8.56.0",
-    "supabase": "^1.136.0",
+    "supabase": "2.105.0",
     "typescript": "^5.3.3"
   }
 }

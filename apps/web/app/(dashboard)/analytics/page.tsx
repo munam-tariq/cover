@@ -1,23 +1,21 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle, Skeleton } from "@chatbot/ui";
-import { apiClient } from "@/lib/api-client";
-import { useProject } from "@/contexts/project-context";
+import { Skeleton } from "@chatbot/ui";
 import {
   TrendingUp,
-  TrendingDown,
   MessageSquare,
-  Users,
-  Minus,
   UserPlus,
   CheckCircle2,
   Target,
   XCircle,
 } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+
+import { LeadStatsCard } from "@/components/analytics/lead-stats-card";
 import { MessagesChart } from "@/components/analytics/messages-chart";
 import { TopQuestionsList } from "@/components/analytics/top-questions-list";
-import { LeadStatsCard } from "@/components/analytics/lead-stats-card";
+import { useProject } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
 
 interface AnalyticsSummary {
   totalMessages: number;
@@ -106,37 +104,6 @@ export default function AnalyticsPage() {
     setTopQuestions([]);
     fetchAnalytics();
   }, [currentProject?.id, period, fetchAnalytics]);
-
-  const periodLabels: Record<Period, string> = {
-    "24h": "Last 24 Hours",
-    "7d": "Last 7 Days",
-    "30d": "Last 30 Days",
-  };
-
-  function TrendIndicator({ value }: { value: number }) {
-    if (value === 0) {
-      return (
-        <span className="flex items-center text-muted-foreground text-sm">
-          <Minus className="h-4 w-4 mr-1" />
-          No change
-        </span>
-      );
-    }
-    if (value > 0) {
-      return (
-        <span className="flex items-center text-green-600 text-sm">
-          <TrendingUp className="h-4 w-4 mr-1" />
-          +{value}%
-        </span>
-      );
-    }
-    return (
-      <span className="flex items-center text-red-600 text-sm">
-        <TrendingDown className="h-4 w-4 mr-1" />
-        {value}%
-      </span>
-    );
-  }
 
   if (projectLoading) {
     return (

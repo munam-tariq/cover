@@ -1,9 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { apiClient } from "@/lib/api-client";
-import { useProject } from "@/contexts/project-context";
 import {
   Button,
   Card,
@@ -12,6 +8,12 @@ import {
   Skeleton,
 } from "@chatbot/ui";
 import { Trash2, Plus, FileText, File, AlertCircle, RefreshCw, Eye } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+
+import { useProject } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
+import { createClient } from "@/lib/supabase/client";
+
 import { AddKnowledgeModal } from "./add-knowledge-modal";
 import { ViewKnowledgeModal } from "./view-knowledge-modal";
 

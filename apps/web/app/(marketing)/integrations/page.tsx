@@ -1,8 +1,9 @@
+import { Code, ExternalLink } from "lucide-react";
 import { Metadata } from "next";
 import Link from "next/link";
-import { Header } from "../components/header";
+
 import { Footer } from "../components/footer";
-import { Code, ExternalLink } from "lucide-react";
+import { Header } from "../components/header";
 
 export const metadata: Metadata = {
   title: "Integrations | Works on Any Website | FrontFace",

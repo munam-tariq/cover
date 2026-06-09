@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, Skeleton } from "@chatbot/ui";
-import { apiClient } from "@/lib/api-client";
-import { useProject } from "@/contexts/project-context";
 import { TrendingUp, TrendingDown, ThumbsUp, ThumbsDown, Smile, Minus } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+
 import { FeedbackChart } from "@/components/analytics/feedback-chart";
 import { FeedbackIssuesList } from "@/components/analytics/feedback-issues-list";
+import { useProject } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
 
 interface FeedbackSummary {
   totalFeedback: number;
@@ -164,7 +165,7 @@ export default function FeedbackPage() {
         <div>
           <h1 className="text-2xl font-bold">Response Feedback</h1>
           <p className="text-muted-foreground">
-            See how customers rate your chatbot's responses
+            See how customers rate your chatbot&apos;s responses
           </p>
         </div>
         <select

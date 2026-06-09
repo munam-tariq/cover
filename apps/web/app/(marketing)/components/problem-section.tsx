@@ -18,7 +18,7 @@ export function ProblemSection() {
             THE PROBLEM
           </p>
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
-            You're losing leads you never knew existed.
+            You&apos;re losing leads you never knew existed.
           </h2>
           <p className="text-lg text-zinc-400 leading-relaxed max-w-2xl mx-auto mb-16">
             Your website gets traffic. People browse, read, maybe even add
@@ -26,8 +26,8 @@ export function ProblemSection() {
             No way to follow up.
             <br />
             <br />
-            Traditional chatbots don't help — they answer FAQs and dead-end.
-            They weren't built to sell. They were built to deflect.
+            Traditional chatbots don&apos;t help — they answer FAQs and dead-end.
+            They weren&apos;t built to sell. They were built to deflect.
           </p>
         </motion.div>
 

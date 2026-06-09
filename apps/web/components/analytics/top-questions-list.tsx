@@ -89,7 +89,7 @@ export function TopQuestionsList({ questions, loading }: TopQuestionsListProps) 
                         .slice(1, 3)
                         .map((ex, i) => (
                           <span key={i}>
-                            "{ex.length > 40 ? ex.slice(0, 40) + "..." : ex}"
+                            &quot;{ex.length > 40 ? ex.slice(0, 40) + "..." : ex}&quot;
                             {i < Math.min(question.examples.length - 2, 1) ? ", " : ""}
                           </span>
                         ))}

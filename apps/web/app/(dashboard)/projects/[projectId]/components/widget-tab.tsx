@@ -1,8 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { apiClient } from "@/lib/api-client";
-import { useProject, type Project } from "@/contexts/project-context";
 import {
   Button,
   Card,
@@ -20,7 +17,6 @@ import {
   ShieldCheck,
   ShieldAlert,
   Loader2,
-  AlertCircle,
   Check,
   Plus,
   X,
@@ -28,23 +24,16 @@ import {
   Copy,
   CheckCheck,
 } from "lucide-react";
+import { useState, useEffect } from "react";
+
+import { type Project } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
 
 interface WidgetTabProps {
   project: Project;
 }
 
-interface ProjectUpdateResponse {
-  project: {
-    id: string;
-    name: string;
-    settings: Record<string, unknown>;
-    updatedAt: string;
-  };
-}
-
 export function WidgetTab({ project }: WidgetTabProps) {
-  const { refreshProjects } = useProject();
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   // Domain whitelist state
@@ -110,7 +99,7 @@ export function WidgetTab({ project }: WidgetTabProps) {
     setSavingDomains(true);
     setDomainError(null);
 
-    let domainsToSave = [...allowedDomains];
+    const domainsToSave = [...allowedDomains];
     if (newDomain.trim()) {
       const domain = newDomain.trim().toLowerCase();
       const domainRegex = /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/;
@@ -166,13 +155,6 @@ export function WidgetTab({ project }: WidgetTabProps) {
 
   return (
     <div className="space-y-6">
-      {error && (
-        <div className="flex items-center gap-2 p-4 rounded-md bg-destructive/10 text-destructive">
-          <AlertCircle className="h-4 w-4" />
-          <p>{error}</p>
-        </div>
-      )}
-
       {success && (
         <div className="flex items-center gap-2 p-4 rounded-md bg-green-500/10 text-green-600">
           <Check className="h-4 w-4" />

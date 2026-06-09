@@ -11,22 +11,13 @@
  * - Error handling with user-friendly messages
  */
 
-import { Message } from "./message";
-import { Input } from "./input";
-import { TypingIndicator } from "./typing-indicator";
-import { HumanButton } from "./human-button";
-import { OfflineForm } from "./offline-form";
-import {
-  LeadCaptureForm,
-  LeadCaptureFormData,
-  LeadCaptureFormConfig,
-} from "./lead-capture-form";
 import {
   sendMessage,
   ChatApiError,
   submitLeadCaptureForm,
   getLeadCaptureStatus,
 } from "../utils/api";
+import { ElevenLabsVoiceManager } from "../utils/elevenlabs-voice";
 import {
   checkHandoffAvailability,
   triggerHandoff,
@@ -38,6 +29,13 @@ import {
   HandoffAvailability,
   ConversationStatus,
 } from "../utils/handoff";
+import { generateId } from "../utils/helpers";
+import {
+  WidgetRealtimeManager,
+  getRealtimeManager,
+  RealtimeMessage,
+  RealtimeStatusChange,
+} from "../utils/realtime";
 import {
   getVisitorId,
   getSessionId,
@@ -49,27 +47,24 @@ import {
   StoredMessage,
   LeadCaptureLocalState,
 } from "../utils/storage";
-import { generateId } from "../utils/helpers";
+import type {
+  LeadCaptureConfig,
+  LeadRecoveryConfig,
+  VoiceConfig,
+} from "../utils/widget-config";
+
+import { HumanButton } from "./human-button";
+import { Input } from "./input";
+import {
+  LeadCaptureForm,
+  LeadCaptureFormData,
+  LeadCaptureFormConfig,
+} from "./lead-capture-form";
+import { Message } from "./message";
+import { OfflineForm } from "./offline-form";
+import { TypingIndicator } from "./typing-indicator";
 import { VoiceCallOverlay, type VoiceCallState } from "./voice-call-overlay";
 import { VoicePermissionPrompt } from "./voice-permission-prompt";
-import type { VoiceConfig } from "../widget";
-import { ElevenLabsVoiceManager } from "../utils/elevenlabs-voice";
-
-import {
-  WidgetRealtimeManager,
-  getRealtimeManager,
-  cleanupRealtime,
-  RealtimeMessage,
-  RealtimeStatusChange,
-} from "../utils/realtime";
-
-export interface LeadRecoveryConfig {
-  enabled: boolean;
-  deferred_skip?: { enabled: boolean; reask_after_messages: number; max_deferred_asks: number };
-  return_visit?: { enabled: boolean; max_visits_before_stop: number; welcome_back_message: string };
-  high_intent_override?: { enabled: boolean; keywords: string[]; override_cooldowns: boolean };
-  conversation_summary_hook?: { enabled: boolean; min_messages: number; prompt: string };
-}
 
 export interface ChatWindowOptions {
   projectId: string;
@@ -79,7 +74,7 @@ export interface ChatWindowOptions {
   title: string;
   primaryColor: string;
   onClose: () => void;
-  leadCaptureConfig?: Record<string, unknown> | null;
+  leadCaptureConfig?: LeadCaptureConfig | null;
   leadRecoveryConfig?: LeadRecoveryConfig | null;
   voiceConfig?: VoiceConfig | null;
 }
@@ -879,7 +874,7 @@ export class ChatWindow {
 
     // Build form config
     const formConfig: LeadCaptureFormConfig = {
-      formFields: lcConfig.formFields as LeadCaptureFormConfig["formFields"],
+      formFields: lcConfig.formFields,
     };
 
     this.leadCaptureForm = new LeadCaptureForm({
@@ -1544,7 +1539,7 @@ export class ChatWindow {
     this.presenceManager.start(this.sessionId);
 
     // Check if realtime config is available
-    const config = ((window as unknown) as Record<string, unknown>).__WIDGET_CONFIG__ as Record<string, string> | undefined;
+    const config = window.__WIDGET_CONFIG__;
     const hasRealtimeConfig = !!(config?.supabaseUrl && config?.supabaseAnonKey);
 
     // Try realtime if enabled and config available
@@ -1633,13 +1628,10 @@ export class ChatWindow {
     // Skip customer messages (we already have those from sending)
     if (message.senderType === "customer") return;
 
-    // Determine role based on sender type
-    let role: "user" | "assistant" = "assistant";
-
     const storedMsg: StoredMessage = {
       id: message.id,
       content: message.content,
-      role,
+      role: "assistant",
       timestamp: new Date(message.createdAt).getTime(),
       // Add agent name for agent messages
       ...(message.senderType === "agent" && message.senderName

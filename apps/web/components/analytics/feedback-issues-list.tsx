@@ -114,7 +114,7 @@ export function FeedbackIssuesList({ issues, loading }: FeedbackIssuesListProps)
                 <div className="flex-1 min-w-0">
                   {/* Question */}
                   <p className="font-medium text-sm">
-                    "{truncate(issue.questionText, 100)}"
+                    &quot;{truncate(issue.questionText, 100)}&quot;
                   </p>
 
                   {/* Sample answer */}

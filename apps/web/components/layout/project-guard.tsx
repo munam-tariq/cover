@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useProject } from "@/contexts/project-context";
 import { Skeleton } from "@chatbot/ui";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+import { useProject } from "@/contexts/project-context";
+
 
 interface ProjectGuardProps {
   children: React.ReactNode;

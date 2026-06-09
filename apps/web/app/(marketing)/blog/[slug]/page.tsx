@@ -1,11 +1,12 @@
+import { ArrowLeft, Clock, Calendar, Share2 } from "lucide-react";
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import Script from "next/script";
 import ReactMarkdown from "react-markdown";
-import { ArrowLeft, Clock, Calendar, Share2 } from "lucide-react";
-import { Header } from "../../components/header";
+
 import { Footer } from "../../components/footer";
+import { Header } from "../../components/header";
 import { blogPosts, getBlogPost, getAllBlogSlugs } from "../blog-data";
 
 interface BlogPostPageProps {
@@ -84,7 +85,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   // Get related posts (same category or random)
   const relatedPosts = blogPosts
     .filter((p) => p.slug !== post.slug)
-    .sort((a, b) => (a.category === post.category ? -1 : 1))
+    .sort(
+      (a, b) =>
+        Number(b.category === post.category) -
+        Number(a.category === post.category)
+    )
     .slice(0, 3);
 
   // Article Schema

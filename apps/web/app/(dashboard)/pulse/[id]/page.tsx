@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter, useParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -15,17 +13,6 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@chatbot/ui";
-import { apiClient } from "@/lib/api-client";
-import { useProject } from "@/contexts/project-context";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  XAxis,
-  YAxis,
-  Bar,
-  BarChart,
-} from "recharts";
 import {
   ArrowLeft,
   BarChart3,
@@ -40,6 +27,20 @@ import {
   Sparkles,
   Loader2,
 } from "lucide-react";
+import { useRouter, useParams } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  XAxis,
+  YAxis,
+  Bar,
+  BarChart,
+} from "recharts";
+
+import { useProject } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

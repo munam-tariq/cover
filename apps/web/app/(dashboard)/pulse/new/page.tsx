@@ -1,10 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@chatbot/ui";
-import { apiClient } from "@/lib/api-client";
-import { useProject } from "@/contexts/project-context";
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,6 +10,13 @@ import {
   FileText,
   Check,
 } from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { useProject } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
+
 
 type CampaignType = "nps" | "poll" | "sentiment" | "feedback";
 type Step = "type" | "question" | "targeting" | "styling" | "review";
@@ -337,9 +340,12 @@ function PopupPreview({
         {/* Avatar */}
         {avatarUrl && (
           <div className="flex items-center gap-2 mb-2 pr-5">
-            <img
+            <Image
               src={avatarUrl}
-              alt=""
+              alt={avatarName || "Survey avatar"}
+              width={28}
+              height={28}
+              unoptimized
               className="w-7 h-7 rounded-full object-cover border-2 border-white/80 shadow-sm flex-shrink-0"
             />
             {avatarName && (
@@ -870,9 +876,12 @@ export default function NewCampaignPage() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
                     {avatarUrl && (
-                      <img
+                      <Image
                         src={avatarUrl}
-                        alt=""
+                        alt={avatarName || "Survey avatar"}
+                        width={40}
+                        height={40}
+                        unoptimized
                         className="w-10 h-10 rounded-full object-cover border-2 border-muted shadow-sm flex-shrink-0"
                       />
                     )}

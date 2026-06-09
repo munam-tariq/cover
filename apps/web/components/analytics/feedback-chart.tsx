@@ -11,7 +11,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@chatbot/ui";
-import { CartesianGrid, Line, LineChart, XAxis, YAxis, Bar, BarChart } from "recharts";
+import { CartesianGrid, XAxis, YAxis, Bar, BarChart } from "recharts";
 
 interface FeedbackTimelineEntry {
   date: string;

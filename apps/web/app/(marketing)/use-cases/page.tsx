@@ -1,10 +1,5 @@
-import { Metadata } from "next";
-import Link from "next/link";
-import { Header } from "../components/header";
-import { Footer } from "../components/footer";
 import {
   ShoppingCart,
-  Code2,
   Rocket,
   Building2,
   GraduationCap,
@@ -12,6 +7,11 @@ import {
   ArrowRight,
   Briefcase,
 } from "lucide-react";
+import { Metadata } from "next";
+import Link from "next/link";
+
+import { Footer } from "../components/footer";
+import { Header } from "../components/header";
 
 export const metadata: Metadata = {
   title: "Use Cases | AI Lead Capture & Sales Agent for Every Industry | FrontFace",

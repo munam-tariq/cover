@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +17,10 @@ import {
   Label,
 } from "@chatbot/ui";
 import { Upload, FileText, File, AlertCircle, Loader2, Globe } from "lucide-react";
+import { useState, useRef } from "react";
+
 import { apiClient, apiClientFormData } from "@/lib/api-client";
+
 import { UrlImportFlow } from "./url-import-flow";
 
 interface AddKnowledgeModalProps {

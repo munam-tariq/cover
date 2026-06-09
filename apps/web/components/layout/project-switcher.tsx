@@ -1,8 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronDown, Check, Plus, FolderOpen } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +10,10 @@ import {
   Button,
   Skeleton,
 } from "@chatbot/ui";
+import { ChevronDown, Check, Plus, FolderOpen } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
 import { useProject } from "@/contexts/project-context";
 
 /**

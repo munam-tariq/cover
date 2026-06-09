@@ -11,6 +11,7 @@
 
 import { Router, Request, Response } from "express";
 import { z } from "zod";
+
 import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import {
@@ -317,13 +318,22 @@ router.post("/conversations/:id/handoff", async (req: Request, res: Response) =>
 
     // Get conversation - first try conversations table, then chat_sessions
     let conversation = null;
-    let fromChatSessions = false;
 
     const { data: convData, error: convError } = await supabaseAdmin
       .from("conversations")
       .select("*")
       .eq("id", id)
-      .single();
+      .maybeSingle();
+
+    if (convError) {
+      console.error("Error fetching conversation:", convError);
+      return res.status(500).json({
+        error: {
+          code: "FETCH_ERROR",
+          message: "Failed to fetch conversation",
+        },
+      });
+    }
 
     if (convData) {
       conversation = convData;
@@ -333,10 +343,19 @@ router.post("/conversations/:id/handoff", async (req: Request, res: Response) =>
         .from("chat_sessions")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
+
+      if (sessionError) {
+        console.error("Error fetching legacy chat session:", sessionError);
+        return res.status(500).json({
+          error: {
+            code: "FETCH_ERROR",
+            message: "Failed to fetch conversation",
+          },
+        });
+      }
 
       if (sessionData) {
-        fromChatSessions = true;
         // Create a conversation record from the chat session
         const { data: newConv, error: createError } = await supabaseAdmin
           .from("conversations")
@@ -422,7 +441,7 @@ router.post("/conversations/:id/handoff", async (req: Request, res: Response) =>
 
     if (availableAgentId) {
       // Direct assignment - agent available
-      const { data: updated, error: updateError } = await supabaseAdmin
+      const { error: updateError } = await supabaseAdmin
         .from("conversations")
         .update({
           status: "agent_active",
@@ -434,9 +453,7 @@ router.post("/conversations/:id/handoff", async (req: Request, res: Response) =>
           claimed_at: now,
           ...customerUpdates,
         })
-        .eq("id", id)
-        .select("*")
-        .single();
+        .eq("id", id);
 
       if (updateError) {
         console.error("Error updating conversation:", updateError);
@@ -529,7 +546,7 @@ router.post("/conversations/:id/handoff", async (req: Request, res: Response) =>
       });
     } else {
       // No agent available - add to queue
-      const { data: updated, error: updateError } = await supabaseAdmin
+      const { error: updateError } = await supabaseAdmin
         .from("conversations")
         .update({
           status: "waiting",
@@ -540,9 +557,7 @@ router.post("/conversations/:id/handoff", async (req: Request, res: Response) =>
           queue_entered_at: now,
           ...customerUpdates,
         })
-        .eq("id", id)
-        .select("*")
-        .single();
+        .eq("id", id);
 
       if (updateError) {
         console.error("Error updating conversation:", updateError);
@@ -602,6 +617,12 @@ router.post("/conversations/:id/claim", authMiddleware, async (req: Request, res
   try {
     const { userId } = req as AuthenticatedRequest;
     const { id } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+      });
+    }
 
     if (!isValidUUID(id)) {
       return res.status(400).json({
@@ -988,12 +1009,9 @@ router.post("/conversations/:id/resolve", authMiddleware, async (req: Request, r
     }
 
     const now = new Date().toISOString();
-    let newStatus = resolution;
-
-    // If returning to AI, set status back to ai_active
-    if (returnToAI) {
-      newStatus = "ai_active";
-    }
+    const newStatus: "resolved" | "closed" | "ai_active" = returnToAI
+      ? "ai_active"
+      : resolution;
 
     // Update conversation
     const { data: updated, error: updateError } = await supabaseAdmin

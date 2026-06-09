@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Settings, Database, Code, MessageSquare, Puzzle, Users } from "lucide-react";
 import { Button, Tabs, TabsList, TabsTrigger, TabsContent, Skeleton } from "@chatbot/ui";
+import { ArrowLeft, Settings, Database, Code, MessageSquare, Puzzle, Users } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
 import { useProject } from "@/contexts/project-context";
+
 import { AgentHeader } from "./components/agent-header";
-import { OverviewTab } from "./components/overview-tab";
-import { KnowledgeTab } from "./components/knowledge-tab";
 import { EndpointsTab } from "./components/endpoints-tab";
-import { LeadCaptureTab } from "./components/lead-capture-tab";
-import { WidgetTab } from "./components/widget-tab";
 import { HandoffTab } from "./components/handoff-tab";
+import { KnowledgeTab } from "./components/knowledge-tab";
+import { LeadCaptureTab } from "./components/lead-capture-tab";
+import { OverviewTab } from "./components/overview-tab";
+import { WidgetTab } from "./components/widget-tab";
 
 /**
  * Agent Studio Page
@@ -122,11 +124,11 @@ export default function AgentStudioPage() {
         </TabsContent>
 
         <TabsContent value="knowledge" className="mt-6">
-          <KnowledgeTab project={project} />
+          <KnowledgeTab />
         </TabsContent>
 
         <TabsContent value="endpoints" className="mt-6">
-          <EndpointsTab project={project} />
+          <EndpointsTab />
         </TabsContent>
 
         <TabsContent value="leads" className="mt-6">

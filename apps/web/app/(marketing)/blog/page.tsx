@@ -1,8 +1,10 @@
+import { ArrowRight, Clock, Calendar } from "lucide-react";
 import { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Clock, Calendar } from "lucide-react";
-import { Header } from "../components/header";
+
 import { Footer } from "../components/footer";
+import { Header } from "../components/header";
+
 import { blogPosts } from "./blog-data";
 
 export const metadata: Metadata = {

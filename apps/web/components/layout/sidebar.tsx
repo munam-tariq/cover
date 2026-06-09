@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Inbox, Users } from "lucide-react";
+
 import { useAgent } from "@/contexts/agent-context";
-import { useProject } from "@/contexts/project-context";
 import { useInboxPollingOptional } from "@/contexts/inbox-polling-context";
+import { useProject } from "@/contexts/project-context";
 
 // Navigation items with role requirements
 // roles: undefined = all, "owner" = owner only, "owner_admin" = owner or admin, "agent_only" = agents (not owners viewing their own project)
@@ -100,7 +100,7 @@ const icons: Record<string, React.FC<{ className?: string }>> = {
 export function Sidebar() {
   const pathname = usePathname();
   const { role, availability, isLoading } = useAgent();
-  const { currentProject, isLoading: isProjectLoading } = useProject();
+  const { currentProject } = useProject();
   const inboxPolling = useInboxPollingOptional();
 
   // Get the effective role for the current project

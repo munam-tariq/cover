@@ -11,11 +11,14 @@
  * - POST /api/invitations/:token/accept - Accept invitation (auth required)
  */
 
-import { Router, Request, Response } from "express";
-import { z } from "zod";
 import { randomBytes } from "crypto";
+
+import { Router, Request, Response } from "express";
 import { Resend } from "resend";
+import { z } from "zod";
+
 import { supabaseAdmin } from "../lib/supabase";
+import { firstRelatedRecord } from "../lib/supabase-relations";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -156,6 +159,12 @@ router.get("/:id/members", authMiddleware, async (req: Request, res: Response) =
   try {
     const { userId } = req as AuthenticatedRequest;
     const { id: projectId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+      });
+    }
 
     // Validate project ID
     if (!isValidUUID(projectId)) {
@@ -313,6 +322,12 @@ router.post("/:id/members/invite", authMiddleware, async (req: Request, res: Res
   try {
     const { userId } = req as AuthenticatedRequest;
     const { id: projectId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+      });
+    }
 
     // Validate project ID
     if (!isValidUUID(projectId)) {
@@ -653,6 +668,12 @@ router.post("/invitations/:token/accept", authMiddleware, async (req: Request, r
     const { userId } = req as AuthenticatedRequest;
     const { token } = req.params;
 
+    if (!userId) {
+      return res.status(401).json({
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+      });
+    }
+
     if (!token || token.length !== 64) {
       return res.status(400).json({
         error: { code: "INVALID_TOKEN", message: "Invalid invitation token" },
@@ -711,10 +732,22 @@ router.post("/invitations/:token/accept", authMiddleware, async (req: Request, r
       .select("*, projects(id, name)")
       .single();
 
-    if (updateError) {
+    if (updateError || !updatedMember) {
       console.error("Error accepting invitation:", updateError);
       return res.status(500).json({
         error: { code: "ACCEPT_ERROR", message: "Failed to accept invitation" },
+      });
+    }
+
+    const acceptedProject = firstRelatedRecord<{ id: string; name: string }>(
+      updatedMember.projects
+    );
+    if (!acceptedProject) {
+      return res.status(500).json({
+        error: {
+          code: "ACCEPT_ERROR",
+          message: "Accepted invitation is missing its project",
+        },
       });
     }
 
@@ -743,8 +776,8 @@ router.post("/invitations/:token/accept", authMiddleware, async (req: Request, r
         acceptedAt: updatedMember.accepted_at,
       },
       project: {
-        id: updatedMember.projects.id,
-        name: updatedMember.projects.name,
+        id: acceptedProject.id,
+        name: acceptedProject.name,
       },
     });
   } catch (error) {
@@ -788,11 +821,17 @@ router.get("/invitations/pending", async (req: Request, res: Response) => {
       hasPendingInvitations: (invitations || []).length > 0,
       count: (invitations || []).length,
       // Don't expose tokens or sensitive data - only project names and roles
-      invitations: (invitations || []).map((inv) => ({
-        projectName: (inv.projects as { name: string } | null)?.name || "Unknown",
-        role: inv.role,
-        expiresAt: inv.expires_at,
-      })),
+      invitations: (invitations || []).map((invitation) => {
+        const project = firstRelatedRecord<{ name: string }>(
+          invitation.projects
+        );
+
+        return {
+          projectName: project?.name || "Unknown",
+          role: invitation.role,
+          expiresAt: invitation.expires_at,
+        };
+      }),
     });
   } catch (error) {
     console.error("Error in GET /invitations/pending:", error);
@@ -841,11 +880,21 @@ router.get("/invitations/:token", async (req: Request, res: Response) => {
       });
     }
 
+    const project = firstRelatedRecord<{ name: string }>(invitation.projects);
+    if (!project) {
+      return res.status(404).json({
+        error: {
+          code: "PROJECT_NOT_FOUND",
+          message: "Invitation project not found",
+        },
+      });
+    }
+
     res.json({
       invitation: {
         email: invitation.email,
         role: invitation.role,
-        projectName: invitation.projects.name,
+        projectName: project.name,
         expiresAt: invitation.expires_at,
       },
     });

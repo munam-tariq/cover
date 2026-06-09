@@ -12,6 +12,7 @@
  */
 
 import { RealtimeChannel, RealtimeClient } from "@supabase/realtime-js";
+import "./widget-config";
 
 // ============================================================================
 // Types
@@ -64,7 +65,7 @@ function getSupabaseUrl(apiUrl: string): string {
   // Try to detect from environment or config
   if (typeof window !== "undefined") {
     // Check for global config
-    const config = (window as Record<string, unknown>).__WIDGET_CONFIG__ as Record<string, string> | undefined;
+    const config = window.__WIDGET_CONFIG__;
     if (config?.supabaseUrl) {
       return config.supabaseUrl;
     }
@@ -92,7 +93,7 @@ function getSupabaseUrl(apiUrl: string): string {
 // Supabase anon key for realtime access
 function getSupabaseAnonKey(): string {
   if (typeof window !== "undefined") {
-    const config = (window as Record<string, unknown>).__WIDGET_CONFIG__ as Record<string, string> | undefined;
+    const config = window.__WIDGET_CONFIG__;
     if (config?.supabaseAnonKey) {
       return config.supabaseAnonKey;
     }

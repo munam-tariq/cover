@@ -1,10 +1,10 @@
-import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
-import { ProjectProvider } from "@/contexts/project-context";
+import { ProjectGuard } from "@/components/layout/project-guard";
+import { Sidebar } from "@/components/layout/sidebar";
+import { TourProvider } from "@/components/onboarding";
 import { AgentProvider } from "@/contexts/agent-context";
 import { InboxPollingProvider } from "@/contexts/inbox-polling-context";
-import { TourProvider } from "@/components/onboarding";
-import { ProjectGuard } from "@/components/layout/project-guard";
+import { ProjectProvider } from "@/contexts/project-context";
 
 // Force dynamic rendering for all dashboard pages (auth required)
 export const dynamic = "force-dynamic";

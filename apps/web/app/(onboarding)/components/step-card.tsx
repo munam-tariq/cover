@@ -1,8 +1,8 @@
 "use client";
 
-import { ReactNode } from "react";
 import { Card, CardContent } from "@chatbot/ui";
 import { cn } from "@chatbot/ui";
+import { ReactNode } from "react";
 
 interface StepCardProps {
   children: ReactNode;

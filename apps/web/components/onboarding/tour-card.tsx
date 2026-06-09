@@ -1,9 +1,10 @@
 "use client";
 
-import type { CardComponentProps } from "onborda";
-import { useOnborda } from "onborda";
 import { Button } from "@chatbot/ui";
 import { X, ArrowLeft, ArrowRight } from "lucide-react";
+import type { CardComponentProps } from "onborda";
+import { useOnborda } from "onborda";
+
 import { useTourContext } from "./tour-provider";
 
 export function TourCard({

@@ -12,6 +12,35 @@ export interface GeoInfo {
   countryCode: string | null;
 }
 
+interface IpApiSuccessResponse {
+  status: "success";
+  country: string | null;
+  countryCode: string | null;
+  city: string | null;
+  timezone: string | null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseIpApiResponse(value: unknown): IpApiSuccessResponse | null {
+  if (!isRecord(value)) return null;
+
+  if (value.status !== "success") return null;
+
+  const optionalString = (field: unknown): string | null =>
+    typeof field === "string" && field ? field : null;
+
+  return {
+    status: "success",
+    country: optionalString(value.country),
+    countryCode: optionalString(value.countryCode),
+    city: optionalString(value.city),
+    timezone: optionalString(value.timezone),
+  };
+}
+
 /**
  * Check if an IP address is private or localhost
  */
@@ -82,17 +111,15 @@ export async function getGeoFromIP(ip: string): Promise<GeoInfo | null> {
       return null;
     }
 
-    const data = await response.json();
-
-    if (data.status !== "success") {
-      return null;
-    }
+    const payload: unknown = await response.json();
+    const data = parseIpApiResponse(payload);
+    if (!data) return null;
 
     return {
-      country: data.country || null,
-      countryCode: data.countryCode || null,
-      city: data.city || null,
-      timezone: data.timezone || null,
+      country: data.country,
+      countryCode: data.countryCode,
+      city: data.city,
+      timezone: data.timezone,
     };
   } catch (error) {
     // Don't log timeout errors (common for localhost testing)

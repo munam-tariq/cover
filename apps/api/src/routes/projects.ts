@@ -12,8 +12,10 @@
  * - PUT /api/projects/:id/allowed-domains - Update allowed domains for widget embedding
  */
 
-import { Router, Request, Response } from "express";
 import { createClient } from "@supabase/supabase-js";
+import { Router, Request, Response } from "express";
+
+import { firstRelatedRecord } from "../lib/supabase-relations";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import { clearDomainCache } from "../middleware/domain-whitelist";
 
@@ -63,32 +65,36 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
 
     // Filter out deleted member projects and build combined list
     // Note: Supabase returns joined data - projects is the joined project object
-    const memberProjects = (memberships || [])
-      .filter((m) => {
-        const proj = m.projects as unknown as { deleted_at: string | null } | null;
-        return proj && !proj.deleted_at;
-      })
-      .map((m) => {
-        const proj = m.projects as unknown as {
-          id: string;
-          name: string;
-          settings: Record<string, unknown> | null;
-          plan: string;
-          created_at: string;
-          updated_at: string;
-          user_id: string;
-        };
-        return {
-          id: proj.id,
-          name: proj.name,
-          settings: proj.settings,
-          plan: proj.plan,
-          created_at: proj.created_at,
-          updated_at: proj.updated_at,
-          user_id: proj.user_id,
-          memberRole: m.role,
-        };
-      });
+    interface MemberProject {
+      id: string;
+      name: string;
+      settings: Record<string, unknown> | null;
+      plan: string;
+      voice_enabled: boolean;
+      voice_greeting: string | null;
+      created_at: string;
+      updated_at: string;
+      user_id: string;
+      deleted_at: string | null;
+    }
+
+    const memberProjects = (memberships || []).flatMap((membership) => {
+      const project = firstRelatedRecord<MemberProject>(membership.projects);
+      if (!project || project.deleted_at) return [];
+
+      return [{
+        id: project.id,
+        name: project.name,
+        settings: project.settings,
+        plan: project.plan,
+        voice_enabled: project.voice_enabled,
+        voice_greeting: project.voice_greeting,
+        created_at: project.created_at,
+        updated_at: project.updated_at,
+        user_id: project.user_id,
+        memberRole: membership.role,
+      }];
+    });
 
     // Combine owned and member projects (avoid duplicates)
     const ownedIds = new Set((ownedProjects || []).map((p) => p.id));

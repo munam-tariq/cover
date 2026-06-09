@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import { Button, Input, Progress, ScrollArea } from "@chatbot/ui";
 import {
   Globe,
@@ -11,6 +10,8 @@ import {
   ChevronUp,
   ExternalLink,
 } from "lucide-react";
+import { useState, useCallback } from "react";
+
 import { apiClient } from "@/lib/api-client";
 
 type ImportStep =

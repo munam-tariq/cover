@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Button, Card, CardContent, Skeleton } from "@chatbot/ui";
 import { User, Mail, Check, AlertCircle, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+
+import { createClient } from "@/lib/supabase/client";
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);

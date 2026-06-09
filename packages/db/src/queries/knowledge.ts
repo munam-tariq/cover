@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "../client";
-import type { KnowledgeSource, KnowledgeChunk, Json } from "../types";
+import type { KnowledgeSource, Json } from "../types";
 
 /**
  * Get all knowledge sources for a project

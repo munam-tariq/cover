@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Bot, ArrowLeft, ArrowRight, Loader2, ChevronDown } from "lucide-react";
 import { Button, Input, Textarea, Label } from "@chatbot/ui";
-import { StepCard, StepHeader, StepActions } from "../../components/step-card";
-import { OnboardingProgress, ONBOARDING_STEPS } from "../../components/onboarding-progress";
-import { useOnboarding } from "../../components/onboarding-context";
+import { Bot, ArrowLeft, ArrowRight, Loader2, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
 import { apiClient } from "@/lib/api-client";
+
+import { useOnboarding } from "../../components/onboarding-context";
+import { OnboardingProgress, ONBOARDING_STEPS } from "../../components/onboarding-progress";
+import { StepCard, StepHeader, StepActions } from "../../components/step-card";
+
 
 /**
  * Agent Name Page (Step 2)

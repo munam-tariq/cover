@@ -7,6 +7,8 @@
  * - Messages (sessionStorage - persists during page session)
  */
 
+import { isBoolean, isNumber, isRecord, isString } from "./type-guards";
+
 const VISITOR_ID_KEY = "chatbot_visitor_id";
 const SESSION_PREFIX = "chatbot_session_";
 const MESSAGES_PREFIX = "chatbot_messages_";
@@ -20,6 +22,27 @@ export interface StoredMessage {
   isError?: boolean;
   feedback?: "helpful" | "unhelpful" | null;
   agentName?: string;
+}
+
+function isStoredMessage(value: unknown): value is StoredMessage {
+  if (
+    !isRecord(value) ||
+    !isString(value.id) ||
+    (value.role !== "user" && value.role !== "assistant") ||
+    !isString(value.content) ||
+    !isNumber(value.timestamp)
+  ) {
+    return false;
+  }
+
+  return (
+    (value.isError === undefined || isBoolean(value.isError)) &&
+    (value.feedback === undefined ||
+      value.feedback === null ||
+      value.feedback === "helpful" ||
+      value.feedback === "unhelpful") &&
+    (value.agentName === undefined || isString(value.agentName))
+  );
 }
 
 /**
@@ -80,7 +103,8 @@ export function getStoredMessages(projectId: string): StoredMessage[] {
   try {
     const data = localStorage.getItem(`${MESSAGES_PREFIX}${projectId}`);
     if (!data) return [];
-    return JSON.parse(data);
+    const parsed: unknown = JSON.parse(data);
+    return Array.isArray(parsed) ? parsed.filter(isStoredMessage) : [];
   } catch {
     return [];
   }
@@ -105,14 +129,29 @@ export function setStoredMessages(projectId: string, messages: StoredMessage[]):
 export interface LeadCaptureLocalState {
   hasCompletedForm: boolean;
   hasCompletedQualifying: boolean;
+  hasProvidedEmail?: boolean;
+  captureSource?: string;
   firstMessage?: string;
+}
+
+function isLeadCaptureLocalState(value: unknown): value is LeadCaptureLocalState {
+  return (
+    isRecord(value) &&
+    isBoolean(value.hasCompletedForm) &&
+    isBoolean(value.hasCompletedQualifying) &&
+    (value.hasProvidedEmail === undefined ||
+      isBoolean(value.hasProvidedEmail)) &&
+    (value.captureSource === undefined || isString(value.captureSource)) &&
+    (value.firstMessage === undefined || isString(value.firstMessage))
+  );
 }
 
 export function getLeadCaptureState(projectId: string): LeadCaptureLocalState | null {
   try {
     const data = localStorage.getItem(`${LEAD_STATE_PREFIX}${projectId}`);
     if (!data) return null;
-    return JSON.parse(data);
+    const parsed: unknown = JSON.parse(data);
+    return isLeadCaptureLocalState(parsed) ? parsed : null;
   } catch {
     return null;
   }

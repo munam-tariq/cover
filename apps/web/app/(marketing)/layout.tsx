@@ -1,6 +1,7 @@
 import Script from "next/script";
-import { Header } from "./components/header";
+
 import { CursorGlow } from "./components/cursor-glow";
+import { Header } from "./components/header";
 import { ScrollProgress } from "./components/scroll-progress";
 
 export default function MarketingLayout({

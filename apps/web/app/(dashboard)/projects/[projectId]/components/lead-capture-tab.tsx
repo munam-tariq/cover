@@ -1,8 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { apiClient } from "@/lib/api-client";
-import { useProject, type Project } from "@/contexts/project-context";
 import {
   Button,
   Card,
@@ -15,6 +12,10 @@ import {
   Badge,
 } from "@chatbot/ui";
 import { Mail, Loader2, AlertCircle, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+
+import { useProject, type Project } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
 
 interface LeadCaptureTabProps {
   project: Project;

@@ -67,7 +67,7 @@ export function CapabilitiesSection() {
           <h2 className="text-3xl md:text-5xl font-bold text-zinc-900 tracking-tight leading-tight">
             Everything you need.
             <br />
-            <span className="text-zinc-300">Nothing you don't.</span>
+            <span className="text-zinc-300">Nothing you don&apos;t.</span>
           </h2>
         </motion.div>
 

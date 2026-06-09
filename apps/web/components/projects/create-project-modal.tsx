@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +12,8 @@ import {
   Textarea,
   Label,
 } from "@chatbot/ui";
+import { useState } from "react";
+
 import { useProject } from "@/contexts/project-context";
 
 interface CreateProjectModalProps {

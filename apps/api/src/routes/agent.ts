@@ -10,7 +10,9 @@
 
 import { Router, Request, Response } from "express";
 import { z } from "zod";
+
 import { supabaseAdmin } from "../lib/supabase";
+import { firstRelatedRecord } from "../lib/supabase-relations";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import { broadcastAgentStatusChanged } from "../services/realtime";
 
@@ -38,9 +40,6 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 function isValidUUID(id: string): boolean {
   return UUID_REGEX.test(id);
 }
-
-// Auto-offline threshold (30 minutes without heartbeat)
-const AUTO_OFFLINE_THRESHOLD_MS = 30 * 60 * 1000;
 
 // ============================================================================
 // Routes
@@ -92,6 +91,16 @@ router.put("/status", authMiddleware, async (req: Request, res: Response) => {
     }
 
     const isOwner = project.user_id === userId;
+    if (!isOwner && memberError && memberError.code !== "PGRST116") {
+      console.error("Error checking project membership:", memberError);
+      return res.status(500).json({
+        error: {
+          code: "FETCH_ERROR",
+          message: "Failed to verify project membership",
+        },
+      });
+    }
+
     const isAgent = !!membership;
 
     if (!isOwner && !isAgent) {
@@ -298,13 +307,11 @@ router.get("/projects/:id/agents", authMiddleware, async (req: Request, res: Res
       .eq("project_id", projectId)
       .in("user_id", allUserIds);
 
-    const availabilityMap = (availabilities || []).reduce(
-      (acc, a) => {
-        acc[a.user_id] = a;
-        return acc;
-      },
-      {} as Record<string, typeof availabilities[0]>
-    );
+    type Availability = NonNullable<typeof availabilities>[number];
+    const availabilityMap: Record<string, Availability> = {};
+    for (const availability of availabilities || []) {
+      availabilityMap[availability.user_id] = availability;
+    }
 
     // Get user details
     const { data: ownerUser } = await supabaseAdmin.auth.admin.getUserById(project.user_id);
@@ -405,22 +412,32 @@ router.get("/projects", authMiddleware, async (req: Request, res: Response) => {
       .eq("user_id", userId)
       .in("project_id", projectIds);
 
-    const availabilityMap = (availabilities || []).reduce(
-      (acc, a) => {
-        acc[a.project_id] = a;
-        return acc;
-      },
-      {} as Record<string, typeof availabilities[0]>
-    );
+    type ProjectAvailability = NonNullable<typeof availabilities>[number];
+    const availabilityMap: Record<string, ProjectAvailability> = {};
+    for (const availability of availabilities || []) {
+      availabilityMap[availability.project_id] = availability;
+    }
 
-    const projects = (memberships || []).map((m) => ({
-      id: m.projects.id,
-      name: m.projects.name,
-      role: m.role,
-      status: availabilityMap[m.project_id]?.status || "offline",
-      currentChatCount: availabilityMap[m.project_id]?.current_chat_count || 0,
-      maxConcurrentChats: availabilityMap[m.project_id]?.max_concurrent_chats || 5,
-    }));
+    interface AgentProject {
+      id: string;
+      name: string;
+    }
+
+    const projects = (memberships || []).flatMap((membership) => {
+      const project = firstRelatedRecord<AgentProject>(membership.projects);
+      if (!project) return [];
+
+      return [{
+        id: project.id,
+        name: project.name,
+        role: membership.role,
+        status: availabilityMap[membership.project_id]?.status || "offline",
+        currentChatCount:
+          availabilityMap[membership.project_id]?.current_chat_count || 0,
+        maxConcurrentChats:
+          availabilityMap[membership.project_id]?.max_concurrent_chats || 5,
+      }];
+    });
 
     res.json({ projects });
   } catch (error) {
@@ -438,6 +455,11 @@ router.get("/projects", authMiddleware, async (req: Request, res: Response) => {
 router.get("/me", authMiddleware, async (req: Request, res: Response) => {
   try {
     const { userId } = req as AuthenticatedRequest;
+    if (!userId) {
+      return res.status(401).json({
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+      });
+    }
 
     // Get user details
     const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);

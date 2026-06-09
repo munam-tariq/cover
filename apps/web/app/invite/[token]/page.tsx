@@ -1,9 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { Button, Card, CardContent } from "@chatbot/ui";
 import {
   AlertCircle,
@@ -13,6 +9,12 @@ import {
   Shield,
   MessageSquare,
 } from "lucide-react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+
+import { createClient } from "@/lib/supabase/client";
+
 
 // ============================================================================
 // Types
@@ -203,7 +205,7 @@ export default function InvitePage() {
             </div>
             <h1 className="text-xl font-semibold mb-2">Welcome to the Team!</h1>
             <p className="text-muted-foreground mb-6">
-              You've successfully joined <strong>{invitation?.projectName}</strong>.
+              You&apos;ve successfully joined <strong>{invitation?.projectName}</strong>.
               Redirecting to your dashboard...
             </p>
             <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
@@ -223,7 +225,7 @@ export default function InvitePage() {
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Users className="h-8 w-8 text-primary" />
             </div>
-            <h1 className="text-2xl font-semibold mb-2">You're Invited!</h1>
+            <h1 className="text-2xl font-semibold mb-2">You&apos;re Invited!</h1>
             <p className="text-muted-foreground">
               Join <strong>{invitation?.projectName}</strong> on FrontFace
             </p>

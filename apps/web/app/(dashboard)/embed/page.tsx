@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useRef } from "react";
 import { Card, Button, Badge, cn, Input, Label } from "@chatbot/ui";
 import {
   Copy,
@@ -14,6 +13,8 @@ import {
   Palette,
   AlertTriangle,
 } from "lucide-react";
+import { useState, useRef } from "react";
+
 import { useProject } from "@/contexts/project-context";
 
 interface WidgetConfig {

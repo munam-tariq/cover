@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, Users, ArrowRight } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface Message {
   role: "visitor" | "agent";
@@ -87,7 +87,7 @@ export function LiveDemo() {
 
     let currentDelay = 1000;
 
-    CONVERSATION.forEach((message, index) => {
+    CONVERSATION.forEach((message) => {
       if (message.role === "agent") {
         // Show typing indicator before agent message
         const typingTimeout = setTimeout(() => {

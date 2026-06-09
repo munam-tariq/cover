@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -20,7 +21,6 @@ function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -120,7 +120,6 @@ function AuthCallbackContent() {
 
       if (!code) {
         setError("No authorization code found. Please request a new magic link.");
-        setIsProcessing(false);
         return;
       }
 
@@ -142,7 +141,6 @@ function AuthCallbackContent() {
 
           // No session at all - show error
           setError(exchangeError.message || "Failed to sign in. Please try again.");
-          setIsProcessing(false);
           return;
         }
 
@@ -166,7 +164,6 @@ function AuthCallbackContent() {
         }
 
         setError("An unexpected error occurred. Please try again.");
-        setIsProcessing(false);
       }
     };
 

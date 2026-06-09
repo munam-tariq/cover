@@ -11,13 +11,13 @@
   "dependencies": {
     "@chatbot/shared": "workspace:*",
     "@elevenlabs/client": "^0.15.0",
-    "@supabase/realtime-js": "^2.90.1"
+    "@supabase/realtime-js": "2.90.1"
   },
   "devDependencies": {
     "@chatbot/eslint-config": "workspace:*",
     "@chatbot/typescript-config": "workspace:*",
     "@types/node": "^20.11.0",
-    "esbuild": "^0.20.0",
+    "esbuild": "^0.25.12",
     "eslint": "^8.56.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"

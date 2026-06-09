@@ -1,9 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { apiClient } from "@/lib/api-client";
-import { useProject } from "@/contexts/project-context";
-import { useAgent } from "@/contexts/agent-context";
 import { Button, Card, CardContent, Skeleton } from "@chatbot/ui";
 import {
   AlertCircle,
@@ -15,6 +11,11 @@ import {
   Settings,
   X,
 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+
+import { useAgent } from "@/contexts/agent-context";
+import { useProject } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
 
 // ============================================================================
 // Types

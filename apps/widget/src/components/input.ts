@@ -118,7 +118,7 @@ export class Input {
     });
 
     // Handle paste - ensure we don't exceed max length
-    this.textarea.addEventListener("paste", (e) => {
+    this.textarea.addEventListener("paste", () => {
       // Let default paste happen, then check length on next tick
       setTimeout(() => {
         if (this.textarea.value.length > MAX_MESSAGE_LENGTH) {

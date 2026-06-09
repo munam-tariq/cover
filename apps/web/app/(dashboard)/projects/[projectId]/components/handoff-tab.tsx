@@ -1,9 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
-import { apiClient } from "@/lib/api-client";
-import { type Project } from "@/contexts/project-context";
 import {
   Button,
   Card,
@@ -16,6 +12,12 @@ import {
   Label,
 } from "@chatbot/ui";
 import { AlertCircle, Check, Loader2, Users, Clock, MessageSquare, Zap } from "lucide-react";
+import Link from "next/link";
+import { useState, useEffect, useCallback } from "react";
+
+import { type Project } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
+
 
 // Types
 interface HandoffSettings {

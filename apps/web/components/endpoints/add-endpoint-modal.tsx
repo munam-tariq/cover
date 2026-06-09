@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +18,8 @@ import {
   SelectValue,
 } from "@chatbot/ui";
 import { AlertCircle, Loader2, Play, CheckCircle, XCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+
 import { apiClient } from "@/lib/api-client";
 
 interface ApiEndpoint {

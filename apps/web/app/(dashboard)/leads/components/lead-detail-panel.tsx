@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Card, CardContent, Badge } from "@chatbot/ui";
 import {
   User,
@@ -12,7 +11,9 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
+
 import {
   Lead,
   STATUS_LABELS,
@@ -36,9 +37,6 @@ export function LeadDetailPanel({ lead }: LeadDetailPanelProps) {
   const phoneField = formEntries.find((f) => f.label && /phone/i.test(f.label));
   const companyField = formEntries.find((f) => f.label && /company|organization|business/i.test(f.label));
 
-  const answeredCount = lead.qualifyingAnswers?.filter(
-    (qa) => qa.answer !== "[skipped]" && qa.answer !== "N/A"
-  ).length || 0;
   const totalQuestions = lead.qualifyingAnswers?.length || 0;
 
   return (

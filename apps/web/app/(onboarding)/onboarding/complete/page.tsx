@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { PartyPopper, PlayCircle, LayoutDashboard, FileText, Building2 } from "lucide-react";
 import { Button } from "@chatbot/ui";
-import { StepCard, StepHeader, StepActions } from "../../components/step-card";
-import { useOnboarding } from "../../components/onboarding-context";
-import { apiClient } from "@/lib/api-client";
+import { PartyPopper, PlayCircle, LayoutDashboard, FileText, Building2 } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import { apiClient } from "@/lib/api-client";
+
+import { useOnboarding } from "../../components/onboarding-context";
+import { StepCard, StepHeader, StepActions } from "../../components/step-card";
+
 
 interface CrawlStatus {
   jobId: string;

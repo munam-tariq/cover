@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+
 import { createClient } from "@/lib/supabase/client";
 
 function LoginForm() {

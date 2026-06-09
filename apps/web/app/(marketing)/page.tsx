@@ -1,13 +1,14 @@
 import { Metadata } from "next";
 import Script from "next/script";
-import { HeroSection } from "./components/hero-section";
-import { MetricsBar } from "./components/metrics-bar";
-import { ShowcaseSection } from "./components/showcase-section";
+
 import { CapabilitiesSection } from "./components/capabilities-section";
 import { CodeSection } from "./components/code-section";
-import { PricingSection } from "./components/pricing-section";
 import { CTASection } from "./components/cta-section";
 import { Footer } from "./components/footer";
+import { HeroSection } from "./components/hero-section";
+import { MetricsBar } from "./components/metrics-bar";
+import { PricingSection } from "./components/pricing-section";
+import { ShowcaseSection } from "./components/showcase-section";
 
 export const metadata: Metadata = {
   title: "FrontFace — AI Lead Capture & Sales Agent",

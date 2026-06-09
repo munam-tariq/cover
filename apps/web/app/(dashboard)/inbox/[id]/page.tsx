@@ -1,13 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { apiClient } from "@/lib/api-client";
-import { useProject } from "@/contexts/project-context";
-import { useAgent } from "@/contexts/agent-context";
-import { useConversationRealtime } from "@/hooks/use-inbox-realtime";
-import { useMessagePolling, Message as PollingMessage } from "@/hooks/use-message-polling";
 import { Button, Card, CardContent, Skeleton, Badge } from "@chatbot/ui";
 import {
   AlertCircle,
@@ -15,17 +7,23 @@ import {
   Send,
   User,
   Bot,
-  Clock,
   Mail,
-  MessageSquare,
   MoreHorizontal,
   CheckCircle,
   ArrowRightLeft,
-  X,
   Loader2,
   Wifi,
   WifiOff,
 } from "lucide-react";
+import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+
+import { useAgent } from "@/contexts/agent-context";
+import { useConversationRealtime } from "@/hooks/use-inbox-realtime";
+import { useMessagePolling, Message as PollingMessage } from "@/hooks/use-message-polling";
+import { apiClient } from "@/lib/api-client";
+
 
 // ============================================================================
 // Types
@@ -392,7 +390,6 @@ export default function ConversationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const conversationId = params.id as string;
-  const { currentProject } = useProject();
   const fromLeads = searchParams.get("from") === "leads";
   const backHref = fromLeads ? "/leads" : "/inbox";
   const backLabel = fromLeads ? "Back to Leads" : "Back to Inbox";

@@ -1,10 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Progress } from "@chatbot/ui";
-import { apiClient } from "@/lib/api-client";
-import { useProject } from "@/contexts/project-context";
 import {
   MessageSquare,
   UserPlus,
@@ -16,7 +12,12 @@ import {
   XCircle,
   TrendingUp,
 } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
 import { LeadStatsCard } from "@/components/analytics/lead-stats-card";
+import { useProject } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
 
 interface LeadsSummary {
   totalConversations: number;
@@ -259,7 +260,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Customize your chatbot's name, system prompt, and behavior.
+                Customize your chatbot&apos;s name, system prompt, and behavior.
               </p>
             </CardContent>
           </Card>

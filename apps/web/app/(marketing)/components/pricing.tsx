@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
 import { Check, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export function Pricing() {
   const features = [
@@ -25,7 +25,7 @@ export function Pricing() {
             PRICING
           </div>
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-            Free while we're in beta.
+            Free while we&apos;re in beta.
           </h2>
           <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
             Full access. No credit card. Help us build the perfect AI agent, and

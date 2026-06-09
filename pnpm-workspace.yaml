@@ -1,3 +1,39 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+blockExoticSubdeps: true
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 43200
+strictDepBuilds: true
+verifyDepsBeforeRun: false
+packageManagerStrictVersion: true
+managePackageManagerVersions: false
+
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
+
+overrides:
+  "ajv@6": "6.14.0"
+  "ajv@8": "8.20.0"
+  "axios@1": "1.17.0"
+  "brace-expansion@1": "1.1.13"
+  "brace-expansion@2": "2.0.3"
+  "fast-uri@3": "3.1.2"
+  "flatted@3": "3.4.2"
+  "follow-redirects@1": "1.16.0"
+  "minimatch@3": "3.1.4"
+  "minimatch@9": "9.0.9"
+  "path-to-regexp@0.1": "0.1.13"
+  "path-to-regexp@8": "8.4.2"
+  "picomatch@2": "2.3.2"
+  "picomatch@4": "4.0.4"
+  "postcss@8": "8.5.15"
+  "qs@6": "6.15.2"
+  "rollup@4": "4.61.1"
+  "ws@8": "8.21.0"

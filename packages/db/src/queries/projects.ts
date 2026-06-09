@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "../client";
-import type { Project, Json } from "../types";
+import type { Project, ProjectUpdate, Json } from "../types";
 
 /**
  * Project settings stored in the settings JSONB column
@@ -180,7 +180,7 @@ export async function updateProject(
     settings?: ProjectSettings;
   }
 ): Promise<Project> {
-  const updateData: Record<string, unknown> = {};
+  const updateData: ProjectUpdate = {};
   if (data.name !== undefined) updateData.name = data.name;
   if (data.settings !== undefined) updateData.settings = data.settings as Json;
 

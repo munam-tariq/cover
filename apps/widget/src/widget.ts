@@ -12,18 +12,24 @@
  * ></script>
  */
 
-import { ChatWindow, type LeadRecoveryConfig } from "./components/chat-window";
 import { Bubble } from "./components/bubble";
-import { TeaserMessage } from "./components/teaser-message";
+import { ChatWindow } from "./components/chat-window";
 import { ExitOverlay } from "./components/exit-overlay";
+import { TeaserMessage } from "./components/teaser-message";
 import { submitInlineEmail } from "./utils/api";
-import { getVisitorId, getLeadCaptureState, setLeadCaptureState } from "./utils/storage";
 import {
   EngagementTriggerService,
   type ProactiveEngagementConfig,
   type TriggerAction,
 } from "./utils/engagement-triggers";
 import { PulseManager } from "./utils/pulse-manager";
+import { getVisitorId, getLeadCaptureState, setLeadCaptureState } from "./utils/storage";
+import {
+  parseWidgetEmbedConfig,
+  type LeadCaptureConfig,
+  type LeadRecoveryConfig,
+  type VoiceConfig,
+} from "./utils/widget-config";
 
 // CSS is injected at build time
 declare const __WIDGET_CSS__: string;
@@ -34,15 +40,6 @@ declare global {
     __CHATBOT_WIDGET_LOADED__?: boolean;
     ChatbotWidget?: typeof ChatbotWidget;
   }
-}
-
-/**
- * Voice configuration from API.
- * Credentials are not included here — they are fetched at call time
- * from /api/voice/config/:projectId to keep tokens short-lived.
- */
-export interface VoiceConfig {
-  enabled: boolean;
 }
 
 /**
@@ -79,7 +76,7 @@ class ChatbotWidget {
   private bubble: Bubble | null = null;
   private chatWindow: ChatWindow | null = null;
   private isOpen = false;
-  private leadCaptureConfig: Record<string, unknown> | null = null;
+  private leadCaptureConfig: LeadCaptureConfig | null = null;
   private proactiveConfig: ProactiveEngagementConfig | null = null;
   private triggerService: EngagementTriggerService | null = null;
   private teaserMessage: TeaserMessage | null = null;
@@ -194,7 +191,7 @@ class ChatbotWidget {
       console.log("[Chatbot Widget] Initialized", {
         projectId: this.config.projectId,
         apiUrl: this.config.apiUrl,
-        realtimeEnabled: !!(window as Record<string, unknown>).__WIDGET_CONFIG__,
+        realtimeEnabled: !!window.__WIDGET_CONFIG__,
         proactiveEnabled: !!this.proactiveConfig?.enabled,
       });
     }
@@ -216,8 +213,12 @@ class ChatbotWidget {
         return true;
       }
 
-      const data = await response.json();
-
+      const payload: unknown = await response.json();
+      const data = parseWidgetEmbedConfig(payload);
+      if (!data) {
+        console.warn("[Chatbot Widget] Received invalid config");
+        return true;
+      }
       // Check if widget is enabled (default to true if not specified)
       if (data.enabled === false) {
         return false;
@@ -230,17 +231,17 @@ class ChatbotWidget {
 
       // Store proactive engagement config
       if (data.proactiveEngagement?.enabled) {
-        this.proactiveConfig = data.proactiveEngagement as ProactiveEngagementConfig;
+        this.proactiveConfig = data.proactiveEngagement;
       }
 
       // Store lead recovery config
       if (data.leadRecovery?.enabled) {
-        this.leadRecoveryConfig = data.leadRecovery as LeadRecoveryConfig;
+        this.leadRecoveryConfig = data.leadRecovery;
       }
 
       // Store voice config
       if (data.voice?.enabled) {
-        this.voiceConfig = data.voice as VoiceConfig;
+        this.voiceConfig = data.voice;
       }
 
       // Apply server config — overrides script-tag defaults with project settings
@@ -254,11 +255,8 @@ class ChatbotWidget {
       }
 
       // Store realtime config for realtime.ts to use
-      if (data.realtime?.supabaseUrl && data.realtime?.supabaseAnonKey) {
-        (window as Record<string, unknown>).__WIDGET_CONFIG__ = {
-          supabaseUrl: data.realtime.supabaseUrl,
-          supabaseAnonKey: data.realtime.supabaseAnonKey,
-        };
+      if (data.realtime) {
+        window.__WIDGET_CONFIG__ = data.realtime;
 
         if (process.env.NODE_ENV === "development") {
           console.log("[Chatbot Widget] Config loaded:", data.realtime.supabaseUrl);

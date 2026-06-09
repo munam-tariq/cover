@@ -1,8 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { useState } from "react";
 
 export function FAQ() {
   const [openIndex, setOpenIndex] = useState(0);
@@ -53,7 +53,7 @@ export function FAQ() {
             FAQ
           </div>
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-            Questions? We've got answers.
+            Questions? We&apos;ve got answers.
           </h2>
           <p className="text-lg text-zinc-400">
             Everything you need to know about FrontFace.

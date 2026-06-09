@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { apiClient } from "@/lib/api-client";
-import { useProject } from "@/contexts/project-context";
 import { Button, Card, CardContent, Skeleton, Switch, Label, Badge, Input } from "@chatbot/ui";
 import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff, Users, ChevronRight, Shield, ShieldCheck, ShieldAlert, Plus, X, ChevronDown, MessageSquare, Zap, MousePointerClick, ScrollText, Timer, RotateCcw } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+
+import { useProject } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
 
 interface UpdatedProject {
   id: string;
@@ -718,7 +719,7 @@ export default function SettingsPage() {
     setDomainError(null);
 
     // Include any domain typed in the input but not yet added
-    let domainsToSave = [...allowedDomains];
+    const domainsToSave = [...allowedDomains];
     if (newDomain.trim()) {
       const domain = newDomain.trim().toLowerCase();
       const domainRegex = /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/;

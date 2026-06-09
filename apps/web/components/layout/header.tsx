@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+
 import { createClient } from "@/lib/supabase/client";
-import { ProjectSwitcher } from "./project-switcher";
+
 import { AgentStatusDropdown } from "./agent-status-dropdown";
+import { ProjectSwitcher } from "./project-switcher";
 
 interface User {
   email?: string;

@@ -10,9 +10,14 @@
 
 import { Router, Response } from "express";
 import { z } from "zod";
-import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
+
 import { supabaseAdmin } from "../lib/supabase";
+import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import { validateCrawlUrl } from "../services/firecrawl";
+import {
+  createProcessingPipeline,
+  type DocumentMetadata,
+} from "../services/rag";
 import {
   createScrapeJob,
   getJob,
@@ -23,10 +28,6 @@ import {
   markPageCompleted,
   markPageFailed,
 } from "../services/scrape-job-manager";
-import {
-  createProcessingPipeline,
-  type DocumentMetadata,
-} from "../services/rag";
 
 export const onboardingRouter = Router();
 
@@ -377,7 +378,7 @@ onboardingRouter.post("/complete", async (req: AuthenticatedRequest, res: Respon
     job.status = "importing";
 
     // Import pages in background
-    importPagesAndComplete(job, projectId, req.userId!).catch((err) => {
+    importPagesAndComplete(job, projectId).catch((err) => {
       console.error(`[Onboarding] Import failed: ${err}`);
     });
 
@@ -458,8 +459,7 @@ onboardingRouter.post("/skip", async (req: AuthenticatedRequest, res: Response) 
  */
 async function importPagesAndComplete(
   job: ReturnType<typeof getJob>,
-  projectId: string,
-  userId: string
+  projectId: string
 ): Promise<void> {
   if (!job) return;
 
@@ -495,6 +495,8 @@ async function importPagesAndComplete(
 
       // Process with RAG pipeline
       const metadata: DocumentMetadata = {
+        name: page.title || page.url,
+        type: "url",
         sourceId: source.id,
         sourceName: page.title || page.url,
         sourceType: "url",

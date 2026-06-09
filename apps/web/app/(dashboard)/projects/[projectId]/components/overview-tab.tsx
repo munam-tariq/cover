@@ -1,15 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import {
-  PlayCircle,
-  Code,
-  Copy,
-  CheckCheck,
-  Save,
-  Loader2,
-} from "lucide-react";
 import {
   Button,
   Card,
@@ -18,8 +8,18 @@ import {
   CardHeader,
   CardTitle,
   Textarea,
-  Label,
 } from "@chatbot/ui";
+import {
+  PlayCircle,
+  Code,
+  Copy,
+  CheckCheck,
+  Save,
+  Loader2,
+} from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+
 import { useProject, type Project } from "@/contexts/project-context";
 import { apiClient } from "@/lib/api-client";
 

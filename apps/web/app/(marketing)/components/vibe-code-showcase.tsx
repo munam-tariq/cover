@@ -1,7 +1,6 @@
 "use client";
 
 import { motion, useInView, AnimatePresence } from "framer-motion";
-import { useRef, useState, useEffect } from "react";
 import {
   Check,
   MessageCircle,
@@ -12,6 +11,7 @@ import {
   TrendingUp,
   Clock,
 } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
 
 // Dashboard stat card
 function StatCard({

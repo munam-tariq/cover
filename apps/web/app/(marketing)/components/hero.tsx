@@ -1,8 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState, useRef, useCallback } from "react";
 
 interface Message {
@@ -53,7 +53,7 @@ export function Hero() {
 
     let currentDelay = 1000;
 
-    MESSAGES.forEach((message, index) => {
+    MESSAGES.forEach((message) => {
       if (message.role === "bot") {
         // Show typing indicator
         const typingTimeout = setTimeout(() => {

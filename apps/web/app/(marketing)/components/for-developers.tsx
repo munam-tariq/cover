@@ -3,22 +3,22 @@
 import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 
+const CODE_LINES = [
+  { text: "> Add a FrontFace chatbot to my Next.js app", color: "text-white" },
+  { text: "", color: "text-white" },
+  { text: "  Creating project \"My App Support\"...", color: "text-zinc-400" },
+  { text: "  Uploading docs from ./docs...", color: "text-zinc-400" },
+  { text: "  Generating embed code...", color: "text-zinc-400" },
+  { text: "", color: "text-white" },
+  { text: "  Done! Add this to your layout:", color: "text-zinc-400" },
+  { text: "  <script src=\"https://cdn.frontface.app/widget.js\"", color: "text-green-400" },
+  { text: "         data-project-id=\"abc123\"></script>", color: "text-green-400" },
+];
+
 export function ForDevelopers() {
   const [visibleLines, setVisibleLines] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
-
-  const codeLines = [
-    { text: "> Add a FrontFace chatbot to my Next.js app", color: "text-white" },
-    { text: "", color: "text-white" },
-    { text: "  Creating project \"My App Support\"...", color: "text-zinc-400" },
-    { text: "  Uploading docs from ./docs...", color: "text-zinc-400" },
-    { text: "  Generating embed code...", color: "text-zinc-400" },
-    { text: "", color: "text-white" },
-    { text: "  Done! Add this to your layout:", color: "text-zinc-400" },
-    { text: "  <script src=\"https://cdn.frontface.app/widget.js\"", color: "text-green-400" },
-    { text: "         data-project-id=\"abc123\"></script>", color: "text-green-400" },
-  ];
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -33,7 +33,7 @@ export function ForDevelopers() {
             currentLine++;
             setVisibleLines(currentLine);
 
-            if (currentLine >= codeLines.length) {
+            if (currentLine >= CODE_LINES.length) {
               clearInterval(interval);
               // Reset after animation completes
               setTimeout(() => {
@@ -78,7 +78,7 @@ export function ForDevelopers() {
 
               {/* Code content */}
               <div className="p-6 font-mono text-sm leading-relaxed min-h-[300px]">
-                {codeLines.map((line, index) => (
+            {CODE_LINES.map((line, index) => (
                   <div
                     key={index}
                     className={`${line.color} transition-opacity duration-300 ${
@@ -88,7 +88,7 @@ export function ForDevelopers() {
                     {line.text || "\u00A0"}
                   </div>
                 ))}
-                {visibleLines < codeLines.length && (
+                {visibleLines < CODE_LINES.length && (
                   <span className="inline-block w-2 h-4 bg-blue-400 animate-pulse"></span>
                 )}
               </div>

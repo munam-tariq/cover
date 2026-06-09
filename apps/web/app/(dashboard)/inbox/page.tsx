@@ -1,12 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import Link from "next/link";
-import { apiClient } from "@/lib/api-client";
-import { useProject } from "@/contexts/project-context";
-import { useAgent } from "@/contexts/agent-context";
-import { useInboxPolling } from "@/contexts/inbox-polling-context";
-import { useInboxRealtime, QueueUpdate, ConversationUpdate } from "@/hooks/use-inbox-realtime";
 import { Button, Card, CardContent, Skeleton, Badge } from "@chatbot/ui";
 import {
   AlertCircle,
@@ -20,6 +13,15 @@ import {
   WifiOff,
   Phone,
 } from "lucide-react";
+import Link from "next/link";
+import { useState, useEffect, useCallback, useMemo } from "react";
+
+import { useAgent } from "@/contexts/agent-context";
+import { useInboxPolling } from "@/contexts/inbox-polling-context";
+import { useProject } from "@/contexts/project-context";
+import { useInboxRealtime, QueueUpdate, ConversationUpdate } from "@/hooks/use-inbox-realtime";
+import { apiClient } from "@/lib/api-client";
+
 
 // ============================================================================
 // Types
@@ -185,7 +187,7 @@ const POLL_INTERVAL_MS = 30 * 1000;
 
 export default function InboxPage() {
   const { currentProject, isLoading: projectLoading } = useProject();
-  const { role, availability, agent } = useAgent();
+  const { availability, agent } = useAgent();
   const { markAsSeen, pausePolling, resumePolling } = useInboxPolling();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);

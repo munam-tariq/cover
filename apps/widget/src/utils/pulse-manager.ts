@@ -11,7 +11,14 @@
  */
 
 import { PulsePopup, type PulseCampaignData } from "../components/pulse-popup";
+
 import { getVisitorId } from "./storage";
+import {
+  isNumber,
+  isRecord,
+  isString,
+  isStringArray,
+} from "./type-guards";
 
 const STORAGE_KEY = "pulse_state";
 const MIN_DELAY_MS = 8000; // 8s minimum after page load
@@ -30,6 +37,60 @@ interface PulseStorageState {
   dismissed: string[]; // campaign IDs dismissed
   completed: string[]; // campaign IDs completed (answered)
   lastDismissedAt?: number; // timestamp
+}
+
+function isPulseCampaignData(value: unknown): value is PulseCampaignData {
+  if (
+    !isRecord(value) ||
+    !isString(value.id) ||
+    (value.type !== "nps" &&
+      value.type !== "poll" &&
+      value.type !== "sentiment" &&
+      value.type !== "feedback") ||
+    !isString(value.question) ||
+    !isRecord(value.config) ||
+    !isRecord(value.styling)
+  ) {
+    return false;
+  }
+
+  const targeting = value.targeting;
+  return (
+    (targeting === undefined ||
+      (isRecord(targeting) &&
+        (targeting.pages === undefined || isStringArray(targeting.pages)) &&
+        (targeting.delay_seconds === undefined ||
+          isNumber(targeting.delay_seconds)) &&
+        (targeting.scroll_depth === undefined ||
+          isNumber(targeting.scroll_depth)) &&
+        (targeting.audience === undefined ||
+          targeting.audience === "all" ||
+          targeting.audience === "new" ||
+          targeting.audience === "returning"))) &&
+    (value.styling.accent_color === undefined ||
+      isString(value.styling.accent_color)) &&
+    (value.styling.theme === undefined ||
+      value.styling.theme === "light" ||
+      value.styling.theme === "dark" ||
+      value.styling.theme === "auto") &&
+    (value.styling.shape === undefined || isString(value.styling.shape)) &&
+    (value.styling.position === undefined ||
+      isString(value.styling.position)) &&
+    (value.styling.avatar_url === undefined ||
+      isString(value.styling.avatar_url)) &&
+    (value.styling.avatar_name === undefined ||
+      isString(value.styling.avatar_name))
+  );
+}
+
+function isPulseStorageState(value: unknown): value is PulseStorageState {
+  return (
+    isRecord(value) &&
+    isStringArray(value.shown) &&
+    isStringArray(value.dismissed) &&
+    isStringArray(value.completed) &&
+    (value.lastDismissedAt === undefined || isNumber(value.lastDismissedAt))
+  );
 }
 
 export class PulseManager {
@@ -60,13 +121,15 @@ export class PulseManager {
       );
       if (!response.ok) return;
 
-      let data: { campaigns?: PulseCampaignData[] };
+      let payload: unknown;
       try {
-        data = await response.json();
+        payload = await response.json();
       } catch {
         return; // Invalid JSON response
       }
-      this.campaigns = Array.isArray(data.campaigns) ? data.campaigns : [];
+      if (!isRecord(payload) || !Array.isArray(payload.campaigns)) return;
+
+      this.campaigns = payload.campaigns.filter(isPulseCampaignData);
 
       if (this.campaigns.length === 0) return;
 
@@ -80,7 +143,7 @@ export class PulseManager {
       // Schedule display with delay
       const delay = Math.max(
         MIN_DELAY_MS,
-        ((campaign as any).targeting?.delay_seconds || 10) * 1000
+        (campaign.targeting?.delay_seconds ?? 10) * 1000
       );
 
       this.timeoutId = setTimeout(() => {
@@ -150,11 +213,9 @@ export class PulseManager {
       }
 
       // Check URL targeting
-      const targeting = (campaign as any).targeting as
-        | { pages?: string[]; audience?: string }
-        | undefined;
+      const targeting = campaign.targeting;
       if (targeting?.pages && targeting.pages.length > 0) {
-        const matches = targeting.pages.some((pattern: string) => {
+        const matches = targeting.pages.some((pattern) => {
           if (pattern === "*") return true;
           return currentUrl.toLowerCase().includes(pattern.toLowerCase());
         });
@@ -227,8 +288,13 @@ export class PulseManager {
     try {
       const key = `${STORAGE_KEY}_${this.options.projectId}`;
       const raw = localStorage.getItem(key);
-      if (raw) return JSON.parse(raw);
-    } catch {}
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        if (isPulseStorageState(parsed)) return parsed;
+      }
+    } catch {
+      // Storage may be unavailable or contain malformed JSON.
+    }
     return { shown: [], dismissed: [], completed: [] };
   }
 
@@ -236,7 +302,9 @@ export class PulseManager {
     try {
       const key = `${STORAGE_KEY}_${this.options.projectId}`;
       localStorage.setItem(key, JSON.stringify(state));
-    } catch {}
+    } catch {
+      // Pulse is non-critical when storage is unavailable.
+    }
   }
 
   private markShown(campaignId: string): void {
@@ -277,6 +345,8 @@ export class PulseManager {
   private setSessionFlag(): void {
     try {
       sessionStorage.setItem(`${SESSION_KEY}_${this.options.projectId}`, "1");
-    } catch {}
+    } catch {
+      // Pulse is non-critical when storage is unavailable.
+    }
   }
 }

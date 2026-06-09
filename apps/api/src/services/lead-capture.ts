@@ -9,8 +9,8 @@
  * - Lead storage
  */
 
-import { supabaseAdmin } from "../lib/supabase";
 import { logger } from "../lib/logger";
+import { supabaseAdmin } from "../lib/supabase";
 
 // Cache for lead capture settings to avoid repeated DB calls
 const leadSettingsCache = new Map<string, { data: LeadCaptureSettings; timestamp: number }>();
@@ -228,7 +228,10 @@ export async function storeLead(
   });
 
   if (error) {
-    logger.error("Failed to store lead", error, { projectId, sessionId });
+    logger.error("Failed to store lead", error, {
+      projectId,
+      sessionId: sessionId ?? undefined,
+    });
     throw new Error("Failed to store lead capture");
   }
 }

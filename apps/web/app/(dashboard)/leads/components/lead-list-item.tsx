@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@chatbot/ui";
+
 import { Lead, STATUS_LABELS, STATUS_VARIANTS, getLeadDisplayName } from "../constants";
 
 interface LeadListItemProps {

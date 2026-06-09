@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { Check, Circle, Loader2, Building2, AlertCircle } from "lucide-react";
 import { Button } from "@chatbot/ui";
-import { StepCard, StepHeader } from "../../components/step-card";
-import { OnboardingProgress, ONBOARDING_STEPS } from "../../components/onboarding-progress";
-import { useOnboarding } from "../../components/onboarding-context";
-import { apiClient } from "@/lib/api-client";
+import { Check, Circle, Loader2, Building2, AlertCircle } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
+
+import { apiClient } from "@/lib/api-client";
+
+import { useOnboarding } from "../../components/onboarding-context";
+import { OnboardingProgress, ONBOARDING_STEPS } from "../../components/onboarding-progress";
+import { StepCard } from "../../components/step-card";
+
+
 
 interface CrawlStatus {
   jobId: string;
@@ -74,44 +78,8 @@ export default function ProcessingPage() {
     }
   }, [state.projectId, state.jobId, router]);
 
-  // Poll for status updates
-  const fetchStatus = useCallback(async () => {
-    if (!state.jobId) return;
-
-    try {
-      const data = await apiClient<CrawlStatus>(`/api/onboarding/status/${state.jobId}`);
-      setStatus(data);
-
-      // If job is ready and we haven't started completing, do so
-      if (data.status === "ready" && !isCompleting) {
-        completeOnboarding();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    }
-  }, [state.jobId, isCompleting]);
-
-  // Set up polling
-  useEffect(() => {
-    fetchStatus();
-
-    const interval = setInterval(() => {
-      // Don't poll if completed, failed, or completing
-      if (
-        status?.status === "completed" ||
-        status?.status === "failed" ||
-        isCompleting
-      ) {
-        return;
-      }
-      fetchStatus();
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [fetchStatus, status?.status, isCompleting]);
-
   // Complete onboarding by importing pages
-  const completeOnboarding = async () => {
+  const completeOnboarding = useCallback(async () => {
     if (!state.projectId || !state.jobId || isCompleting) return;
 
     setIsCompleting(true);
@@ -131,7 +99,43 @@ export default function ProcessingPage() {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setIsCompleting(false);
     }
-  };
+  }, [isCompleting, state.jobId, state.projectId]);
+
+  // Poll for status updates
+  const fetchStatus = useCallback(async () => {
+    if (!state.jobId) return;
+
+    try {
+      const data = await apiClient<CrawlStatus>(`/api/onboarding/status/${state.jobId}`);
+      setStatus(data);
+
+      // If job is ready and we haven't started completing, do so
+      if (data.status === "ready" && !isCompleting) {
+        completeOnboarding();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    }
+  }, [completeOnboarding, isCompleting, state.jobId]);
+
+  // Set up polling
+  useEffect(() => {
+    fetchStatus();
+
+    const interval = setInterval(() => {
+      // Don't poll if completed, failed, or completing
+      if (
+        status?.status === "completed" ||
+        status?.status === "failed" ||
+        isCompleting
+      ) {
+        return;
+      }
+      fetchStatus();
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [fetchStatus, status?.status, isCompleting]);
 
   // Navigate to completion page when done
   useEffect(() => {

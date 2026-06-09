@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
 import { Button, Card, Badge, ScrollArea, cn, TooltipProvider } from "@chatbot/ui";
 import {
   MessageSquare,
@@ -12,10 +11,12 @@ import {
   Sparkles,
   RefreshCw
 } from "lucide-react";
-import { ChatMessage, type ChatMessageProps } from "@/components/chat/chat-message";
+import { useState, useEffect, useRef, useCallback } from "react";
+
 import { ChatInput } from "@/components/chat/chat-input";
-import { apiClient } from "@/lib/api-client";
+import { ChatMessage, type ChatMessageProps } from "@/components/chat/chat-message";
 import { useProject } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
 
 interface Message extends Omit<ChatMessageProps, "isLoading"> {
   id: string;
@@ -314,7 +315,7 @@ export default function PlaygroundPage() {
                       "disabled:opacity-50 disabled:cursor-not-allowed"
                     )}
                   >
-                    "{suggestion}"
+                    &quot;{suggestion}&quot;
                   </button>
                 ))}
               </div>

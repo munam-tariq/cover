@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Rocket } from "lucide-react";
 import { Button } from "@chatbot/ui";
-import { StepCard, StepHeader, StepActions } from "../components/step-card";
+import { Rocket } from "lucide-react";
+import { useRouter } from "next/navigation";
+
 import { OnboardingProgress, ONBOARDING_STEPS } from "../components/onboarding-progress";
+import { StepCard, StepHeader, StepActions } from "../components/step-card";
 
 /**
  * Welcome Page (Step 1)

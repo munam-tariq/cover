@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { Card, Skeleton } from "@chatbot/ui";
-import { apiClient } from "@/lib/api-client";
-import { useProject } from "@/contexts/project-context";
 import { MessageSquare } from "lucide-react";
-import { Lead } from "./constants";
-import { LeadListPanel } from "./components/lead-list-panel";
+import { useEffect, useState, useCallback } from "react";
+
+import { useProject } from "@/contexts/project-context";
+import { apiClient } from "@/lib/api-client";
+
+
 import { LeadDetailPanel } from "./components/lead-detail-panel";
+import { LeadListPanel } from "./components/lead-list-panel";
+import { Lead } from "./constants";
 
 interface LeadsResponse {
   leads: Lead[];

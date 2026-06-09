@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, FolderOpen, Calendar, Bot } from "lucide-react";
 import { Card, CardContent, Button, Skeleton } from "@chatbot/ui";
-import { useProject, type Project } from "@/contexts/project-context";
-import { CreateProjectModal } from "@/components/projects/create-project-modal";
+import { Plus, FolderOpen, Calendar, Bot } from "lucide-react";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import { CreateProjectModal } from "@/components/projects/create-project-modal";
+import { useProject, type Project } from "@/contexts/project-context";
+
 
 /**
  * Get company logo URL from project settings

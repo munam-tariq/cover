@@ -1,7 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { apiClient } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +7,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@chatbot/ui";
-import { Loader2, Download, FileText, File, Globe, ExternalLink } from "lucide-react";
 import { Button } from "@chatbot/ui";
+import { Loader2, Download, FileText, File, Globe, ExternalLink } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+
+import { apiClient } from "@/lib/api-client";
 
 interface KnowledgeSource {
   id: string;
@@ -40,16 +41,7 @@ export function ViewKnowledgeModal({
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (open && sourceId && projectId) {
-      fetchSource(sourceId);
-    } else {
-      setSource(null);
-      setError(null);
-    }
-  }, [open, sourceId, projectId]);
-
-  const fetchSource = async (id: string) => {
+  const fetchSource = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -63,7 +55,16 @@ export function ViewKnowledgeModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (open && sourceId && projectId) {
+      fetchSource(sourceId);
+    } else {
+      setSource(null);
+      setError(null);
+    }
+  }, [fetchSource, open, projectId, sourceId]);
 
   const handleDownload = async () => {
     if (!sourceId || !projectId) return;

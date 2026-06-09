@@ -1,7 +1,7 @@
 "use client";
 
-import { Check } from "lucide-react";
 import { cn } from "@chatbot/ui";
+import { Check } from "lucide-react";
 
 interface Step {
   id: number;

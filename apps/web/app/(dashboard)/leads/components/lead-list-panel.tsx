@@ -2,7 +2,9 @@
 
 import { Skeleton } from "@chatbot/ui";
 import { Search, UserPlus } from "lucide-react";
+
 import { Lead } from "../constants";
+
 import { LeadListItem } from "./lead-list-item";
 
 interface LeadListPanelProps {

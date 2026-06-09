@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Globe, ArrowLeft, ArrowRight, Loader2, Building2 } from "lucide-react";
 import { Button, Input } from "@chatbot/ui";
-import { StepCard, StepHeader, StepActions } from "../../components/step-card";
-import { OnboardingProgress, ONBOARDING_STEPS } from "../../components/onboarding-progress";
-import { useOnboarding } from "../../components/onboarding-context";
-import { apiClient } from "@/lib/api-client";
+import { Globe, ArrowLeft, ArrowRight, Loader2, Building2 } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+
+import { apiClient } from "@/lib/api-client";
+
+import { useOnboarding } from "../../components/onboarding-context";
+import { OnboardingProgress, ONBOARDING_STEPS } from "../../components/onboarding-progress";
+import { StepCard, StepHeader, StepActions } from "../../components/step-card";
+
+
 
 // Brandfetch client ID from environment
 const BRANDFETCH_CLIENT_ID = process.env.NEXT_PUBLIC_BRANDFETCH_CLIENT_ID || "";

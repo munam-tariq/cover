@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, KeyboardEvent } from "react";
 import { Button, Textarea, cn } from "@chatbot/ui";
 import { Send, Loader2 } from "lucide-react";
+import { useState, useRef, KeyboardEvent } from "react";
 
 interface ChatInputProps {
   onSend: (message: string) => void;

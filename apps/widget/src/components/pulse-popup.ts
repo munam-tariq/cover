@@ -10,6 +10,12 @@ export interface PulseCampaignData {
   type: "nps" | "poll" | "sentiment" | "feedback";
   question: string;
   config: Record<string, unknown>;
+  targeting?: {
+    pages?: string[];
+    delay_seconds?: number;
+    scroll_depth?: number;
+    audience?: "all" | "new" | "returning";
+  };
   styling: {
     accent_color?: string;
     theme?: "light" | "dark" | "auto";
@@ -72,14 +78,15 @@ export class PulsePopup {
 
   private detectSmartPosition(): string {
     // Randomly pick from all 4 corners, avoiding the corner occupied by the chat widget
-    const all = ["bottom-left", "bottom-right", "top-left", "top-right"];
     const avoid: string[] = [];
 
-    const widget = document.querySelector("#chatbot-widget-container");
+    const widget = document.querySelector<HTMLElement>(
+      "#chatbot-widget-container"
+    );
     if (widget) {
-      const shadow = (widget as any).shadowRoot;
+      const shadow = widget.shadowRoot;
       if (shadow) {
-        for (const pos of all) {
+        for (const pos of POSITIONS) {
           if (shadow.querySelector(`.chatbot-widget.${pos}`)) {
             avoid.push(pos);
             break;
@@ -88,7 +95,7 @@ export class PulsePopup {
       }
     }
 
-    const available = all.filter(p => !avoid.includes(p));
+    const available = POSITIONS.filter((position) => !avoid.includes(position));
     return available[Math.floor(Math.random() * available.length)];
   }
 

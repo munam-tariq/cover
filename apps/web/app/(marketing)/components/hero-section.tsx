@@ -1,9 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
 import { ArrowRight, ChevronDown } from "lucide-react";
+import Link from "next/link";
+
 import { cn } from "@/lib/utils";
+
 import { AnimatedGridPattern } from "./animated-grid-pattern";
 
 const words = ["Your", "website", "is", "leaking", "leads."];
