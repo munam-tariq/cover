@@ -160,6 +160,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      project_client_keys: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          id: string;
+          key: string;
+          last_used_at: string | null;
+          name: string | null;
+          platform: string;
+          project_id: string;
+          revoked_at: string | null;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          key: string;
+          last_used_at?: string | null;
+          name?: string | null;
+          platform?: string;
+          project_id: string;
+          revoked_at?: string | null;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          key?: string;
+          last_used_at?: string | null;
+          name?: string | null;
+          platform?: string;
+          project_id?: string;
+          revoked_at?: string | null;
+        };
+        Relationships: [];
+      };
       chat_sessions: {
         Row: {
           created_at: string | null;
@@ -929,6 +965,13 @@ export type ChatSessionUpdate =
 export type ApiKey = Database["public"]["Tables"]["api_keys"]["Row"];
 export type ApiKeyInsert = Database["public"]["Tables"]["api_keys"]["Insert"];
 export type ApiKeyUpdate = Database["public"]["Tables"]["api_keys"]["Update"];
+
+export type ProjectClientKey =
+  Database["public"]["Tables"]["project_client_keys"]["Row"];
+export type ProjectClientKeyInsert =
+  Database["public"]["Tables"]["project_client_keys"]["Insert"];
+export type ProjectClientKeyUpdate =
+  Database["public"]["Tables"]["project_client_keys"]["Update"];
 
 // Human Agent Handoff types
 export type HandoffSettings =

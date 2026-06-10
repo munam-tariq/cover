@@ -6,6 +6,7 @@
  */
 
 import { supabaseAdmin } from "../lib/supabase";
+
 import type { ChatSource, MessageContext } from "./chat-engine";
 
 export interface ConversationData {
@@ -87,7 +88,10 @@ export async function getOrCreateConversation(
       if (retry) {
         return retry.id;
       }
-      console.error("[Conversation] Failed to create conversation with ID:", insertError);
+      console.error(
+        "[Conversation] Failed to create conversation with ID:",
+        insertError
+      );
       throw new Error("Failed to create conversation");
     }
 
@@ -97,14 +101,18 @@ export async function getOrCreateConversation(
   // Find or create customer with context
   const customerId = await getOrCreateCustomer(projectId, visitorId, context);
 
-  // Try to find existing active conversation for this visitor
+  // Try to find an existing AI-driven conversation for this visitor to continue.
+  // IMPORTANT: only reuse `ai_active` here. A conversation in `waiting`/`agent_active`
+  // is owned by a human agent — reusing it when the client sends no sessionId (e.g. after
+  // "New chat") would let the AI inject messages into a live handoff. Those are resumed
+  // explicitly by their sessionId via the existingConversationId path above.
   const { data: existingConversation } = await supabaseAdmin
     .from("conversations")
     .select("id")
     .eq("project_id", projectId)
     .eq("visitor_id", visitorId)
     .eq("source", source)
-    .in("status", ["ai_active", "waiting", "agent_active"])
+    .eq("status", "ai_active")
     .order("created_at", { ascending: false })
     .limit(1)
     .single();

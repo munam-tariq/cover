@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Tabs, TabsList, TabsTrigger, TabsContent, Skeleton } from "@chatbot/ui";
-import { ArrowLeft, Settings, Database, Code, MessageSquare, Puzzle, Users } from "lucide-react";
+import { ArrowLeft, Settings, Database, Code, MessageSquare, Puzzle, Users, Globe } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -13,6 +13,7 @@ import { HandoffTab } from "./components/handoff-tab";
 import { KnowledgeTab } from "./components/knowledge-tab";
 import { LeadCaptureTab } from "./components/lead-capture-tab";
 import { OverviewTab } from "./components/overview-tab";
+import { PublicPageTab } from "./components/public-page-tab";
 import { WidgetTab } from "./components/widget-tab";
 
 /**
@@ -117,6 +118,10 @@ export default function AgentStudioPage() {
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Handoff</span>
           </TabsTrigger>
+          <TabsTrigger value="public" className="gap-2">
+            <Globe className="h-4 w-4" />
+            <span className="hidden sm:inline">Public Page</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
@@ -141,6 +146,10 @@ export default function AgentStudioPage() {
 
         <TabsContent value="handoff" className="mt-6">
           <HandoffTab project={project} />
+        </TabsContent>
+
+        <TabsContent value="public" className="mt-6">
+          <PublicPageTab project={project} />
         </TabsContent>
       </Tabs>
     </div>

@@ -57,10 +57,20 @@ interface QuestionCluster {
 }
 
 type Period = "24h" | "7d" | "30d";
+type SourceFilter = "all" | "widget" | "public" | "mobile" | "playground";
+
+const SOURCE_OPTIONS: { value: SourceFilter; label: string }[] = [
+  { value: "all", label: "All sources" },
+  { value: "widget", label: "Widget" },
+  { value: "public", label: "Public page" },
+  { value: "mobile", label: "Mobile" },
+  { value: "playground", label: "Playground" },
+];
 
 export default function AnalyticsPage() {
   const { currentProject, isLoading: projectLoading } = useProject();
   const [period, setPeriod] = useState<Period>("30d");
+  const [source, setSource] = useState<SourceFilter>("all");
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [leadsSummary, setLeadsSummary] = useState<LeadsSummary | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
@@ -76,12 +86,22 @@ export default function AnalyticsPage() {
 
     try {
       const days = period === "24h" ? 1 : period === "7d" ? 7 : 30;
-      const [summaryData, leadsData, timelineData, questionsData] = await Promise.all([
-        apiClient<AnalyticsSummary>(`/api/analytics/summary?projectId=${currentProject.id}&period=${period}`),
-        apiClient<LeadsSummary>(`/api/analytics/leads-summary?projectId=${currentProject.id}&period=${period}`).catch(() => null),
-        apiClient<{ timeline: TimelineEntry[] }>(`/api/analytics/timeline?projectId=${currentProject.id}&days=${days}`),
-        apiClient<{ questions: QuestionCluster[] }>(`/api/analytics/top-questions?projectId=${currentProject.id}&days=${days}`),
-      ]);
+      const sourceParam = source === "all" ? "" : `&source=${source}`;
+      const [summaryData, leadsData, timelineData, questionsData] =
+        await Promise.all([
+          apiClient<AnalyticsSummary>(
+            `/api/analytics/summary?projectId=${currentProject.id}&period=${period}${sourceParam}`
+          ),
+          apiClient<LeadsSummary>(
+            `/api/analytics/leads-summary?projectId=${currentProject.id}&period=${period}${sourceParam}`
+          ).catch(() => null),
+          apiClient<{ timeline: TimelineEntry[] }>(
+            `/api/analytics/timeline?projectId=${currentProject.id}&days=${days}${sourceParam}`
+          ),
+          apiClient<{ questions: QuestionCluster[] }>(
+            `/api/analytics/top-questions?projectId=${currentProject.id}&days=${days}${sourceParam}`
+          ),
+        ]);
 
       setSummary(summaryData);
       setLeadsSummary(leadsData);
@@ -93,7 +113,7 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentProject?.id, period]);
+  }, [currentProject?.id, period, source]);
 
   useEffect(() => {
     if (!currentProject?.id) return;
@@ -103,7 +123,7 @@ export default function AnalyticsPage() {
     setTimeline([]);
     setTopQuestions([]);
     fetchAnalytics();
-  }, [currentProject?.id, period, fetchAnalytics]);
+  }, [currentProject?.id, period, source, fetchAnalytics]);
 
   if (projectLoading) {
     return (
@@ -111,13 +131,19 @@ export default function AnalyticsPage() {
         <div className="flex items-center justify-between">
           <div>
             <Skeleton className="h-8 w-32" />
-            <Skeleton className="h-4 w-64 mt-2" />
+            <Skeleton className="mt-2 h-4 w-64" />
           </div>
           <Skeleton className="h-10 w-36" />
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <LeadStatsCard key={i} title="" value="" icon={MessageSquare} loading />
+            <LeadStatsCard
+              key={i}
+              title=""
+              value=""
+              icon={MessageSquare}
+              loading
+            />
           ))}
         </div>
       </div>
@@ -146,19 +172,32 @@ export default function AnalyticsPage() {
             <span className="font-medium">{currentProject.name}</span>
           </p>
         </div>
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value as Period)}
-          className="px-3 py-2 border rounded-md bg-background text-sm"
-        >
-          <option value="24h">Last 24 Hours</option>
-          <option value="7d">Last 7 Days</option>
-          <option value="30d">Last 30 Days</option>
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={source}
+            onChange={(e) => setSource(e.target.value as SourceFilter)}
+            className="bg-background rounded-md border px-3 py-2 text-sm"
+          >
+            {SOURCE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value as Period)}
+            className="bg-background rounded-md border px-3 py-2 text-sm"
+          >
+            <option value="24h">Last 24 Hours</option>
+            <option value="7d">Last 7 Days</option>
+            <option value="30d">Last 30 Days</option>
+          </select>
+        </div>
       </div>
 
       {error && (
-        <div className="p-4 bg-destructive/10 text-destructive rounded-md">
+        <div className="bg-destructive/10 text-destructive rounded-md p-4">
           {error}
         </div>
       )}
@@ -167,9 +206,14 @@ export default function AnalyticsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <LeadStatsCard
           title="Total Conversations"
-          value={leadsSummary?.totalConversations ?? summary?.totalConversations ?? 0}
+          value={
+            leadsSummary?.totalConversations ?? summary?.totalConversations ?? 0
+          }
           icon={MessageSquare}
-          trend={leadsSummary?.trends.conversationsChange ?? summary?.trends.conversationsChange}
+          trend={
+            leadsSummary?.trends.conversationsChange ??
+            summary?.trends.conversationsChange
+          }
           loading={loading}
         />
         <LeadStatsCard

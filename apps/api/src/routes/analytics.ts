@@ -7,16 +7,100 @@
  * - Messages over time timeline (ANA-003)
  */
 
-import { Router, Request, Response } from "express";
-import { supabaseAdmin } from "../lib/supabase";
+import { Router, Request, Response, NextFunction } from "express";
+
 import { logger } from "../lib/logger";
+import { supabaseAdmin } from "../lib/supabase";
+import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import { getTopQuestions } from "../services/question-clustering";
-import { authMiddleware } from "../middleware/auth";
 
 export const analyticsRouter = Router();
 
 // All analytics routes require authentication
 analyticsRouter.use(authMiddleware);
+
+/**
+ * Authorize the caller against the requested project. Every analytics endpoint reads
+ * `projectId` from the query string but the routes previously trusted it blindly — any
+ * signed-in user could read another tenant's metrics. This guard verifies the caller owns
+ * the project or is a member before any handler runs.
+ */
+async function requireProjectAccess(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  const projectId = req.query.projectId as string | undefined;
+  // Missing projectId is a 400 the individual handlers already return — let them.
+  if (!projectId) {
+    next();
+    return;
+  }
+
+  const userId = (req as AuthenticatedRequest).userId;
+  if (!userId) {
+    res.status(401).json({
+      error: { code: "UNAUTHORIZED", message: "Authentication required" },
+    });
+    return;
+  }
+
+  try {
+    const { data: owned } = await supabaseAdmin
+      .from("projects")
+      .select("id")
+      .eq("id", projectId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!owned) {
+      // Only *active* members — removal sets status='removed' (the row is kept), so a plain
+      // membership check would let removed members keep reading analytics.
+      const { data: member } = await supabaseAdmin
+        .from("project_members")
+        .select("user_id")
+        .eq("project_id", projectId)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (!member) {
+        res.status(403).json({
+          error: { code: "FORBIDDEN", message: "No access to this project" },
+        });
+        return;
+      }
+    }
+
+    next();
+  } catch (error) {
+    logger.error("Analytics access check failed", error, { projectId });
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Authorization check failed",
+      },
+    });
+  }
+}
+
+analyticsRouter.use(requireProjectAccess);
+
+const ANALYTICS_SOURCES = [
+  "widget",
+  "playground",
+  "mcp",
+  "api",
+  "voice",
+  "public",
+  "mobile",
+];
+
+/** Optional ?source= filter — slices metrics by chat source; invalid values are ignored. */
+function parseSourceFilter(req: Request): string | null {
+  const source = req.query.source as string | undefined;
+  return source && ANALYTICS_SOURCES.includes(source) ? source : null;
+}
 
 /**
  * GET /api/analytics/summary
@@ -33,6 +117,7 @@ analyticsRouter.get("/summary", async (req: Request, res: Response) => {
   try {
     const projectId = req.query.projectId as string;
     const period = (req.query.period as string) || "30d";
+    const source = parseSourceFilter(req);
 
     if (!projectId) {
       return res.status(400).json({
@@ -51,20 +136,26 @@ analyticsRouter.get("/summary", async (req: Request, res: Response) => {
     previousPeriodEnd.setDate(previousPeriodEnd.getDate() - periodDays);
 
     // Get current period conversation count
-    const { count: currentConversations, error: currentConvError } = await supabaseAdmin
+    let currentConvCountQuery = supabaseAdmin
       .from("conversations")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .gte("created_at", currentPeriodStart.toISOString());
+    if (source)
+      currentConvCountQuery = currentConvCountQuery.eq("source", source);
+    const { count: currentConversations, error: currentConvError } =
+      await currentConvCountQuery;
 
     if (currentConvError) throw currentConvError;
 
     // Get current period conversation IDs for message count
-    const { data: currentConvIds } = await supabaseAdmin
+    let currentConvIdsQuery = supabaseAdmin
       .from("conversations")
       .select("id")
       .eq("project_id", projectId)
       .gte("created_at", currentPeriodStart.toISOString());
+    if (source) currentConvIdsQuery = currentConvIdsQuery.eq("source", source);
+    const { data: currentConvIds } = await currentConvIdsQuery;
 
     // Get current period user message count
     let currentMessages = 0;
@@ -73,29 +164,37 @@ analyticsRouter.get("/summary", async (req: Request, res: Response) => {
         .from("messages")
         .select("id", { count: "exact", head: true })
         .eq("sender_type", "customer")
-        .in("conversation_id", currentConvIds.map(c => c.id));
+        .in(
+          "conversation_id",
+          currentConvIds.map((c) => c.id)
+        );
 
       if (msgError) throw msgError;
       currentMessages = msgCount || 0;
     }
 
     // Get previous period conversation count
-    const { count: previousConversations, error: prevConvError } = await supabaseAdmin
+    let prevConvCountQuery = supabaseAdmin
       .from("conversations")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .gte("created_at", previousPeriodStart.toISOString())
       .lt("created_at", previousPeriodEnd.toISOString());
+    if (source) prevConvCountQuery = prevConvCountQuery.eq("source", source);
+    const { count: previousConversations, error: prevConvError } =
+      await prevConvCountQuery;
 
     if (prevConvError) throw prevConvError;
 
     // Get previous period conversation IDs for message count
-    const { data: prevConvIds } = await supabaseAdmin
+    let prevConvIdsQuery = supabaseAdmin
       .from("conversations")
       .select("id")
       .eq("project_id", projectId)
       .gte("created_at", previousPeriodStart.toISOString())
       .lt("created_at", previousPeriodEnd.toISOString());
+    if (source) prevConvIdsQuery = prevConvIdsQuery.eq("source", source);
+    const { data: prevConvIds } = await prevConvIdsQuery;
 
     // Get previous period user message count
     let previousMessages = 0;
@@ -104,20 +203,35 @@ analyticsRouter.get("/summary", async (req: Request, res: Response) => {
         .from("messages")
         .select("id", { count: "exact", head: true })
         .eq("sender_type", "customer")
-        .in("conversation_id", prevConvIds.map(c => c.id));
+        .in(
+          "conversation_id",
+          prevConvIds.map((c) => c.id)
+        );
 
       if (prevMsgError) throw prevMsgError;
       previousMessages = prevMsgCount || 0;
     }
 
     // Calculate trend percentages
-    const messagesChange = previousMessages > 0
-      ? Math.round(((currentMessages - previousMessages) / previousMessages) * 100)
-      : currentMessages > 0 ? 100 : 0;
+    const messagesChange =
+      previousMessages > 0
+        ? Math.round(
+            ((currentMessages - previousMessages) / previousMessages) * 100
+          )
+        : currentMessages > 0
+          ? 100
+          : 0;
 
-    const conversationsChange = (previousConversations || 0) > 0
-      ? Math.round((((currentConversations || 0) - (previousConversations || 0)) / (previousConversations || 1)) * 100)
-      : (currentConversations || 0) > 0 ? 100 : 0;
+    const conversationsChange =
+      (previousConversations || 0) > 0
+        ? Math.round(
+            (((currentConversations || 0) - (previousConversations || 0)) /
+              (previousConversations || 1)) *
+              100
+          )
+        : (currentConversations || 0) > 0
+          ? 100
+          : 0;
 
     res.json({
       totalMessages: currentMessages,
@@ -131,9 +245,14 @@ analyticsRouter.get("/summary", async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    logger.error("Analytics summary error", error, { requestId: req.requestId });
+    logger.error("Analytics summary error", error, {
+      requestId: req.requestId,
+    });
     res.status(500).json({
-      error: { code: "INTERNAL_ERROR", message: "Failed to get analytics summary" },
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to get analytics summary",
+      },
     });
   }
 });
@@ -153,6 +272,7 @@ analyticsRouter.get("/top-questions", async (req: Request, res: Response) => {
     const projectId = req.query.projectId as string;
     const limit = Math.min(parseInt(req.query.limit as string) || 10, 20);
     const days = Math.min(parseInt(req.query.days as string) || 30, 90);
+    const source = parseSourceFilter(req);
 
     if (!projectId) {
       return res.status(400).json({
@@ -160,7 +280,12 @@ analyticsRouter.get("/top-questions", async (req: Request, res: Response) => {
       });
     }
 
-    const topQuestions = await getTopQuestions(projectId, days, limit);
+    const topQuestions = await getTopQuestions(
+      projectId,
+      days,
+      limit,
+      source || undefined
+    );
 
     res.json({
       questions: topQuestions,
@@ -185,96 +310,126 @@ analyticsRouter.get("/top-questions", async (req: Request, res: Response) => {
  * - projectId: string (required)
  * - period: '24h' | '7d' | '30d' (default: '30d')
  */
-analyticsRouter.get("/feedback/summary", async (req: Request, res: Response) => {
-  try {
-    const projectId = req.query.projectId as string;
-    const period = (req.query.period as string) || "30d";
+analyticsRouter.get(
+  "/feedback/summary",
+  async (req: Request, res: Response) => {
+    try {
+      const projectId = req.query.projectId as string;
+      const period = (req.query.period as string) || "30d";
 
-    if (!projectId) {
-      return res.status(400).json({
-        error: { code: "INVALID_INPUT", message: "projectId is required" },
+      if (!projectId) {
+        return res.status(400).json({
+          error: { code: "INVALID_INPUT", message: "projectId is required" },
+        });
+      }
+
+      // Calculate date ranges based on period
+      const periodDays = period === "24h" ? 1 : period === "7d" ? 7 : 30;
+      const currentPeriodStart = new Date();
+      currentPeriodStart.setDate(currentPeriodStart.getDate() - periodDays);
+
+      const previousPeriodStart = new Date();
+      previousPeriodStart.setDate(
+        previousPeriodStart.getDate() - periodDays * 2
+      );
+      const previousPeriodEnd = new Date();
+      previousPeriodEnd.setDate(previousPeriodEnd.getDate() - periodDays);
+
+      // Get current period feedback
+      const { data: currentFeedback, error: currentError } = await supabaseAdmin
+        .from("message_feedback")
+        .select("rating")
+        .eq("project_id", projectId)
+        .gte("created_at", currentPeriodStart.toISOString());
+
+      if (currentError) throw currentError;
+
+      // Get previous period feedback for trend calculation
+      const { data: previousFeedback, error: previousError } =
+        await supabaseAdmin
+          .from("message_feedback")
+          .select("rating")
+          .eq("project_id", projectId)
+          .gte("created_at", previousPeriodStart.toISOString())
+          .lt("created_at", previousPeriodEnd.toISOString());
+
+      if (previousError) throw previousError;
+
+      // Calculate current period metrics
+      const currentHelpful =
+        currentFeedback?.filter((f) => f.rating === "helpful").length || 0;
+      const currentUnhelpful =
+        currentFeedback?.filter((f) => f.rating === "unhelpful").length || 0;
+      const currentTotal = currentHelpful + currentUnhelpful;
+      const currentSatisfaction =
+        currentTotal > 0
+          ? Math.round((currentHelpful / currentTotal) * 1000) / 10
+          : 0;
+
+      // Calculate previous period metrics
+      const previousHelpful =
+        previousFeedback?.filter((f) => f.rating === "helpful").length || 0;
+      const previousUnhelpful =
+        previousFeedback?.filter((f) => f.rating === "unhelpful").length || 0;
+      const previousTotal = previousHelpful + previousUnhelpful;
+      const previousSatisfaction =
+        previousTotal > 0
+          ? Math.round((previousHelpful / previousTotal) * 1000) / 10
+          : 0;
+
+      // Calculate trend percentages
+      const helpfulChange =
+        previousHelpful > 0
+          ? Math.round(
+              ((currentHelpful - previousHelpful) / previousHelpful) * 100
+            )
+          : currentHelpful > 0
+            ? 100
+            : 0;
+
+      const unhelpfulChange =
+        previousUnhelpful > 0
+          ? Math.round(
+              ((currentUnhelpful - previousUnhelpful) / previousUnhelpful) * 100
+            )
+          : currentUnhelpful > 0
+            ? 100
+            : 0;
+
+      const satisfactionChange =
+        previousSatisfaction > 0
+          ? Math.round((currentSatisfaction - previousSatisfaction) * 10) / 10
+          : currentSatisfaction > 0
+            ? currentSatisfaction
+            : 0;
+
+      res.json({
+        totalFeedback: currentTotal,
+        helpfulCount: currentHelpful,
+        unhelpfulCount: currentUnhelpful,
+        satisfactionRate: currentSatisfaction,
+        period,
+        periodStart: currentPeriodStart.toISOString(),
+        periodEnd: new Date().toISOString(),
+        trends: {
+          helpfulChange,
+          unhelpfulChange,
+          satisfactionChange,
+        },
+      });
+    } catch (error) {
+      logger.error("Feedback summary error", error, {
+        requestId: req.requestId,
+      });
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Failed to get feedback summary",
+        },
       });
     }
-
-    // Calculate date ranges based on period
-    const periodDays = period === "24h" ? 1 : period === "7d" ? 7 : 30;
-    const currentPeriodStart = new Date();
-    currentPeriodStart.setDate(currentPeriodStart.getDate() - periodDays);
-
-    const previousPeriodStart = new Date();
-    previousPeriodStart.setDate(previousPeriodStart.getDate() - periodDays * 2);
-    const previousPeriodEnd = new Date();
-    previousPeriodEnd.setDate(previousPeriodEnd.getDate() - periodDays);
-
-    // Get current period feedback
-    const { data: currentFeedback, error: currentError } = await supabaseAdmin
-      .from("message_feedback")
-      .select("rating")
-      .eq("project_id", projectId)
-      .gte("created_at", currentPeriodStart.toISOString());
-
-    if (currentError) throw currentError;
-
-    // Get previous period feedback for trend calculation
-    const { data: previousFeedback, error: previousError } = await supabaseAdmin
-      .from("message_feedback")
-      .select("rating")
-      .eq("project_id", projectId)
-      .gte("created_at", previousPeriodStart.toISOString())
-      .lt("created_at", previousPeriodEnd.toISOString());
-
-    if (previousError) throw previousError;
-
-    // Calculate current period metrics
-    const currentHelpful = currentFeedback?.filter(f => f.rating === "helpful").length || 0;
-    const currentUnhelpful = currentFeedback?.filter(f => f.rating === "unhelpful").length || 0;
-    const currentTotal = currentHelpful + currentUnhelpful;
-    const currentSatisfaction = currentTotal > 0
-      ? Math.round((currentHelpful / currentTotal) * 1000) / 10
-      : 0;
-
-    // Calculate previous period metrics
-    const previousHelpful = previousFeedback?.filter(f => f.rating === "helpful").length || 0;
-    const previousUnhelpful = previousFeedback?.filter(f => f.rating === "unhelpful").length || 0;
-    const previousTotal = previousHelpful + previousUnhelpful;
-    const previousSatisfaction = previousTotal > 0
-      ? Math.round((previousHelpful / previousTotal) * 1000) / 10
-      : 0;
-
-    // Calculate trend percentages
-    const helpfulChange = previousHelpful > 0
-      ? Math.round(((currentHelpful - previousHelpful) / previousHelpful) * 100)
-      : currentHelpful > 0 ? 100 : 0;
-
-    const unhelpfulChange = previousUnhelpful > 0
-      ? Math.round(((currentUnhelpful - previousUnhelpful) / previousUnhelpful) * 100)
-      : currentUnhelpful > 0 ? 100 : 0;
-
-    const satisfactionChange = previousSatisfaction > 0
-      ? Math.round((currentSatisfaction - previousSatisfaction) * 10) / 10
-      : currentSatisfaction > 0 ? currentSatisfaction : 0;
-
-    res.json({
-      totalFeedback: currentTotal,
-      helpfulCount: currentHelpful,
-      unhelpfulCount: currentUnhelpful,
-      satisfactionRate: currentSatisfaction,
-      period,
-      periodStart: currentPeriodStart.toISOString(),
-      periodEnd: new Date().toISOString(),
-      trends: {
-        helpfulChange,
-        unhelpfulChange,
-        satisfactionChange,
-      },
-    });
-  } catch (error) {
-    logger.error("Feedback summary error", error, { requestId: req.requestId });
-    res.status(500).json({
-      error: { code: "INTERNAL_ERROR", message: "Failed to get feedback summary" },
-    });
   }
-});
+);
 
 /**
  * GET /api/analytics/feedback/timeline
@@ -285,70 +440,79 @@ analyticsRouter.get("/feedback/summary", async (req: Request, res: Response) => 
  * - projectId: string (required)
  * - days: number (default: 30, max: 90)
  */
-analyticsRouter.get("/feedback/timeline", async (req: Request, res: Response) => {
-  try {
-    const projectId = req.query.projectId as string;
-    const days = Math.min(parseInt(req.query.days as string) || 30, 90);
+analyticsRouter.get(
+  "/feedback/timeline",
+  async (req: Request, res: Response) => {
+    try {
+      const projectId = req.query.projectId as string;
+      const days = Math.min(parseInt(req.query.days as string) || 30, 90);
 
-    if (!projectId) {
-      return res.status(400).json({
-        error: { code: "INVALID_INPUT", message: "projectId is required" },
-      });
-    }
+      if (!projectId) {
+        return res.status(400).json({
+          error: { code: "INVALID_INPUT", message: "projectId is required" },
+        });
+      }
 
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    startDate.setHours(0, 0, 0, 0);
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      startDate.setHours(0, 0, 0, 0);
 
-    // Get all feedback in the date range
-    const { data: feedback, error } = await supabaseAdmin
-      .from("message_feedback")
-      .select("created_at, rating")
-      .eq("project_id", projectId)
-      .gte("created_at", startDate.toISOString())
-      .order("created_at", { ascending: true });
+      // Get all feedback in the date range
+      const { data: feedback, error } = await supabaseAdmin
+        .from("message_feedback")
+        .select("created_at, rating")
+        .eq("project_id", projectId)
+        .gte("created_at", startDate.toISOString())
+        .order("created_at", { ascending: true });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    // Initialize timeline with all dates in range
-    const timeline: Record<string, { helpful: number; unhelpful: number }> = {};
-    for (let i = 0; i < days; i++) {
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
-      const dateStr = date.toISOString().split("T")[0];
-      timeline[dateStr] = { helpful: 0, unhelpful: 0 };
-    }
+      // Initialize timeline with all dates in range
+      const timeline: Record<string, { helpful: number; unhelpful: number }> =
+        {};
+      for (let i = 0; i < days; i++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + i);
+        const dateStr = date.toISOString().split("T")[0];
+        timeline[dateStr] = { helpful: 0, unhelpful: 0 };
+      }
 
-    // Aggregate data by date
-    for (const item of feedback || []) {
-      const dateStr = new Date(item.created_at).toISOString().split("T")[0];
-      if (timeline[dateStr]) {
-        if (item.rating === "helpful") {
-          timeline[dateStr].helpful++;
-        } else {
-          timeline[dateStr].unhelpful++;
+      // Aggregate data by date
+      for (const item of feedback || []) {
+        const dateStr = new Date(item.created_at).toISOString().split("T")[0];
+        if (timeline[dateStr]) {
+          if (item.rating === "helpful") {
+            timeline[dateStr].helpful++;
+          } else {
+            timeline[dateStr].unhelpful++;
+          }
         }
       }
+
+      // Convert to array format for frontend
+      const timelineArray = Object.entries(timeline).map(([date, data]) => ({
+        date,
+        helpful: data.helpful,
+        unhelpful: data.unhelpful,
+      }));
+
+      res.json({
+        data: timelineArray,
+        days,
+      });
+    } catch (error) {
+      logger.error("Feedback timeline error", error, {
+        requestId: req.requestId,
+      });
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Failed to get feedback timeline",
+        },
+      });
     }
-
-    // Convert to array format for frontend
-    const timelineArray = Object.entries(timeline).map(([date, data]) => ({
-      date,
-      helpful: data.helpful,
-      unhelpful: data.unhelpful,
-    }));
-
-    res.json({
-      data: timelineArray,
-      days,
-    });
-  } catch (error) {
-    logger.error("Feedback timeline error", error, { requestId: req.requestId });
-    res.status(500).json({
-      error: { code: "INTERNAL_ERROR", message: "Failed to get feedback timeline" },
-    });
   }
-});
+);
 
 /**
  * GET /api/analytics/feedback/issues
@@ -391,12 +555,15 @@ analyticsRouter.get("/feedback/issues", async (req: Request, res: Response) => {
 
     // Group by similar questions (simple grouping by exact match for now)
     // A more sophisticated approach would use embeddings/clustering
-    const issueMap = new Map<string, {
-      questionText: string;
-      sampleAnswer: string;
-      unhelpfulCount: number;
-      lastOccurred: string;
-    }>();
+    const issueMap = new Map<
+      string,
+      {
+        questionText: string;
+        sampleAnswer: string;
+        unhelpfulCount: number;
+        lastOccurred: string;
+      }
+    >();
 
     for (const item of unhelpfulFeedback || []) {
       const key = item.question_text?.toLowerCase().trim() || "unknown";
@@ -411,9 +578,9 @@ analyticsRouter.get("/feedback/issues", async (req: Request, res: Response) => {
         issueMap.set(key, {
           questionText: item.question_text || "Unknown question",
           sampleAnswer: item.answer_text
-            ? (item.answer_text.length > 200
-                ? item.answer_text.substring(0, 200) + "..."
-                : item.answer_text)
+            ? item.answer_text.length > 200
+              ? item.answer_text.substring(0, 200) + "..."
+              : item.answer_text
             : "No answer recorded",
           unhelpfulCount: 1,
           lastOccurred: item.created_at,
@@ -434,7 +601,10 @@ analyticsRouter.get("/feedback/issues", async (req: Request, res: Response) => {
   } catch (error) {
     logger.error("Feedback issues error", error, { requestId: req.requestId });
     res.status(500).json({
-      error: { code: "INTERNAL_ERROR", message: "Failed to get feedback issues" },
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to get feedback issues",
+      },
     });
   }
 });
@@ -452,6 +622,7 @@ analyticsRouter.get("/leads-summary", async (req: Request, res: Response) => {
   try {
     const projectId = req.query.projectId as string;
     const period = (req.query.period as string) || "30d";
+    const source = parseSourceFilter(req);
 
     if (!projectId) {
       return res.status(400).json({
@@ -468,72 +639,127 @@ analyticsRouter.get("/leads-summary", async (req: Request, res: Response) => {
     const previousPeriodEnd = new Date();
     previousPeriodEnd.setDate(previousPeriodEnd.getDate() - periodDays);
 
+    // When a source filter is active, scope leads to that source by inner-joining their
+    // conversation and filtering on the conversation's `source` — NOT on the conversation's
+    // created_at. The lead's own created_at defines the period; a lead captured today on an
+    // older, resumed public conversation must still count. Leads with no conversation_id are
+    // excluded under a source filter (a source-less lead can't be attributed to a source).
+    // Typed as `string` (not a literal) so supabase-js doesn't try to compile-time-parse the
+    // embedded-resource select and error on it.
+    const leadSelect: string = source
+      ? "qualification_status, conversations!inner(source)"
+      : "qualification_status";
+    type LeadStatusRow = { qualification_status: string };
+
     // Current period leads
-    const { data: currentLeads, error: currentError } = await supabaseAdmin
+    let currentLeadsQuery = supabaseAdmin
       .from("qualified_leads")
-      .select("qualification_status")
+      .select(leadSelect)
       .eq("project_id", projectId)
       .gte("created_at", currentPeriodStart.toISOString());
+    if (source)
+      currentLeadsQuery = currentLeadsQuery.eq("conversations.source", source);
+    const { data: currentLeads, error: currentError } =
+      await currentLeadsQuery.returns<LeadStatusRow[]>();
 
     if (currentError) throw currentError;
 
     // Previous period leads
-    const { data: previousLeads, error: previousError } = await supabaseAdmin
+    let previousLeadsQuery = supabaseAdmin
       .from("qualified_leads")
-      .select("qualification_status")
+      .select(leadSelect)
       .eq("project_id", projectId)
       .gte("created_at", previousPeriodStart.toISOString())
       .lt("created_at", previousPeriodEnd.toISOString());
+    if (source)
+      previousLeadsQuery = previousLeadsQuery.eq(
+        "conversations.source",
+        source
+      );
+    const { data: previousLeads, error: previousError } =
+      await previousLeadsQuery.returns<LeadStatusRow[]>();
 
     if (previousError) throw previousError;
 
     // Current period conversations count
-    const { count: currentConversations } = await supabaseAdmin
+    let currentConvQuery = supabaseAdmin
       .from("conversations")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .gte("created_at", currentPeriodStart.toISOString());
+    if (source) currentConvQuery = currentConvQuery.eq("source", source);
+    const { count: currentConversations } = await currentConvQuery;
 
     // Previous period conversations count
-    const { count: previousConversations } = await supabaseAdmin
+    let prevConvQuery = supabaseAdmin
       .from("conversations")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .gte("created_at", previousPeriodStart.toISOString())
       .lt("created_at", previousPeriodEnd.toISOString());
+    if (source) prevConvQuery = prevConvQuery.eq("source", source);
+    const { count: previousConversations } = await prevConvQuery;
 
     // Voice call count
-    const { count: voiceCallCount } = await supabaseAdmin
+    let voiceCallQuery = supabaseAdmin
       .from("conversations")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .eq("is_voice_call", true)
       .gte("created_at", currentPeriodStart.toISOString());
+    if (source) voiceCallQuery = voiceCallQuery.eq("source", source);
+    const { count: voiceCallCount } = await voiceCallQuery;
 
     // Calculate current metrics
     const totalLeads = currentLeads?.length || 0;
-    const qualifiedCount = currentLeads?.filter(l => l.qualification_status === "qualified").length || 0;
-    const notQualifiedCount = currentLeads?.filter(l => l.qualification_status === "not_qualified").length || 0;
+    const qualifiedCount =
+      currentLeads?.filter((l) => l.qualification_status === "qualified")
+        .length || 0;
+    const notQualifiedCount =
+      currentLeads?.filter((l) => l.qualification_status === "not_qualified")
+        .length || 0;
     const terminalLeads = qualifiedCount + notQualifiedCount;
-    const completionRate = totalLeads > 0 ? Math.round((terminalLeads / totalLeads) * 100) : 0;
-    const qualificationRate = terminalLeads > 0 ? Math.round((qualifiedCount / terminalLeads) * 100) : 0;
-    const disqualificationRate = terminalLeads > 0 ? Math.round((notQualifiedCount / terminalLeads) * 100) : 0;
+    const completionRate =
+      totalLeads > 0 ? Math.round((terminalLeads / totalLeads) * 100) : 0;
+    const qualificationRate =
+      terminalLeads > 0
+        ? Math.round((qualifiedCount / terminalLeads) * 100)
+        : 0;
+    const disqualificationRate =
+      terminalLeads > 0
+        ? Math.round((notQualifiedCount / terminalLeads) * 100)
+        : 0;
 
     // Calculate previous metrics for trends
     const prevTotal = previousLeads?.length || 0;
-    const prevQualified = previousLeads?.filter(l => l.qualification_status === "qualified").length || 0;
+    const prevQualified =
+      previousLeads?.filter((l) => l.qualification_status === "qualified")
+        .length || 0;
 
-    const leadsChange = prevTotal > 0
-      ? Math.round(((totalLeads - prevTotal) / prevTotal) * 100)
-      : totalLeads > 0 ? 100 : 0;
+    const leadsChange =
+      prevTotal > 0
+        ? Math.round(((totalLeads - prevTotal) / prevTotal) * 100)
+        : totalLeads > 0
+          ? 100
+          : 0;
 
-    const qualifiedChange = prevQualified > 0
-      ? Math.round(((qualifiedCount - prevQualified) / prevQualified) * 100)
-      : qualifiedCount > 0 ? 100 : 0;
+    const qualifiedChange =
+      prevQualified > 0
+        ? Math.round(((qualifiedCount - prevQualified) / prevQualified) * 100)
+        : qualifiedCount > 0
+          ? 100
+          : 0;
 
-    const conversationsChange = (previousConversations || 0) > 0
-      ? Math.round((((currentConversations || 0) - (previousConversations || 0)) / (previousConversations || 1)) * 100)
-      : (currentConversations || 0) > 0 ? 100 : 0;
+    const conversationsChange =
+      (previousConversations || 0) > 0
+        ? Math.round(
+            (((currentConversations || 0) - (previousConversations || 0)) /
+              (previousConversations || 1)) *
+              100
+          )
+        : (currentConversations || 0) > 0
+          ? 100
+          : 0;
 
     res.json({
       totalConversations: currentConversations || 0,
@@ -575,6 +801,7 @@ analyticsRouter.get("/timeline", async (req: Request, res: Response) => {
   try {
     const projectId = req.query.projectId as string;
     const days = Math.min(parseInt(req.query.days as string) || 30, 90);
+    const source = parseSourceFilter(req);
 
     if (!projectId) {
       return res.status(400).json({
@@ -582,22 +809,28 @@ analyticsRouter.get("/timeline", async (req: Request, res: Response) => {
       });
     }
 
+    // Window of `days` days *including today*, computed in UTC. Bucket keys come from
+    // `created_at.toISOString()` (UTC), so the window/loop must use UTC setters too — otherwise a
+    // server in a non-UTC zone shifts local-midnight to a different UTC date key and today's
+    // bucket is dropped (the chart ends "yesterday" while summary counts include today).
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    startDate.setHours(0, 0, 0, 0);
+    startDate.setUTCDate(startDate.getUTCDate() - (days - 1));
+    startDate.setUTCHours(0, 0, 0, 0);
 
     // Get all conversations in the date range
-    const { data: conversations, error: convError } = await supabaseAdmin
+    let timelineConvQuery = supabaseAdmin
       .from("conversations")
       .select("id, created_at")
       .eq("project_id", projectId)
       .gte("created_at", startDate.toISOString())
       .order("created_at", { ascending: true });
+    if (source) timelineConvQuery = timelineConvQuery.eq("source", source);
+    const { data: conversations, error: convError } = await timelineConvQuery;
 
     if (convError) throw convError;
 
     // Get all customer messages in the date range for these conversations
-    const conversationIds = (conversations || []).map(c => c.id);
+    const conversationIds = (conversations || []).map((c) => c.id);
     let messages: { conversation_id: string; created_at: string }[] = [];
 
     if (conversationIds.length > 0) {
@@ -614,10 +847,13 @@ analyticsRouter.get("/timeline", async (req: Request, res: Response) => {
     }
 
     // Initialize timeline with all dates in range
-    const timeline: Record<string, { messages: number; conversations: number }> = {};
+    const timeline: Record<
+      string,
+      { messages: number; conversations: number }
+    > = {};
     for (let i = 0; i < days; i++) {
       const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
+      date.setUTCDate(date.getUTCDate() + i);
       const dateStr = date.toISOString().split("T")[0];
       timeline[dateStr] = { messages: 0, conversations: 0 };
     }

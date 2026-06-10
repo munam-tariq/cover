@@ -11,8 +11,14 @@
  */
 
 import { Router, Request, Response } from "express";
-import { chatRateLimiter } from "../middleware/rate-limit";
+
+import { logger } from "../lib/logger";
+import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
+import { chatRateLimiter } from "../middleware/rate-limit";
+import type { ChatSource } from "../services/chat-engine";
+import { getOrCreateConversation } from "../services/conversation";
+import { isValidEmail } from "../services/lead-capture";
 import {
   submitLeadForm,
   submitInlineEmail,
@@ -21,10 +27,18 @@ import {
   deferLeadCapture,
   updateVisitCount,
 } from "../services/lead-capture-v2";
-import { supabaseAdmin } from "../lib/supabase";
-import { logger } from "../lib/logger";
-import { isValidEmail } from "../services/lead-capture";
+
 import { buildGreeting } from "./embed";
+
+const LEAD_SOURCES: ChatSource[] = [
+  "widget",
+  "playground",
+  "mcp",
+  "api",
+  "voice",
+  "public",
+  "mobile",
+];
 
 const TRANSITION_MESSAGES = [
   "I just have a quick question to better understand your needs.",
@@ -48,7 +62,17 @@ leadCaptureRouter.post(
   chatRateLimiter,
   async (req: Request, res: Response) => {
     try {
-      const { projectId, visitorId, sessionId, formData, firstMessage } = req.body;
+      const {
+        projectId,
+        visitorId,
+        sessionId,
+        formData,
+        firstMessage,
+        source,
+      } = req.body;
+      const leadSource: ChatSource = LEAD_SOURCES.includes(source as ChatSource)
+        ? (source as ChatSource)
+        : "widget";
 
       // Validate required fields
       // Note: formData.email may be empty during progressive profiling
@@ -95,16 +119,87 @@ leadCaptureRouter.post(
       const greeting = buildGreeting(project?.name, project?.company_name);
       let assembledGreeting: string;
 
-      if (result.nextAction === "qualifying_question" && result.qualifyingQuestion) {
-        const transition = TRANSITION_MESSAGES[Math.floor(Math.random() * TRANSITION_MESSAGES.length)];
+      if (
+        result.nextAction === "qualifying_question" &&
+        result.qualifyingQuestion
+      ) {
+        const transition =
+          TRANSITION_MESSAGES[
+            Math.floor(Math.random() * TRANSITION_MESSAGES.length)
+          ];
         assembledGreeting = `${greeting.intro}\n${transition}\n${result.qualifyingQuestion}`;
       } else {
         assembledGreeting = greeting.full;
       }
 
-      res.json({ ...result, assembledGreeting });
+      // When a qualifying question follows, persist it as an assistant message and return the
+      // conversation id. Previously the question was UI-only, so a page reload (which rehydrates
+      // from the DB) dropped it while the backend stayed mid-qualifying — the visitor lost the
+      // question they were expected to answer. In email_first mode no conversation exists yet,
+      // so create one here and hand its id back to the client.
+      let resolvedSessionId: string | null = sessionId || null;
+      if (result.nextAction === "qualifying_question") {
+        try {
+          resolvedSessionId = await getOrCreateConversation(
+            projectId,
+            visitorId,
+            sessionId || undefined,
+            leadSource
+          );
+          const { error: msgError } = await supabaseAdmin
+            .from("messages")
+            .insert({
+              conversation_id: resolvedSessionId,
+              sender_type: "ai",
+              content: assembledGreeting,
+              metadata: { lead_capture_question: true },
+            });
+          if (msgError) {
+            logger.error("Failed to persist qualifying question", msgError, {
+              projectId,
+              visitorId,
+            });
+          }
+
+          // Backfill the lead's conversation_id. In email_first mode the lead row was inserted
+          // with conversation_id=null (no conversation existed yet); without this the lead is
+          // never linked to its conversation and source-filtered lead analytics exclude it.
+          if (result.leadId && resolvedSessionId) {
+            const { error: linkError } = await supabaseAdmin
+              .from("qualified_leads")
+              .update({ conversation_id: resolvedSessionId })
+              .eq("id", result.leadId)
+              .is("conversation_id", null);
+            if (linkError) {
+              logger.error(
+                "Failed to backfill lead conversation_id",
+                linkError,
+                {
+                  projectId,
+                  visitorId,
+                  leadId: result.leadId,
+                }
+              );
+            }
+          }
+        } catch (persistErr) {
+          // Non-fatal: the question still renders in the client response below.
+          logger.error(
+            "Failed to ensure conversation for qualifying question",
+            persistErr,
+            {
+              projectId,
+              visitorId,
+            }
+          );
+        }
+      }
+
+      res.json({ ...result, assembledGreeting, sessionId: resolvedSessionId });
     } catch (error) {
-      logger.error("Lead form submit error", error, { requestId: req.requestId });
+      logger.error("Lead form submit error", error, {
+        requestId: req.requestId,
+      });
       res.status(500).json({
         error: {
           code: "INTERNAL_ERROR",
@@ -125,7 +220,8 @@ leadCaptureRouter.post(
   chatRateLimiter,
   async (req: Request, res: Response) => {
     try {
-      const { projectId, visitorId, sessionId, email, captureSource } = req.body;
+      const { projectId, visitorId, sessionId, email, captureSource } =
+        req.body;
 
       if (!projectId || !visitorId || !email) {
         return res.status(400).json({
@@ -155,7 +251,9 @@ leadCaptureRouter.post(
 
       res.json(result);
     } catch (error) {
-      logger.error("Inline email submit error", error, { requestId: req.requestId });
+      logger.error("Inline email submit error", error, {
+        requestId: req.requestId,
+      });
       res.status(500).json({
         error: {
           code: "INTERNAL_ERROR",
@@ -227,7 +325,9 @@ leadCaptureRouter.get(
 
       res.json(status);
     } catch (error) {
-      logger.error("Lead status check error", error, { requestId: req.requestId });
+      logger.error("Lead status check error", error, {
+        requestId: req.requestId,
+      });
       res.status(500).json({
         error: {
           code: "INTERNAL_ERROR",
@@ -299,7 +399,9 @@ leadCaptureRouter.post(
       const result = await updateVisitCount(projectId, visitorId);
       res.json(result);
     } catch (error) {
-      logger.error("Visit count update error", error, { requestId: req.requestId });
+      logger.error("Visit count update error", error, {
+        requestId: req.requestId,
+      });
       res.status(500).json({
         error: {
           code: "INTERNAL_ERROR",
@@ -359,7 +461,17 @@ leadsRouter.get(
         .range(offset, offset + limit - 1);
 
       // Filter by status if provided
-      if (status && ["form_completed", "qualifying", "qualified", "not_qualified", "skipped", "deferred"].includes(status)) {
+      if (
+        status &&
+        [
+          "form_completed",
+          "qualifying",
+          "qualified",
+          "not_qualified",
+          "skipped",
+          "deferred",
+        ].includes(status)
+      ) {
         query = query.eq("qualification_status", status);
       }
 
@@ -370,9 +482,11 @@ leadsRouter.get(
       }
 
       // Resolve conversation IDs for leads missing them (via customer_id)
-      const leadsNeedingConv = (leads || []).filter(l => !l.conversation_id && l.customer_id);
-      const customerIds = leadsNeedingConv.map(l => l.customer_id);
-      let convByCustomer: Record<string, string> = {};
+      const leadsNeedingConv = (leads || []).filter(
+        (l) => !l.conversation_id && l.customer_id
+      );
+      const customerIds = leadsNeedingConv.map((l) => l.customer_id);
+      const convByCustomer: Record<string, string> = {};
 
       if (customerIds.length > 0) {
         const { data: convs } = await supabaseAdmin
@@ -403,7 +517,8 @@ leadsRouter.get(
           qualificationReasoning: lead.qualification_reasoning || null,
           captureSource: lead.capture_source || null,
           firstMessage: lead.first_message,
-          conversationId: lead.conversation_id || convByCustomer[lead.customer_id] || null,
+          conversationId:
+            lead.conversation_id || convByCustomer[lead.customer_id] || null,
           customerId: lead.customer_id || null,
           formSubmittedAt: lead.form_submitted_at,
           qualificationCompletedAt: lead.qualification_completed_at,

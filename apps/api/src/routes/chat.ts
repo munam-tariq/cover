@@ -6,17 +6,20 @@
  */
 
 import { Router, Request, Response } from "express";
-import { chatRateLimiter, getRateLimitStatus } from "../middleware/rate-limit";
+
+import { logger } from "../lib/logger";
+import { supabaseAdmin } from "../lib/supabase";
+import { requireClientKeyOrDomain } from "../middleware/client-key";
 import { domainWhitelistMiddleware } from "../middleware/domain-whitelist";
+import { chatRateLimiter, getRateLimitStatus } from "../middleware/rate-limit";
 import {
   processChat,
   validateChatInput,
   ChatError,
+  type ChatSource,
 } from "../services/chat-engine";
 import { getOrCreateConversation } from "../services/conversation";
-import { supabaseAdmin } from "../lib/supabase";
 import { getGeoFromIP } from "../services/ip-geo";
-import { logger } from "../lib/logger";
 
 export const chatRouter = Router();
 
@@ -42,11 +45,11 @@ export const chatRouter = Router();
  */
 chatRouter.post(
   "/message",
-  domainWhitelistMiddleware({ requireDomain: true, projectIdSource: 'body' }),
+  // A valid X-FrontFace-Key (native SDKs) satisfies the gate in place of a browser Origin;
+  // otherwise the web widget's domain whitelist still applies.
+  requireClientKeyOrDomain,
   chatRateLimiter,
   async (req: Request, res: Response) => {
-    const startTime = Date.now();
-
     try {
       // Validate input
       const input = validateChatInput(req.body);
@@ -225,7 +228,9 @@ chatRouter.get("/conversations", async (req: Request, res: Response) => {
       offset,
     });
   } catch (error) {
-    logger.error("List conversations error", error, { requestId: req.requestId });
+    logger.error("List conversations error", error, {
+      requestId: req.requestId,
+    });
     res.status(500).json({
       error: {
         code: "INTERNAL_ERROR",
@@ -286,111 +291,116 @@ chatRouter.get("/rate-limit-status", (req: Request, res: Response) => {
  */
 chatRouter.post(
   "/feedback",
-  domainWhitelistMiddleware({ requireDomain: false, projectIdSource: 'body' }),
+  domainWhitelistMiddleware({ requireDomain: false, projectIdSource: "body" }),
   async (req: Request, res: Response) => {
-  try {
-    const {
-      messageId,
-      conversationId,
-      projectId,
-      rating,
-      visitorId,
-      questionText,
-      answerText,
-    } = req.body;
+    try {
+      const {
+        messageId,
+        conversationId,
+        projectId,
+        rating,
+        visitorId,
+        questionText,
+        answerText,
+      } = req.body;
 
-    // Validate required fields
-    if (!conversationId || !projectId || !rating || !visitorId) {
-      return res.status(400).json({
+      // Validate required fields
+      if (!conversationId || !projectId || !rating || !visitorId) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_INPUT",
+            message:
+              "conversationId, projectId, rating, and visitorId are required",
+          },
+        });
+      }
+
+      // Validate rating value
+      if (!["helpful", "unhelpful"].includes(rating)) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_INPUT",
+            message: "rating must be 'helpful' or 'unhelpful'",
+          },
+        });
+      }
+
+      // Check if feedback already exists for this message/visitor
+      let existingQuery = supabaseAdmin
+        .from("message_feedback")
+        .select("id, rating")
+        .eq("visitor_id", visitorId)
+        .eq("conversation_id", conversationId);
+
+      // Match by message_id if provided, otherwise by answer_text
+      if (messageId) {
+        existingQuery = existingQuery.eq("message_id", messageId);
+      } else if (answerText) {
+        existingQuery = existingQuery.eq("answer_text", answerText);
+      }
+
+      const { data: existing } = await existingQuery.maybeSingle();
+
+      let feedbackId: string;
+      let updated = false;
+
+      if (existing) {
+        // Update existing feedback
+        const { data: updatedFeedback, error: updateError } =
+          await supabaseAdmin
+            .from("message_feedback")
+            .update({ rating })
+            .eq("id", existing.id)
+            .select("id")
+            .single();
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        feedbackId = updatedFeedback.id;
+        updated = true;
+      } else {
+        // Insert new feedback
+        const { data: newFeedback, error: insertError } = await supabaseAdmin
+          .from("message_feedback")
+          .insert({
+            message_id: messageId || null,
+            conversation_id: conversationId,
+            project_id: projectId,
+            rating,
+            visitor_id: visitorId,
+            question_text: questionText || null,
+            answer_text: answerText || null,
+          })
+          .select("id")
+          .single();
+
+        if (insertError) {
+          throw insertError;
+        }
+
+        feedbackId = newFeedback.id;
+      }
+
+      res.json({
+        success: true,
+        feedbackId,
+        updated,
+      });
+    } catch (error) {
+      logger.error("Feedback submission error", error, {
+        requestId: req.requestId,
+      });
+      res.status(500).json({
         error: {
-          code: "INVALID_INPUT",
-          message: "conversationId, projectId, rating, and visitorId are required",
+          code: "INTERNAL_ERROR",
+          message: "Failed to submit feedback",
         },
       });
     }
-
-    // Validate rating value
-    if (!["helpful", "unhelpful"].includes(rating)) {
-      return res.status(400).json({
-        error: {
-          code: "INVALID_INPUT",
-          message: "rating must be 'helpful' or 'unhelpful'",
-        },
-      });
-    }
-
-    // Check if feedback already exists for this message/visitor
-    let existingQuery = supabaseAdmin
-      .from("message_feedback")
-      .select("id, rating")
-      .eq("visitor_id", visitorId)
-      .eq("conversation_id", conversationId);
-
-    // Match by message_id if provided, otherwise by answer_text
-    if (messageId) {
-      existingQuery = existingQuery.eq("message_id", messageId);
-    } else if (answerText) {
-      existingQuery = existingQuery.eq("answer_text", answerText);
-    }
-
-    const { data: existing } = await existingQuery.maybeSingle();
-
-    let feedbackId: string;
-    let updated = false;
-
-    if (existing) {
-      // Update existing feedback
-      const { data: updatedFeedback, error: updateError } = await supabaseAdmin
-        .from("message_feedback")
-        .update({ rating })
-        .eq("id", existing.id)
-        .select("id")
-        .single();
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      feedbackId = updatedFeedback.id;
-      updated = true;
-    } else {
-      // Insert new feedback
-      const { data: newFeedback, error: insertError } = await supabaseAdmin
-        .from("message_feedback")
-        .insert({
-          message_id: messageId || null,
-          conversation_id: conversationId,
-          project_id: projectId,
-          rating,
-          visitor_id: visitorId,
-          question_text: questionText || null,
-          answer_text: answerText || null,
-        })
-        .select("id")
-        .single();
-
-      if (insertError) {
-        throw insertError;
-      }
-
-      feedbackId = newFeedback.id;
-    }
-
-    res.json({
-      success: true,
-      feedbackId,
-      updated,
-    });
-  } catch (error) {
-    logger.error("Feedback submission error", error, { requestId: req.requestId });
-    res.status(500).json({
-      error: {
-        code: "INTERNAL_ERROR",
-        message: "Failed to submit feedback",
-      },
-    });
   }
-});
+);
 
 /**
  * GET /api/chat/feedback
@@ -457,27 +467,56 @@ chatRouter.get("/feedback", async (req: Request, res: Response) => {
  * Request body:
  * - projectId: string (required)
  * - visitorId: string (required)
+ * - source: ChatSource (optional, defaults to "widget")
  *
  * Response:
  * - conversationId: string
  */
 chatRouter.post("/ensure-conversation", async (req: Request, res: Response) => {
   try {
-    const { projectId, visitorId } = req.body;
+    const { projectId, visitorId, source } = req.body;
 
     if (!projectId || !visitorId) {
       return res.status(400).json({
-        error: { code: "INVALID_INPUT", message: "projectId and visitorId are required" },
+        error: {
+          code: "INVALID_INPUT",
+          message: "projectId and visitorId are required",
+        },
       });
     }
 
-    const conversationId = await getOrCreateConversation(projectId, visitorId);
+    const validSources: ChatSource[] = [
+      "widget",
+      "playground",
+      "mcp",
+      "api",
+      "voice",
+      "public",
+      "mobile",
+    ];
+    const conversationSource: ChatSource = validSources.includes(
+      source as ChatSource
+    )
+      ? (source as ChatSource)
+      : "widget";
+
+    const conversationId = await getOrCreateConversation(
+      projectId,
+      visitorId,
+      undefined,
+      conversationSource
+    );
 
     res.json({ conversationId });
   } catch (error) {
-    logger.error("Ensure conversation error", error, { requestId: req.requestId });
+    logger.error("Ensure conversation error", error, {
+      requestId: req.requestId,
+    });
     res.status(500).json({
-      error: { code: "INTERNAL_ERROR", message: "Failed to ensure conversation" },
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to ensure conversation",
+      },
     });
   }
 });

@@ -6,15 +6,24 @@
  * all requests are allowed (preserving current behavior for existing customers).
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { supabaseAdmin } from '../lib/supabase';
+import { Request, Response, NextFunction } from "express";
 
-// Domains that are always allowed (local development only)
+import { supabaseAdmin } from "../lib/supabase";
+
+// Domains that are always allowed:
+// - local development hosts
+// - the first-party hosted public page (frontface.app/c/<slug>-<id>), so a tenant's own
+//   public page is never blocked by their allowed_domains list. Configurable via FIRST_PARTY_HOST.
+const FIRST_PARTY_HOST = (
+  process.env.FIRST_PARTY_HOST || "frontface.app"
+).toLowerCase();
 const ALWAYS_ALLOWED_PATTERNS: (string | RegExp)[] = [
-  'localhost',
-  '127.0.0.1',
+  "localhost",
+  "127.0.0.1",
   /\.localhost$/,
   /\.local$/,
+  FIRST_PARTY_HOST,
+  new RegExp(`\\.${FIRST_PARTY_HOST.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), // subdomains of the first-party host
 ];
 
 /**
@@ -49,13 +58,10 @@ function extractDomain(req: Request): string | null {
 /**
  * Check if domain matches an allowed pattern
  */
-function isDomainAllowed(
-  domain: string,
-  allowedDomains: string[]
-): boolean {
+function isDomainAllowed(domain: string, allowedDomains: string[]): boolean {
   // Check always-allowed patterns (dev/preview environments)
   for (const pattern of ALWAYS_ALLOWED_PATTERNS) {
-    if (typeof pattern === 'string') {
+    if (typeof pattern === "string") {
       if (domain === pattern) return true;
     } else if (pattern.test(domain)) {
       return true;
@@ -82,7 +88,7 @@ function isDomainAllowed(
     }
 
     // Wildcard match (*.example.com)
-    if (normalizedAllowed.startsWith('*.')) {
+    if (normalizedAllowed.startsWith("*.")) {
       const baseDomain = normalizedAllowed.slice(2); // Remove '*.'
       if (domain === baseDomain || domain.endsWith(`.${baseDomain}`)) {
         return true;
@@ -109,10 +115,10 @@ async function getProjectAllowedDomains(projectId: string): Promise<string[]> {
 
   // Fetch from database
   const { data, error } = await supabaseAdmin
-    .from('projects')
-    .select('allowed_domains')
-    .eq('id', projectId)
-    .is('deleted_at', null)
+    .from("projects")
+    .select("allowed_domains")
+    .eq("id", projectId)
+    .is("deleted_at", null)
     .single();
 
   if (error || !data) {
@@ -145,15 +151,17 @@ export function clearDomainCache(projectId: string): void {
  * @param options.projectIdSource - Where to find projectId ('body', 'query', 'params')
  * @param options.projectIdParam - The parameter name (default: 'projectId')
  */
-export function domainWhitelistMiddleware(options: {
-  requireDomain?: boolean;
-  projectIdSource?: 'body' | 'query' | 'params';
-  projectIdParam?: string;
-} = {}) {
+export function domainWhitelistMiddleware(
+  options: {
+    requireDomain?: boolean;
+    projectIdSource?: "body" | "query" | "params";
+    projectIdParam?: string;
+  } = {}
+) {
   const {
     requireDomain = false,
-    projectIdSource = 'body',
-    projectIdParam = 'projectId'
+    projectIdSource = "body",
+    projectIdParam = "projectId",
   } = options;
 
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -161,13 +169,13 @@ export function domainWhitelistMiddleware(options: {
     let projectId: string | undefined;
 
     switch (projectIdSource) {
-      case 'body':
+      case "body":
         projectId = req.body?.[projectIdParam];
         break;
-      case 'query':
+      case "query":
         projectId = req.query[projectIdParam] as string;
         break;
-      case 'params':
+      case "params":
         projectId = req.params[projectIdParam];
         break;
     }
@@ -184,8 +192,8 @@ export function domainWhitelistMiddleware(options: {
       if (requireDomain) {
         return res.status(403).json({
           error: {
-            code: 'MISSING_ORIGIN',
-            message: 'Request must include Origin or Referer header',
+            code: "MISSING_ORIGIN",
+            message: "Request must include Origin or Referer header",
           },
         });
       }
@@ -204,7 +212,7 @@ export function domainWhitelistMiddleware(options: {
 
       return res.status(403).json({
         error: {
-          code: 'DOMAIN_NOT_ALLOWED',
+          code: "DOMAIN_NOT_ALLOWED",
           message: `This widget is not authorized for use on ${domain}`,
         },
       });

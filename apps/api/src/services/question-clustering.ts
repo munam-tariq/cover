@@ -5,8 +5,9 @@
  * Used for analytics to show "Top Questions Asked" with counts.
  */
 
-import { supabaseAdmin } from "../lib/supabase";
 import { logger } from "../lib/logger";
+import { supabaseAdmin } from "../lib/supabase";
+
 import { embeddingService } from "./embedding";
 
 export interface QuestionCluster {
@@ -23,21 +24,25 @@ export interface QuestionCluster {
  * @param projectId - The project to analyze
  * @param days - Number of days to look back (default 30)
  * @param limit - Max clusters to return (default 10)
+ * @param source - Optional chat source filter (e.g. "public", "widget")
  */
 export async function getTopQuestions(
   projectId: string,
   days: number = 30,
-  limit: number = 10
+  limit: number = 10,
+  source?: string
 ): Promise<QuestionCluster[]> {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - days);
 
   // Get all conversations for the project within the date range
-  const { data: conversations, error: convError } = await supabaseAdmin
+  let conversationsQuery = supabaseAdmin
     .from("conversations")
     .select("id")
     .eq("project_id", projectId)
     .gte("created_at", cutoffDate.toISOString());
+  if (source) conversationsQuery = conversationsQuery.eq("source", source);
+  const { data: conversations, error: convError } = await conversationsQuery;
 
   if (convError) {
     logger.error("Error fetching conversations", convError, { projectId });
@@ -49,7 +54,7 @@ export async function getTopQuestions(
   }
 
   // Get all customer messages from these conversations
-  const conversationIds = conversations.map(c => c.id);
+  const conversationIds = conversations.map((c) => c.id);
   const { data: messages, error: msgError } = await supabaseAdmin
     .from("messages")
     .select("content")
@@ -90,7 +95,11 @@ export async function getTopQuestions(
   try {
     return await clusterBySimilarity(userMessages, limit);
   } catch (error) {
-    logger.error("Embedding clustering failed, falling back to frequency", error, { projectId });
+    logger.error(
+      "Embedding clustering failed, falling back to frequency",
+      error,
+      { projectId }
+    );
     return simpleFrequencyCount(userMessages, limit);
   }
 }
@@ -98,7 +107,10 @@ export async function getTopQuestions(
 /**
  * Simple frequency count fallback when clustering fails or for small datasets
  */
-function simpleFrequencyCount(messages: string[], limit: number): QuestionCluster[] {
+function simpleFrequencyCount(
+  messages: string[],
+  limit: number
+): QuestionCluster[] {
   // Count exact matches (case-insensitive)
   const counts = new Map<string, { original: string; count: number }>();
 
@@ -178,9 +190,7 @@ async function clusterBySimilarity(
 
   // Format output
   return sortedClusters.map((cluster) => {
-    const examples = cluster.indices
-      .slice(0, 3)
-      .map((idx) => sampled[idx]);
+    const examples = cluster.indices.slice(0, 3).map((idx) => sampled[idx]);
 
     return {
       representative: cluster.representative,

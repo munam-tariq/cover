@@ -105,20 +105,28 @@ export function useInboxRealtime(
       });
 
       // Listen for queue item removed
-      channel.on("broadcast", { event: "queue:conversation_removed" }, (payload) => {
-        console.log("[Inbox Realtime] Queue item removed:", payload);
-        handlersRef.current.onQueueUpdate?.({
-          type: "removed",
-          conversationId: payload.payload?.data?.conversationId,
-        });
-      });
+      channel.on(
+        "broadcast",
+        { event: "queue:conversation_removed" },
+        (payload) => {
+          console.log("[Inbox Realtime] Queue item removed:", payload);
+          handlersRef.current.onQueueUpdate?.({
+            type: "removed",
+            conversationId: payload.payload?.data?.conversationId,
+          });
+        }
+      );
 
       // Listen for position updates
-      channel.on("broadcast", { event: "queue:positions_updated" }, (payload) => {
-        console.log("[Inbox Realtime] Queue positions updated:", payload);
-        // Trigger refresh to get updated positions
-        handlersRef.current.onRefreshNeeded?.();
-      });
+      channel.on(
+        "broadcast",
+        { event: "queue:positions_updated" },
+        (payload) => {
+          console.log("[Inbox Realtime] Queue positions updated:", payload);
+          // Trigger refresh to get updated positions
+          handlersRef.current.onRefreshNeeded?.();
+        }
+      );
 
       // Subscribe
       channel.subscribe((status) => {
@@ -167,8 +175,21 @@ export interface ConversationRealtimeHandlers {
     createdAt: string;
   }) => void;
   onStatusChanged?: (status: string) => void;
-  onTyping?: (data: { participant: { type: string; name?: string }; isTyping: boolean }) => void;
-  onPresenceUpdate?: (data: { customerOnline?: boolean; agentOnline?: boolean; lastSeenAt?: string }) => void;
+  onTyping?: (data: {
+    participant: { type: string; name?: string };
+    isTyping: boolean;
+  }) => void;
+  onPresenceUpdate?: (data: {
+    customerOnline?: boolean;
+    agentOnline?: boolean;
+    lastSeenAt?: string;
+  }) => void;
+  /** Fired on conversation:assigned (an agent claimed the conversation). */
+  onAgentJoined?: (data: { agentId: string; agentName?: string }) => void;
+  /** Fired on queue:position_updated for this conversation. */
+  onQueueUpdate?: (position: number) => void;
+  /** Fired when the channel connects/disconnects — used for polling fallback. */
+  onConnectionChange?: (connected: boolean) => void;
 }
 
 export function useConversationRealtime(
@@ -217,13 +238,17 @@ export function useConversationRealtime(
       });
 
       // Listen for status changes
-      channel.on("broadcast", { event: "conversation:status_changed" }, (payload) => {
-        console.log("[Conversation Realtime] Status changed:", payload);
-        const status = payload.payload?.data?.status;
-        if (status) {
-          handlersRef.current.onStatusChanged?.(status);
+      channel.on(
+        "broadcast",
+        { event: "conversation:status_changed" },
+        (payload) => {
+          console.log("[Conversation Realtime] Status changed:", payload);
+          const status = payload.payload?.data?.status;
+          if (status) {
+            handlersRef.current.onStatusChanged?.(status);
+          }
         }
-      });
+      );
 
       // Listen for resolved/closed
       channel.on("broadcast", { event: "conversation:resolved" }, (payload) => {
@@ -269,9 +294,44 @@ export function useConversationRealtime(
         }
       });
 
+      // Listen for agent assignment
+      channel.on("broadcast", { event: "conversation:assigned" }, (payload) => {
+        console.log("[Conversation Realtime] Assigned:", payload);
+        const data = payload.payload?.data;
+        if (data?.agentId) {
+          handlersRef.current.onAgentJoined?.({
+            agentId: data.agentId,
+            agentName: data.agent?.name,
+          });
+        }
+      });
+
+      // Listen for queue position updates
+      channel.on(
+        "broadcast",
+        { event: "queue:position_updated" },
+        (payload) => {
+          const position = payload.payload?.data?.position;
+          if (typeof position === "number") {
+            handlersRef.current.onQueueUpdate?.(position);
+          }
+        }
+      );
+
       // Subscribe
       channel.subscribe((status) => {
-        console.log(`[Conversation Realtime] Channel ${channelName}: ${status}`);
+        console.log(
+          `[Conversation Realtime] Channel ${channelName}: ${status}`
+        );
+        if (status === "SUBSCRIBED") {
+          handlersRef.current.onConnectionChange?.(true);
+        } else if (
+          status === "CLOSED" ||
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT"
+        ) {
+          handlersRef.current.onConnectionChange?.(false);
+        }
       });
 
       channelRef.current = channel;

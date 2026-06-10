@@ -12,10 +12,15 @@
 
 import { Router, Request, Response } from "express";
 import { z } from "zod";
+
 import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
-import { broadcastNewMessage, broadcastTyping, broadcastPresenceUpdate } from "../services/realtime";
-import { updateCustomerPresence, getCustomerPresenceStatus } from "../services/presence";
+import { getCustomerPresenceStatus } from "../services/presence";
+import {
+  broadcastNewMessage,
+  broadcastTyping,
+  broadcastPresenceUpdate,
+} from "../services/realtime";
 
 const router = Router();
 
@@ -26,7 +31,9 @@ const router = Router();
 const CreateConversationSchema = z.object({
   projectId: z.string().uuid("Invalid project ID"),
   visitorId: z.string().min(1).max(100),
-  source: z.enum(["widget", "playground", "mcp", "api", "voice"]).default("widget"),
+  source: z
+    .enum(["widget", "playground", "mcp", "api", "voice", "public", "mobile"])
+    .default("widget"),
   metadata: z.record(z.unknown()).optional(),
 });
 
@@ -45,7 +52,9 @@ const UpdateConversationSchema = z.object({
 
 const ListConversationsSchema = z.object({
   projectId: z.string().uuid("Invalid project ID"),
-  status: z.enum(["ai_active", "waiting", "agent_active", "resolved", "closed"]).optional(),
+  status: z
+    .enum(["ai_active", "waiting", "agent_active", "resolved", "closed"])
+    .optional(),
   assignedToMe: z.coerce.boolean().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -55,7 +64,8 @@ const ListConversationsSchema = z.object({
 // Helpers
 // ============================================================================
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isValidUUID(id: string): boolean {
   return UUID_REGEX.test(id);
@@ -65,7 +75,10 @@ function isValidUUID(id: string): boolean {
  * Get agent display name - prioritizes stored name in project_members,
  * falls back to user metadata, then email
  */
-async function getAgentName(userId: string, projectId?: string): Promise<string> {
+async function getAgentName(
+  userId: string,
+  projectId?: string
+): Promise<string> {
   // First try to get name from project_members (if projectId provided)
   if (projectId) {
     const { data: member } = await supabaseAdmin
@@ -82,9 +95,14 @@ async function getAgentName(userId: string, projectId?: string): Promise<string>
   }
 
   // Fall back to user metadata
-  const { data: agentUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+  const { data: agentUser } =
+    await supabaseAdmin.auth.admin.getUserById(userId);
   if (agentUser?.user) {
-    return agentUser.user.user_metadata?.name || agentUser.user.email?.split("@")[0] || "Agent";
+    return (
+      agentUser.user.user_metadata?.name ||
+      agentUser.user.email?.split("@")[0] ||
+      "Agent"
+    );
   }
 
   return "Agent";
@@ -93,7 +111,10 @@ async function getAgentName(userId: string, projectId?: string): Promise<string>
 /**
  * Get multiple agent names at once for efficiency
  */
-async function getAgentNames(agentIds: string[], projectId: string): Promise<Record<string, string>> {
+async function getAgentNames(
+  agentIds: string[],
+  projectId: string
+): Promise<Record<string, string>> {
   const names: Record<string, string> = {};
 
   if (agentIds.length === 0) return names;
@@ -117,9 +138,13 @@ async function getAgentNames(agentIds: string[], projectId: string): Promise<Rec
   // For agents without names in project_members, get from user metadata
   const missingIds = agentIds.filter((id) => !names[id]);
   for (const agentId of missingIds) {
-    const { data: agentUser } = await supabaseAdmin.auth.admin.getUserById(agentId);
+    const { data: agentUser } =
+      await supabaseAdmin.auth.admin.getUserById(agentId);
     if (agentUser?.user) {
-      names[agentId] = agentUser.user.user_metadata?.name || agentUser.user.email?.split("@")[0] || "Agent";
+      names[agentId] =
+        agentUser.user.user_metadata?.name ||
+        agentUser.user.email?.split("@")[0] ||
+        "Agent";
     } else {
       names[agentId] = "Agent";
     }
@@ -218,12 +243,21 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
     if (convError) {
       console.error("Error fetching conversations:", convError);
       return res.status(500).json({
-        error: { code: "FETCH_ERROR", message: "Failed to fetch conversations" },
+        error: {
+          code: "FETCH_ERROR",
+          message: "Failed to fetch conversations",
+        },
       });
     }
 
     // Get assigned agent names (uses project_members.name, falls back to user metadata)
-    const agentIds = [...new Set((conversations || []).filter(c => c.assigned_agent_id).map(c => c.assigned_agent_id))];
+    const agentIds = [
+      ...new Set(
+        (conversations || [])
+          .filter((c) => c.assigned_agent_id)
+          .map((c) => c.assigned_agent_id)
+      ),
+    ];
     const agentNames = await getAgentNames(agentIds, projectId);
 
     // Format response
@@ -238,11 +272,11 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
             isFlagged: conv.customers.is_flagged,
           }
         : conv.customer_email || conv.customer_name
-        ? {
-            email: conv.customer_email,
-            name: conv.customer_name,
-          }
-        : null,
+          ? {
+              email: conv.customer_email,
+              name: conv.customer_name,
+            }
+          : null,
       status: conv.status,
       customerPresence: conv.customer_presence,
       assignedAgent: conv.assigned_agent_id
@@ -292,7 +326,10 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
 
     if (!isValidUUID(id)) {
       return res.status(400).json({
-        error: { code: "INVALID_ID", message: "Invalid conversation ID format" },
+        error: {
+          code: "INVALID_ID",
+          message: "Invalid conversation ID format",
+        },
       });
     }
 
@@ -337,8 +374,13 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
     // Get assigned agent info (uses project_members.name, falls back to user metadata)
     let assignedAgent = null;
     if (conversation.assigned_agent_id) {
-      const agentName = await getAgentName(conversation.assigned_agent_id, conversation.project_id);
-      const { data: agentUser } = await supabaseAdmin.auth.admin.getUserById(conversation.assigned_agent_id);
+      const agentName = await getAgentName(
+        conversation.assigned_agent_id,
+        conversation.project_id
+      );
+      const { data: agentUser } = await supabaseAdmin.auth.admin.getUserById(
+        conversation.assigned_agent_id
+      );
       assignedAgent = {
         id: conversation.assigned_agent_id,
         email: agentUser?.user?.email || null,
@@ -414,7 +456,10 @@ router.patch("/:id", authMiddleware, async (req: Request, res: Response) => {
 
     if (!isValidUUID(id)) {
       return res.status(400).json({
-        error: { code: "INVALID_ID", message: "Invalid conversation ID format" },
+        error: {
+          code: "INVALID_ID",
+          message: "Invalid conversation ID format",
+        },
       });
     }
 
@@ -470,7 +515,8 @@ router.patch("/:id", authMiddleware, async (req: Request, res: Response) => {
 
     // Build updates
     const updates: Record<string, unknown> = {};
-    const { customerEmail, customerName, customerPresence, metadata } = validation.data;
+    const { customerEmail, customerName, customerPresence, metadata } =
+      validation.data;
 
     if (customerEmail !== undefined) updates.customer_email = customerEmail;
     if (customerName !== undefined) updates.customer_name = customerName;
@@ -491,7 +537,10 @@ router.patch("/:id", authMiddleware, async (req: Request, res: Response) => {
     if (updateError) {
       console.error("Error updating conversation:", updateError);
       return res.status(500).json({
-        error: { code: "UPDATE_ERROR", message: "Failed to update conversation" },
+        error: {
+          code: "UPDATE_ERROR",
+          message: "Failed to update conversation",
+        },
       });
     }
 
@@ -517,260 +566,290 @@ router.patch("/:id", authMiddleware, async (req: Request, res: Response) => {
  * GET /api/conversations/:id/messages
  * Get messages for a conversation (paginated)
  */
-router.get("/:id/messages", authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const { userId } = req as AuthenticatedRequest;
-    const { id } = req.params;
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-    const before = req.query.before as string; // cursor for pagination
+router.get(
+  "/:id/messages",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { id } = req.params;
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+      const before = req.query.before as string; // cursor for pagination
 
-    if (!isValidUUID(id)) {
-      return res.status(400).json({
-        error: { code: "INVALID_ID", message: "Invalid conversation ID format" },
-      });
-    }
-
-    // Get conversation to verify access
-    const { data: conversation, error: convError } = await supabaseAdmin
-      .from("conversations")
-      .select("id, project_id")
-      .eq("id", id)
-      .single();
-
-    if (convError || !conversation) {
-      return res.status(404).json({
-        error: { code: "NOT_FOUND", message: "Conversation not found" },
-      });
-    }
-
-    // Verify user has access
-    const { data: project } = await supabaseAdmin
-      .from("projects")
-      .select("id, user_id")
-      .eq("id", conversation.project_id)
-      .single();
-
-    const isOwner = project?.user_id === userId;
-
-    if (!isOwner) {
-      const { data: membership } = await supabaseAdmin
-        .from("project_members")
-        .select("id")
-        .eq("project_id", conversation.project_id)
-        .eq("user_id", userId)
-        .eq("status", "active")
-        .single();
-
-      if (!membership) {
-        return res.status(403).json({
-          error: { code: "FORBIDDEN", message: "Access denied" },
+      if (!isValidUUID(id)) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_ID",
+            message: "Invalid conversation ID format",
+          },
         });
       }
-    }
 
-    // Build query
-    let query = supabaseAdmin
-      .from("messages")
-      .select("*", { count: "exact" })
-      .eq("conversation_id", id)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    if (before && isValidUUID(before)) {
-      // Get the timestamp of the cursor message
-      const { data: cursorMsg } = await supabaseAdmin
-        .from("messages")
-        .select("created_at")
-        .eq("id", before)
+      // Get conversation to verify access
+      const { data: conversation, error: convError } = await supabaseAdmin
+        .from("conversations")
+        .select("id, project_id")
+        .eq("id", id)
         .single();
 
-      if (cursorMsg) {
-        query = query.lt("created_at", cursorMsg.created_at);
+      if (convError || !conversation) {
+        return res.status(404).json({
+          error: { code: "NOT_FOUND", message: "Conversation not found" },
+        });
       }
-    }
 
-    const { data: messages, error: msgError, count } = await query;
+      // Verify user has access
+      const { data: project } = await supabaseAdmin
+        .from("projects")
+        .select("id, user_id")
+        .eq("id", conversation.project_id)
+        .single();
 
-    if (msgError) {
-      console.error("Error fetching messages:", msgError);
-      return res.status(500).json({
-        error: { code: "FETCH_ERROR", message: "Failed to fetch messages" },
-      });
-    }
+      const isOwner = project?.user_id === userId;
 
-    // Get sender names for agent messages (uses project_members.name, falls back to user metadata)
-    const agentIds = [...new Set((messages || []).filter(m => m.sender_type === "agent" && m.sender_id).map(m => m.sender_id))];
-    const agentNames = await getAgentNames(agentIds, conversation.project_id);
+      if (!isOwner) {
+        const { data: membership } = await supabaseAdmin
+          .from("project_members")
+          .select("id")
+          .eq("project_id", conversation.project_id)
+          .eq("user_id", userId)
+          .eq("status", "active")
+          .single();
 
-    // Format and reverse to get chronological order
-    const messagesResponse = (messages || [])
-      .reverse()
-      .map((msg) => ({
+        if (!membership) {
+          return res.status(403).json({
+            error: { code: "FORBIDDEN", message: "Access denied" },
+          });
+        }
+      }
+
+      // Build query
+      let query = supabaseAdmin
+        .from("messages")
+        .select("*", { count: "exact" })
+        .eq("conversation_id", id)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (before && isValidUUID(before)) {
+        // Get the timestamp of the cursor message
+        const { data: cursorMsg } = await supabaseAdmin
+          .from("messages")
+          .select("created_at")
+          .eq("id", before)
+          .single();
+
+        if (cursorMsg) {
+          query = query.lt("created_at", cursorMsg.created_at);
+        }
+      }
+
+      const { data: messages, error: msgError, count } = await query;
+
+      if (msgError) {
+        console.error("Error fetching messages:", msgError);
+        return res.status(500).json({
+          error: { code: "FETCH_ERROR", message: "Failed to fetch messages" },
+        });
+      }
+
+      // Get sender names for agent messages (uses project_members.name, falls back to user metadata)
+      const agentIds = [
+        ...new Set(
+          (messages || [])
+            .filter((m) => m.sender_type === "agent" && m.sender_id)
+            .map((m) => m.sender_id)
+        ),
+      ];
+      const agentNames = await getAgentNames(agentIds, conversation.project_id);
+
+      // Format and reverse to get chronological order
+      const messagesResponse = (messages || []).reverse().map((msg) => ({
         id: msg.id,
         conversationId: msg.conversation_id,
         senderType: msg.sender_type,
         senderId: msg.sender_id,
-        senderName: msg.sender_type === "agent" && msg.sender_id ? agentNames[msg.sender_id] : null,
+        senderName:
+          msg.sender_type === "agent" && msg.sender_id
+            ? agentNames[msg.sender_id]
+            : null,
         content: msg.content,
         metadata: msg.metadata,
         createdAt: msg.created_at,
       }));
 
-    res.json({
-      messages: messagesResponse,
-      pagination: {
-        total: count || 0,
-        limit,
-        hasMore: (messages || []).length === limit,
-        nextCursor: messages && messages.length > 0 ? messages[messages.length - 1].id : null,
-      },
-    });
-  } catch (error) {
-    console.error("Error in GET /conversations/:id/messages:", error);
-    res.status(500).json({
-      error: { code: "INTERNAL_ERROR", message: "Internal server error" },
-    });
+      res.json({
+        messages: messagesResponse,
+        pagination: {
+          total: count || 0,
+          limit,
+          hasMore: (messages || []).length === limit,
+          nextCursor:
+            messages && messages.length > 0
+              ? messages[messages.length - 1].id
+              : null,
+        },
+      });
+    } catch (error) {
+      console.error("Error in GET /conversations/:id/messages:", error);
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+      });
+    }
   }
-});
+);
 
 /**
  * POST /api/conversations/:id/messages
  * Send a message to a conversation (agent sending)
  */
-router.post("/:id/messages", authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const { userId } = req as AuthenticatedRequest;
-    const { id } = req.params;
+router.post(
+  "/:id/messages",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { id } = req.params;
 
-    if (!isValidUUID(id)) {
-      return res.status(400).json({
-        error: { code: "INVALID_ID", message: "Invalid conversation ID format" },
-      });
-    }
+      if (!isValidUUID(id)) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_ID",
+            message: "Invalid conversation ID format",
+          },
+        });
+      }
 
-    // Validate body
-    const validation = SendMessageSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({
-        error: {
-          code: "VALIDATION_ERROR",
-          message: "Invalid request body",
-          details: validation.error.flatten().fieldErrors,
-        },
-      });
-    }
+      // Validate body
+      const validation = SendMessageSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid request body",
+            details: validation.error.flatten().fieldErrors,
+          },
+        });
+      }
 
-    const { content, senderType, metadata } = validation.data;
+      const { content, senderType, metadata } = validation.data;
 
-    // Get conversation
-    const { data: conversation, error: convError } = await supabaseAdmin
-      .from("conversations")
-      .select("id, project_id, status, assigned_agent_id, first_response_at")
-      .eq("id", id)
-      .single();
-
-    if (convError || !conversation) {
-      return res.status(404).json({
-        error: { code: "NOT_FOUND", message: "Conversation not found" },
-      });
-    }
-
-    // Verify user has access
-    const { data: project } = await supabaseAdmin
-      .from("projects")
-      .select("id, user_id")
-      .eq("id", conversation.project_id)
-      .single();
-
-    const isOwner = project?.user_id === userId;
-
-    if (!isOwner) {
-      const { data: membership } = await supabaseAdmin
-        .from("project_members")
-        .select("id")
-        .eq("project_id", conversation.project_id)
-        .eq("user_id", userId)
-        .eq("status", "active")
+      // Get conversation
+      const { data: conversation, error: convError } = await supabaseAdmin
+        .from("conversations")
+        .select("id, project_id, status, assigned_agent_id, first_response_at")
+        .eq("id", id)
         .single();
 
-      if (!membership) {
-        return res.status(403).json({
-          error: { code: "FORBIDDEN", message: "Access denied" },
-        });
-      }
-    }
-
-    // For agent messages, verify they're assigned to this conversation
-    if (senderType === "agent") {
-      if (conversation.status !== "agent_active") {
-        return res.status(400).json({
-          error: { code: "INVALID_STATUS", message: "Conversation is not in agent_active status" },
+      if (convError || !conversation) {
+        return res.status(404).json({
+          error: { code: "NOT_FOUND", message: "Conversation not found" },
         });
       }
 
-      if (conversation.assigned_agent_id !== userId) {
-        return res.status(403).json({
-          error: { code: "NOT_ASSIGNED", message: "You are not assigned to this conversation" },
+      // Verify user has access
+      const { data: project } = await supabaseAdmin
+        .from("projects")
+        .select("id, user_id")
+        .eq("id", conversation.project_id)
+        .single();
+
+      const isOwner = project?.user_id === userId;
+
+      if (!isOwner) {
+        const { data: membership } = await supabaseAdmin
+          .from("project_members")
+          .select("id")
+          .eq("project_id", conversation.project_id)
+          .eq("user_id", userId)
+          .eq("status", "active")
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({
+            error: { code: "FORBIDDEN", message: "Access denied" },
+          });
+        }
+      }
+
+      // For agent messages, verify they're assigned to this conversation
+      if (senderType === "agent") {
+        if (conversation.status !== "agent_active") {
+          return res.status(400).json({
+            error: {
+              code: "INVALID_STATUS",
+              message: "Conversation is not in agent_active status",
+            },
+          });
+        }
+
+        if (conversation.assigned_agent_id !== userId) {
+          return res.status(403).json({
+            error: {
+              code: "NOT_ASSIGNED",
+              message: "You are not assigned to this conversation",
+            },
+          });
+        }
+      }
+
+      // Create message
+      const { data: message, error: msgError } = await supabaseAdmin
+        .from("messages")
+        .insert({
+          conversation_id: id,
+          sender_type: senderType,
+          sender_id: senderType === "agent" ? userId : null,
+          content,
+          metadata: metadata || {},
+        })
+        .select("*")
+        .single();
+
+      if (msgError) {
+        console.error("Error creating message:", msgError);
+        return res.status(500).json({
+          error: { code: "CREATE_ERROR", message: "Failed to send message" },
         });
       }
-    }
 
-    // Create message
-    const { data: message, error: msgError } = await supabaseAdmin
-      .from("messages")
-      .insert({
-        conversation_id: id,
-        sender_type: senderType,
-        sender_id: senderType === "agent" ? userId : null,
-        content,
-        metadata: metadata || {},
-      })
-      .select("*")
-      .single();
+      // Update first_response_at if this is the first agent message
+      if (senderType === "agent" && !conversation.first_response_at) {
+        await supabaseAdmin
+          .from("conversations")
+          .update({ first_response_at: new Date().toISOString() })
+          .eq("id", id);
+      }
 
-    if (msgError) {
-      console.error("Error creating message:", msgError);
-      return res.status(500).json({
-        error: { code: "CREATE_ERROR", message: "Failed to send message" },
-      });
-    }
-
-    // Update first_response_at if this is the first agent message
-    if (senderType === "agent" && !conversation.first_response_at) {
-      await supabaseAdmin
-        .from("conversations")
-        .update({ first_response_at: new Date().toISOString() })
-        .eq("id", id);
-    }
-
-    // Broadcast message to real-time channel (fire-and-forget)
-    broadcastNewMessage(id, {
-      id: message.id,
-      senderType: message.sender_type,
-      senderId: message.sender_id,
-      content: message.content,
-      createdAt: message.created_at,
-      metadata: message.metadata,
-    }).catch((err) => console.error("[Realtime] Broadcast error:", err));
-
-    res.status(201).json({
-      message: {
+      // Broadcast message to real-time channel (fire-and-forget)
+      broadcastNewMessage(id, {
         id: message.id,
-        conversationId: message.conversation_id,
         senderType: message.sender_type,
         senderId: message.sender_id,
         content: message.content,
-        metadata: message.metadata,
         createdAt: message.created_at,
-      },
-    });
-  } catch (error) {
-    console.error("Error in POST /conversations/:id/messages:", error);
-    res.status(500).json({
-      error: { code: "INTERNAL_ERROR", message: "Internal server error" },
-    });
+        metadata: message.metadata,
+      }).catch((err) => console.error("[Realtime] Broadcast error:", err));
+
+      res.status(201).json({
+        message: {
+          id: message.id,
+          conversationId: message.conversation_id,
+          senderType: message.sender_type,
+          senderId: message.sender_id,
+          content: message.content,
+          metadata: message.metadata,
+          createdAt: message.created_at,
+        },
+      });
+    } catch (error) {
+      console.error("Error in POST /conversations/:id/messages:", error);
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+      });
+    }
   }
-});
+);
 
 // ============================================================================
 // Widget Routes (public - uses project API key)
@@ -886,7 +965,10 @@ router.post("/", async (req: Request, res: Response) => {
     if (convError) {
       console.error("Error creating conversation:", convError);
       return res.status(500).json({
-        error: { code: "CREATE_ERROR", message: "Failed to create conversation" },
+        error: {
+          code: "CREATE_ERROR",
+          message: "Failed to create conversation",
+        },
       });
     }
 
@@ -920,14 +1002,19 @@ router.get("/:id/status", async (req: Request, res: Response) => {
 
     if (!isValidUUID(id)) {
       return res.status(400).json({
-        error: { code: "INVALID_ID", message: "Invalid conversation ID format" },
+        error: {
+          code: "INVALID_ID",
+          message: "Invalid conversation ID format",
+        },
       });
     }
 
     // Get conversation with minimal fields
     const { data: conversation, error: convError } = await supabaseAdmin
       .from("conversations")
-      .select("id, project_id, status, assigned_agent_id, queue_position, queue_entered_at")
+      .select(
+        "id, project_id, status, assigned_agent_id, queue_position, queue_entered_at"
+      )
       .eq("id", id)
       .single();
 
@@ -940,7 +1027,10 @@ router.get("/:id/status", async (req: Request, res: Response) => {
     // Get assigned agent name if applicable (uses project_members.name, falls back to user metadata)
     let assignedAgent = null;
     if (conversation.assigned_agent_id) {
-      const agentName = await getAgentName(conversation.assigned_agent_id, conversation.project_id);
+      const agentName = await getAgentName(
+        conversation.assigned_agent_id,
+        conversation.project_id
+      );
       assignedAgent = {
         id: conversation.assigned_agent_id,
         name: agentName,
@@ -985,7 +1075,10 @@ router.get("/:id/messages/public", async (req: Request, res: Response) => {
 
     if (!isValidUUID(id)) {
       return res.status(400).json({
-        error: { code: "INVALID_ID", message: "Invalid conversation ID format" },
+        error: {
+          code: "INVALID_ID",
+          message: "Invalid conversation ID format",
+        },
       });
     }
 
@@ -1023,14 +1116,23 @@ router.get("/:id/messages/public", async (req: Request, res: Response) => {
     }
 
     // Get agent names (uses project_members.name, falls back to user metadata)
-    const agentIds = [...new Set((messages || []).filter(m => m.sender_type === "agent" && m.sender_id).map(m => m.sender_id))];
+    const agentIds = [
+      ...new Set(
+        (messages || [])
+          .filter((m) => m.sender_type === "agent" && m.sender_id)
+          .map((m) => m.sender_id)
+      ),
+    ];
     const agentNames = await getAgentNames(agentIds, conversation.project_id);
 
     // Format messages
     const messagesResponse = (messages || []).map((msg) => ({
       id: msg.id,
       senderType: msg.sender_type,
-      senderName: msg.sender_type === "agent" && msg.sender_id ? agentNames[msg.sender_id] : null,
+      senderName:
+        msg.sender_type === "agent" && msg.sender_id
+          ? agentNames[msg.sender_id]
+          : null,
       content: msg.content,
       createdAt: msg.created_at,
     }));
@@ -1063,14 +1165,20 @@ router.post("/:id/typing", async (req: Request, res: Response) => {
     // Validate conversation ID
     if (!UUID_REGEX.test(id)) {
       return res.status(400).json({
-        error: { code: "INVALID_ID", message: "Invalid conversation ID format" },
+        error: {
+          code: "INVALID_ID",
+          message: "Invalid conversation ID format",
+        },
       });
     }
 
     // Validate isTyping
     if (typeof isTyping !== "boolean") {
       return res.status(400).json({
-        error: { code: "VALIDATION_ERROR", message: "isTyping must be a boolean" },
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "isTyping must be a boolean",
+        },
       });
     }
 
@@ -1078,7 +1186,10 @@ router.post("/:id/typing", async (req: Request, res: Response) => {
     const validTypes = ["customer", "agent"];
     if (!participantType || !validTypes.includes(participantType)) {
       return res.status(400).json({
-        error: { code: "VALIDATION_ERROR", message: "participantType must be 'customer' or 'agent'" },
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "participantType must be 'customer' or 'agent'",
+        },
       });
     }
 
@@ -1131,7 +1242,10 @@ router.post("/:id/presence", async (req: Request, res: Response) => {
     // Validate conversation ID
     if (!UUID_REGEX.test(id)) {
       return res.status(400).json({
-        error: { code: "INVALID_ID", message: "Invalid conversation ID format" },
+        error: {
+          code: "INVALID_ID",
+          message: "Invalid conversation ID format",
+        },
       });
     }
 
@@ -1139,7 +1253,10 @@ router.post("/:id/presence", async (req: Request, res: Response) => {
     const validStatuses = ["online", "idle", "offline"];
     if (!status || !validStatuses.includes(status)) {
       return res.status(400).json({
-        error: { code: "VALIDATION_ERROR", message: "status must be 'online', 'idle', or 'offline'" },
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "status must be 'online', 'idle', or 'offline'",
+        },
       });
     }
 
@@ -1183,7 +1300,9 @@ router.post("/:id/presence", async (req: Request, res: Response) => {
       customerOnline: status === "online",
       agentOnline: false, // Will be updated by agent presence
       lastSeenAt: now,
-    }).catch((err) => console.error("[Realtime] Presence broadcast error:", err));
+    }).catch((err) =>
+      console.error("[Realtime] Presence broadcast error:", err)
+    );
 
     res.json({ success: true });
   } catch (error) {
@@ -1206,7 +1325,10 @@ router.get("/:id/presence", async (req: Request, res: Response) => {
     // Validate conversation ID
     if (!UUID_REGEX.test(id)) {
       return res.status(400).json({
-        error: { code: "INVALID_ID", message: "Invalid conversation ID format" },
+        error: {
+          code: "INVALID_ID",
+          message: "Invalid conversation ID format",
+        },
       });
     }
 
@@ -1224,7 +1346,9 @@ router.get("/:id/presence", async (req: Request, res: Response) => {
     }
 
     // Calculate current presence based on last seen
-    const customerPresence = getCustomerPresenceStatus(conversation.customer_last_seen_at);
+    const customerPresence = getCustomerPresenceStatus(
+      conversation.customer_last_seen_at
+    );
 
     // Get agent presence if assigned
     let agentPresence = { status: "offline", isActive: false };

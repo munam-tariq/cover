@@ -17,7 +17,14 @@ import { Router, Request, Response } from "express";
 
 import { firstRelatedRecord } from "../lib/supabase-relations";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
+import { clearClientKeyCache } from "../middleware/client-key";
 import { clearDomainCache } from "../middleware/domain-whitelist";
+import {
+  createClientKey,
+  listClientKeys,
+  revokeClientKey,
+  type ClientKeyPlatform,
+} from "../services/client-key";
 
 const router = Router();
 
@@ -725,5 +732,185 @@ router.put("/:id/allowed-domains", authMiddleware, async (req: Request, res: Res
     res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
   }
 });
+
+// ─── Publishable client keys (mobile/native SDKs) ─────────────────────────────
+
+const CLIENT_KEY_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CLIENT_KEY_PLATFORMS: ClientKeyPlatform[] = ["mobile", "web", "all"];
+
+/**
+ * Returns the project if the user may access it (owner always; active members when allowMember),
+ * otherwise null. Mirrors the ownership checks used by the allowed-domains routes.
+ */
+async function getAccessibleProject(
+  id: string,
+  userId: string | undefined,
+  allowMember: boolean
+): Promise<{ id: string; user_id: string } | null> {
+  if (!userId) return null;
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id, user_id")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .single();
+
+  if (!project) return null;
+  if (project.user_id === userId) return project;
+  if (!allowMember) return null;
+
+  const { data: membership } = await supabase
+    .from("project_members")
+    .select("role")
+    .eq("project_id", id)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .single();
+
+  return membership ? project : null;
+}
+
+/**
+ * GET /api/projects/:id/client-keys
+ * List the project's publishable client keys (owner or member). Keys are publishable, so the full
+ * value is returned for display/copy.
+ */
+router.get(
+  "/:id/client-keys",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { id } = req.params;
+
+      if (!CLIENT_KEY_UUID_RE.test(id)) {
+        return res.status(400).json({
+          error: { code: "INVALID_ID", message: "Invalid project ID format" },
+        });
+      }
+
+      const project = await getAccessibleProject(id, userId, true);
+      if (!project) {
+        return res
+          .status(404)
+          .json({ error: { code: "NOT_FOUND", message: "Project not found" } });
+      }
+
+      res.json({ keys: await listClientKeys(id) });
+    } catch (error) {
+      console.error("Error in GET /projects/:id/client-keys:", error);
+      res
+        .status(500)
+        .json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
+    }
+  }
+);
+
+/**
+ * POST /api/projects/:id/client-keys
+ * Mint a new publishable client key (owner only). Body: { platform?, name? }.
+ * Overlapping active keys are allowed (rotation).
+ */
+router.post(
+  "/:id/client-keys",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { id } = req.params;
+      const { platform, name } = req.body ?? {};
+
+      if (!CLIENT_KEY_UUID_RE.test(id)) {
+        return res.status(400).json({
+          error: { code: "INVALID_ID", message: "Invalid project ID format" },
+        });
+      }
+
+      const resolvedPlatform: ClientKeyPlatform = CLIENT_KEY_PLATFORMS.includes(
+        platform as ClientKeyPlatform
+      )
+        ? (platform as ClientKeyPlatform)
+        : "mobile";
+
+      if (name != null && (typeof name !== "string" || name.length > 100)) {
+        return res.status(400).json({
+          error: { code: "INVALID_INPUT", message: "name must be a string ≤ 100 chars" },
+        });
+      }
+
+      const project = await getAccessibleProject(id, userId, false);
+      if (!project) {
+        return res.status(404).json({
+          error: {
+            code: "NOT_FOUND",
+            message: "Project not found or you don't have permission",
+          },
+        });
+      }
+
+      const key = await createClientKey(id, resolvedPlatform, name ?? null);
+      if (!key) {
+        return res.status(500).json({
+          error: { code: "INTERNAL_ERROR", message: "Failed to create key" },
+        });
+      }
+
+      res.status(201).json({ key });
+    } catch (error) {
+      console.error("Error in POST /projects/:id/client-keys:", error);
+      res
+        .status(500)
+        .json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
+    }
+  }
+);
+
+/**
+ * DELETE /api/projects/:id/client-keys/:keyId
+ * Revoke (soft-delete) a publishable client key (owner only) and bust the middleware cache.
+ */
+router.delete(
+  "/:id/client-keys/:keyId",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { id, keyId } = req.params;
+
+      if (!CLIENT_KEY_UUID_RE.test(id) || !CLIENT_KEY_UUID_RE.test(keyId)) {
+        return res.status(400).json({
+          error: { code: "INVALID_ID", message: "Invalid ID format" },
+        });
+      }
+
+      const project = await getAccessibleProject(id, userId, false);
+      if (!project) {
+        return res.status(404).json({
+          error: {
+            code: "NOT_FOUND",
+            message: "Project not found or you don't have permission",
+          },
+        });
+      }
+
+      const revokedKey = await revokeClientKey(id, keyId);
+      if (!revokedKey) {
+        return res
+          .status(404)
+          .json({ error: { code: "NOT_FOUND", message: "Key not found" } });
+      }
+
+      clearClientKeyCache(revokedKey);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error in DELETE /projects/:id/client-keys/:keyId:", error);
+      res
+        .status(500)
+        .json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
+    }
+  }
+);
 
 export { router as projectsRouter };

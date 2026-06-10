@@ -8,8 +8,10 @@
  * - Agent availability checking
  */
 
+import { logger } from "../lib/logger";
 import { supabaseAdmin } from "../lib/supabase";
-import { logger, type LogContext } from "../lib/logger";
+
+import type { ChatSource } from "./chat-engine";
 import {
   broadcastNewMessage,
   broadcastConversationAssigned,
@@ -17,7 +19,10 @@ import {
 } from "./realtime";
 
 // Cache for handoff settings to avoid repeated DB calls
-const settingsCache = new Map<string, { data: HandoffSettings | null; timestamp: number }>();
+const settingsCache = new Map<
+  string,
+  { data: HandoffSettings | null; timestamp: number }
+>();
 const CACHE_TTL = 60000; // 1 minute cache
 
 /**
@@ -128,6 +133,7 @@ interface ExecuteHandoffParams {
   reason: "keyword" | "low_confidence" | "button";
   messages: HandoffMessageTemplates;
   settings: HandoffSettings;
+  source: ChatSource;
 }
 
 /**
@@ -137,7 +143,15 @@ interface ExecuteHandoffParams {
 async function executeHandoffFlow(
   params: ExecuteHandoffParams
 ): Promise<HandoffTriggerResult> {
-  const { projectId, visitorId, sessionId, reason, messages, settings } = params;
+  const {
+    projectId,
+    visitorId,
+    sessionId,
+    reason,
+    messages,
+    settings,
+    source,
+  } = params;
 
   // Step 1: Check business hours
   const withinBusinessHours = isWithinBusinessHours(settings);
@@ -176,7 +190,12 @@ async function executeHandoffFlow(
   // Step 3: Create handoff conversation
   let handoffResult: HandoffConversationResult;
   try {
-    handoffResult = await createHandoffConversation(projectId, visitorId, sessionId);
+    handoffResult = await createHandoffConversation(
+      projectId,
+      visitorId,
+      sessionId,
+      source
+    );
   } catch (error) {
     logger.error("Failed to create handoff conversation", error, {
       projectId,
@@ -213,8 +232,12 @@ async function executeHandoffFlow(
   }
 
   // Queued assignment
-  const queuePosition = handoffResult.queuePosition || availability.queuePosition || 1;
-  const estimatedWait = queuePosition === 1 ? "less than a minute" : `about ${queuePosition} minutes`;
+  const queuePosition =
+    handoffResult.queuePosition || availability.queuePosition || 1;
+  const estimatedWait =
+    queuePosition === 1
+      ? "less than a minute"
+      : `about ${queuePosition} minutes`;
 
   logger.info("Handoff: queued", {
     projectId,
@@ -416,9 +439,10 @@ export interface RagConfidenceCheck {
   threshold: number;
 }
 
-export function checkLowConfidence(
-  ragResult: RagConfidenceCheck
-): { isLowConfidence: boolean; maxScore: number } {
+export function checkLowConfidence(ragResult: RagConfidenceCheck): {
+  isLowConfidence: boolean;
+  maxScore: number;
+} {
   if (!ragResult.chunks || ragResult.chunks.length === 0) {
     return { isLowConfidence: true, maxScore: 0 };
   }
@@ -441,7 +465,8 @@ export async function checkLowConfidenceHandoff(
   projectId: string,
   visitorId: string,
   ragChunks: Array<{ combinedScore: number }>,
-  sessionId?: string
+  sessionId?: string,
+  source: ChatSource = "widget"
 ): Promise<HandoffTriggerResult> {
   // Get settings (will use cache if available)
   const settings = await getHandoffSettings(projectId);
@@ -482,6 +507,7 @@ export async function checkLowConfidenceHandoff(
     reason: "low_confidence",
     messages: LOW_CONFIDENCE_MESSAGES,
     settings,
+    source,
   });
 }
 
@@ -525,7 +551,8 @@ async function checkAgentIsAvailable(
 async function createHandoffConversation(
   projectId: string,
   visitorId: string,
-  sessionId?: string
+  sessionId?: string,
+  source: ChatSource = "widget"
 ): Promise<HandoffConversationResult> {
   const now = new Date().toISOString();
 
@@ -591,8 +618,12 @@ async function createHandoffConversation(
             .insert({
               conversation_id: sessionId,
               sender_type: "system",
-              content: "You're now reconnected with your previous support agent.",
-              metadata: { event: "handoff_reconnected", agent_id: existing.assigned_agent_id },
+              content:
+                "You're now reconnected with your previous support agent.",
+              metadata: {
+                event: "handoff_reconnected",
+                agent_id: existing.assigned_agent_id,
+              },
             })
             .select("id, created_at")
             .single();
@@ -602,10 +633,18 @@ async function createHandoffConversation(
             broadcastNewMessage(sessionId, {
               id: systemMsg.id,
               senderType: "system",
-              content: "You're now reconnected with your previous support agent.",
+              content:
+                "You're now reconnected with your previous support agent.",
               createdAt: systemMsg.created_at,
-              metadata: { event: "handoff_reconnected", agent_id: existing.assigned_agent_id },
-            }).catch((err) => logger.error("Realtime broadcast error", err, { step: "realtime_broadcast" }));
+              metadata: {
+                event: "handoff_reconnected",
+                agent_id: existing.assigned_agent_id,
+              },
+            }).catch((err) =>
+              logger.error("Realtime broadcast error", err, {
+                step: "realtime_broadcast",
+              })
+            );
           }
 
           // Broadcast assignment to channels (fire-and-forget)
@@ -614,7 +653,11 @@ async function createHandoffConversation(
             projectId,
             existing.assigned_agent_id,
             { name: "Support Agent" } // Agent name will be resolved by the dashboard
-          ).catch((err) => logger.error("Realtime broadcast error", err, { step: "realtime_broadcast" }));
+          ).catch((err) =>
+            logger.error("Realtime broadcast error", err, {
+              step: "realtime_broadcast",
+            })
+          );
 
           return {
             conversationId: existing.id,
@@ -653,12 +696,13 @@ async function createHandoffConversation(
           const queuePosition = (count || 0) + 1;
 
           // Broadcast status change to channels (fire-and-forget)
-          broadcastConversationStatusChanged(
-            sessionId,
-            projectId,
-            "waiting",
-            { queuePosition }
-          ).catch((err) => logger.error("Realtime broadcast error", err, { step: "realtime_broadcast" }));
+          broadcastConversationStatusChanged(sessionId, projectId, "waiting", {
+            queuePosition,
+          }).catch((err) =>
+            logger.error("Realtime broadcast error", err, {
+              step: "realtime_broadcast",
+            })
+          );
 
           return {
             conversationId: existing.id,
@@ -688,12 +732,13 @@ async function createHandoffConversation(
         const queuePosition = (count || 0) + 1;
 
         // Broadcast status change to channels (fire-and-forget)
-        broadcastConversationStatusChanged(
-          sessionId,
-          projectId,
-          "waiting",
-          { queuePosition }
-        ).catch((err) => logger.error("Realtime broadcast error", err, { step: "realtime_broadcast" }));
+        broadcastConversationStatusChanged(sessionId, projectId, "waiting", {
+          queuePosition,
+        }).catch((err) =>
+          logger.error("Realtime broadcast error", err, {
+            step: "realtime_broadcast",
+          })
+        );
 
         return {
           conversationId: existing.id,
@@ -713,7 +758,7 @@ async function createHandoffConversation(
     project_id: projectId,
     visitor_id: visitorId,
     status: "waiting",
-    source: "widget",
+    source,
     queue_entered_at: now,
     handoff_requested_at: now,
   };
@@ -734,12 +779,15 @@ async function createHandoffConversation(
     // (e.g., getOrCreateConversation called in parallel)
     if (sessionId && error.code === "23505") {
       // Unique constraint violation - conversation already exists, try to update it
-      logger.info("Conversation already exists during handoff, updating status", {
-        projectId,
-        visitorId,
-        sessionId,
-        step: "handoff_update_existing",
-      });
+      logger.info(
+        "Conversation already exists during handoff, updating status",
+        {
+          projectId,
+          visitorId,
+          sessionId,
+          step: "handoff_update_existing",
+        }
+      );
 
       const { error: updateError } = await supabaseAdmin
         .from("conversations")
@@ -751,12 +799,16 @@ async function createHandoffConversation(
         .eq("id", sessionId);
 
       if (updateError) {
-        logger.error("Failed to update existing conversation for handoff", updateError, {
-          projectId,
-          visitorId,
-          sessionId,
-          step: "handoff_update_conversation",
-        });
+        logger.error(
+          "Failed to update existing conversation for handoff",
+          updateError,
+          {
+            projectId,
+            visitorId,
+            sessionId,
+            step: "handoff_update_conversation",
+          }
+        );
         throw updateError;
       }
 
@@ -771,12 +823,13 @@ async function createHandoffConversation(
       const queuePosition = (count || 0) + 1;
 
       // Broadcast status change
-      broadcastConversationStatusChanged(
-        sessionId,
-        projectId,
-        "waiting",
-        { queuePosition }
-      ).catch((err) => logger.error("Realtime broadcast error", err, { step: "realtime_broadcast" }));
+      broadcastConversationStatusChanged(sessionId, projectId, "waiting", {
+        queuePosition,
+      }).catch((err) =>
+        logger.error("Realtime broadcast error", err, {
+          step: "realtime_broadcast",
+        })
+      );
 
       return {
         conversationId: sessionId,
@@ -804,12 +857,13 @@ async function createHandoffConversation(
   const queuePosition = (count || 0) + 1;
 
   // Broadcast status change to channels (fire-and-forget)
-  broadcastConversationStatusChanged(
-    conversation.id,
-    projectId,
-    "waiting",
-    { queuePosition }
-  ).catch((err) => logger.error("Realtime broadcast error", err, { step: "realtime_broadcast" }));
+  broadcastConversationStatusChanged(conversation.id, projectId, "waiting", {
+    queuePosition,
+  }).catch((err) =>
+    logger.error("Realtime broadcast error", err, {
+      step: "realtime_broadcast",
+    })
+  );
 
   return {
     conversationId: conversation.id,
@@ -838,7 +892,8 @@ export async function checkHandoffTrigger(
   projectId: string,
   message: string,
   visitorId: string,
-  sessionId?: string
+  sessionId?: string,
+  source: ChatSource = "widget"
 ): Promise<HandoffTriggerResult> {
   // 1. Get handoff settings (may be null if not configured)
   const settings = await getHandoffSettings(projectId);
@@ -853,10 +908,9 @@ export async function checkHandoffTrigger(
   }
 
   // 3. Get keywords to check - use configured keywords or defaults
-  const keywords =
-    settings?.auto_triggers?.keywords?.length
-      ? settings.auto_triggers.keywords
-      : DEFAULT_HUMAN_INTENT_KEYWORDS;
+  const keywords = settings?.auto_triggers?.keywords?.length
+    ? settings.auto_triggers.keywords
+    : DEFAULT_HUMAN_INTENT_KEYWORDS;
 
   // 4. Check for human intent
   const keywordResult = checkKeywordTrigger(message, keywords);
@@ -895,5 +949,6 @@ export async function checkHandoffTrigger(
     reason: "keyword",
     messages: KEYWORD_MESSAGES,
     settings,
+    source,
   });
 }

@@ -11,8 +11,9 @@
  */
 
 import { Router, Request, Response } from "express";
-import { supabaseAdmin } from "../lib/supabase";
+
 import { logger } from "../lib/logger";
+import { supabaseAdmin } from "../lib/supabase";
 import { processChat, type ChatOutput } from "../services/chat-engine";
 
 const router = Router();
@@ -29,8 +30,10 @@ const router = Router();
  */
 const silenceCounters = new Map<string, number>();
 
-const SILENCE_PROBE = "Hey, are you still there? Take your time, I'm here whenever you're ready.";
-const SILENCE_FAREWELL = "It was great chatting with you! Feel free to come back anytime. Goodbye!";
+const SILENCE_PROBE =
+  "Hey, are you still there? Take your time, I'm here whenever you're ready.";
+const SILENCE_FAREWELL =
+  "It was great chatting with you! Feel free to come back anytime. Goodbye!";
 
 /** Check if a message is a silence indicator (only dots/ellipsis/whitespace) */
 function isSilenceMessage(message: string): boolean {
@@ -56,13 +59,13 @@ function formatVoiceDuration(seconds?: number): string {
 function formatForVoice(output: ChatOutput): string {
   let text = output.response;
   // Light markdown cleanup for better TTS readability
-  text = text.replace(/\*\*(.+?)\*\*/g, "$1");        // **bold** → bold
-  text = text.replace(/\*(.+?)\*/g, "$1");              // *italic* → italic
-  text = text.replace(/#{1,6}\s+/g, "");                // headings
-  text = text.replace(/^\s*[-*+]\s+/gm, "");            // bullet points
-  text = text.replace(/^\s*\d+\.\s+/gm, "");            // numbered lists
-  text = text.replace(/`{1,3}[^`]*`{1,3}/g, "");        // inline/block code
-  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");  // [link text](url) → link text
+  text = text.replace(/\*\*(.+?)\*\*/g, "$1"); // **bold** → bold
+  text = text.replace(/\*(.+?)\*/g, "$1"); // *italic* → italic
+  text = text.replace(/#{1,6}\s+/g, ""); // headings
+  text = text.replace(/^\s*[-*+]\s+/gm, ""); // bullet points
+  text = text.replace(/^\s*\d+\.\s+/gm, ""); // numbered lists
+  text = text.replace(/`{1,3}[^`]*`{1,3}/g, ""); // inline/block code
+  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"); // [link text](url) → link text
   return text.trim();
 }
 
@@ -70,7 +73,10 @@ function formatForVoice(output: ChatOutput): string {
  * Fetch a signed WebSocket URL from ElevenLabs for starting a conversation.
  * The signed URL authenticates the client without exposing the API key.
  */
-async function getElevenLabsSignedUrl(apiKey: string, agentId: string): Promise<string> {
+async function getElevenLabsSignedUrl(
+  apiKey: string,
+  agentId: string
+): Promise<string> {
   const res = await fetch(
     `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(agentId)}`,
     {
@@ -102,20 +108,24 @@ function streamSSEResponse(res: Response, text: string): void {
 
   for (let i = 0; i < words.length; i += chunkSize) {
     const chunk = words.slice(i, i + chunkSize).join("");
-    res.write(`data: ${JSON.stringify({
+    res.write(
+      `data: ${JSON.stringify({
+        id,
+        object: "chat.completion.chunk",
+        model: "gpt-4o-mini",
+        choices: [{ index: 0, delta: { content: chunk }, finish_reason: null }],
+      })}\n\n`
+    );
+  }
+
+  res.write(
+    `data: ${JSON.stringify({
       id,
       object: "chat.completion.chunk",
       model: "gpt-4o-mini",
-      choices: [{ index: 0, delta: { content: chunk }, finish_reason: null }],
-    })}\n\n`);
-  }
-
-  res.write(`data: ${JSON.stringify({
-    id,
-    object: "chat.completion.chunk",
-    model: "gpt-4o-mini",
-    choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
-  })}\n\n`);
+      choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+    })}\n\n`
+  );
   res.write("data: [DONE]\n\n");
   res.end();
 }
@@ -138,15 +148,17 @@ async function loadPriorChatHistory(
   if (!dbMessages) return [];
 
   return dbMessages
-    .filter(m => {
+    .filter((m) => {
       const meta = (m.metadata as Record<string, unknown> | null) ?? {};
       // Exclude housekeeping summaries ("Voice call ended…").
       // Keep text-chat messages and previous voice-call transcripts so the
       // qualifying-question interceptor knows what has already been asked/answered.
       return !meta.voice_summary;
     })
-    .map(m => ({
-      role: (m.sender_type === "customer" ? "user" : "assistant") as "user" | "assistant",
+    .map((m) => ({
+      role: (m.sender_type === "customer" ? "user" : "assistant") as
+        | "user"
+        | "assistant",
       content: m.content as string,
     }));
 }
@@ -167,7 +179,8 @@ router.get("/config/:projectId", async (req: Request, res: Response) => {
   const { projectId } = req.params;
 
   // Validate UUID format
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(projectId)) {
     return res.status(400).json({
       error: { code: "INVALID_ID", message: "Invalid project ID format" },
@@ -199,13 +212,18 @@ router.get("/config/:projectId", async (req: Request, res: Response) => {
 
     // Check ElevenLabs credentials are configured
     if (!process.env.ELEVENLABS_API_KEY || !process.env.ELEVENLABS_AGENT_ID) {
-      logger.error("[Voice Config] ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID not set", {}, { projectId });
+      logger.error(
+        "[Voice Config] ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID not set",
+        {},
+        { projectId }
+      );
       return res.status(500).json({
         error: { code: "CONFIG_ERROR", message: "Voice not configured" },
       });
     }
 
-    const voiceGreeting = project.voice_greeting || "Hi! How can I help you today?";
+    const voiceGreeting =
+      project.voice_greeting || "Hi! How can I help you today?";
 
     // Get a signed URL for the ElevenLabs WebSocket connection
     const signedUrl = await getElevenLabsSignedUrl(
@@ -225,7 +243,11 @@ router.get("/config/:projectId", async (req: Request, res: Response) => {
       greeting: voiceGreeting,
     });
   } catch (error) {
-    logger.error("[Voice Config] Failed to fetch voice config", error as Error, { projectId });
+    logger.error(
+      "[Voice Config] Failed to fetch voice config",
+      error as Error,
+      { projectId }
+    );
     return res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: "Internal server error" },
     });
@@ -261,7 +283,9 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
     undefined;
 
   if (!projectId) {
-    return res.status(400).json({ error: "projectId is required in elevenlabs_extra_body" });
+    return res
+      .status(400)
+      .json({ error: "projectId is required in elevenlabs_extra_body" });
   }
 
   const visitorId =
@@ -273,14 +297,17 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
     (req.headers["x-session-id"] as string) ||
     undefined;
 
-  const { messages } = req.body as { messages: OpenAIMessage[]; stream?: boolean };
+  const { messages } = req.body as {
+    messages: OpenAIMessage[];
+    stream?: boolean;
+  };
 
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: "messages array is required" });
   }
 
   // Extract the last user message as the current input
-  const userMessages = messages.filter(m => m.role === "user");
+  const userMessages = messages.filter((m) => m.role === "user");
   const lastUserMessage = userMessages.at(-1)?.content || "";
 
   if (!lastUserMessage.trim()) {
@@ -289,9 +316,9 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
 
   // Build conversation history from all prior user/assistant turns (exclude last user message).
   let conversationHistory = messages
-    .filter(m => m.role === "user" || m.role === "assistant")
+    .filter((m) => m.role === "user" || m.role === "assistant")
     .slice(0, -1)
-    .map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
+    .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
   // First-turn context seeding: when ElevenLabs sends the first turn (no prior
   // user/assistant messages in the array), load text-chat history from DB so
@@ -314,7 +341,10 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
     const response = count === 1 ? SILENCE_PROBE : SILENCE_FAREWELL;
 
     logger.info("[Voice LLM] Silence intercepted", {
-      projectId, visitorId, sessionId, silenceCount: count,
+      projectId,
+      visitorId,
+      sessionId,
+      silenceCount: count,
     });
 
     streamSSEResponse(res, response);
@@ -362,7 +392,10 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
     });
 
     // Return a graceful error response in SSE format
-    streamSSEResponse(res, "I'm sorry, I ran into a problem. Please try again.");
+    streamSSEResponse(
+      res,
+      "I'm sorry, I ran into a problem. Please try again."
+    );
   }
 });
 
@@ -374,36 +407,80 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
  * Widget calls this when a voice call ends to update the conversation record.
  */
 router.post("/session-end", async (req: Request, res: Response) => {
-  const { projectId, visitorId, sessionId, durationSeconds, transcript } = req.body as {
-    projectId?: string;
-    visitorId?: string;
-    sessionId?: string;
-    durationSeconds?: number;
-    transcript?: Array<{ role: "user" | "assistant"; content: string }>;
-  };
+  const { projectId, visitorId, sessionId, durationSeconds, transcript } =
+    req.body as {
+      projectId?: string;
+      visitorId?: string;
+      sessionId?: string;
+      durationSeconds?: number;
+      transcript?: Array<{ role: "user" | "assistant"; content: string }>;
+    };
 
-  if (!sessionId) {
-    return res.status(400).json({ error: "sessionId is required" });
+  if (!sessionId || !projectId || !visitorId) {
+    return res
+      .status(400)
+      .json({ error: "projectId, visitorId and sessionId are required" });
   }
 
   // Clean up silence tracking for this session
   silenceCounters.delete(sessionId);
 
   try {
+    // Authorize: the conversation UUID alone is not sufficient. Verify it exists and belongs
+    // to this project AND visitor before writing transcript/metadata — otherwise anyone with
+    // a conversation UUID could inject messages into another visitor's thread.
+    const { data: conversation, error: lookupError } = await supabaseAdmin
+      .from("conversations")
+      .select("id, project_id, visitor_id")
+      .eq("id", sessionId)
+      .maybeSingle();
+
+    if (lookupError) {
+      logger.error(
+        "[Voice] session-end conversation lookup failed",
+        lookupError,
+        { sessionId }
+      );
+      return res.status(500).json({ error: "Internal server error" });
+    }
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+    if (
+      conversation.project_id !== projectId ||
+      conversation.visitor_id !== visitorId
+    ) {
+      return res
+        .status(403)
+        .json({ error: "Conversation does not belong to this visitor" });
+    }
+
     // Update conversation metadata
-    await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin
       .from("conversations")
       .update({
-        voice_duration_seconds: typeof durationSeconds === "number" ? Math.round(durationSeconds) : null,
+        voice_duration_seconds:
+          typeof durationSeconds === "number"
+            ? Math.round(durationSeconds)
+            : null,
         voice_ended_reason: "user_closed",
         voice_provider: "elevenlabs",
       })
       .eq("id", sessionId);
 
+    if (updateError) {
+      logger.error(
+        "[Voice] Failed to update conversation metadata",
+        updateError,
+        { sessionId }
+      );
+      return res.status(500).json({ error: "Internal server error" });
+    }
+
     // Batch-insert voice transcript so it's visible on refresh (no per-turn DB writes during call)
     if (Array.isArray(transcript) && transcript.length > 0) {
       const filtered = transcript
-        .filter(t => t.content?.trim())
+        .filter((t) => t.content?.trim())
         // Deduplicate: skip consecutive turns with same role and content (LLM called twice)
         .filter((t, i, arr) => {
           if (i === 0) return true;
@@ -414,7 +491,9 @@ router.post("/session-end", async (req: Request, res: Response) => {
       // Merge consecutive same-role fragments — ElevenLabs may split responses
       // into multiple transcript events. Merging ensures each logical AI turn
       // appears as a single chat bubble after post-call sync.
-      const merged = filtered.reduce<Array<{ role: "user" | "assistant"; content: string }>>((acc, turn) => {
+      const merged = filtered.reduce<
+        Array<{ role: "user" | "assistant"; content: string }>
+      >((acc, turn) => {
         if (acc.length === 0) return [{ ...turn }];
         const prev = acc[acc.length - 1]!;
         if (prev.role === turn.role) {
@@ -424,30 +503,55 @@ router.post("/session-end", async (req: Request, res: Response) => {
         return [...acc, { ...turn }];
       }, []);
 
-      const rows = merged.map(t => ({
+      const rows = merged.map((t) => ({
         conversation_id: sessionId,
         sender_type: t.role === "user" ? "customer" : "ai",
         content: t.content.trim(),
         metadata: { voice_message: true },
       }));
       if (rows.length > 0) {
-        await supabaseAdmin.from("messages").insert(rows);
+        const { error: insertError } = await supabaseAdmin
+          .from("messages")
+          .insert(rows);
+        if (insertError) {
+          logger.error(
+            "[Voice] Failed to insert voice transcript",
+            insertError,
+            { sessionId }
+          );
+          return res.status(500).json({ error: "Internal server error" });
+        }
       }
     }
 
     // Insert a single "Voice call ended" summary as a clean text-thread entry
-    await supabaseAdmin.from("messages").insert({
-      conversation_id: sessionId,
-      sender_type: "ai",
-      content: `Voice call ended (${formatVoiceDuration(durationSeconds)}). Continue chatting below.`,
-      metadata: { voice_summary: true },
-    });
+    const { error: summaryError } = await supabaseAdmin
+      .from("messages")
+      .insert({
+        conversation_id: sessionId,
+        sender_type: "ai",
+        content: `Voice call ended (${formatVoiceDuration(durationSeconds)}). Continue chatting below.`,
+        metadata: { voice_summary: true },
+      });
+    if (summaryError) {
+      logger.error("[Voice] Failed to insert voice summary", summaryError, {
+        sessionId,
+      });
+      return res.status(500).json({ error: "Internal server error" });
+    }
 
-    logger.info("[Voice] Session end recorded", { projectId, visitorId, sessionId, durationSeconds });
+    logger.info("[Voice] Session end recorded", {
+      projectId,
+      visitorId,
+      sessionId,
+      durationSeconds,
+    });
 
     return res.json({ ok: true });
   } catch (error) {
-    logger.error("[Voice] Failed to record session end", error as Error, { sessionId });
+    logger.error("[Voice] Failed to record session end", error as Error, {
+      sessionId,
+    });
     return res.status(500).json({ error: "Internal server error" });
   }
 });

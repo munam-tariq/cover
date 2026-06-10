@@ -24,14 +24,17 @@ interface RateLimitEntry {
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
 // Clean up expired entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (entry.resetAt < now) {
-      rateLimitStore.delete(key);
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [key, entry] of rateLimitStore.entries()) {
+      if (entry.resetAt < now) {
+        rateLimitStore.delete(key);
+      }
     }
-  }
-}, 5 * 60 * 1000);
+  },
+  5 * 60 * 1000
+);
 
 /**
  * Rate limits for chat API - tiered protection
@@ -39,12 +42,18 @@ setInterval(() => {
 export const CHAT_RATE_LIMITS = {
   perMinute: {
     windowMs: 60 * 1000,
-    maxRequests: parseInt(process.env.RATE_LIMIT_MESSAGES_PER_MINUTE || "15", 10),
+    maxRequests: parseInt(
+      process.env.RATE_LIMIT_MESSAGES_PER_MINUTE || "15",
+      10
+    ),
     keyPrefix: "chat:minute",
   },
   perHour: {
     windowMs: 60 * 60 * 1000,
-    maxRequests: parseInt(process.env.RATE_LIMIT_MESSAGES_PER_HOUR || "100", 10),
+    maxRequests: parseInt(
+      process.env.RATE_LIMIT_MESSAGES_PER_HOUR || "100",
+      10
+    ),
     keyPrefix: "chat:hour",
   },
   perDay: {
@@ -165,7 +174,15 @@ export function chatRateLimiter(
     req.ip ||
     "anonymous";
 
-  const result = applyMultipleRateLimits(visitorId, [
+  // For native SDKs (a resolved publishable key), namespace the per-visitor bucket by the key so
+  // mobile traffic is scoped/segregated per app. We deliberately keep the per-visitor granularity:
+  // keying on the key alone would throttle an entire app to a single window. (Revoking the key is
+  // the kill switch — it's enforced at the request gate, not here.)
+  const rateLimitKey = req.clientKey
+    ? `key:${req.clientKey.keyId}:${visitorId}`
+    : visitorId;
+
+  const result = applyMultipleRateLimits(rateLimitKey, [
     CHAT_RATE_LIMITS.perMinute,
     CHAT_RATE_LIMITS.perHour,
     CHAT_RATE_LIMITS.perDay,
@@ -173,7 +190,10 @@ export function chatRateLimiter(
 
   // Set informative headers
   res.setHeader("X-RateLimit-Remaining", result.remaining.toString());
-  res.setHeader("X-RateLimit-Reset", Math.ceil(result.resetAt / 1000).toString());
+  res.setHeader(
+    "X-RateLimit-Reset",
+    Math.ceil(result.resetAt / 1000).toString()
+  );
 
   if (!result.allowed) {
     res.setHeader("Retry-After", result.retryAfter.toString());
@@ -191,13 +211,22 @@ export function chatRateLimiter(
 }
 
 /**
- * Generic rate limiter factory
+ * Generic rate limiter factory.
+ *
+ * `keyFn` overrides the default per-IP key. This matters for SSR-fronted endpoints: when the
+ * Next.js server renders a page it calls the API itself, so `req.ip` is the single SSR server
+ * IP for every visitor — a per-IP limit would let ~N page views starve all other pages. Such
+ * routes pass a keyFn that prefers a forwarded client IP.
  */
-export function rateLimit(options: { windowMs: number; maxRequests: number }) {
-  const { windowMs, maxRequests } = options;
+export function rateLimit(options: {
+  windowMs: number;
+  maxRequests: number;
+  keyFn?: (req: Request) => string;
+}) {
+  const { windowMs, maxRequests, keyFn } = options;
 
   return (req: Request, res: Response, next: NextFunction) => {
-    const key = req.ip || "unknown";
+    const key = (keyFn ? keyFn(req) : req.ip) || "unknown";
     const config: RateLimitConfig = {
       windowMs,
       maxRequests,
@@ -207,7 +236,10 @@ export function rateLimit(options: { windowMs: number; maxRequests: number }) {
     const result = checkSingleLimit(key, config);
 
     res.setHeader("X-RateLimit-Remaining", result.remaining.toString());
-    res.setHeader("X-RateLimit-Reset", Math.ceil(result.resetAt / 1000).toString());
+    res.setHeader(
+      "X-RateLimit-Reset",
+      Math.ceil(result.resetAt / 1000).toString()
+    );
 
     if (!result.allowed) {
       res.setHeader("Retry-After", result.retryAfter.toString());

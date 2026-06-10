@@ -1,0 +1,633 @@
+openapi: 3.0.3
+info:
+  title: FrontFace Mobile SDK API
+  version: "1.0.0"
+  description: >
+    Public API surface used by the FrontFace mobile chat SDK (Flutter). Covers AI chat,
+    live human handoff, lead capture, and customer identify. See INTEGRATION_GUIDE.md for the
+    behavioral contract (session lifecycle, realtime handoff, polling fallback, state machine).
+
+
+    All endpoints are authenticated with a publishable client key in the `X-FrontFace-Key`
+    header and identified by a stable per-install `X-Visitor-Id`. Live agent replies are
+    delivered out-of-band over Supabase Realtime (channel `conversation:<id>`); that WebSocket
+    transport is not described here — see the guide.
+servers:
+  - url: https://api.frontface.app
+    description: Production
+
+security:
+  - FrontFaceKey: []
+
+tags:
+  - name: Bootstrap
+  - name: Chat
+  - name: Handoff
+  - name: Conversation
+  - name: Lead capture
+  - name: Customer
+
+paths:
+  /api/embed/config/{projectId}:
+    get:
+      tags: [Bootstrap]
+      summary: Fetch runtime config (branding, lead-capture, realtime credentials)
+      operationId: getEmbedConfig
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Config
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmbedConfig" }
+
+  /api/chat/message:
+    post:
+      tags: [Chat]
+      summary: Send a message and get the AI reply (synchronous)
+      operationId: sendMessage
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatMessageRequest" }
+      responses:
+        "200":
+          description: AI response (may include handoff signals)
+          headers:
+            X-RateLimit-Remaining: { schema: { type: integer }, description: Remaining requests in window }
+            X-RateLimit-Reset: { schema: { type: integer }, description: Window reset (unix seconds) }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessageResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "504": { $ref: "#/components/responses/Timeout" }
+
+  /api/chat/ensure-conversation:
+    post:
+      tags: [Chat]
+      summary: Create a conversation up front (e.g. before triggering handoff with no message yet)
+      operationId: ensureConversation
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, visitorId]
+              properties:
+                projectId: { type: string, format: uuid }
+                visitorId: { type: string, maxLength: 100 }
+                source: { $ref: "#/components/schemas/Source" }
+      responses:
+        "200":
+          description: Conversation id
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversationId: { type: string, format: uuid }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/projects/{projectId}/handoff-availability:
+    get:
+      tags: [Handoff]
+      summary: Whether a human agent can be reached right now
+      operationId: getHandoffAvailability
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Availability
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HandoffAvailability" }
+
+  /api/conversations/{conversationId}/handoff:
+    post:
+      tags: [Handoff]
+      summary: Request a human agent for this conversation
+      operationId: triggerHandoff
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+        - $ref: "#/components/parameters/ConversationIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  enum: [button_click, customer_request]
+                customerEmail: { type: string, format: email }
+                customerName: { type: string, maxLength: 100 }
+      responses:
+        "200":
+          description: Handoff result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HandoffResult" }
+
+  /api/widget/conversations/{conversationId}/status:
+    get:
+      tags: [Conversation]
+      summary: Conversation status, queue position, assigned agent
+      operationId: getConversationStatus
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+        - $ref: "#/components/parameters/ConversationIdPath"
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationStatusResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/widget/conversations/{conversationId}/messages/public:
+    get:
+      tags: [Conversation]
+      summary: Fetch messages (full history, or only those after a timestamp)
+      operationId: fetchMessages
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+        - $ref: "#/components/parameters/ConversationIdPath"
+        - name: after
+          in: query
+          required: false
+          description: ISO-8601 timestamp; returns only messages created after it (polling).
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Messages (ascending by createdAt)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items: { $ref: "#/components/schemas/PublicMessage" }
+
+  /api/widget/conversations/{conversationId}/typing:
+    post:
+      tags: [Conversation]
+      summary: Send a customer typing indicator (best-effort)
+      operationId: sendTyping
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+        - $ref: "#/components/parameters/ConversationIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isTyping, participantType]
+              properties:
+                isTyping: { type: boolean }
+                participantType: { type: string, enum: [customer] }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+
+  /api/widget/conversations/{conversationId}/presence:
+    post:
+      tags: [Conversation]
+      summary: Send a customer presence heartbeat (best-effort)
+      operationId: sendPresence
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+        - $ref: "#/components/parameters/ConversationIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, visitorId]
+              properties:
+                status: { type: string, enum: [online, idle, offline] }
+                visitorId: { type: string, maxLength: 100 }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+
+  /api/chat/lead-capture/status:
+    get:
+      tags: [Lead capture]
+      summary: Has this visitor already completed the lead form?
+      operationId: getLeadCaptureStatus
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+        - name: projectId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: visitorId
+          in: query
+          required: true
+          schema: { type: string, maxLength: 100 }
+      responses:
+        "200":
+          description: Completion flag
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hasCompletedForm: { type: boolean }
+
+  /api/chat/lead-capture/submit-form:
+    post:
+      tags: [Lead capture]
+      summary: Submit the lead-capture form
+      operationId: submitLeadForm
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LeadFormRequest" }
+      responses:
+        "200":
+          description: Result (may include a qualifying question and a fresh sessionId)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadFormResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/chat/lead-capture/submit-inline:
+    post:
+      tags: [Lead capture]
+      summary: Lightweight inline email-only capture
+      operationId: submitInlineEmail
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, visitorId, email]
+              properties:
+                projectId: { type: string, format: uuid }
+                visitorId: { type: string, maxLength: 100 }
+                sessionId: { type: string, format: uuid, nullable: true }
+                email: { type: string, format: email }
+                captureSource: { type: string, example: inline_email }
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadFormResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/customers/identify:
+    post:
+      tags: [Customer]
+      summary: Link a known email/name to the visitor
+      operationId: identifyCustomer
+      parameters:
+        - $ref: "#/components/parameters/VisitorIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [visitorId, projectId, email]
+              properties:
+                visitorId: { type: string, minLength: 1, maxLength: 100 }
+                projectId: { type: string, format: uuid }
+                email: { type: string, format: email }
+                name: { type: string, maxLength: 100 }
+                metadata: { type: object, additionalProperties: true }
+      responses:
+        "200":
+          description: Customer record
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer: { $ref: "#/components/schemas/Customer" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  securitySchemes:
+    FrontFaceKey:
+      type: apiKey
+      in: header
+      name: X-FrontFace-Key
+      description: Publishable client key (pk_...). Safe to ship in the app binary; revocable.
+
+  parameters:
+    VisitorIdHeader:
+      name: X-Visitor-Id
+      in: header
+      required: true
+      description: Stable per-install visitor id (also mirrored into request bodies).
+      schema: { type: string, maxLength: 100 }
+    ConversationIdPath:
+      name: conversationId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    Ok:
+      description: Success
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success: { type: boolean }
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Missing/invalid/revoked key, or key/project mismatch
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: Too many requests — honor Retry-After
+      headers:
+        Retry-After: { schema: { type: integer }, description: Seconds to wait }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Timeout:
+      description: Upstream LLM timeout (safe to retry once)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Source:
+      type: string
+      enum: [mobile]
+      default: mobile
+      description: Always "mobile" for the mobile SDK.
+
+    ConversationStatus:
+      type: string
+      enum: [ai_active, waiting, agent_active, resolved, closed]
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+
+    EmbedConfig:
+      type: object
+      properties:
+        projectId: { type: string, format: uuid }
+        enabled: { type: boolean }
+        config:
+          type: object
+          properties:
+            primaryColor: { type: string, example: "#0a0a0a" }
+            position: { type: string, description: web-only; ignore on mobile }
+            greeting: { type: string }
+            greetingIntro: { type: string }
+            title: { type: string }
+            placeholder: { type: string }
+        realtime:
+          type: object
+          description: Supabase Realtime credentials for the handoff channel.
+          properties:
+            supabaseUrl: { type: string, format: uri }
+            supabaseAnonKey: { type: string, description: Public anon key (Realtime broadcast only) }
+        leadCapture: { $ref: "#/components/schemas/LeadCaptureConfig" }
+        voice:
+          type: object
+          properties:
+            enabled: { type: boolean }
+
+    LeadCaptureConfig:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        formFields:
+          type: object
+          properties:
+            email:
+              type: object
+              properties:
+                required: { type: boolean }
+            field_2: { $ref: "#/components/schemas/LeadFieldConfig" }
+            field_3: { $ref: "#/components/schemas/LeadFieldConfig" }
+        hasQualifyingQuestions: { type: boolean }
+        capture_mode:
+          type: string
+          enum: [email_after, email_first, email_required]
+
+    LeadFieldConfig:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        label: { type: string }
+        required: { type: boolean }
+
+    ChatMessageRequest:
+      type: object
+      required: [projectId, message, visitorId]
+      properties:
+        projectId: { type: string, format: uuid }
+        message: { type: string, maxLength: 2000 }
+        visitorId: { type: string, maxLength: 100 }
+        source: { $ref: "#/components/schemas/Source" }
+        sessionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Omit/null for the first message; send to continue a thread.
+        conversationHistory:
+          type: array
+          description: Recent turns for context (last ~10).
+          items:
+            type: object
+            properties:
+              role: { type: string, enum: [user, assistant] }
+              content: { type: string }
+        context:
+          type: object
+          description: Optional analytics metadata.
+          properties:
+            device: { type: string }
+            os: { type: string }
+            osVersion: { type: string }
+            timezone: { type: string }
+            language: { type: string }
+            appVersion: { type: string }
+          additionalProperties: true
+
+    ChatMessageResponse:
+      type: object
+      properties:
+        response: { type: string, description: Assistant reply; may be empty during handoff. }
+        sessionId: { type: string, format: uuid, description: Persist this. }
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              relevance: { type: number }
+        toolCalls:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              success: { type: boolean }
+              duration: { type: number }
+        processingTime: { type: number }
+        requestId: { type: string }
+        handoff:
+          type: object
+          description: Present when the AI escalated or the thread is agent/queue-owned.
+          properties:
+            triggered: { type: boolean }
+            reason:
+              type: string
+              description: e.g. in_queue, agent_handling, customer_request
+            queuePosition: { type: integer }
+            estimatedWait: { type: string }
+            conversationId: { type: string, format: uuid }
+
+    HandoffAvailability:
+      type: object
+      properties:
+        available: { type: boolean }
+        showButton: { type: boolean }
+        buttonText: { type: string }
+        showOfflineForm: { type: boolean }
+        reason: { type: string }
+
+    HandoffResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [agent_active, waiting, offline]
+        queuePosition: { type: integer }
+        estimatedWaitMinutes: { type: integer }
+        assignedAgent:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        message: { type: string }
+        showOfflineForm: { type: boolean }
+
+    ConversationStatusResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/ConversationStatus" }
+        assignedAgent:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        queuePosition: { type: integer, nullable: true }
+
+    PublicMessage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        senderType:
+          type: string
+          enum: [customer, agent, ai, system]
+        senderName: { type: string, nullable: true }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    LeadFormRequest:
+      type: object
+      required: [projectId, visitorId, formData]
+      properties:
+        projectId: { type: string, format: uuid }
+        visitorId: { type: string, maxLength: 100 }
+        sessionId: { type: string, format: uuid, nullable: true }
+        source: { $ref: "#/components/schemas/Source" }
+        firstMessage: { type: string, description: "The visitor's first message, or empty string." }
+        formData:
+          type: object
+          required: [email]
+          properties:
+            email: { type: string, format: email }
+            field_2: { $ref: "#/components/schemas/LeadFieldValue" }
+            field_3: { $ref: "#/components/schemas/LeadFieldValue" }
+
+    LeadFieldValue:
+      type: object
+      properties:
+        label: { type: string }
+        value: { type: string }
+
+    LeadFormResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        leadId: { type: string, format: uuid }
+        nextAction:
+          type: string
+          enum: [qualifying_question, none]
+        qualifyingQuestion: { type: string }
+        assembledGreeting:
+          type: string
+          description: Render as the next assistant bubble.
+        sessionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: A fresh conversation id may be returned (email_first) — persist it.
+
+    Customer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        name: { type: string, nullable: true }
+        metadata: { type: object, additionalProperties: true }

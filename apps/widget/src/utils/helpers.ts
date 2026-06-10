@@ -22,6 +22,26 @@ export function escapeHtml(text: string): string {
 }
 
 /**
+ * Returns true if a markdown link URL is safe to render in an href.
+ * Allows http(s), mailto, tel and relative/anchor URLs; blocks javascript:, data:,
+ * vbscript:, file: and any other scheme. Control characters/whitespace are stripped first
+ * so obfuscated schemes like "java\tscript:" cannot slip through.
+ */
+function isSafeLinkUrl(url: string): boolean {
+  // eslint-disable-next-line no-control-regex -- stripping control chars IS the sanitization
+  const cleaned = url.replace(/[\u0000-\u0020]+/g, "");
+  const schemeMatch = cleaned.match(/^([a-z][a-z0-9+.-]*):/i);
+  if (!schemeMatch) return true; // relative URL, anchor, or scheme-less
+  const scheme = schemeMatch[1].toLowerCase();
+  return (
+    scheme === "http" ||
+    scheme === "https" ||
+    scheme === "mailto" ||
+    scheme === "tel"
+  );
+}
+
+/**
  * Parse markdown text to HTML
  * Supports: bold, italic, code, code blocks, links, lists, and line breaks
  */
@@ -35,38 +55,44 @@ export function parseMarkdown(text: string): string {
   });
 
   // Inline code (`code`)
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
 
   // Bold (**text** or __text__)
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/__([^_]+)__/g, "<strong>$1</strong>");
 
   // Italic (*text* or _text_) - be careful not to match inside words
-  html = html.replace(/(?<![*\w])\*([^*]+)\*(?![*\w])/g, '<em>$1</em>');
-  html = html.replace(/(?<![_\w])_([^_]+)_(?![_\w])/g, '<em>$1</em>');
+  html = html.replace(/(?<![*\w])\*([^*]+)\*(?![*\w])/g, "<em>$1</em>");
+  html = html.replace(/(?<![_\w])_([^_]+)_(?![_\w])/g, "<em>$1</em>");
 
-  // Links [text](url)
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  // Links [text](url) — only allow safe URL schemes in the href (block javascript:, data:, etc.)
+  html = html.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    (_match, label: string, url: string) => {
+      const href = isSafeLinkUrl(url) ? url : "#";
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    }
+  );
 
   // Unordered lists (- item or * item)
-  html = html.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+  html = html.replace(/^[-*]\s+(.+)$/gm, "<li>$1</li>");
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>");
 
   // Ordered lists (1. item)
-  html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+  html = html.replace(/^\d+\.\s+(.+)$/gm, "<li>$1</li>");
 
   // Headers (## text)
-  html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>');
-  html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^# (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^### (.+)$/gm, "<h4>$1</h4>");
+  html = html.replace(/^## (.+)$/gm, "<h3>$1</h3>");
+  html = html.replace(/^# (.+)$/gm, "<h2>$1</h2>");
 
   // Line breaks (preserve newlines as <br> for non-list/header content)
   // But not after block elements
-  html = html.replace(/\n(?!<)/g, '<br>');
+  html = html.replace(/\n(?!<)/g, "<br>");
 
   // Clean up extra <br> after block elements
-  html = html.replace(/(<\/(?:pre|ul|ol|li|h[1-6])>)<br>/g, '$1');
-  html = html.replace(/<br>(<(?:pre|ul|ol|li|h[1-6]))/g, '$1');
+  html = html.replace(/(<\/(?:pre|ul|ol|li|h[1-6])>)<br>/g, "$1");
+  html = html.replace(/<br>(<(?:pre|ul|ol|li|h[1-6]))/g, "$1");
 
   return html;
 }
@@ -144,5 +170,6 @@ export const ICONS = {
   close: "M18 6L6 18M6 6l12 12",
   send: "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
   minimize: "M4 14h16",
-  refresh: "M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15",
+  refresh:
+    "M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15",
 } as const;

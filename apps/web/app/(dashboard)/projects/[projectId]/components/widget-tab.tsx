@@ -23,6 +23,9 @@ import {
   Code,
   Copy,
   CheckCheck,
+  Smartphone,
+  KeyRound,
+  Trash2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -31,6 +34,17 @@ import { apiClient } from "@/lib/api-client";
 
 interface WidgetTabProps {
   project: Project;
+}
+
+interface ClientKey {
+  id: string;
+  key: string;
+  platform: string;
+  name: string | null;
+  active: boolean;
+  lastUsedAt: string | null;
+  createdAt: string;
+  revokedAt: string | null;
 }
 
 export function WidgetTab({ project }: WidgetTabProps) {
@@ -45,6 +59,12 @@ export function WidgetTab({ project }: WidgetTabProps) {
 
   // Embed code state
   const [embedCopied, setEmbedCopied] = useState(false);
+
+  // Mobile SDK client keys state
+  const [clientKeys, setClientKeys] = useState<ClientKey[]>([]);
+  const [loadingKeys, setLoadingKeys] = useState(true);
+  const [creatingKey, setCreatingKey] = useState(false);
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
 
   // Fetch allowed domains when project changes
   useEffect(() => {
@@ -68,6 +88,66 @@ export function WidgetTab({ project }: WidgetTabProps) {
     };
     fetchAllowedDomains();
   }, [project]);
+
+  // Fetch mobile SDK client keys when project changes
+  useEffect(() => {
+    const fetchKeys = async () => {
+      if (!project) {
+        setLoadingKeys(false);
+        return;
+      }
+      setLoadingKeys(true);
+      try {
+        const res = await apiClient<{ keys: ClientKey[] }>(
+          `/api/projects/${project.id}/client-keys`
+        );
+        setClientKeys(res.keys || []);
+      } catch (err) {
+        console.error("Failed to fetch client keys:", err);
+        setClientKeys([]);
+      } finally {
+        setLoadingKeys(false);
+      }
+    };
+    fetchKeys();
+  }, [project]);
+
+  // Mobile SDK key handlers
+  const handleCreateKey = async () => {
+    setCreatingKey(true);
+    try {
+      const res = await apiClient<{ key: ClientKey }>(
+        `/api/projects/${project.id}/client-keys`,
+        { method: "POST", body: JSON.stringify({ platform: "mobile" }) }
+      );
+      setClientKeys((keys) => [res.key, ...keys]);
+      setSuccess("Mobile SDK key generated");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Failed to create client key:", err);
+    } finally {
+      setCreatingKey(false);
+    }
+  };
+
+  const handleRevokeKey = async (keyId: string) => {
+    try {
+      await apiClient(`/api/projects/${project.id}/client-keys/${keyId}`, {
+        method: "DELETE",
+      });
+      setClientKeys((keys) => keys.filter((k) => k.id !== keyId));
+      setSuccess("Key revoked");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Failed to revoke client key:", err);
+    }
+  };
+
+  const handleCopyKey = (key: ClientKey) => {
+    navigator.clipboard.writeText(key.key);
+    setCopiedKeyId(key.id);
+    setTimeout(() => setCopiedKeyId(null), 2000);
+  };
 
   // Domain whitelist handlers
   const handleAddDomain = () => {
@@ -283,6 +363,82 @@ export function WidgetTab({ project }: WidgetTabProps) {
                   {savingDomains ? "Saving..." : "Save Domain Settings"}
                 </Button>
               </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Mobile SDK keys */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5" />
+            Mobile SDK
+          </CardTitle>
+          <CardDescription>
+            Publishable client keys for native mobile apps built on the FrontFace SDK. Safe to ship
+            in an app binary; revoke any time. Hand a key (and this project ID) to your app
+            developer.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingKeys ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {clientKeys.filter((k) => k.active).length > 0 ? (
+                <div className="space-y-2">
+                  {clientKeys
+                    .filter((k) => k.active)
+                    .map((k) => (
+                      <div
+                        key={k.id}
+                        className="flex items-center gap-2 rounded-md border p-2"
+                      >
+                        <KeyRound className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <code className="flex-1 truncate text-xs">{k.key}</code>
+                        <Badge variant="secondary">{k.platform}</Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleCopyKey(k)}
+                          aria-label="Copy key"
+                        >
+                          {copiedKeyId === k.id ? (
+                            <CheckCheck className="h-3 w-3" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => handleRevokeKey(k.id)}
+                          aria-label="Revoke key"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No mobile keys yet. Generate one to hand to your app developer.
+                </p>
+              )}
+
+              <Button onClick={handleCreateKey} disabled={creatingKey}>
+                {creatingKey ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-2" />
+                )}
+                {creatingKey ? "Generating..." : "Generate mobile key"}
+              </Button>
             </div>
           )}
         </CardContent>

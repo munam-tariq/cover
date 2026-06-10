@@ -3,6 +3,8 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 
+import { logger } from "./lib/logger";
+import { clientKeyMiddleware } from "./middleware/client-key";
 import { requestIdMiddleware } from "./middleware/request-id";
 import { accountRouter } from "./routes/account";
 import { agentRouter } from "./routes/agent";
@@ -21,8 +23,12 @@ import { leadCaptureRouter, leadsRouter } from "./routes/lead-capture";
 import { mcpRouter } from "./routes/mcp";
 import { onboardingRouter } from "./routes/onboarding";
 import { projectsRouter } from "./routes/projects";
-import { teamRouter } from "./routes/team";
+import {
+  publicPageRouter,
+  publicPageSettingsRouter,
+} from "./routes/public-page";
 import { pulseRouter, pulseWidgetRouter } from "./routes/pulse";
+import { teamRouter } from "./routes/team";
 import { voiceRouter } from "./routes/voice";
 
 const app = express();
@@ -58,12 +64,21 @@ const dashboardCors = cors({
 const widgetCors = cors({
   origin: "*",
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "X-Visitor-Id", "Authorization"],
+  allowedHeaders: [
+    "Content-Type",
+    "X-Visitor-Id",
+    "X-FrontFace-Key",
+    "Authorization",
+  ],
 });
 
 // Body parsing
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+// Resolve the publishable client key (X-FrontFace-Key) onto req.clientKey for native SDKs.
+// Optional-resolve: requests without a key (e.g. the web widget) pass through untouched.
+app.use(clientKeyMiddleware);
 
 // Health check (public)
 app.get("/health", (_req, res) => {
@@ -82,6 +97,7 @@ app.use("/api/endpoints", dashboardCors, endpointsRouter);
 app.use("/api/embed", widgetCors, embedRouter); // Widget config (open CORS for widget embedding)
 app.use("/api/projects", dashboardCors, projectsRouter);
 app.use("/api/projects", dashboardCors, handoffSettingsRouter); // Handoff settings routes: /api/projects/:id/handoff-settings
+app.use("/api/projects", dashboardCors, publicPageSettingsRouter); // Public page settings: /api/projects/:id/public-page
 app.use("/api/projects", dashboardCors, teamRouter); // Team routes: /api/projects/:id/members/*
 app.use("/api/projects", dashboardCors, leadsRouter); // Leads routes: /api/projects/:id/leads
 app.use("/api/projects", dashboardCors, pulseRouter); // Pulse dashboard routes: /api/projects/:id/pulse/*
@@ -94,6 +110,7 @@ app.use("/api/voice", widgetCors, voiceRouter);
 // These come AFTER specific dashboard routes to avoid blocking PUT/DELETE
 app.use("/api/chat", widgetCors, chatRouter);
 app.use("/api/chat", widgetCors, leadCaptureRouter); // Lead capture V2 widget routes: submit-form, skip, status
+app.use("/api/public", widgetCors, publicPageRouter); // Public hosted page config (open CORS, field-limited)
 app.use("/api/pulse", widgetCors, pulseWidgetRouter); // Pulse widget routes: get campaigns, submit responses
 app.use("/api/widget/conversations", widgetCors, conversationsRouter); // Widget conversation routes (POST to create)
 app.use("/api", widgetCors, handoffRouter); // Widget handoff routes: handoff-availability, trigger handoff
@@ -134,7 +151,6 @@ app.use(
     res: express.Response,
     _next: express.NextFunction
   ) => {
-    const { logger } = require("./lib/logger");
     logger.error("Unhandled error", err, {
       requestId: req.requestId,
       method: req.method,

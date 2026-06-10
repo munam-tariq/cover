@@ -1,11 +1,13 @@
 import { Router, Response } from "express";
 import { z } from "zod";
+
+import { supabaseAdmin } from "../lib/supabase";
+import { isUrlSafeForFetch } from "../lib/url-guard";
 import {
   authMiddleware,
   projectAuthMiddleware,
   AuthenticatedRequest,
 } from "../middleware/auth";
-import { supabaseAdmin } from "../lib/supabase";
 import { encryptAuthConfig, decryptAuthConfig } from "../services/encryption";
 
 export const endpointsRouter = Router();
@@ -110,9 +112,14 @@ endpointsRouter.get(
           method: endpoint.method,
           authType: endpoint.auth_type,
           // Only return header name for API key auth, not the actual credentials
-          authConfig: endpoint.auth_type === "api_key" && endpoint.auth_config
-            ? { apiKeyHeader: decryptAuthConfig(endpoint.auth_config as string).apiKeyHeader }
-            : undefined,
+          authConfig:
+            endpoint.auth_type === "api_key" && endpoint.auth_config
+              ? {
+                  apiKeyHeader: decryptAuthConfig(
+                    endpoint.auth_config as string
+                  ).apiKeyHeader,
+                }
+              : undefined,
           createdAt: endpoint.created_at,
           updatedAt: endpoint.updated_at,
         },
@@ -163,7 +170,10 @@ endpointsRouter.post("/", async (req: AuthenticatedRequest, res: Response) => {
       validation.data;
 
     // Validate auth config based on auth type
-    if (authType === "api_key" && (!authConfig?.apiKey || authConfig.apiKey.trim() === "")) {
+    if (
+      authType === "api_key" &&
+      (!authConfig?.apiKey || authConfig.apiKey.trim() === "")
+    ) {
       return res.status(400).json({
         error: {
           code: "VALIDATION_ERROR",
@@ -172,7 +182,10 @@ endpointsRouter.post("/", async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    if (authType === "bearer" && (!authConfig?.bearerToken || authConfig.bearerToken.trim() === "")) {
+    if (
+      authType === "bearer" &&
+      (!authConfig?.bearerToken || authConfig.bearerToken.trim() === "")
+    ) {
       return res.status(400).json({
         error: {
           code: "VALIDATION_ERROR",
@@ -284,7 +297,10 @@ endpointsRouter.put(
           updateData.auth_config = null;
         } else if (authConfig) {
           // Validate auth config based on auth type
-          if (authType === "api_key" && (!authConfig.apiKey || authConfig.apiKey.trim() === "")) {
+          if (
+            authType === "api_key" &&
+            (!authConfig.apiKey || authConfig.apiKey.trim() === "")
+          ) {
             return res.status(400).json({
               error: {
                 code: "VALIDATION_ERROR",
@@ -293,7 +309,10 @@ endpointsRouter.put(
             });
           }
 
-          if (authType === "bearer" && (!authConfig.bearerToken || authConfig.bearerToken.trim() === "")) {
+          if (
+            authType === "bearer" &&
+            (!authConfig.bearerToken || authConfig.bearerToken.trim() === "")
+          ) {
             return res.status(400).json({
               error: {
                 code: "VALIDATION_ERROR",
@@ -452,6 +471,16 @@ async function executeEndpointTest(endpoint: {
   // Replace URL placeholders with test values
   const testUrl = endpoint.url.replace(/\{(\w+)\}/g, "test_value");
 
+  // SSRF guard: block private/loopback/link-local/metadata hosts and non-HTTP(S) schemes.
+  const urlSafety = isUrlSafeForFetch(testUrl);
+  if (!urlSafety.ok) {
+    return {
+      success: false,
+      responseTime: 0,
+      error: `Blocked endpoint URL: ${urlSafety.reason}`,
+    };
+  }
+
   // Build headers
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -466,7 +495,8 @@ async function executeEndpointTest(endpoint: {
       switch (endpoint.auth_type) {
         case "api_key":
           if (authConfig.apiKey) {
-            const headerName = (authConfig.apiKeyHeader as string) || "X-API-Key";
+            const headerName =
+              (authConfig.apiKeyHeader as string) || "X-API-Key";
             headers[headerName] = authConfig.apiKey as string;
           }
           break;
@@ -542,7 +572,10 @@ async function executeEndpointTest(endpoint: {
       }
 
       // Network errors
-      if (fetchError.message.includes("ENOTFOUND") || fetchError.message.includes("getaddrinfo")) {
+      if (
+        fetchError.message.includes("ENOTFOUND") ||
+        fetchError.message.includes("getaddrinfo")
+      ) {
         return {
           success: false,
           responseTime,
@@ -648,7 +681,10 @@ export async function getProjectEndpoints(projectId: string) {
       try {
         authConfig = decryptAuthConfig(endpoint.auth_config as string);
       } catch {
-        console.error("Failed to decrypt auth config for endpoint:", endpoint.id);
+        console.error(
+          "Failed to decrypt auth config for endpoint:",
+          endpoint.id
+        );
       }
     }
 

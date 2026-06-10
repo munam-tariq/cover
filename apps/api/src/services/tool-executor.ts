@@ -5,6 +5,7 @@
  * when called by the LLM during chat.
  */
 
+import { isUrlSafeForFetch } from "../lib/url-guard";
 import { getProjectEndpoints, extractUrlParams } from "../routes/endpoints";
 
 /**
@@ -116,6 +117,15 @@ export async function executeToolCall(
       };
     }
     url = url.replace(`{${param}}`, encodeURIComponent(value));
+  }
+
+  // SSRF guard: block private/loopback/link-local/metadata hosts and non-HTTP(S) schemes.
+  const urlSafety = isUrlSafeForFetch(url);
+  if (!urlSafety.ok) {
+    return {
+      success: false,
+      error: `Blocked endpoint URL: ${urlSafety.reason}`,
+    };
   }
 
   // Build headers
