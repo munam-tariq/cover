@@ -3,10 +3,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { useAgent } from "@/contexts/agent-context";
 import { useInboxPollingOptional } from "@/contexts/inbox-polling-context";
 import { useProject } from "@/contexts/project-context";
+
+import {
+  getSelectedPathname,
+  isSidebarItemActive,
+} from "./sidebar-navigation";
 
 // Navigation items with role requirements
 // roles: undefined = all, "owner" = owner only, "owner_admin" = owner or admin, "agent_only" = agents (not owners viewing their own project)
@@ -99,9 +105,15 @@ const icons: Record<string, React.FC<{ className?: string }>> = {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const { role, availability, isLoading } = useAgent();
   const { currentProject } = useProject();
   const inboxPolling = useInboxPollingOptional();
+  const selectedPathname = getSelectedPathname(pathname, pendingHref);
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
 
   // Get the effective role for the current project
   // Priority: project.role > agent context role
@@ -146,14 +158,21 @@ export function Sidebar() {
 
       <nav className="space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+          const isActive = isSidebarItemActive(selectedPathname, item.href);
+          const isCurrentPage = isSidebarItemActive(pathname, item.href);
           const Icon = icons[item.icon];
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              aria-current={isCurrentPage ? "page" : undefined}
+              onNavigate={() => {
+                if (!isCurrentPage) {
+                  setPendingHref(item.href);
+                }
+              }}
+              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 motion-reduce:transition-none ${
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"

@@ -1,3 +1,4 @@
+import { DashboardContentTransition } from "@/components/layout/dashboard-content-transition";
 import { Header } from "@/components/layout/header";
 import { ProjectGuard } from "@/components/layout/project-guard";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -24,7 +25,11 @@ export default function DashboardLayout({
               <div className="flex-1 flex flex-col">
                 <Header />
                 <main className="flex-1 p-6 bg-muted/30">
-                  <ProjectGuard>{children}</ProjectGuard>
+                  <ProjectGuard>
+                    <DashboardContentTransition>
+                      {children}
+                    </DashboardContentTransition>
+                  </ProjectGuard>
                 </main>
               </div>
             </div>
