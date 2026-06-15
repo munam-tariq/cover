@@ -30,7 +30,7 @@ interface AddKnowledgeModalProps {
   onSuccess: () => void;
 }
 
-type InputType = "text" | "file" | "pdf" | "url";
+type InputType = "text" | "file" | "pdf" | "url" | "qa";
 
 const MAX_TEXT_LENGTH = 100000;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -44,6 +44,8 @@ export function AddKnowledgeModal({
   const [activeTab, setActiveTab] = useState<InputType>("text");
   const [name, setName] = useState("");
   const [content, setContent] = useState("");
+  const [qaQuestion, setQaQuestion] = useState("");
+  const [qaAnswer, setQaAnswer] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +56,8 @@ export function AddKnowledgeModal({
   const resetForm = () => {
     setName("");
     setContent("");
+    setQaQuestion("");
+    setQaAnswer("");
     setSelectedFile(null);
     setError(null);
     setActiveTab("text");
@@ -114,31 +118,48 @@ export function AddKnowledgeModal({
   const handleSubmit = async () => {
     setError(null);
 
-    // Validate name
-    if (!name.trim()) {
-      setError("Name is required");
-      return;
-    }
+    // Q&A pairs are stored as a text source (no name field).
+    if (activeTab === "qa") {
+      if (!qaQuestion.trim() || !qaAnswer.trim()) {
+        setError("Both a question and an answer are required");
+        return;
+      }
+    } else {
+      // Validate name
+      if (!name.trim()) {
+        setError("Name is required");
+        return;
+      }
 
-    // Validate based on type
-    if (activeTab === "text") {
-      if (!content.trim()) {
-        setError("Content is required");
+      // Validate based on type
+      if (activeTab === "text") {
+        if (!content.trim()) {
+          setError("Content is required");
+          return;
+        }
+        if (content.length > MAX_TEXT_LENGTH) {
+          setError(`Content exceeds ${MAX_TEXT_LENGTH.toLocaleString()} character limit`);
+          return;
+        }
+      } else if (!selectedFile) {
+        setError(`Please select a ${activeTab === "pdf" ? "PDF" : "text"} file`);
         return;
       }
-      if (content.length > MAX_TEXT_LENGTH) {
-        setError(`Content exceeds ${MAX_TEXT_LENGTH.toLocaleString()} character limit`);
-        return;
-      }
-    } else if (!selectedFile) {
-      setError(`Please select a ${activeTab === "pdf" ? "PDF" : "text"} file`);
-      return;
     }
 
     setLoading(true);
 
     try {
-      if (activeTab === "text") {
+      if (activeTab === "qa") {
+        // Store the Q&A as a text source so it flows through the normal pipeline.
+        await apiClient(`/api/knowledge?projectId=${projectId}`, {
+          method: "POST",
+          body: JSON.stringify({
+            name: qaQuestion.trim().slice(0, 100),
+            content: `Q: ${qaQuestion.trim()}\nA: ${qaAnswer.trim()}`,
+          }),
+        });
+      } else if (activeTab === "text") {
         // For text content, use JSON endpoint
         await apiClient(`/api/knowledge?projectId=${projectId}`, {
           method: "POST",
@@ -242,12 +263,13 @@ export function AddKnowledgeModal({
               setError(null);
             }}
           >
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="url">
                 <Globe className="h-3.5 w-3.5 mr-1.5" />
                 URL
               </TabsTrigger>
               <TabsTrigger value="text">Paste Text</TabsTrigger>
+              <TabsTrigger value="qa">Q&amp;A</TabsTrigger>
               <TabsTrigger value="file">Upload TXT</TabsTrigger>
               <TabsTrigger value="pdf">Upload PDF</TabsTrigger>
             </TabsList>
@@ -262,8 +284,8 @@ export function AddKnowledgeModal({
                 />
               </TabsContent>
 
-              {/* Name field - only show for non-URL tabs */}
-              {activeTab !== "url" && (
+              {/* Name field - hidden for URL (own flow) and Q&A (question is the name) */}
+              {activeTab !== "url" && activeTab !== "qa" && (
                 <div className="space-y-2">
                   <Label htmlFor="name">
                     Source Name <span className="text-destructive">*</span>
@@ -295,6 +317,37 @@ export function AddKnowledgeModal({
                   <p className="text-xs text-muted-foreground text-right">
                     {content.length.toLocaleString()} / {MAX_TEXT_LENGTH.toLocaleString()} characters
                   </p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="qa" className="mt-0">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="qa-question">
+                      Question <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="qa-question"
+                      value={qaQuestion}
+                      onChange={(e) => setQaQuestion(e.target.value)}
+                      placeholder="e.g., Do you offer a free trial?"
+                      disabled={loading}
+                      maxLength={300}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="qa-answer">
+                      Answer <span className="text-destructive">*</span>
+                    </Label>
+                    <Textarea
+                      id="qa-answer"
+                      value={qaAnswer}
+                      onChange={(e) => setQaAnswer(e.target.value)}
+                      placeholder="The answer your agent should give"
+                      disabled={loading}
+                      className="min-h-[140px] resize-none"
+                    />
+                  </div>
                 </div>
               </TabsContent>
 

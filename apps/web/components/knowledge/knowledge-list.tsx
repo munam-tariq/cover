@@ -7,7 +7,7 @@ import {
   Badge,
   Skeleton,
 } from "@chatbot/ui";
-import { Trash2, Plus, FileText, File, AlertCircle, RefreshCw, Eye } from "lucide-react";
+import { Trash2, Plus, FileText, File, AlertCircle, RefreshCw, Eye, Globe } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 
 import { useProject } from "@/contexts/project-context";
@@ -20,26 +20,42 @@ import { ViewKnowledgeModal } from "./view-knowledge-modal";
 interface KnowledgeSource {
   id: string;
   name: string;
-  type: "text" | "file" | "pdf";
+  type: "text" | "file" | "pdf" | "url";
   status: "processing" | "ready" | "failed";
   chunkCount: number;
   createdAt: string;
   error?: string;
+  sourceUrl?: string | null;
+  scrapedAt?: string | null;
+}
+
+interface CrawlCapacity {
+  used: number;
+  max: number;
+  remaining: number;
 }
 
 interface KnowledgeListResponse {
   sources: KnowledgeSource[];
+  capacity?: CrawlCapacity;
+}
+
+/** Strip the protocol so cards show e.g. "www.justpeople.ai/privacy". */
+function formatSourceUrl(url: string): string {
+  return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
 }
 
 export function KnowledgeList() {
   const { currentProject, isLoading: projectLoading } = useProject();
   const [sources, setSources] = useState<KnowledgeSource[]>([]);
+  const [capacity, setCapacity] = useState<CrawlCapacity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewingSourceId, setViewingSourceId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [recrawling, setRecrawling] = useState<string | null>(null);
   const supabase = createClient();
 
   const handleView = (sourceId: string) => {
@@ -56,6 +72,7 @@ export function KnowledgeList() {
         `/api/knowledge?projectId=${currentProject.id}`
       );
       setSources(data.sources);
+      setCapacity(data.capacity ?? null);
     } catch (err) {
       console.error("Fetch error:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch sources");
@@ -92,6 +109,7 @@ export function KnowledgeList() {
                     status: payload.new.status as KnowledgeSource["status"],
                     chunkCount: payload.new.chunk_count || 0,
                     error: payload.new.error,
+                    sourceUrl: payload.new.source_url ?? s.sourceUrl,
                   }
                 : s
             )
@@ -116,11 +134,36 @@ export function KnowledgeList() {
     try {
       await apiClient(`/api/knowledge/${id}?projectId=${currentProject.id}`, { method: "DELETE" });
       setSources((prev) => prev.filter((s) => s.id !== id));
+      // Deleting a crawled page frees scan capacity.
+      setCapacity((prev) =>
+        prev ? { ...prev, used: Math.max(0, prev.used - 1), remaining: prev.remaining + 1 } : prev
+      );
     } catch (err) {
       console.error("Delete error:", err);
       alert(err instanceof Error ? err.message : "Failed to delete source");
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const handleRecrawl = async (id: string) => {
+    if (!currentProject?.id) return;
+
+    setRecrawling(id);
+    // Optimistic status; the realtime subscription flips it back to ready when done.
+    setSources((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status: "processing", error: undefined } : s))
+    );
+    try {
+      await apiClient(`/api/knowledge/${id}/recrawl?projectId=${currentProject.id}`, {
+        method: "POST",
+      });
+    } catch (err) {
+      console.error("Recrawl error:", err);
+      alert(err instanceof Error ? err.message : "Failed to recrawl source");
+      fetchSources();
+    } finally {
+      setRecrawling(null);
     }
   };
 
@@ -141,6 +184,8 @@ export function KnowledgeList() {
     switch (type) {
       case "pdf":
         return <File className="h-5 w-5 text-red-500" />;
+      case "url":
+        return <Globe className="h-5 w-5 text-green-600" />;
       default:
         return <FileText className="h-5 w-5 text-blue-500" />;
     }
@@ -154,6 +199,8 @@ export function KnowledgeList() {
         return "Text File";
       case "text":
         return "Text";
+      case "url":
+        return "Web Page";
       default:
         return type.toUpperCase();
     }
@@ -250,10 +297,17 @@ export function KnowledgeList() {
             Your chatbot uses this content to answer questions from your customers.
           </p>
         </div>
-        <Button onClick={() => setModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Knowledge
-        </Button>
+        <div className="flex items-center gap-3">
+          {capacity && (
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
+              {capacity.used} / {capacity.max} pages scanned
+            </span>
+          )}
+          <Button onClick={() => setModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Knowledge
+          </Button>
+        </div>
       </div>
 
       {sources.length === 0 ? (
@@ -280,8 +334,19 @@ export function KnowledgeList() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {getTypeIcon(source.type)}
-                    <div>
-                      <h3 className="font-medium">{source.name}</h3>
+                    <div className="min-w-0">
+                      <h3 className="font-medium truncate">{source.name}</h3>
+                      {source.type === "url" && source.sourceUrl && (
+                        <a
+                          href={source.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-muted-foreground hover:text-foreground hover:underline truncate block max-w-md"
+                          title={source.sourceUrl}
+                        >
+                          {formatSourceUrl(source.sourceUrl)}
+                        </a>
+                      )}
                       <p className="text-sm text-muted-foreground">
                         {getTypeLabel(source.type)}
                         {source.status === "ready" && source.chunkCount > 0 && (
@@ -309,6 +374,20 @@ export function KnowledgeList() {
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
+                    {source.type === "url" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRecrawl(source.id)}
+                        disabled={recrawling === source.id || source.status === "processing"}
+                        className="text-muted-foreground hover:text-foreground"
+                        title="Recrawl this page"
+                      >
+                        <RefreshCw
+                          className={`h-4 w-4 ${recrawling === source.id ? "animate-spin" : ""}`}
+                        />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"

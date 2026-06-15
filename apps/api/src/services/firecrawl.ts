@@ -56,6 +56,37 @@ function extractTitleFromUrl(url: string): string {
 }
 
 /**
+ * Map a Firecrawl Document to our CrawledPage.
+ * The per-page URL lives on metadata.sourceURL in SDK v4 (there is no top-level
+ * url/sourceURL), so read that first and fall back to the seed URL only as a last resort.
+ */
+function mapDocToPage(doc: any, seedUrl: string): CrawledPage {
+  const pageUrl =
+    doc.metadata?.sourceURL || doc.metadata?.url || doc.url || doc.sourceURL || seedUrl;
+  return {
+    url: pageUrl,
+    title: doc.metadata?.title || extractTitleFromUrl(pageUrl),
+    markdown: doc.markdown || '',
+    metadata: {
+      description: doc.metadata?.description,
+      language: doc.metadata?.language,
+    },
+  };
+}
+
+function mapDocsToPages(docs: any[], seedUrl: string): CrawledPage[] {
+  return docs
+    .map((d) => mapDocToPage(d, seedUrl))
+    .filter((p) => p.markdown && p.markdown.trim().length > 50); // drop empty/minimal pages
+}
+
+export interface LiveCrawlProgress {
+  completed: number;
+  total: number;
+  urls: string[]; // real page URLs discovered so far
+}
+
+/**
  * Crawl a website and extract content from all discovered pages
  */
 export async function crawlWebsite(
@@ -97,16 +128,8 @@ export async function crawlWebsite(
       };
     }
 
-    // Map results to our format
-    const pages: CrawledPage[] = (response.data || []).map((page: any) => ({
-      url: page.url || page.sourceURL || url,
-      title: page.metadata?.title || extractTitleFromUrl(page.url || page.sourceURL || url),
-      markdown: page.markdown || '',
-      metadata: {
-        description: page.metadata?.description,
-        language: page.metadata?.language
-      }
-    })).filter((page: CrawledPage) => page.markdown && page.markdown.trim().length > 50); // Filter out empty/minimal pages
+    // Map results to our format (per-page URL comes from metadata.sourceURL).
+    const pages: CrawledPage[] = mapDocsToPages(response.data || [], url);
 
     console.log(`[Firecrawl] Successfully crawled ${pages.length} pages`);
 
@@ -154,6 +177,119 @@ export async function crawlWebsite(
       pages: [],
       error: 'Unknown error occurred during crawl'
     };
+  }
+}
+
+/**
+ * Crawl a website with LIVE progress.
+ *
+ * Uses Firecrawl's async crawl (startCrawl + getCrawlStatus polling) so the caller
+ * can surface the real page URLs as they are discovered, instead of the single
+ * blocking crawl() that only returns once everything is done. Falls back to the
+ * blocking crawl if the async API is unavailable.
+ */
+export async function crawlWebsiteLive(
+  url: string,
+  options: CrawlOptions & {
+    onProgress?: (p: LiveCrawlProgress) => void;
+    pollIntervalMs?: number;
+    timeoutMs?: number;
+  }
+): Promise<CrawlResult> {
+  const { maxPages, onProgress } = options;
+  const pollIntervalMs = options.pollIntervalMs ?? 1500;
+  const timeoutMs = options.timeoutMs ?? 180000;
+
+  try {
+    const urlObj = new URL(url);
+    if (!['http:', 'https:'].includes(urlObj.protocol)) {
+      return { success: false, pages: [], error: 'Only HTTP and HTTPS URLs are supported' };
+    }
+
+    let started: { id: string };
+    try {
+      started = await firecrawl.startCrawl(url, {
+        limit: maxPages,
+        scrapeOptions: { formats: ['markdown'], onlyMainContent: true },
+      });
+    } catch (e) {
+      console.warn('[Firecrawl] startCrawl unavailable, falling back to blocking crawl:', e);
+      return crawlWebsite(url, { maxPages });
+    }
+
+    console.log(`[Firecrawl] Live crawl ${started.id} of ${url} (max ${maxPages} pages)`);
+
+    const seenUrls = new Set<string>();
+    const deadline = Date.now() + timeoutMs;
+    let job: any = null;
+
+    // Poll until the crawl finishes (or times out).
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      job = await firecrawl.getCrawlStatus(started.id);
+
+      for (const doc of job.data || []) {
+        const u = doc.metadata?.sourceURL || doc.metadata?.url;
+        if (u) seenUrls.add(u);
+      }
+      onProgress?.({
+        completed: job.completed || 0,
+        total: job.total || 0,
+        urls: Array.from(seenUrls),
+      });
+
+      if (job.status === 'completed') break;
+      if (job.status === 'failed' || job.status === 'cancelled') {
+        return { success: false, pages: [], error: `Crawl ${job.status}` };
+      }
+      if (Date.now() > deadline) {
+        console.warn(`[Firecrawl] Live crawl ${started.id} timed out; using partial results`);
+        break;
+      }
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+    }
+
+    const pages = mapDocsToPages(job?.data || [], url);
+    if (pages.length === 0) {
+      return { success: false, pages: [], error: 'No readable content found on this website' };
+    }
+    return { success: true, pages };
+  } catch (error) {
+    console.error('[Firecrawl] Live crawl error:', error);
+    const message =
+      error instanceof Error ? error.message : 'Unknown error occurred during crawl';
+    return { success: false, pages: [], error: message };
+  }
+}
+
+/**
+ * Scrape a single page (used by recrawl). Returns one CrawledPage on success.
+ */
+export async function scrapePage(url: string): Promise<CrawlResult> {
+  try {
+    const urlObj = new URL(url);
+    if (!['http:', 'https:'].includes(urlObj.protocol)) {
+      return { success: false, pages: [], error: 'Only HTTP and HTTPS URLs are supported' };
+    }
+
+    console.log(`[Firecrawl] Scraping single page ${url}`);
+
+    const doc = (await firecrawl.scrape(url, {
+      formats: ['markdown'],
+      onlyMainContent: true,
+    })) as any;
+
+    const page = mapDocToPage(doc, url);
+    if (!page.markdown || page.markdown.trim().length <= 50) {
+      return { success: false, pages: [], error: 'No readable content found on this page' };
+    }
+
+    return { success: true, pages: [page] };
+  } catch (error) {
+    console.error('[Firecrawl] Single-page scrape error:', error);
+    const message =
+      error instanceof Error ? error.message : 'Unknown error occurred during scrape';
+    return { success: false, pages: [], error: message };
   }
 }
 

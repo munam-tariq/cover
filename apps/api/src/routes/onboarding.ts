@@ -24,10 +24,12 @@ import {
   getJobFromDb,
   executeScrapeJob,
   getJobStatus,
+  getCrawlCapacity,
   markPageImporting,
   markPageCompleted,
   markPageFailed,
 } from "../services/scrape-job-manager";
+import { runSelfTest } from "../services/onboarding-self-test";
 
 export const onboardingRouter = Router();
 
@@ -66,7 +68,47 @@ const startSchema = z.object({
   agentName: z.string().min(1, "Agent name is required").max(50, "Agent name too long"),
   companyName: z.string().min(1, "Company name is required").max(100, "Company name too long"),
   systemPrompt: z.string().max(2000, "System prompt too long").optional(),
+  // New onboarding signals (persisted + used to tailor the agent's behavior)
+  hear: z.string().max(50).optional(),
+  size: z.string().max(50).optional(),
+  goal: z.string().max(50).optional(),
+  tone: z.string().max(50).optional(),
 });
+
+const TONE_GUIDANCE: Record<string, string> = {
+  friendly: "Maintain a warm, friendly, approachable tone.",
+  professional: "Maintain a professional, concise, and polished tone.",
+  playful: "Keep a light, playful, and energetic tone while staying genuinely helpful.",
+};
+
+const GOAL_GUIDANCE: Record<string, string> = {
+  answer:
+    "Your primary goal is to answer customer questions accurately from the knowledge base and deflect common support requests.",
+  leads:
+    "Your primary goal is to capture and qualify leads — collect contact details and intent for promising conversations.",
+  handoff:
+    "Your primary goal is to route customers to the human team smoothly the moment a person is needed.",
+  all: "Help customers by answering questions, capturing qualified leads, and routing to a human when needed.",
+};
+
+/**
+ * Build a system prompt from the onboarding tone + goal selections.
+ */
+function buildOnboardingSystemPrompt(opts: {
+  agentName: string;
+  companyName: string;
+  tone?: string;
+  goal?: string;
+}): string {
+  const toneLine = TONE_GUIDANCE[opts.tone || ""] || TONE_GUIDANCE.professional;
+  const goalLine = GOAL_GUIDANCE[opts.goal || ""] || GOAL_GUIDANCE.answer;
+  return [
+    `You are ${opts.agentName}, the AI assistant for ${opts.companyName}.`,
+    goalLine,
+    toneLine,
+    "Answer using the provided knowledge base. If you don't know the answer, say so honestly and offer to connect the customer with the team.",
+  ].join(" ");
+}
 
 const crawlSchema = z.object({
   projectId: z.string().uuid("Invalid project ID"),
@@ -95,7 +137,7 @@ onboardingRouter.post("/start", async (req: AuthenticatedRequest, res: Response)
       });
     }
 
-    const { agentName, companyName, systemPrompt } = validation.data;
+    const { agentName, companyName, systemPrompt, hear, size, goal, tone } = validation.data;
 
     // Check if user already has projects (shouldn't be in onboarding)
     const { data: existingProjects, error: fetchError } = await supabaseAdmin
@@ -128,13 +170,18 @@ onboardingRouter.post("/start", async (req: AuthenticatedRequest, res: Response)
         company_website: null,
         company_logo_url: null,
         crawl_job_id: null,
+        // Persisted onboarding signals
+        hear: hear || null,
+        size: size || null,
+        goal: goal || null,
+        tone: tone || null,
       },
     };
 
-    // Add system prompt if provided
-    if (systemPrompt) {
-      projectSettings.systemPrompt = systemPrompt.trim();
-    }
+    // Use an explicit prompt if provided, otherwise derive one from tone + goal.
+    projectSettings.systemPrompt = systemPrompt?.trim()
+      ? systemPrompt.trim()
+      : buildOnboardingSystemPrompt({ agentName, companyName, tone, goal });
 
     const { data: project, error: createError } = await supabaseAdmin
       .from("projects")
@@ -216,8 +263,23 @@ onboardingRouter.post("/crawl", async (req: AuthenticatedRequest, res: Response)
     const domain = extractDomain(normalizedUrl);
     const logoUrl = getBrandfetchLogoUrl(domain);
 
-    // Create scrape job
-    const job = await createScrapeJob(projectId, req.userId!, normalizedUrl);
+    // Bound the crawl by remaining crawled-page capacity (the Train step may have
+    // already added some url sources). On a fresh project this is the full cap.
+    const capacity = await getCrawlCapacity(projectId);
+    if (capacity.remaining <= 0) {
+      return res.status(400).json({
+        error: {
+          code: "LIMIT_REACHED",
+          message: `You have reached the maximum of ${capacity.max} scanned pages. Please delete some crawled pages to scan more.`,
+        },
+      });
+    }
+    const job = await createScrapeJob(
+      projectId,
+      req.userId!,
+      normalizedUrl,
+      capacity.remaining
+    );
 
     // Update project with onboarding data
     const currentSettings = (project.settings as Record<string, unknown>) || {};
@@ -299,13 +361,14 @@ onboardingRouter.get("/status/:jobId", async (req: AuthenticatedRequest, res: Re
       status: dbJob.status,
       domain: dbJob.domain,
       error: dbJob.error ? { code: "SCRAPE_ERROR", message: dbJob.error } : undefined,
-      totals: ["completed", "failed"].includes(dbJob.status)
+      totals: ["testing", "completed", "failed"].includes(dbJob.status)
         ? {
             pages: dbJob.pagesFound,
             imported: dbJob.pagesImported,
             failed: dbJob.pagesFailed,
           }
         : undefined,
+      selfTest: dbJob.selfTest,
     });
   } catch (error) {
     console.error("Onboarding status error:", error);
@@ -540,6 +603,38 @@ async function importPagesAndComplete(
       markPageFailed(job.id, page.id, error instanceof Error ? error.message : "Unknown error");
       failedCount++;
     }
+  }
+
+  // Agent self-test: ask 2 homepage-derived questions and answer them with the
+  // real RAG pipeline, so the onboarding UI can show the agent answering live.
+  // Runs server-side only; failures are non-fatal (onboarding still completes).
+  if (importedCount > 0) {
+    job.status = "testing";
+    job.selfTest = { status: "running", questions: [] };
+    await supabaseAdmin.from("crawl_jobs").update({ status: "testing" }).eq("id", job.id);
+
+    try {
+      const { data: proj } = await supabaseAdmin
+        .from("projects")
+        .select("name, company_name")
+        .eq("id", projectId)
+        .single();
+
+      const homepageContent = job.pages[0]?.structuredContent || "";
+      const companyName = proj?.company_name || proj?.name || job.domain;
+      const agentName = proj?.name || "Assistant";
+
+      const questions = await runSelfTest(projectId, homepageContent, companyName, agentName);
+      job.selfTest = { status: "completed", questions };
+    } catch (error) {
+      console.error("[Onboarding] Self-test failed:", error);
+      job.selfTest = { status: "failed", questions: [] };
+    }
+
+    await supabaseAdmin
+      .from("crawl_jobs")
+      .update({ self_test: job.selfTest })
+      .eq("id", job.id);
   }
 
   // Update job status

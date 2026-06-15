@@ -17,7 +17,8 @@ import {
 } from "../services/rag";
 
 // URL Scraping
-import { validateCrawlUrl } from "../services/firecrawl";
+import { validateCrawlUrl, scrapePage } from "../services/firecrawl";
+import { structurePageContent } from "../services/content-structurer";
 import {
   createScrapeJob,
   getJob,
@@ -25,6 +26,7 @@ import {
   cancelJob,
   executeScrapeJob,
   getJobStatus,
+  getCrawlCapacity,
   markPageImporting,
   markPageCompleted,
   markPageFailed,
@@ -59,7 +61,7 @@ knowledgeRouter.get("/", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { data: sources, error } = await supabaseAdmin
       .from("knowledge_sources")
-      .select("id, name, type, status, chunk_count, error, created_at")
+      .select("id, name, type, status, chunk_count, error, created_at, source_url, scraped_at")
       .eq("project_id", req.projectId)
       .order("created_at", { ascending: false });
 
@@ -70,6 +72,11 @@ knowledgeRouter.get("/", async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
+    // Crawl capacity (url-type sources only) — computed from the rows we already
+    // fetched, so no extra query. Drives the "X of N pages used" hint in the UI.
+    const maxCrawlPages = parseInt(process.env.MAX_CRAWL_PAGES || "10", 10);
+    const urlCount = sources.filter((s) => s.type === "url").length;
+
     res.json({
       sources: sources.map((s) => ({
         id: s.id,
@@ -79,7 +86,14 @@ knowledgeRouter.get("/", async (req: AuthenticatedRequest, res: Response) => {
         chunkCount: s.chunk_count || 0,
         error: s.error,
         createdAt: s.created_at,
+        sourceUrl: s.source_url, // full crawled page URL (url type)
+        scrapedAt: s.scraped_at,
       })),
+      capacity: {
+        used: urlCount,
+        max: maxCrawlPages,
+        remaining: Math.max(0, maxCrawlPages - urlCount),
+      },
     });
   } catch (error) {
     console.error("Knowledge GET error:", error);
@@ -450,6 +464,135 @@ knowledgeRouter.delete(
 );
 
 /**
+ * POST /api/knowledge/:id/recrawl
+ * Re-scrape a url-type source and atomically replace its chunks.
+ * New chunks are embedded FIRST; the swap happens in a single transaction
+ * (recrawl_replace_chunks RPC) so the RAG index is never left polluted.
+ */
+knowledgeRouter.post(
+  "/:id/recrawl",
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      const { data: source, error: sourceError } = await supabaseAdmin
+        .from("knowledge_sources")
+        .select("id, name, type, source_url, project_id")
+        .eq("id", id)
+        .eq("project_id", req.projectId)
+        .single();
+
+      if (sourceError || !source) {
+        return res.status(404).json({
+          error: { code: "NOT_FOUND", message: "Knowledge source not found" },
+        });
+      }
+
+      if (source.type !== "url" || !source.source_url) {
+        return res.status(400).json({
+          error: {
+            code: "NOT_RECRAWLABLE",
+            message: "Only crawled web pages can be recrawled.",
+          },
+        });
+      }
+
+      // Optimistic UI feedback; the realtime subscription reflects this.
+      await supabaseAdmin
+        .from("knowledge_sources")
+        .update({ status: "processing", error: null })
+        .eq("id", id);
+
+      // Do the work in the background and return immediately.
+      recrawlSource(source.id, source.source_url, source.name).catch((err) => {
+        console.error(`[Recrawl] Background recrawl failed for ${source.id}:`, err);
+      });
+
+      res.status(202).json({ id: source.id, status: "processing" });
+    } catch (error) {
+      console.error("Knowledge recrawl error:", error);
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+      });
+    }
+  }
+);
+
+/**
+ * Background: re-scrape a single page, rebuild chunks, then atomically swap them.
+ * On any failure the existing chunks are left untouched and the source is
+ * restored to "ready" (a recrawl that fails is a safe no-op, never RAG pollution).
+ */
+async function recrawlSource(
+  sourceId: string,
+  sourceUrl: string,
+  sourceName: string
+): Promise<void> {
+  try {
+    // 1. Re-scrape the single page
+    const scrapeResult = await scrapePage(sourceUrl);
+    if (!scrapeResult.success || scrapeResult.pages.length === 0) {
+      throw new Error(scrapeResult.error || "Failed to scrape page");
+    }
+    const page = scrapeResult.pages[0];
+
+    // 2. Structure + 3. chunk/context/embed (new chunks built BEFORE any delete)
+    const structured = await structurePageContent(page.url, page.markdown, page.title);
+
+    const pipeline = createProcessingPipeline();
+    const documentMetadata: DocumentMetadata = {
+      name: structured.title || sourceName,
+      type: "url",
+    };
+    const processedChunks = await pipeline.process(structured.content, documentMetadata);
+
+    if (processedChunks.length === 0) {
+      throw new Error("No valid chunks generated from page");
+    }
+
+    const chunkPayload = processedChunks.map((chunk) => ({
+      content: chunk.content,
+      context: chunk.context,
+      embedding: `[${chunk.embedding.join(",")}]`,
+      metadata: {
+        index: chunk.index,
+        tokenEstimate: chunk.metadata?.tokenEstimate,
+      },
+    }));
+
+    // 4. Atomic swap: delete old chunks + insert new + update source (status -> ready)
+    const { error: rpcError } = await supabaseAdmin.rpc("recrawl_replace_chunks", {
+      p_source_id: sourceId,
+      p_content: structured.content,
+      p_source_url: page.url,
+      p_chunks: chunkPayload,
+      p_chunk_count: processedChunks.length,
+    });
+
+    if (rpcError) {
+      throw new Error(rpcError.message);
+    }
+
+    console.log(
+      `[Recrawl] Replaced ${processedChunks.length} chunks for ${sourceName}`
+    );
+  } catch (error) {
+    console.error(`[Recrawl] Failed for ${sourceId}:`, error);
+    // Old chunks are intact — restore to ready so the source keeps serving RAG.
+    await supabaseAdmin
+      .from("knowledge_sources")
+      .update({
+        status: "ready",
+        error:
+          error instanceof Error
+            ? `Recrawl failed: ${error.message}`
+            : "Recrawl failed",
+      })
+      .eq("id", sourceId);
+  }
+}
+
+/**
  * Process a knowledge source: extract text, chunk, add context, embed, and store
  *
  * RAG v2 Pipeline:
@@ -604,29 +747,24 @@ knowledgeRouter.post("/scrape", async (req: AuthenticatedRequest, res: Response)
       });
     }
 
-    // Check source limit
-    const { count } = await supabaseAdmin
-      .from("knowledge_sources")
-      .select("*", { count: "exact", head: true })
-      .eq("project_id", req.projectId);
-
-    const maxPages = parseInt(process.env.MAX_CRAWL_PAGES || "10", 10);
-    const availableSlots = MAX_SOURCES_PER_PROJECT - (count || 0);
-
-    if (availableSlots <= 0) {
+    // Enforce the crawled-pages cap (url-type sources only). Deleting crawled
+    // pages frees capacity, so the remaining slots bound this scan's page limit.
+    const capacity = await getCrawlCapacity(req.projectId!);
+    if (capacity.remaining <= 0) {
       return res.status(400).json({
         error: {
           code: "LIMIT_REACHED",
-          message: `You have reached the maximum of ${MAX_SOURCES_PER_PROJECT} knowledge sources. Please delete some to import more.`,
+          message: `You have reached the maximum of ${capacity.max} scanned pages. Please delete some crawled pages to scan more.`,
         },
       });
     }
 
-    // Create scrape job (now saves to database)
+    // Create scrape job (now saves to database), bounded by remaining capacity
     const job = await createScrapeJob(
       req.projectId!,
       req.userId!,
-      urlValidation.normalizedUrl!
+      urlValidation.normalizedUrl!,
+      capacity.remaining
     );
 
     // Start crawling in background

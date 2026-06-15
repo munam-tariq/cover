@@ -6,9 +6,10 @@
  * In-memory cache expires after 30 minutes, but database records are permanent.
  */
 
-import { crawlWebsite, CrawledPage } from './firecrawl';
-import { structureAllPages, StructuredPage, estimateChunks } from './content-structurer';
 import { supabaseAdmin } from '../lib/supabase';
+
+import { structureAllPages, estimateChunks } from './content-structurer';
+import { crawlWebsiteLive } from './firecrawl';
 
 export type ScrapeJobStatus =
   | 'pending'
@@ -16,9 +17,21 @@ export type ScrapeJobStatus =
   | 'structuring'
   | 'ready'
   | 'importing'
+  | 'testing'
   | 'completed'
   | 'failed'
   | 'cancelled';
+
+export interface SelfTestQA {
+  question: string;
+  answer: string;
+  citations: { url: string; path: string }[];
+}
+
+export interface SelfTestState {
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  questions: SelfTestQA[];
+}
 
 export interface ScrapedPageData {
   id: string;
@@ -61,6 +74,8 @@ export interface ScrapeJob {
     words: number;
     estimatedChunks: number;
   };
+  discoveredUrls: string[]; // real page URLs found during the live crawl
+  selfTest?: SelfTestState; // background "ask 2 questions" agent self-test
   createdAt: Date;
   expiresAt: Date;
 }
@@ -143,11 +158,18 @@ async function updateCrawlJobInDb(
 export async function createScrapeJob(
   projectId: string,
   userId: string,
-  url: string
+  url: string,
+  maxPagesOverride?: number
 ): Promise<ScrapeJob> {
   const urlObj = new URL(url);
   const domain = urlObj.hostname;
-  const maxPages = parseInt(process.env.MAX_CRAWL_PAGES || '10', 10);
+  const envMax = parseInt(process.env.MAX_CRAWL_PAGES || '10', 10);
+  // Never crawl more than the env cap; when a remaining-capacity override is
+  // provided (e.g. project already has some crawled pages), use the smaller value.
+  const maxPages =
+    maxPagesOverride != null
+      ? Math.max(1, Math.min(maxPagesOverride, envMax))
+      : envMax;
 
   // Save to database first to get the job ID
   const jobId = await saveCrawlJobToDb(projectId, userId, url, domain);
@@ -179,6 +201,7 @@ export async function createScrapeJob(
       words: 0,
       estimatedChunks: 0
     },
+    discoveredUrls: [],
     createdAt: new Date(),
     expiresAt: new Date(Date.now() + 30 * 60 * 1000) // 30 min expiry for in-memory cache
   };
@@ -197,6 +220,30 @@ export function getJob(jobId: string): ScrapeJob | undefined {
 }
 
 /**
+ * Crawl capacity for a project.
+ *
+ * The total number of crawled (url-type) knowledge sources is capped at
+ * MAX_CRAWL_PAGES (default 10). Deleting crawled pages frees capacity, so the
+ * remaining slots determine how many pages a new scan may import. Uploaded
+ * text/PDF/Q&A sources are NOT counted here — they fall under the separate
+ * MAX_SOURCES_PER_PROJECT limit.
+ */
+export async function getCrawlCapacity(
+  projectId: string
+): Promise<{ used: number; max: number; remaining: number }> {
+  const max = parseInt(process.env.MAX_CRAWL_PAGES || '10', 10);
+
+  const { count } = await supabaseAdmin
+    .from('knowledge_sources')
+    .select('*', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+    .eq('type', 'url');
+
+  const used = count || 0;
+  return { used, max, remaining: Math.max(0, max - used) };
+}
+
+/**
  * Get a job from database (for historical/expired jobs)
  * Returns a minimal job object for status display
  */
@@ -212,10 +259,11 @@ export async function getJobFromDb(jobId: string): Promise<{
   pagesFailed: number;
   createdAt: string;
   completedAt?: string;
+  selfTest?: SelfTestState;
 } | null> {
   const { data, error } = await supabaseAdmin
     .from('crawl_jobs')
-    .select('id, project_id, user_id, status, domain, error, pages_found, pages_imported, pages_failed, created_at, completed_at')
+    .select('id, project_id, user_id, status, domain, error, pages_found, pages_imported, pages_failed, created_at, completed_at, self_test')
     .eq('id', jobId)
     .single();
 
@@ -235,6 +283,7 @@ export async function getJobFromDb(jobId: string): Promise<{
     pagesFailed: data.pages_failed || 0,
     createdAt: data.created_at,
     completedAt: data.completed_at,
+    selfTest: (data.self_test as SelfTestState) || undefined,
   };
 }
 
@@ -293,8 +342,14 @@ export async function executeScrapeJob(jobId: string): Promise<void> {
       started_at: new Date().toISOString(),
     });
 
-    const crawlResult = await crawlWebsite(job.url, {
-      maxPages: job.crawlProgress.maxPages
+    const crawlResult = await crawlWebsiteLive(job.url, {
+      maxPages: job.crawlProgress.maxPages,
+      onProgress: ({ completed, total, urls }) => {
+        // Surface real-time crawl progress + the actual page URLs being discovered.
+        job.crawlProgress.pagesFound = total || urls.length;
+        job.crawlProgress.pagesProcessed = completed;
+        job.discoveredUrls = urls;
+      },
     });
 
     // Check if job was cancelled during crawl
@@ -499,6 +554,7 @@ export async function markPageFailed(jobId: string, pageId: string, error: strin
  * Get public-safe job status for API response
  */
 export function getJobStatus(job: ScrapeJob): object {
+  const hasPages = ['ready', 'importing', 'testing', 'completed'].includes(job.status);
   return {
     jobId: job.id,
     status: job.status,
@@ -506,7 +562,10 @@ export function getJobStatus(job: ScrapeJob): object {
     error: job.error ? { code: 'SCRAPE_ERROR', message: job.error } : undefined,
     crawlProgress: job.status === 'crawling' ? job.crawlProgress : undefined,
     structureProgress: job.status === 'structuring' ? job.structureProgress : undefined,
-    pages: ['ready', 'importing', 'completed'].includes(job.status) ? job.pages : undefined,
-    totals: ['ready', 'importing', 'completed'].includes(job.status) ? job.totals : undefined
+    // Real page URLs discovered by the crawler — drives the live "sources" list in the UI.
+    crawledUrls: job.discoveredUrls.length ? job.discoveredUrls : undefined,
+    pages: hasPages ? job.pages : undefined,
+    totals: hasPages ? job.totals : undefined,
+    selfTest: job.selfTest,
   };
 }
