@@ -31,6 +31,11 @@ import { useState, useEffect } from "react";
 
 import { type Project } from "@/contexts/project-context";
 import { apiClient } from "@/lib/api-client";
+import {
+  buildWidgetEmbedCode,
+  WIDGET_API_URL,
+  WIDGET_SCRIPT_URL,
+} from "@/lib/widget-embed";
 
 interface WidgetTabProps {
   project: Project;
@@ -217,14 +222,11 @@ export function WidgetTab({ project }: WidgetTabProps) {
   };
 
   const getEmbedCode = () => {
-    const widgetUrl = process.env.NEXT_PUBLIC_WIDGET_URL || "https://widget.cover.ai";
-    return `<script
-  src="${widgetUrl}/widget.js"
-  data-project-id="${project.id}"
-  data-position="bottom-right"
-  data-primary-color="#2563eb"
-  async
-></script>`;
+    return buildWidgetEmbedCode({
+      projectId: project.id,
+      apiUrl: WIDGET_API_URL,
+      scriptUrl: WIDGET_SCRIPT_URL,
+    });
   };
 
   const handleCopyEmbed = () => {

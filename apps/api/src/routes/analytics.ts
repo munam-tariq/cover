@@ -12,6 +12,12 @@ import { Router, Request, Response, NextFunction } from "express";
 import { logger } from "../lib/logger";
 import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
+import {
+  aggregateGaps,
+  aggregateSentimentTimeline,
+  aggregateTopics,
+  type InsightRow,
+} from "../services/conversation-insights-core";
 import { getTopQuestions } from "../services/question-clustering";
 
 export const analyticsRouter = Router();
@@ -889,6 +895,106 @@ analyticsRouter.get("/timeline", async (req: Request, res: Response) => {
     logger.error("Timeline error", error, { requestId: req.requestId });
     res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: "Failed to get timeline" },
+    });
+  }
+});
+
+// ─── Conversation Insights (gap 1) ──────────────────────────────────────────────
+// Read from conversation_insights, written nightly by the classifier. Aggregation lives in
+// the unit-tested pure helpers in services/conversation-insights-core.ts. Rows are filtered by
+// the insight's created_at, which — under steady nightly runs over the prior 24h — tracks the
+// conversation date within a day.
+
+const INSIGHT_COLUMNS = "topic, sentiment, resolved, answer_gap_question, created_at";
+
+/** Fetch a project's insight rows within the last `days`. */
+async function fetchInsightRows(
+  projectId: string,
+  days: number
+): Promise<InsightRow[]> {
+  const cutoff = new Date();
+  cutoff.setUTCDate(cutoff.getUTCDate() - (days - 1));
+  cutoff.setUTCHours(0, 0, 0, 0);
+
+  const { data, error } = await supabaseAdmin
+    .from("conversation_insights")
+    .select(INSIGHT_COLUMNS)
+    .eq("project_id", projectId)
+    .gte("created_at", cutoff.toISOString());
+
+  if (error) throw error;
+  return (data as InsightRow[]) ?? [];
+}
+
+/**
+ * GET /api/analytics/topics — ranked conversation topics with counts.
+ * Query: projectId (required), days (default 30, max 90).
+ */
+analyticsRouter.get("/topics", async (req: Request, res: Response) => {
+  try {
+    const projectId = req.query.projectId as string;
+    const days = Math.min(parseInt(req.query.days as string) || 30, 90);
+    if (!projectId) {
+      return res.status(400).json({
+        error: { code: "INVALID_INPUT", message: "projectId is required" },
+      });
+    }
+
+    const rows = await fetchInsightRows(projectId, days);
+    res.json({ topics: aggregateTopics(rows), days });
+  } catch (error) {
+    logger.error("Topics insight error", error, { requestId: req.requestId });
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Failed to get topics" },
+    });
+  }
+});
+
+/**
+ * GET /api/analytics/sentiment — sentiment totals + daily breakdown.
+ * Query: projectId (required), days (default 30, max 90).
+ */
+analyticsRouter.get("/sentiment", async (req: Request, res: Response) => {
+  try {
+    const projectId = req.query.projectId as string;
+    const days = Math.min(parseInt(req.query.days as string) || 30, 90);
+    if (!projectId) {
+      return res.status(400).json({
+        error: { code: "INVALID_INPUT", message: "projectId is required" },
+      });
+    }
+
+    const rows = await fetchInsightRows(projectId, days);
+    res.json({ ...aggregateSentimentTimeline(rows, days), days });
+  } catch (error) {
+    logger.error("Sentiment insight error", error, { requestId: req.requestId });
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Failed to get sentiment" },
+    });
+  }
+});
+
+/**
+ * GET /api/analytics/gaps — unanswered-question rollup (answer gaps).
+ * Query: projectId (required), days (default 30, max 90), limit (default 10, max 50).
+ */
+analyticsRouter.get("/gaps", async (req: Request, res: Response) => {
+  try {
+    const projectId = req.query.projectId as string;
+    const days = Math.min(parseInt(req.query.days as string) || 30, 90);
+    const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+    if (!projectId) {
+      return res.status(400).json({
+        error: { code: "INVALID_INPUT", message: "projectId is required" },
+      });
+    }
+
+    const rows = await fetchInsightRows(projectId, days);
+    res.json({ gaps: aggregateGaps(rows, limit), days, limit });
+  } catch (error) {
+    logger.error("Gaps insight error", error, { requestId: req.requestId });
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Failed to get gaps" },
     });
   }
 });

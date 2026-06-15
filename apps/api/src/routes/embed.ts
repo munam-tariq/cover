@@ -119,6 +119,51 @@ export function buildLeadCaptureClientConfig(
     : { enabled: false };
 }
 
+/**
+ * Client-safe widget appearance config from settings.widget_appearance (Part B). Maps the stored
+ * snake_case appearance object to the camelCase shape the widget consumes (parseDisplayConfig in
+ * apps/widget/src/utils/widget-appearance.ts), filling safe defaults. Default VALUES must stay in
+ * sync with that file's resolveWidgetAppearanceDefaults so the widget and API agree fail-open.
+ */
+export function buildWidgetAppearanceConfig(settings: Record<string, unknown>) {
+  const wa = (settings.widget_appearance as Record<string, unknown>) || {};
+  const str = (v: unknown, d: string | null = null) =>
+    typeof v === "string" ? v : d;
+  const bool = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
+
+  const theme =
+    wa.theme === "dark" || wa.theme === "auto" || wa.theme === "light"
+      ? wa.theme
+      : "light";
+  const position = wa.position === "bottom-left" ? "bottom-left" : "bottom-right";
+  const starters = Array.isArray(wa.starters)
+    ? wa.starters.filter((s): s is string => typeof s === "string")
+    : [];
+  const notice =
+    wa.notice && typeof wa.notice === "object"
+      ? wa.notice
+      : { enabled: false, text: "" };
+  const footer =
+    wa.footer && typeof wa.footer === "object" ? wa.footer : null;
+
+  return {
+    theme,
+    position,
+    placeholder: str(wa.placeholder, "Type a message...") as string,
+    avatarUrl: str(wa.avatar_url),
+    launcherIconUrl: str(wa.launcher_icon_url),
+    bubbleColor: str(wa.bubble_color),
+    usePrimaryForHeader: bool(wa.use_primary_for_header, true),
+    hideBranding: bool(wa.hide_branding, false),
+    feedbackEnabled: bool(wa.feedback_enabled, false),
+    copyEnabled: bool(wa.copy_enabled, true),
+    starters,
+    notice,
+    footer,
+    localeDefault: str(wa.locale_default, "en") as string,
+  };
+}
+
 // Get embed code for a project
 embedRouter.get("/code/:projectId", async (req, res) => {
   const { projectId } = req.params;
@@ -185,11 +230,11 @@ embedRouter.get(
         enabled: widgetEnabled,
         config: {
           primaryColor: (settings?.primary_color as string) || "#0a0a0a",
-          position: "bottom-right",
           greeting: greeting.full,
           greetingIntro: greeting.intro,
           title: project?.name || "Chat with us",
-          placeholder: "Type a message...",
+          // Appearance (Part B) — honors stored position/placeholder instead of hardcoding.
+          ...buildWidgetAppearanceConfig(settings),
         },
         // Supabase credentials for realtime (public anon key is safe to expose)
         realtime: {
@@ -227,9 +272,10 @@ embedRouter.get(
         enabled: true,
         config: {
           primaryColor: "#0a0a0a",
-          position: "bottom-right",
           greeting: "Hi! How can I help you today?",
-          placeholder: "Type a message...",
+          title: "Chat with us",
+          // Appearance defaults (mirrors the success path).
+          ...buildWidgetAppearanceConfig({}),
         },
         realtime: {
           supabaseUrl:

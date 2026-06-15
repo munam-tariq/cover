@@ -6,7 +6,8 @@
  */
 
 import { Router } from "express";
-import { sendLeadDigests } from "../jobs/lead-digest";
+
+import { classifyAllProjects } from "../services/conversation-insights";
 import {
   checkAndUpdateAgentStatuses,
   closeAbandonedConversations,
@@ -36,40 +37,6 @@ function verifyCronSecret(
 
   next();
 }
-
-/**
- * POST /api/cron/lead-digest
- *
- * Send daily lead capture digest emails.
- * Should be called daily (e.g., 9 AM UTC).
- */
-cronRouter.post("/lead-digest", verifyCronSecret, async (_req, res) => {
-  try {
-    console.log("[Cron] Starting lead digest job");
-    const startTime = Date.now();
-
-    const result = await sendLeadDigests();
-
-    const duration = Date.now() - startTime;
-    console.log(
-      `[Cron] Lead digest complete: processed=${result.processed}, sent=${result.sent}, errors=${result.errors.length}, duration=${duration}ms`
-    );
-
-    res.json({
-      success: true,
-      processed: result.processed,
-      sent: result.sent,
-      errors: result.errors,
-      duration,
-    });
-  } catch (error) {
-    console.error("[Cron] Lead digest job failed:", error);
-    res.status(500).json({
-      error: "Lead digest job failed",
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-});
 
 /**
  * POST /api/cron/agent-presence
@@ -133,6 +100,41 @@ cronRouter.post("/conversation-cleanup", verifyCronSecret, async (_req, res) => 
     console.error("[Cron] Conversation cleanup failed:", error);
     res.status(500).json({
       error: "Conversation cleanup failed",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * POST /api/cron/classify-insights
+ *
+ * Classify recent conversations (topic / sentiment / resolution / answer-gap) for every
+ * eligible project and write them to conversation_insights. Idempotent per conversation.
+ * Should be called nightly (e.g. 3 AM UTC).
+ */
+cronRouter.post("/classify-insights", verifyCronSecret, async (_req, res) => {
+  try {
+    console.log("[Cron] Starting conversation insights classification");
+    const startTime = Date.now();
+
+    const result = await classifyAllProjects();
+
+    const duration = Date.now() - startTime;
+    console.log(
+      `[Cron] Insights classification complete: processed=${result.processed}, classified=${result.classified}, errors=${result.errors.length}, duration=${duration}ms`
+    );
+
+    res.json({
+      success: true,
+      processed: result.processed,
+      classified: result.classified,
+      errors: result.errors,
+      duration,
+    });
+  } catch (error) {
+    console.error("[Cron] Insights classification failed:", error);
+    res.status(500).json({
+      error: "Insights classification failed",
       message: error instanceof Error ? error.message : "Unknown error",
     });
   }

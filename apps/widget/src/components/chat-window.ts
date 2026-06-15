@@ -51,6 +51,9 @@ import type {
   LeadCaptureConfig,
   LeadRecoveryConfig,
   VoiceConfig,
+  WidgetFooter,
+  WidgetNotice,
+  WidgetStrings,
 } from "../utils/widget-config";
 
 import { HumanButton } from "./human-button";
@@ -73,6 +76,16 @@ export interface ChatWindowOptions {
   greetingIntro?: string;
   title: string;
   primaryColor: string;
+  /** Optional avatar image shown in the header (Part B). Falls back to a monogram. */
+  avatarUrl?: string | null;
+  placeholder: string;
+  starters: string[];
+  notice: WidgetNotice;
+  footer: WidgetFooter | null;
+  hideBranding: boolean;
+  feedbackEnabled: boolean;
+  copyEnabled: boolean;
+  strings: WidgetStrings;
   onClose: () => void;
   leadCaptureConfig?: LeadCaptureConfig | null;
   leadRecoveryConfig?: LeadRecoveryConfig | null;
@@ -82,6 +95,8 @@ export interface ChatWindowOptions {
 export class ChatWindow {
   element: HTMLElement;
   private messagesContainer: HTMLElement;
+  private startersContainer: HTMLElement;
+  private noticeBanner: HTMLElement | null;
   private input: Input;
   private typingIndicator: TypingIndicator;
   private humanButton: HumanButton | null = null;
@@ -138,6 +153,10 @@ export class ChatWindow {
     this.messagesContainer = this.element.querySelector(
       ".chatbot-messages"
     ) as HTMLElement;
+    this.startersContainer = this.element.querySelector(
+      ".chatbot-starters"
+    ) as HTMLElement;
+    this.noticeBanner = this.element.querySelector(".chatbot-notice");
 
     // Create human button (will be shown/hidden based on availability)
     this.humanButton = new HumanButton({
@@ -152,6 +171,8 @@ export class ChatWindow {
     this.input = new Input({
       onSend: (message) => this.handleSend(message),
       primaryColor: options.primaryColor,
+      placeholder: options.placeholder,
+      sendLabel: options.strings.sendMessage,
       onInput: () => this.handleUserTyping(),
     });
     inputContainer.appendChild(this.input.element);
@@ -327,7 +348,7 @@ export class ChatWindow {
    * Fetch feedback from API and merge into messages
    */
   private async fetchAndMergeFeedback(messages: StoredMessage[]): Promise<void> {
-    if (!this.sessionId) return;
+    if (!this.sessionId || !this.options.feedbackEnabled) return;
 
     try {
       const response = await fetch(
@@ -387,7 +408,11 @@ export class ChatWindow {
     window.innerHTML = `
       <div class="chatbot-header" style="background-color: ${this.options.primaryColor}">
         <div class="chatbot-header-left">
-          <div class="chatbot-avatar">${(this.options.title || 'A')[0].toUpperCase()}</div>
+          <div class="chatbot-avatar">${
+            this.options.avatarUrl
+              ? `<img src="${this.escapeHtml(this.options.avatarUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" />`
+              : (this.options.title || "A")[0].toUpperCase()
+          }</div>
           <div class="chatbot-header-info">
             <span class="chatbot-title">${this.escapeHtml(this.options.title)}</span>
             <span class="chatbot-status">
@@ -426,8 +451,11 @@ export class ChatWindow {
           </button>
         </div>
       </div>
+      ${this.buildNoticeHtml()}
       <div class="chatbot-messages" role="log" aria-live="polite" aria-label="Chat messages"></div>
+      <div class="chatbot-starters" aria-label="Conversation starters" hidden></div>
       <div class="chatbot-input-container"></div>
+      ${this.buildFooterHtml()}
     `;
 
     // Attach close handler
@@ -435,6 +463,9 @@ export class ChatWindow {
     closeBtn.addEventListener("click", () => {
       this.options.onClose();
     });
+
+    const noticeDismiss = window.querySelector(".chatbot-notice-dismiss");
+    noticeDismiss?.addEventListener("click", () => this.dismissNotice());
 
     // Attach expand/collapse handler
     const expandBtn = window.querySelector(".cb-expand-btn");
@@ -453,6 +484,58 @@ export class ChatWindow {
     }
 
     return window;
+  }
+
+  private buildNoticeHtml(): string {
+    if (!this.options.notice.enabled || !this.options.notice.text.trim()) {
+      return "";
+    }
+
+    return `
+      <div class="chatbot-notice" role="status">
+        <span>${this.escapeHtml(this.options.notice.text)}</span>
+        <button class="chatbot-notice-dismiss" type="button" aria-label="${this.escapeHtml(this.options.strings.dismissNotice)}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    `;
+  }
+
+  private buildFooterHtml(): string {
+    const footerText = this.options.footer?.text.trim() ?? "";
+    const footerUrl = this.getSafeExternalUrl(this.options.footer?.url);
+    const customFooter = footerText
+      ? footerUrl
+        ? `<a href="${this.escapeHtml(footerUrl)}" target="_blank" rel="noopener noreferrer">${this.escapeHtml(footerText)}</a>`
+        : `<span>${this.escapeHtml(footerText)}</span>`
+      : "";
+    const branding = this.options.hideBranding
+      ? ""
+      : `<a href="https://frontface.app" target="_blank" rel="noopener noreferrer">${this.escapeHtml(this.options.strings.poweredBy)}</a>`;
+
+    if (!customFooter && !branding) return "";
+
+    return `
+      <div class="chatbot-footer">
+        ${customFooter}
+        ${customFooter && branding ? '<span class="chatbot-footer-separator" aria-hidden="true">·</span>' : ""}
+        ${branding}
+      </div>
+    `;
+  }
+
+  private getSafeExternalUrl(value?: string): string | null {
+    if (!value) return null;
+
+    try {
+      const url = new URL(value);
+      return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : null;
+    } catch {
+      return null;
+    }
   }
 
   private escapeHtml(text: string): string {
@@ -494,7 +577,37 @@ export class ChatWindow {
       );
     }
 
+    this.renderStarters();
     this.scrollToBottom();
+  }
+
+  private renderStarters(): void {
+    const leadCapturePending =
+      this.options.leadCaptureConfig?.enabled &&
+      !this.leadCaptureLocalState?.hasCompletedForm;
+    const shouldShow =
+      this.options.starters.length > 0 &&
+      this.messages.length === 0 &&
+      !leadCapturePending &&
+      !this.isLeadCaptureActive;
+
+    this.startersContainer.replaceChildren();
+    this.startersContainer.hidden = !shouldShow;
+    if (!shouldShow) return;
+
+    for (const starter of this.options.starters) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "chatbot-starter";
+      button.textContent = starter;
+      button.addEventListener("click", () => this.handleSend(starter));
+      this.startersContainer.appendChild(button);
+    }
+  }
+
+  private dismissNotice(): void {
+    this.noticeBanner?.remove();
+    this.noticeBanner = null;
   }
 
   private addMessageToDOM(messageData: StoredMessage): void {
@@ -502,8 +615,14 @@ export class ChatWindow {
       ...messageData,
       isError: messageData.isError,
       feedback: messageData.feedback,
-      // Only add feedback callback for assistant messages
-      onFeedback: messageData.role === "assistant" && !messageData.isError
+      feedbackEnabled: this.options.feedbackEnabled,
+      copyEnabled: this.options.copyEnabled,
+      copyLabel: this.options.strings.copyMessage,
+      copiedLabel: this.options.strings.copied,
+      onFeedback:
+        this.options.feedbackEnabled &&
+        messageData.role === "assistant" &&
+        !messageData.isError
         ? (messageId, rating) => this.handleFeedback(messageId, rating)
         : undefined,
     });
@@ -605,6 +724,8 @@ export class ChatWindow {
 
     // Add to messages and DOM
     this.messages.push(userMessage);
+    this.renderStarters();
+    this.dismissNotice();
     this.addMessageToDOM(userMessage);
     this.scrollToBottom();
 
@@ -1793,7 +1914,7 @@ export class ChatWindow {
     // Get all focusable elements
     this.focusableElements = Array.from(
       this.element.querySelectorAll(
-        'button:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        'button:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
       )
     ) as HTMLElement[];
 

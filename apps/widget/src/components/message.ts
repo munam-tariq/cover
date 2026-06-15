@@ -21,15 +21,21 @@ export interface MessageOptions {
   // Feedback state
   feedback?: "helpful" | "unhelpful" | null;
   onFeedback?: (messageId: string, rating: "helpful" | "unhelpful") => void;
+  feedbackEnabled?: boolean;
+  copyEnabled?: boolean;
+  copyLabel?: string;
+  copiedLabel?: string;
 }
 
 // SVG icons for feedback buttons
 const THUMBS_UP_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>`;
 const THUMBS_DOWN_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>`;
+const COPY_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
 
 export class Message {
   element: HTMLElement;
   private feedbackContainer: HTMLElement | null = null;
+  private actionsContainer: HTMLElement | null = null;
 
   constructor(private options: MessageOptions) {
     this.element = this.createElement();
@@ -55,11 +61,14 @@ export class Message {
       content.innerHTML = escapeHtml(this.options.content);
     }
 
-    // Add feedback buttons for assistant messages (not error messages)
-    // Position inside content div so absolute positioning works relative to bubble
-    if (this.options.role === "assistant" && !this.options.isError) {
-      this.feedbackContainer = this.createFeedbackButtons();
-      content.appendChild(this.feedbackContainer);
+    // Position message actions inside the bubble so the existing absolute layout applies.
+    if (
+      this.options.role === "assistant" &&
+      !this.options.isError &&
+      (this.options.feedbackEnabled || this.options.copyEnabled)
+    ) {
+      this.actionsContainer = this.createMessageActions();
+      content.appendChild(this.actionsContainer);
     }
 
     message.appendChild(content);
@@ -74,13 +83,51 @@ export class Message {
     return message;
   }
 
-  private createFeedbackButtons(): HTMLElement {
+  private createMessageActions(): HTMLElement {
     const container = document.createElement("div");
     container.className = "chatbot-message-feedback";
-
-    // If already submitted feedback, show confirmation
     if (this.options.feedback) {
       container.classList.add("chatbot-message-feedback--submitted");
+    }
+
+    if (this.options.feedbackEnabled) {
+      this.feedbackContainer = this.createFeedbackButtons();
+      container.appendChild(this.feedbackContainer);
+    }
+
+    if (this.options.copyEnabled) {
+      const copyButton = document.createElement("button");
+      const copyLabel = this.options.copyLabel || "Copy message";
+      const copiedLabel = this.options.copiedLabel || "Copied";
+      copyButton.className = "chatbot-feedback-btn chatbot-copy-btn";
+      copyButton.innerHTML = COPY_ICON;
+      copyButton.setAttribute("aria-label", copyLabel);
+      copyButton.setAttribute("title", copyLabel);
+      copyButton.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        const copied = await this.copyMessage();
+        if (!copied) return;
+
+        copyButton.classList.add("chatbot-copy-btn--copied");
+        copyButton.setAttribute("aria-label", copiedLabel);
+        copyButton.setAttribute("title", copiedLabel);
+        window.setTimeout(() => {
+          copyButton.classList.remove("chatbot-copy-btn--copied");
+          copyButton.setAttribute("aria-label", copyLabel);
+          copyButton.setAttribute("title", copyLabel);
+        }, 1500);
+      });
+      container.appendChild(copyButton);
+    }
+
+    return container;
+  }
+
+  private createFeedbackButtons(): HTMLElement {
+    const container = document.createElement("div");
+    container.className = "chatbot-feedback-controls";
+
+    if (this.options.feedback) {
       const submitted = document.createElement("span");
       submitted.className = "chatbot-feedback-submitted";
       submitted.innerHTML = `${this.options.feedback === "helpful" ? THUMBS_UP_ICON : THUMBS_DOWN_ICON} <span>Thanks for your feedback</span>`;
@@ -116,6 +163,28 @@ export class Message {
     return container;
   }
 
+  private async copyMessage(): Promise<boolean> {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(this.options.content);
+        return true;
+      }
+
+      const textarea = document.createElement("textarea");
+      textarea.value = this.options.content;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand("copy");
+      textarea.remove();
+      return copied;
+    } catch {
+      return false;
+    }
+  }
+
   private handleFeedback(rating: "helpful" | "unhelpful"): void {
     // Update UI immediately (optimistic update)
     this.updateFeedbackUI(rating);
@@ -131,8 +200,6 @@ export class Message {
 
     // Clear current content
     this.feedbackContainer.innerHTML = "";
-    this.feedbackContainer.classList.add("chatbot-message-feedback--submitted");
-
     // Show confirmation
     const submitted = document.createElement("span");
     submitted.className = "chatbot-feedback-submitted";
@@ -154,6 +221,9 @@ export class Message {
         contentEl.innerHTML = parseMarkdown(newContent);
       } else {
         contentEl.innerHTML = escapeHtml(newContent);
+      }
+      if (this.actionsContainer) {
+        contentEl.appendChild(this.actionsContainer);
       }
     }
   }

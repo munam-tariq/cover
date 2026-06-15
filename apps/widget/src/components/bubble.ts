@@ -11,6 +11,8 @@
 export interface BubbleOptions {
   onClick: () => void;
   primaryColor: string;
+  /** Optional custom launcher image (Part B). Replaces the default chat glyph when set. */
+  iconUrl?: string | null;
 }
 
 export class Bubble {
@@ -29,11 +31,13 @@ export class Bubble {
     bubble.setAttribute("type", "button");
     bubble.style.backgroundColor = this.options.primaryColor;
 
-    // Chat icon (visible when closed)
-    const chatIcon = this.createSvgIcon(
-      "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
-      "icon-chat"
-    );
+    // Chat icon (visible when closed) — a custom launcher image if configured, else the glyph.
+    const chatIcon: Element = this.options.iconUrl
+      ? this.createImageIcon(this.options.iconUrl)
+      : this.createSvgIcon(
+          "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
+          "icon-chat"
+        );
 
     // Close icon (visible when open)
     const closeIcon = this.createSvgIcon(
@@ -51,6 +55,19 @@ export class Bubble {
     bubble.appendChild(notificationDot);
 
     return bubble;
+  }
+
+  private createImageIcon(url: string): HTMLImageElement {
+    const img = document.createElement("img");
+    img.className = "icon-chat";
+    img.src = url;
+    img.alt = "";
+    img.setAttribute("aria-hidden", "true");
+    img.style.width = "28px";
+    img.style.height = "28px";
+    img.style.objectFit = "cover";
+    img.style.borderRadius = "50%";
+    return img;
   }
 
   private createSvgIcon(pathD: string, className: string): SVGElement {

@@ -222,10 +222,12 @@ export function PublicPageTab({ project }: PublicPageTabProps) {
   // Storage RLS only accepts images < 2 MB under public-page-logos/<projectId>/ for projects
   // the user owns; validate client-side first for a friendly error.
   const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+  // Raster types only — must match the logo storage policy (SVG excluded: stored-XSS risk).
+  const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
   const handleLogoUpload = async (file: File) => {
     setError(null);
-    if (!file.type.startsWith("image/")) {
-      setError("Logo must be an image file (PNG, JPG, SVG, …).");
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      setError("Logo must be a PNG, JPG, WebP, or GIF file.");
       return;
     }
     if (file.size >= MAX_LOGO_BYTES) {
@@ -387,7 +389,7 @@ export function PublicPageTab({ project }: PublicPageTabProps) {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg,image/webp,image/gif"
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];

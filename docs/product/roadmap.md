@@ -3128,6 +3128,8 @@ Response 204: No Content
 
 # 15. Product Roadmap
 
+> **Competitive roadmap (2026):** see [`chatbase-roadmap/master-plan.md`](./chatbase-roadmap/master-plan.md) for the live-verified Chatbase gap analysis, per-gap decisions, and active subplans (next up: Conversation Insights + Widget Customization).
+
 ## 15.1 V1 (MVP) - COMPLETED ✅
 
 **Goal:** Working product that solves core use case

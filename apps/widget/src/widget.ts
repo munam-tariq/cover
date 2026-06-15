@@ -25,9 +25,12 @@ import {
 import { PulseManager } from "./utils/pulse-manager";
 import { getVisitorId, getLeadCaptureState, setLeadCaptureState } from "./utils/storage";
 import {
+  getWidgetStrings,
   parseWidgetEmbedConfig,
+  resolveWidgetAppearanceDefaults,
   type LeadCaptureConfig,
   type LeadRecoveryConfig,
+  type ResolvedWidgetAppearance,
   type VoiceConfig,
 } from "./utils/widget-config";
 
@@ -85,6 +88,7 @@ class ChatbotWidget {
   private voiceConfig: VoiceConfig | null = null;
   private pulseManager: PulseManager | null = null;
   private greetingIntro: string = "";
+  private appearance: ResolvedWidgetAppearance = resolveWidgetAppearanceDefaults();
 
   constructor(config: WidgetConfig) {
     // Validate required config
@@ -143,19 +147,35 @@ class ChatbotWidget {
     // Set primary color as CSS variable so animations/focus rings pick it up
     this.container.style.setProperty("--widget-primary", this.config.primaryColor);
 
-    // Create widget wrapper
+    // Create widget wrapper. data-theme drives light/dark styling; "auto" follows the OS.
     const wrapper = document.createElement("div");
     wrapper.className = `chatbot-widget ${this.config.position}`;
+    wrapper.dataset.theme = this.resolveTheme();
     this.shadowRoot.appendChild(wrapper);
+
+    // Launcher color: the primary color, unless a separate bubble color is configured.
+    const launcherColor = this.appearance.usePrimaryForHeader
+      ? this.config.primaryColor
+      : this.appearance.bubbleColor ?? this.config.primaryColor;
 
     // Create bubble
     this.bubble = new Bubble({
       onClick: () => this.toggle(),
-      primaryColor: this.config.primaryColor,
+      primaryColor: launcherColor,
+      iconUrl: this.appearance.launcherIconUrl,
     });
     wrapper.appendChild(this.bubble.element);
 
     // Create chat window
+    const strings = getWidgetStrings(
+      Array.from(navigator.languages ?? [navigator.language]),
+      this.appearance.localeDefault
+    );
+    const placeholder =
+      this.appearance.placeholder === "Type a message..."
+        ? strings.defaultPlaceholder
+        : this.appearance.placeholder;
+
     this.chatWindow = new ChatWindow({
       projectId: this.config.projectId,
       apiUrl: this.config.apiUrl,
@@ -163,6 +183,15 @@ class ChatbotWidget {
       greetingIntro: this.greetingIntro || undefined,
       title: this.config.title,
       primaryColor: this.config.primaryColor,
+      avatarUrl: this.appearance.avatarUrl,
+      placeholder,
+      starters: this.appearance.starters,
+      notice: this.appearance.notice,
+      footer: this.appearance.footer,
+      hideBranding: this.appearance.hideBranding,
+      feedbackEnabled: this.appearance.feedbackEnabled,
+      copyEnabled: this.appearance.copyEnabled,
+      strings,
       onClose: () => this.close(),
       leadCaptureConfig: this.leadCaptureConfig,
       leadRecoveryConfig: this.leadRecoveryConfig,
@@ -254,6 +283,9 @@ class ChatbotWidget {
         if (data.config.position) this.config.position = data.config.position;
       }
 
+      // Resolve the full appearance (theme, launcher color/icon, avatar, etc.) with defaults.
+      this.appearance = resolveWidgetAppearanceDefaults(data.config ?? undefined);
+
       // Store realtime config for realtime.ts to use
       if (data.realtime) {
         window.__WIDGET_CONFIG__ = data.realtime;
@@ -269,6 +301,17 @@ class ChatbotWidget {
       // On error, default to enabled (fail-open)
       return true;
     }
+  }
+
+  /** Resolve theme to a concrete value; "auto" follows the OS color-scheme preference. */
+  private resolveTheme(): "light" | "dark" {
+    if (this.appearance.theme === "auto") {
+      return typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    }
+    return this.appearance.theme;
   }
 
   /**

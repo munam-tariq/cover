@@ -17,6 +17,7 @@ export interface InputOptions {
   onSend: (message: string) => void;
   primaryColor: string;
   placeholder?: string;
+  sendLabel?: string;
   onInput?: () => void; // Called when user types (for typing indicators)
 }
 
@@ -56,7 +57,7 @@ export class Input {
     const sendButton = document.createElement("button");
     sendButton.type = "button";
     sendButton.className = "chatbot-send";
-    sendButton.setAttribute("aria-label", "Send message");
+    sendButton.setAttribute("aria-label", this.options.sendLabel || "Send message");
     sendButton.style.backgroundColor = this.options.primaryColor;
 
     // Send icon

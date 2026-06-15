@@ -237,39 +237,6 @@ export async function storeLead(
 }
 
 /**
- * Get pending leads for a project (not yet notified)
- */
-export async function getPendingLeads(
-  projectId: string
-): Promise<LeadCapture[]> {
-  const { data, error } = await supabaseAdmin
-    .from("lead_captures")
-    .select("*")
-    .eq("project_id", projectId)
-    .is("notified_at", null)
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    logger.error("Failed to get pending leads", error, { projectId });
-    return [];
-  }
-
-  return data || [];
-}
-
-/**
- * Mark leads as notified
- */
-export async function markLeadsAsNotified(leadIds: string[]): Promise<void> {
-  if (leadIds.length === 0) return;
-
-  await supabaseAdmin
-    .from("lead_captures")
-    .update({ notified_at: new Date().toISOString() })
-    .in("id", leadIds);
-}
-
-/**
  * Get lead capture settings for a project (with caching)
  */
 export async function getLeadCaptureSettings(

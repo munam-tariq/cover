@@ -12,11 +12,13 @@
  * Users will get the new widget within 5 minutes without hard refresh.
  */
 
+import { resolveWidgetAppUrl } from "./utils/widget-loader";
+
+declare const __WIDGET_VERSION__: string;
+
 (function() {
   // Version updated on each deployment - change this when deploying updates
-  const WIDGET_VERSION = '__WIDGET_VERSION__';
-
-  const WIDGET_BASE_URL = 'https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets';
+  const WIDGET_VERSION = __WIDGET_VERSION__;
 
   // Get the current script to read data attributes
   const currentScript = document.currentScript as HTMLScriptElement;
@@ -25,26 +27,12 @@
     return;
   }
 
-  // Check if running locally (localhost, 127.0.0.1, or file://)
-  const isLocal = window.location.hostname === 'localhost'
-    || window.location.hostname === '127.0.0.1'
-    || window.location.protocol === 'file:';
-
-  // Determine the widget-app.js URL
-  let widgetAppUrl: string;
-  if (isLocal) {
-    // Load from local dist folder (relative to loader script)
-    const loaderSrc = currentScript.src;
-    const basePath = loaderSrc.substring(0, loaderSrc.lastIndexOf('/'));
-    widgetAppUrl = `${basePath}/widget-app.js?v=${Date.now()}`; // Cache bust with timestamp
-  } else {
-    // Load from Supabase CDN in production
-    widgetAppUrl = `${WIDGET_BASE_URL}/widget-app.js?v=${WIDGET_VERSION}`;
-  }
-
   // Create the actual widget script
   const widgetScript = document.createElement('script');
-  widgetScript.src = widgetAppUrl;
+  widgetScript.src = resolveWidgetAppUrl({
+    loaderSrc: currentScript.src,
+    version: WIDGET_VERSION,
+  });
   widgetScript.async = true;
 
   // Copy all data attributes from loader to widget script
@@ -54,8 +42,8 @@
   }
 
   // Also copy specific attributes that might be set directly
-  const attrsToСopy = ['data-project-id', 'data-api-url', 'data-position', 'data-primary-color', 'data-title', 'data-greeting'];
-  attrsToСopy.forEach(attr => {
+  const attrsToCopy = ['data-project-id', 'data-api-url', 'data-position', 'data-primary-color', 'data-title', 'data-greeting'];
+  attrsToCopy.forEach(attr => {
     const value = currentScript.getAttribute(attr);
     if (value) {
       widgetScript.setAttribute(attr, value);

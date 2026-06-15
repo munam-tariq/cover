@@ -1,6 +1,6 @@
 "use client";
 
-import { Skeleton } from "@chatbot/ui";
+import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@chatbot/ui";
 import {
   TrendingUp,
   MessageSquare,
@@ -11,9 +11,12 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 
+import { GapsPanel } from "@/components/analytics/gaps-panel";
 import { LeadStatsCard } from "@/components/analytics/lead-stats-card";
 import { MessagesChart } from "@/components/analytics/messages-chart";
+import { SentimentPanel } from "@/components/analytics/sentiment-panel";
 import { TopQuestionsList } from "@/components/analytics/top-questions-list";
+import { TopicsPanel } from "@/components/analytics/topics-panel";
 import { useProject } from "@/contexts/project-context";
 import { apiClient } from "@/lib/api-client";
 
@@ -161,6 +164,8 @@ export default function AnalyticsPage() {
     );
   }
 
+  const days = period === "24h" ? 1 : period === "7d" ? 7 : 30;
+
   return (
     <div className="space-y-6">
       {/* Header with period selector */}
@@ -202,59 +207,84 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Lead Stats Cards - 3x2 grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <LeadStatsCard
-          title="Total Conversations"
-          value={
-            leadsSummary?.totalConversations ?? summary?.totalConversations ?? 0
-          }
-          icon={MessageSquare}
-          trend={
-            leadsSummary?.trends.conversationsChange ??
-            summary?.trends.conversationsChange
-          }
-          loading={loading}
-        />
-        <LeadStatsCard
-          title="Total Leads"
-          value={leadsSummary?.totalLeads ?? 0}
-          icon={UserPlus}
-          trend={leadsSummary?.trends.leadsChange}
-          loading={loading}
-        />
-        <LeadStatsCard
-          title="Qualified Prospects"
-          value={leadsSummary?.qualifiedCount ?? 0}
-          icon={CheckCircle2}
-          trend={leadsSummary?.trends.qualifiedChange}
-          loading={loading}
-        />
-        <LeadStatsCard
-          title="Completion Rate"
-          value={`${leadsSummary?.completionRate ?? 0}%`}
-          icon={Target}
-          loading={loading}
-        />
-        <LeadStatsCard
-          title="Qualification Rate"
-          value={`${leadsSummary?.qualificationRate ?? 0}%`}
-          icon={TrendingUp}
-          loading={loading}
-        />
-        <LeadStatsCard
-          title="Disqualification Rate"
-          value={`${leadsSummary?.disqualificationRate ?? 0}%`}
-          icon={XCircle}
-          loading={loading}
-        />
-      </div>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="topics">Topics</TabsTrigger>
+          <TabsTrigger value="sentiment">Sentiment</TabsTrigger>
+          <TabsTrigger value="gaps">Answer Gaps</TabsTrigger>
+        </TabsList>
 
-      {/* Conversations Over Time Chart */}
-      <MessagesChart data={timeline} loading={loading} period={period} />
+        <TabsContent value="overview" className="space-y-6">
+          {/* Lead Stats Cards - 3x2 grid */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <LeadStatsCard
+              title="Total Conversations"
+              value={
+                leadsSummary?.totalConversations ??
+                summary?.totalConversations ??
+                0
+              }
+              icon={MessageSquare}
+              trend={
+                leadsSummary?.trends.conversationsChange ??
+                summary?.trends.conversationsChange
+              }
+              loading={loading}
+            />
+            <LeadStatsCard
+              title="Total Leads"
+              value={leadsSummary?.totalLeads ?? 0}
+              icon={UserPlus}
+              trend={leadsSummary?.trends.leadsChange}
+              loading={loading}
+            />
+            <LeadStatsCard
+              title="Qualified Prospects"
+              value={leadsSummary?.qualifiedCount ?? 0}
+              icon={CheckCircle2}
+              trend={leadsSummary?.trends.qualifiedChange}
+              loading={loading}
+            />
+            <LeadStatsCard
+              title="Completion Rate"
+              value={`${leadsSummary?.completionRate ?? 0}%`}
+              icon={Target}
+              loading={loading}
+            />
+            <LeadStatsCard
+              title="Qualification Rate"
+              value={`${leadsSummary?.qualificationRate ?? 0}%`}
+              icon={TrendingUp}
+              loading={loading}
+            />
+            <LeadStatsCard
+              title="Disqualification Rate"
+              value={`${leadsSummary?.disqualificationRate ?? 0}%`}
+              icon={XCircle}
+              loading={loading}
+            />
+          </div>
 
-      {/* Top Questions */}
-      <TopQuestionsList questions={topQuestions} loading={loading} />
+          {/* Conversations Over Time Chart */}
+          <MessagesChart data={timeline} loading={loading} period={period} />
+
+          {/* Top Questions */}
+          <TopQuestionsList questions={topQuestions} loading={loading} />
+        </TabsContent>
+
+        <TabsContent value="topics">
+          <TopicsPanel projectId={currentProject.id} days={days} />
+        </TabsContent>
+
+        <TabsContent value="sentiment">
+          <SentimentPanel projectId={currentProject.id} days={days} />
+        </TabsContent>
+
+        <TabsContent value="gaps">
+          <GapsPanel projectId={currentProject.id} days={days} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

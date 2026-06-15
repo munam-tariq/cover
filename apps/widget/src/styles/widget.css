@@ -33,6 +33,19 @@
   --widget-z-index: 2147483647;
 }
 
+.chatbot-widget[data-theme="dark"] {
+  --widget-background: #18181b;
+  --widget-text: #fafafa;
+  --widget-text-muted: #a1a1aa;
+  --widget-border: #3f3f46;
+  --widget-border-light: #27272a;
+  --widget-assistant-bubble: #27272a;
+  --widget-assistant-text: #fafafa;
+  --widget-error-bg: #450a0a;
+  --widget-error-text: #fecaca;
+  --widget-shadow: 0 12px 38px rgba(0, 0, 0, 0.45);
+}
+
 /* ============================================
    Reset & Base
    ============================================ */
@@ -357,6 +370,49 @@
 }
 
 /* ============================================
+   Notice Banner
+   ============================================ */
+.chatbot-notice {
+  padding: 10px 12px 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: color-mix(in srgb, var(--widget-primary) 10%, var(--widget-background));
+  border-bottom: 1px solid color-mix(in srgb, var(--widget-primary) 22%, var(--widget-border));
+  color: var(--widget-text);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.chatbot-notice span {
+  flex: 1;
+}
+
+.chatbot-notice-dismiss {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--widget-text-muted);
+  cursor: pointer;
+}
+
+.chatbot-notice-dismiss:hover {
+  background: color-mix(in srgb, var(--widget-primary) 12%, transparent);
+  color: var(--widget-text);
+}
+
+.chatbot-notice-dismiss:focus-visible {
+  outline: 2px solid var(--widget-primary);
+  outline-offset: 1px;
+}
+
+/* ============================================
    Messages Area
    ============================================ */
 .chatbot-messages {
@@ -385,6 +441,46 @@
 
 .chatbot-messages::-webkit-scrollbar-thumb:hover {
   background: #a1a1aa;
+}
+
+/* ============================================
+   Conversation Starters
+   ============================================ */
+.chatbot-starters {
+  padding: 0 16px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: var(--widget-background);
+}
+
+.chatbot-starters[hidden] {
+  display: none;
+}
+
+.chatbot-starter {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--widget-border);
+  border-radius: 999px;
+  background: var(--widget-background);
+  color: var(--widget-text);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.chatbot-starter:hover {
+  border-color: var(--widget-primary);
+  background: color-mix(in srgb, var(--widget-primary) 8%, var(--widget-background));
+}
+
+.chatbot-starter:focus-visible {
+  outline: 2px solid var(--widget-primary);
+  outline-offset: 2px;
 }
 
 /* ============================================
@@ -943,6 +1039,12 @@
    ============================================ */
 .chatbot-footer {
   padding: 8px 16px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
   text-align: center;
   font-size: 11px;
   color: var(--widget-text-muted);
@@ -957,6 +1059,10 @@
 
 .chatbot-footer a:hover {
   text-decoration: underline;
+}
+
+.chatbot-footer-separator {
+  opacity: 0.65;
 }
 
 /* ============================================
@@ -1258,6 +1364,12 @@
   z-index: 1;
 }
 
+.chatbot-feedback-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 /* Show on message hover (desktop) */
 .chatbot-message.assistant:hover .chatbot-message-feedback {
   opacity: 1;
@@ -1315,6 +1427,11 @@
   color: #dc2626;
   border-color: #dc2626;
   background: #fef2f2;
+}
+
+.chatbot-copy-btn--copied {
+  color: #16a34a;
+  border-color: #16a34a;
 }
 
 /* Feedback button icons */

@@ -11,6 +11,34 @@ import {
   isString,
   isStringArray,
 } from "./type-guards";
+import {
+  mergeConfigWithDataAttributes,
+  getWidgetStrings,
+  parseDisplayConfig,
+  pickLocale,
+  resolveWidgetAppearanceDefaults,
+  type ResolvedWidgetAppearance,
+  type WidgetDisplayConfig,
+  type WidgetFooter,
+  type WidgetNotice,
+  type WidgetStrings,
+} from "./widget-appearance";
+
+// Re-export so widget runtime consumers can import appearance helpers/types from one place.
+export {
+  mergeConfigWithDataAttributes,
+  getWidgetStrings,
+  parseDisplayConfig,
+  pickLocale,
+  resolveWidgetAppearanceDefaults,
+};
+export type {
+  ResolvedWidgetAppearance,
+  WidgetDisplayConfig,
+  WidgetFooter,
+  WidgetNotice,
+  WidgetStrings,
+};
 
 export interface WidgetRealtimeConfig {
   supabaseUrl: string;
@@ -62,14 +90,6 @@ export interface LeadRecoveryConfig {
   };
 }
 
-interface WidgetDisplayConfig {
-  primaryColor?: string;
-  position?: "bottom-right" | "bottom-left";
-  greeting?: string;
-  greetingIntro?: string;
-  title?: string;
-}
-
 export interface WidgetEmbedConfig {
   enabled: boolean;
   config?: WidgetDisplayConfig;
@@ -93,21 +113,6 @@ function isTriggerActionType(value: unknown): value is TriggerActionType {
     value === "auto_open" ||
     value === "overlay"
   );
-}
-
-function parseDisplayConfig(value: unknown): WidgetDisplayConfig | undefined {
-  if (!isRecord(value)) return undefined;
-
-  const config: WidgetDisplayConfig = {};
-  if (isString(value.primaryColor)) config.primaryColor = value.primaryColor;
-  if (value.position === "bottom-right" || value.position === "bottom-left") {
-    config.position = value.position;
-  }
-  if (isString(value.greeting)) config.greeting = value.greeting;
-  if (isString(value.greetingIntro)) config.greetingIntro = value.greetingIntro;
-  if (isString(value.title)) config.title = value.title;
-
-  return config;
 }
 
 function parseRealtimeConfig(value: unknown): WidgetRealtimeConfig | undefined {
