@@ -1,10 +1,12 @@
 import "dotenv/config";
+import * as Sentry from "@sentry/node";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 
 import { logger } from "./lib/logger";
 import { clientKeyMiddleware } from "./middleware/client-key";
+import { errorReporterMiddleware } from "./middleware/error-reporter";
 import { requestIdMiddleware } from "./middleware/request-id";
 import { accountRouter } from "./routes/account";
 import { agentRouter } from "./routes/agent";
@@ -39,6 +41,9 @@ app.use(helmet());
 
 // Request ID middleware (must be early for tracing)
 app.use(requestIdMiddleware);
+
+// Mirror 5xx responses to Slack (must wrap routes, so register early)
+app.use(errorReporterMiddleware);
 
 // CORS Configuration
 // Dashboard endpoints: Restricted to specific origins (web app + local widget testing)
@@ -143,6 +148,10 @@ app.use("/mcp", mcpCors, mcpRouter);
 // Protected by CRON_SECRET bearer token
 app.use("/api/cron", cronRouter);
 
+// Sentry error handler — captures errors that propagate to Express.
+// Must come after all routes and before our own error handler.
+Sentry.setupExpressErrorHandler(app);
+
 // Error handler
 app.use(
   (
@@ -151,6 +160,7 @@ app.use(
     res: express.Response,
     _next: express.NextFunction
   ) => {
+    res.locals.reportedError = err;
     logger.error("Unhandled error", err, {
       requestId: req.requestId,
       method: req.method,

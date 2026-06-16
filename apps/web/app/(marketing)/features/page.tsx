@@ -13,28 +13,27 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Metadata } from "next";
-import Link from "next/link";
 
-import { Footer } from "../components/footer";
-import { Header } from "../components/header";
+import { Eyebrow, WRAP } from "../components/marketing-kit";
+import { DarkCta, PageHero } from "../components/page-kit";
 
 export const metadata: Metadata = {
-  title: "Features | AI Lead Capture, Sales Qualification & Knowledge Base | FrontFace",
+  title: "Features | Knowledge-Base Answers, Lead Capture & Handoff | FrontFace",
   description:
-    "FrontFace features: AI that captures leads, qualifies visitors, answers from your knowledge base, and hands off to humans when needed. 5-minute setup on any website.",
+    "FrontFace features: RAG-grounded answers from your knowledge base with cited sources, lead capture, human handoff, multi-channel, and analytics. 5-minute setup on any website.",
   keywords: [
-    "AI lead capture features",
-    "lead qualification AI",
-    "knowledge base chatbot",
-    "AI sales agent features",
-    "website AI agent",
-    "ecommerce lead capture",
-    "Shopify AI agent",
+    "AI support agent features",
+    "knowledge base AI",
+    "RAG chatbot",
+    "cited AI answers",
+    "lead capture",
     "human handoff chatbot",
+    "AI customer support",
   ],
   openGraph: {
-    title: "FrontFace Features — AI Lead Capture & Knowledge Base",
-    description: "Capture leads, qualify visitors, and answer product questions 24/7. 5-minute setup on any website.",
+    title: "FrontFace Features — Grounded Answers, Lead Capture & Handoff",
+    description:
+      "RAG-grounded answers from your knowledge base with sources, lead capture, and human handoff. 5-minute setup on any website.",
     url: "https://frontface.app/features",
     type: "website",
     images: [
@@ -42,14 +41,14 @@ export const metadata: Metadata = {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI Lead Capture & Sales Agent",
+        alt: "FrontFace — AI support agent that knows your product",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: "FrontFace Features",
-    description: "Everything you need to automate customer support for your small business.",
+    description: "Grounded answers from your knowledge base, lead capture, and human handoff.",
     images: ["https://frontface.app/og-image.png"],
   },
   alternates: {
@@ -59,229 +58,167 @@ export const metadata: Metadata = {
 
 const coreFeatures = [
   {
-    icon: <Brain className="w-6 h-6" />,
-    title: "Answers From Your Docs",
+    icon: <Brain className="w-5 h-5" />,
+    title: "Answers From Your Knowledge",
     description:
-      "Upload your FAQs, policies, and product info. AI answers accurately from YOUR knowledge—no making things up, no wrong information.",
-    highlight: "89% accuracy",
+      "Point it at your site or upload your docs, FAQs and policies. RAG-grounded retrieval means accurate answers with sources — never made up.",
+    highlight: "Cited sources",
   },
   {
-    icon: <Users className="w-6 h-6" />,
+    icon: <Users className="w-5 h-5" />,
     title: "Human Handoff",
     description:
-      "When questions get complex, customers connect to a real person instantly. AI handles the routine stuff, you handle what matters.",
-    highlight: "Seamless transition",
+      "When a chat gets complex, customers reach a real person instantly — with the full conversation and context. AI handles routine, you handle what matters.",
+    highlight: "Seamless",
   },
   {
-    icon: <Upload className="w-6 h-6" />,
-    title: "Upload FAQs & Policies",
+    icon: <Upload className="w-5 h-5" />,
+    title: "Feed It Your Content",
     description:
-      "Add your documents, paste text, or point to your website. Your chatbot learns from your content and stays current automatically.",
-    highlight: "Multiple formats",
+      "Add documents, paste text, or point to your website. Your agent learns from your content and stays current — no retraining required.",
+    highlight: "Any format",
   },
   {
-    icon: <Sparkles className="w-6 h-6" />,
-    title: "Never Miss a Lead",
+    icon: <Sparkles className="w-5 h-5" />,
+    title: "Lead Capture & Qualification",
     description:
-      "When AI can't answer, it captures customer emails so you can follow up. Turn every conversation into an opportunity.",
-    highlight: "Lead capture",
+      "No pop-ups. The agent earns trust through conversation, then collects contact details and qualifies intent. Turn every conversation into an opportunity.",
+    highlight: "No forms",
   },
 ];
 
 const additionalFeatures = [
-  {
-    icon: <Globe className="w-5 h-5" />,
-    title: "Works on Any Website",
-    description:
-      "Shopify, WordPress, Wix, Squarespace, or custom site—just paste one line of code and you're live.",
-  },
-  {
-    icon: <Zap className="w-5 h-5" />,
-    title: "24/7 Availability",
-    description:
-      "Your AI chatbot never sleeps. Customers get instant answers any time of day or night.",
-  },
-  {
-    icon: <BarChart3 className="w-5 h-5" />,
-    title: "Analytics Dashboard",
-    description:
-      "See which questions customers ask most, track conversations, and understand what content to improve.",
-  },
-  {
-    icon: <Palette className="w-5 h-5" />,
-    title: "Custom Branding",
-    description:
-      "Match your brand with customizable colors, logos, and welcome messages.",
-  },
-  {
-    icon: <Shield className="w-5 h-5" />,
-    title: "Secure & Private",
-    description:
-      "Your data stays safe with encrypted storage and secure infrastructure.",
-  },
-  {
-    icon: <MessageSquare className="w-5 h-5" />,
-    title: "Conversation History",
-    description:
-      "Review all customer conversations. See what's working and where customers need more help.",
-  },
-  {
-    icon: <Workflow className="w-5 h-5" />,
-    title: "Order Status Lookup",
-    description:
-      "Connect to your systems so customers can check order status, appointments, or account info.",
-  },
-  {
-    icon: <Code className="w-5 h-5" />,
-    title: "Developer API",
-    description:
-      "Full REST API for custom integrations. Build exactly what you need.",
-  },
+  { icon: <Globe className="w-5 h-5" />, title: "Works on Any Website", description: "Shopify, WordPress, Wix, Squarespace, or custom — one line of code and you're live." },
+  { icon: <Zap className="w-5 h-5" />, title: "24/7 Availability", description: "Your agent never sleeps. Customers get instant answers any time of day or night." },
+  { icon: <BarChart3 className="w-5 h-5" />, title: "Analytics That Matter", description: "See what customers ask, where the agent struggles, and which conversations convert." },
+  { icon: <Palette className="w-5 h-5" />, title: "Custom Branding", description: "Match your brand with customizable colors, logo, and welcome messages." },
+  { icon: <Shield className="w-5 h-5" />, title: "Secure & Private", description: "Your data stays safe with encrypted storage and secure infrastructure." },
+  { icon: <MessageSquare className="w-5 h-5" />, title: "Conversation History", description: "Review every conversation. See what's working and where customers need more help." },
+  { icon: <Workflow className="w-5 h-5" />, title: "Multi-Channel", description: "One agent across web, WhatsApp, Slack and email — same brain, same knowledge, everywhere." },
+  { icon: <Code className="w-5 h-5" />, title: "Developer API & MCP", description: "Full REST API plus native Model Context Protocol. Build exactly what you need." },
 ];
+
+const steps = [
+  { step: "01", title: "Feed it your knowledge", description: "Point FrontFace at your website or upload docs, PDFs and FAQs. It reads everything and builds a grounded knowledge base in minutes." },
+  { step: "02", title: "Make it yours", description: "Add your logo, pick your colors, write a welcome message. Test it against real questions before it goes live." },
+  { step: "03", title: "Go live in 5 minutes", description: "Drop one line of code on any site — Shopify, WordPress, Wix or custom — or share a hosted public agent page." },
+];
+
+const cardStyle = {
+  background: "var(--ff-card)",
+  border: "1px solid var(--ff-line)",
+  borderRadius: 18,
+  padding: "24px 22px",
+} as const;
+
+const inkChip = {
+  width: 44,
+  height: 44,
+  borderRadius: 12,
+  background: "var(--ff-ink)",
+  color: "#fff",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+} as const;
+
+const softChip = {
+  width: 42,
+  height: 42,
+  borderRadius: 12,
+  background: "var(--ff-accent-soft)",
+  color: "var(--ff-accent-2)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  marginBottom: 16,
+} as const;
 
 export default function FeaturesPage() {
   return (
-    <>
-      <Header />
-      <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white pt-24">
-        {/* Hero */}
-        <section className="max-w-6xl mx-auto px-6 py-16 text-center">
-          <span className="inline-block px-3 py-1 text-sm font-medium text-blue-600 bg-blue-50 rounded-full mb-4">
-            Features
-          </span>
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-            Everything You Need to Stop Answering the Same Questions
-          </h1>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            Upload your FAQs, let AI handle 89% of questions automatically, and
-            focus on what matters—growing your business.
-          </p>
-        </section>
+    <main>
+      <PageHero
+        eyebrow="Features"
+        title="Everything support needs. One agent."
+        sub="Feed it your knowledge, let it answer 89% of questions with cited sources, capture leads, and hand off cleanly when a human is needed."
+      />
 
-        {/* Core Features */}
-        <section className="max-w-6xl mx-auto px-6 py-16">
-          <h2 className="text-2xl font-bold text-slate-900 mb-8 text-center">
-            Core Capabilities
-          </h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            {coreFeatures.map((feature, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl border border-slate-200 p-8 hover:shadow-xl transition-all duration-300"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white flex-shrink-0">
-                    {feature.icon}
+      {/* Core features */}
+      <section style={{ ...WRAP, padding: "clamp(32px,5vh,64px) clamp(20px,5vw,40px)" }}>
+        <div className="reveal" style={{ marginBottom: 36 }}>
+          <Eyebrow>Core capabilities</Eyebrow>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 18 }}>
+          {coreFeatures.map((f, i) => (
+            <div key={f.title} className={"reveal d" + ((i % 2) + 1)} style={cardStyle}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+                <span style={inkChip}>{f.icon}</span>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                    <h3 style={{ fontSize: 17.5, fontWeight: 700, color: "var(--ff-ink)", letterSpacing: "-.01em" }}>{f.title}</h3>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".03em", color: "var(--ff-accent-2)", background: "var(--ff-accent-soft)", borderRadius: 99, padding: "3px 9px" }}>
+                      {f.highlight}
+                    </span>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-xl font-bold text-slate-900">
-                        {feature.title}
-                      </h3>
-                      <span className="px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-600 rounded-full">
-                        {feature.highlight}
-                      </span>
-                    </div>
-                    <p className="text-slate-600 leading-relaxed">
-                      {feature.description}
-                    </p>
-                  </div>
+                  <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--ff-soft)", textWrap: "pretty" }}>{f.description}</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Additional Features Grid */}
-        <section className="bg-slate-50 py-20">
-          <div className="max-w-6xl mx-auto px-6">
-            <h2 className="text-2xl font-bold text-slate-900 mb-4 text-center">
-              And Much More
-            </h2>
-            <p className="text-slate-600 text-center mb-12 max-w-2xl mx-auto">
-              Every feature designed to make your life easier and your customers
-              happier.
-            </p>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {additionalFeatures.map((feature, index) => (
-                <div
-                  key={index}
-                  className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-shadow"
-                >
-                  <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 mb-4">
-                    {feature.icon}
-                  </div>
-                  <h3 className="font-bold text-slate-900 mb-2">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm text-slate-600">{feature.description}</p>
-                </div>
-              ))}
             </div>
-          </div>
-        </section>
+          ))}
+        </div>
+      </section>
 
-        {/* How It Works */}
-        <section className="max-w-6xl mx-auto px-6 py-20">
-          <h2 className="text-3xl font-bold text-slate-900 mb-4 text-center">
-            Live in 5 Minutes
+      {/* Additional features */}
+      <section style={{ ...WRAP, padding: "clamp(24px,4vh,48px) clamp(20px,5vw,40px)" }}>
+        <div className="reveal" style={{ textAlign: "center", maxWidth: 560, margin: "0 auto 40px" }}>
+          <h2 style={{ fontSize: "clamp(26px,3.8vw,42px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.08, textWrap: "balance" }}>
+            And much more
           </h2>
-          <p className="text-slate-600 text-center mb-12 max-w-2xl mx-auto">
+          <p style={{ fontSize: 16.5, lineHeight: 1.55, color: "var(--ff-soft)", marginTop: 14, textWrap: "pretty" }}>
+            Every feature designed to make your team&apos;s life easier and your customers happier.
+          </p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 18 }}>
+          {additionalFeatures.map((f, i) => (
+            <div key={f.title} className={"reveal ff-cap-card d" + ((i % 4) + 1)} style={cardStyle}>
+              <span style={softChip}>{f.icon}</span>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--ff-ink)", letterSpacing: "-.01em", marginBottom: 7 }}>{f.title}</h3>
+              <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--ff-soft)", textWrap: "pretty" }}>{f.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section style={{ ...WRAP, padding: "clamp(40px,6vh,80px) clamp(20px,5vw,40px)" }}>
+        <div className="reveal" style={{ textAlign: "center", maxWidth: 560, margin: "0 auto 44px" }}>
+          <h2 style={{ fontSize: "clamp(26px,3.8vw,42px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.08, textWrap: "balance" }}>
+            Live in 5 minutes
+          </h2>
+          <p style={{ fontSize: 16.5, lineHeight: 1.55, color: "var(--ff-soft)", marginTop: 14, textWrap: "pretty" }}>
             Three simple steps. No technical skills required.
           </p>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                step: "01",
-                title: "Upload Your FAQs",
-                description:
-                  "Add your frequently asked questions, policies, and product info. Just paste the text or upload files.",
-              },
-              {
-                step: "02",
-                title: "Customize Your Chatbot",
-                description:
-                  "Add your logo, pick your colors, write a welcome message. Make it feel like your brand.",
-              },
-              {
-                step: "03",
-                title: "Go Live in 5 Minutes",
-                description:
-                  "Copy one line of code to your website. Works with Shopify, WordPress, Wix, and any website.",
-              },
-            ].map((item, index) => (
-              <div key={index} className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
-                  {item.step}
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">
-                  {item.title}
-                </h3>
-                <p className="text-slate-600">{item.description}</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 18 }}>
+          {steps.map((s, i) => (
+            <div key={s.step} className={"reveal d" + (i + 1)} style={{ ...cardStyle, padding: "26px 24px" }}>
+              <div style={{ ...inkChip, width: 46, height: 46, borderRadius: 13, fontWeight: 800, fontSize: 16, marginBottom: 16 }} className="mono">
+                {s.step}
               </div>
-            ))}
-          </div>
-        </section>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--ff-ink)", letterSpacing: "-.01em", marginBottom: 8 }}>{s.title}</h3>
+              <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--ff-soft)", textWrap: "pretty" }}>{s.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-        {/* CTA */}
-        <section className="bg-gradient-to-r from-blue-600 to-purple-600 py-20">
-          <div className="max-w-4xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Ready to Experience These Features?
-            </h2>
-            <p className="text-blue-100 mb-8 text-lg">
-              Start free during beta. No credit card required.
-            </p>
-            <Link
-              href="/login"
-              className="inline-block px-8 py-4 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-colors shadow-lg"
-            >
-              Get Started Free
-            </Link>
-          </div>
-        </section>
-      </main>
-      <Footer />
-    </>
+      <DarkCta
+        title="Ready to put it to work?"
+        sub="Start free during beta. No credit card required."
+        secondaryLabel="See use cases"
+        secondaryHref="/use-cases"
+      />
+    </main>
   );
 }

@@ -1,5 +1,7 @@
 import { MetadataRoute } from "next";
 
+import { getAllBlogSlugs } from "./(marketing)/blog/blog-data";
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://frontface.app";
 
@@ -61,17 +63,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  // Blog posts
-  const blogPosts = [
-    "how-to-add-ai-chatbot-to-website",
-    "ai-customer-support-guide-startups",
-    "rag-vs-traditional-chatbots",
-    "vibe-coding-building-apps-with-ai",
-    "mcp-protocol-future-ai-integration",
-    "chatbot-lead-generation-guide",
-  ];
-
-  const blogPages = blogPosts.map((slug) => ({
+  // Blog posts — derived from blog-data so the sitemap never drifts
+  const blogPages = getAllBlogSlugs().map((slug) => ({
     url: `${baseUrl}/blog/${slug}`,
     lastModified: new Date(),
     changeFrequency: "monthly" as const,

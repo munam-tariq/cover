@@ -14,6 +14,8 @@ import { z } from "zod";
 import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import { validateCrawlUrl } from "../services/firecrawl";
+import { hasCompletedOnboarding } from "../services/onboarding-completion";
+import { runSelfTest } from "../services/onboarding-self-test";
 import {
   createProcessingPipeline,
   type DocumentMetadata,
@@ -29,7 +31,7 @@ import {
   markPageCompleted,
   markPageFailed,
 } from "../services/scrape-job-manager";
-import { runSelfTest } from "../services/onboarding-self-test";
+import { notifyCustomerOnboarded } from "../services/slack-notifier";
 
 export const onboardingRouter = Router();
 
@@ -487,11 +489,18 @@ onboardingRouter.post("/skip", async (req: AuthenticatedRequest, res: Response) 
       });
     }
 
+    if (hasCompletedOnboarding(project.settings)) {
+      return res.json({
+        success: true,
+        message: "Onboarding already completed",
+      });
+    }
+
     // Mark onboarding as complete (skipped)
     const currentSettings = (project.settings as Record<string, unknown>) || {};
     const onboardingSettings = (currentSettings.onboarding as Record<string, unknown>) || {};
 
-    await supabaseAdmin
+    const { error: completionError } = await supabaseAdmin
       .from("projects")
       .update({
         settings: {
@@ -504,6 +513,16 @@ onboardingRouter.post("/skip", async (req: AuthenticatedRequest, res: Response) 
         },
       })
       .eq("id", projectId);
+
+    if (completionError) {
+      console.error("Failed to mark onboarding as skipped:", completionError);
+      return res.status(500).json({
+        error: { code: "UPDATE_ERROR", message: "Failed to complete onboarding" },
+      });
+    }
+
+    // Notify Slack that a new customer finished onboarding (fire-and-forget).
+    void notifyCustomerOnboarded(projectId);
 
     res.json({
       success: true,
@@ -652,33 +671,50 @@ async function importPagesAndComplete(
     .eq("id", job.id);
 
   // Mark onboarding as complete
-  const { data: project } = await supabaseAdmin
+  const { data: project, error: projectError } = await supabaseAdmin
     .from("projects")
     .select("settings")
     .eq("id", projectId)
     .single();
 
-  if (project) {
-    const currentSettings = (project.settings as Record<string, unknown>) || {};
-    const onboardingSettings = (currentSettings.onboarding as Record<string, unknown>) || {};
+  if (projectError || !project) {
+    console.error(
+      `[Onboarding] Failed to load project ${projectId} for completion:`,
+      projectError
+    );
+    return;
+  }
 
-    await supabaseAdmin
-      .from("projects")
-      .update({
-        settings: {
-          ...currentSettings,
-          // Auto-enable widget if knowledge was successfully imported
-          ...(importedCount > 0 ? { widget_enabled: true } : {}),
-          onboarding: {
-            ...onboardingSettings,
-            completed_at: new Date().toISOString(),
-            pages_imported: importedCount,
-            pages_failed: failedCount,
-          },
+  const currentSettings = (project.settings as Record<string, unknown>) || {};
+  const onboardingSettings = (currentSettings.onboarding as Record<string, unknown>) || {};
+
+  const { error: completionError } = await supabaseAdmin
+    .from("projects")
+    .update({
+      settings: {
+        ...currentSettings,
+        // Auto-enable widget if knowledge was successfully imported
+        ...(importedCount > 0 ? { widget_enabled: true } : {}),
+        onboarding: {
+          ...onboardingSettings,
+          completed_at: new Date().toISOString(),
+          pages_imported: importedCount,
+          pages_failed: failedCount,
         },
-      })
-      .eq("id", projectId);
+      },
+    })
+    .eq("id", projectId);
+
+  if (completionError) {
+    console.error(
+      `[Onboarding] Failed to mark project ${projectId} complete:`,
+      completionError
+    );
+    return;
   }
 
   console.log(`[Onboarding] Completed for project ${projectId}: ${importedCount} imported, ${failedCount} failed`);
+
+  // Notify Slack that a new customer finished onboarding (fire-and-forget).
+  void notifyCustomerOnboarded(projectId);
 }

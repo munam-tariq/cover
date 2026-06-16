@@ -1,111 +1,156 @@
-"use client";
+import type { CSSProperties } from "react";
 
-import { motion } from "framer-motion";
-import { ArrowRight, ChevronDown } from "lucide-react";
-import Link from "next/link";
+import { LiveDemo } from "./live-demo";
+import { Btn } from "./marketing-button";
+import { Ic, Pill } from "./marketing-kit";
 
-import { cn } from "@/lib/utils";
-
-import { AnimatedGridPattern } from "./animated-grid-pattern";
-
-const words = ["Your", "website", "is", "leaking", "leads."];
-
+/* Hero — headline "An AI agent that actually knows your product."
+   (faithful port of redesign Hero, headline variant 3). */
 export function HeroSection() {
   return (
-    <section className="relative min-h-screen flex flex-col justify-center overflow-hidden">
-      {/* Animated grid pattern background */}
-      <AnimatedGridPattern
-        numSquares={30}
-        maxOpacity={0.08}
-        duration={3}
-        className={cn(
-          "text-blue-500/80 fill-blue-500/20 stroke-zinc-300/40",
-          "[mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,white_20%,transparent_100%)]"
-        )}
+    <section
+      id="top"
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        paddingTop: "clamp(48px,7vh,84px)",
+        paddingBottom: "clamp(40px,6vh,72px)",
+      }}
+    >
+      {/* lattice + glow backdrop */}
+      <div
+        className="lattice"
+        style={
+          {
+            position: "absolute",
+            inset: 0,
+            "--lt": "rgba(17,21,27,.045)",
+            "--lt-size": "70px",
+            maskImage: "radial-gradient(120% 78% at 50% 24%, #000 32%, transparent 76%)",
+            WebkitMaskImage: "radial-gradient(120% 78% at 50% 24%, #000 32%, transparent 76%)",
+          } as CSSProperties
+        }
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: "-12%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "70%",
+          height: 460,
+          background: "radial-gradient(50% 50% at 50% 50%, rgba(var(--ff-accent-rgb),.10), transparent 70%)",
+          pointerEvents: "none",
+        }}
       />
 
-      <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
-        {/* Headline — word by word reveal */}
-        <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-bold tracking-tight leading-[0.95] mb-8">
-          {words.map((word, i) => (
-            <motion.span
-              key={i}
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.6,
-                delay: 0.3 + i * 0.12,
-                ease: [0.25, 0.4, 0, 1],
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 1180,
+          margin: "0 auto",
+          padding: "0 clamp(20px,5vw,40px)",
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          textAlign: "center",
+        }}
+      >
+        <div className="reveal in" style={{ marginBottom: 26 }}>
+          <Pill style={{ padding: "7px 7px 7px 14px", gap: 10 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+              <span style={{ width: 6, height: 6, borderRadius: 99, background: "var(--ff-ok)" }} /> AI customer support agent
+            </span>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                fontSize: 11.5,
+                fontWeight: 700,
+                color: "var(--ff-accent-2)",
+                background: "var(--ff-accent-soft)",
+                borderRadius: 99,
+                padding: "4px 10px",
               }}
-              className={`inline-block mr-[0.25em] ${
-                word === "leaking" ? "text-blue-500" : "text-zinc-900"
-              }`}
             >
-              {word}
-            </motion.span>
-          ))}
+              Knows your knowledge base
+            </span>
+          </Pill>
+        </div>
+
+        <h1
+          className="reveal in d1"
+          style={{
+            fontSize: "clamp(40px,7.2vw,84px)",
+            lineHeight: 1.02,
+            fontWeight: 800,
+            letterSpacing: "-.03em",
+            color: "var(--ff-ink)",
+            textWrap: "balance",
+            maxWidth: 1000,
+          }}
+        >
+          <span style={{ display: "block" }}>An AI agent that actually</span>
+          <span style={{ display: "block", color: "var(--ff-accent)" }}>knows your product.</span>
         </h1>
 
-        {/* Subtitle */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 1.2 }}
-          className="text-lg md:text-xl text-zinc-500 max-w-2xl mx-auto leading-relaxed mb-12"
+        <p
+          className="reveal in d2"
+          style={{
+            fontSize: "clamp(16px,1.7vw,19px)",
+            lineHeight: 1.55,
+            color: "var(--ff-soft)",
+            maxWidth: 600,
+            marginTop: 24,
+            textWrap: "pretty",
+          }}
         >
-          FrontFace puts an AI agent on every page — one that knows your
-          product, captures intent, and turns browsers into buyers. Around the
-          clock.
-        </motion.p>
+          FrontFace is an AI support agent trained on your knowledge base. It answers customers instantly with
+          sources, captures leads, and hands off to your team — on your site, or anywhere.
+        </p>
 
-        {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.5 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4"
+        <div
+          className="reveal in d3"
+          style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 32, flexWrap: "wrap", justifyContent: "center" }}
         >
-          <Link
-            href="/login"
-            className="group inline-flex items-center gap-2 bg-zinc-900 text-white px-8 py-4 rounded-full font-medium text-sm hover:bg-zinc-800 transition-colors"
-          >
-            Start Free
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-          <Link
-            href="#showcase"
-            className="inline-flex items-center gap-2 text-zinc-400 hover:text-zinc-900 px-6 py-4 text-sm font-medium transition-colors"
-          >
-            See it in action
-          </Link>
-        </motion.div>
+          <Btn kind="primary" size="lg" href="/login">
+            Build your agent {Ic("arrowR", { size: 18 })}
+          </Btn>
+          <Btn kind="secondary" size="lg" href="#demo">
+            {Ic("play", { size: 16 })} See it answer
+          </Btn>
+        </div>
 
-        {/* Trust line */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 1.8 }}
-          className="mt-8 text-xs tracking-[0.15em] uppercase text-zinc-400"
+        <div
+          className="reveal in d4"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 18,
+            marginTop: 24,
+            fontSize: 12.5,
+            fontWeight: 600,
+            letterSpacing: ".04em",
+            color: "var(--ff-muted)",
+            flexWrap: "wrap",
+            justifyContent: "center",
+          }}
         >
-          Free during beta &nbsp;·&nbsp; 5-min setup &nbsp;·&nbsp; No credit
-          card
-        </motion.p>
+          {["FREE DURING BETA", "5-MIN SETUP", "NO CREDIT CARD"].map((t, i) => (
+            <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 18 }}>
+              {i > 0 && <span style={{ width: 3, height: 3, borderRadius: 99, background: "var(--ff-faint)" }} />}
+              {t}
+            </span>
+          ))}
+        </div>
+
+        {/* hero demo */}
+        <div id="demo" className="reveal in d5" style={{ width: "100%", marginTop: "clamp(44px,6vh,72px)", scrollMarginTop: 90 }}>
+          <LiveDemo />
+        </div>
       </div>
-
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2.2, duration: 0.6 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
-      >
-        <motion.div
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <ChevronDown className="w-5 h-5 text-zinc-300" />
-        </motion.div>
-      </motion.div>
     </section>
   );
 }

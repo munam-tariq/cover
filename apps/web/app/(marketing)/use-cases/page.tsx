@@ -4,30 +4,31 @@ import {
   Building2,
   GraduationCap,
   HeartPulse,
-  ArrowRight,
   Briefcase,
 } from "lucide-react";
 import { Metadata } from "next";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
-import { Footer } from "../components/footer";
-import { Header } from "../components/header";
+import { Ic, WRAP } from "../components/marketing-kit";
+import { DarkCta, PageHero } from "../components/page-kit";
 
 export const metadata: Metadata = {
-  title: "Use Cases | AI Lead Capture & Sales Agent for Every Industry | FrontFace",
+  title: "Use Cases | AI Support Agent for Every Industry | FrontFace",
   description:
-    "See how consultants, lawyers, ecommerce stores, and small businesses use FrontFace to capture leads, qualify visitors, and answer product questions automatically.",
+    "See how SaaS teams, ecommerce stores, professional services, and agencies use FrontFace to answer customers from their knowledge base, capture leads, and hand off to humans.",
   keywords: [
-    "AI lead capture for consultants",
-    "AI agent for lawyers",
-    "e-commerce lead capture",
-    "small business AI agent",
-    "lead generation for professional services",
-    "knowledge base chatbot for business",
+    "AI support for SaaS",
+    "ecommerce AI support",
+    "AI agent for professional services",
+    "AI customer support by industry",
+    "knowledge base chatbot",
+    "RAG chatbot",
   ],
   openGraph: {
-    title: "FrontFace Use Cases — AI Lead Capture for Every Industry",
-    description: "Capture leads, qualify visitors, and answer product questions automatically — for consultants, ecommerce, and small businesses.",
+    title: "FrontFace Use Cases — AI Support for Every Industry",
+    description:
+      "Answer customers from your knowledge base, capture leads, and hand off to humans — for SaaS, ecommerce, services, and more.",
     url: "https://frontface.app/use-cases",
     type: "website",
     images: [
@@ -35,14 +36,14 @@ export const metadata: Metadata = {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI Lead Capture & Sales Agent",
+        alt: "FrontFace — AI support agent that knows your product",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "FrontFace Use Cases — AI Lead Capture for Every Industry",
-    description: "Capture leads, qualify visitors, and answer product questions automatically — for consultants, ecommerce, and small businesses.",
+    title: "FrontFace Use Cases",
+    description: "AI support that answers from your knowledge base, captures leads, and hands off to humans.",
     images: ["https://frontface.app/og-image.png"],
   },
   alternates: {
@@ -51,232 +52,170 @@ export const metadata: Metadata = {
 };
 
 const useCases = [
-  // PRIMARY ICPs
   {
-    icon: <Briefcase className="w-8 h-8" />,
-    title: "Professional Services",
-    subtitle: "Consultants, Lawyers, Accountants",
+    icon: <Rocket className="w-7 h-7" />,
+    title: "SaaS & Startups",
+    subtitle: "Technical founders stretched thin",
     description:
-      "Stop answering the same 10 questions 50+ times a month. Let AI handle 'What are your fees?', 'How do I get started?', and 'What documents do I need?' so you can focus on billable work.",
-    benefits: [
-      "Free up 2+ hours every day",
-      "Never miss a client inquiry",
-      "24/7 availability for prospects",
-      "Capture leads while you sleep",
-    ],
-    stats: { value: "2+ hrs", label: "saved daily" },
-    color: "from-blue-500 to-indigo-500",
+      "You're building product AND doing support. Let the agent answer the 'How do I…?' questions from your docs, qualify trials, and route high-intent chats straight to sales.",
+    benefits: ["Deflect repetitive tickets", "5-minute setup", "Qualify trial users", "Scale support as you grow"],
+    stats: { value: "68%", label: "tickets deflected" },
   },
   {
-    icon: <ShoppingCart className="w-8 h-8" />,
+    icon: <ShoppingCart className="w-7 h-7" />,
     title: "E-commerce Stores",
-    subtitle: "Shopify, WooCommerce, Custom Stores",
+    subtitle: "Shopify, WooCommerce, custom",
     description:
-      "Answer 'Where's my order?', 'What's your return policy?', and product questions instantly. Reduce cart abandonment and turn browsers into buyers.",
-    benefits: [
-      "Instant order status updates",
-      "Return & refund policy answers",
-      "Product recommendations",
-      "24/7 customer support",
-    ],
+      "Answer 'Where's my order?', returns and product questions instantly from your own policies. Reduce cart abandonment and turn browsers into buyers.",
+    benefits: ["Instant order & returns answers", "Product guidance", "Capture high-intent leads", "24/7 coverage"],
     stats: { value: "89%", label: "questions answered" },
-    color: "from-green-500 to-emerald-500",
   },
   {
-    icon: <Rocket className="w-8 h-8" />,
-    title: "Small SaaS & Startups",
-    subtitle: "Technical Founders Stretched Thin",
+    icon: <Briefcase className="w-7 h-7" />,
+    title: "Professional Services",
+    subtitle: "Consultants, lawyers, accountants",
     description:
-      "You're building product AND doing support. Let AI handle the 'How do I...?' questions so you can ship faster and grow your business.",
-    benefits: [
-      "No support team needed yet",
-      "5-minute setup",
-      "Free during beta",
-      "Scale support as you grow",
-    ],
-    stats: { value: "5 min", label: "setup time" },
-    color: "from-orange-500 to-red-500",
+      "Stop answering the same questions 50+ times a month. Let the agent handle 'What are your fees?' and 'How do I get started?' — and capture leads while you focus on billable work.",
+    benefits: ["Free up hours every day", "Never miss an inquiry", "24/7 for prospects", "Capture leads automatically"],
+    stats: { value: "2+ hrs", label: "saved daily" },
   },
-  // SECONDARY USE CASES
   {
-    icon: <Building2 className="w-8 h-8" />,
+    icon: <Building2 className="w-7 h-7" />,
     title: "Agencies",
-    subtitle: "Multi-Client Support",
+    subtitle: "Multi-client support",
     description:
-      "Manage support chatbots for multiple clients from a single dashboard. Custom branding for each client.",
-    benefits: [
-      "Multi-project management",
-      "Custom branding per client",
-      "Centralized analytics",
-      "Client self-service",
-    ],
+      "Manage agents for multiple clients from a single dashboard, each grounded in its own knowledge base with custom branding.",
+    benefits: ["Multi-project management", "Custom branding per client", "Centralized analytics", "Client self-service"],
     stats: { value: "10x", label: "efficiency gain" },
-    color: "from-purple-500 to-pink-500",
   },
   {
-    icon: <GraduationCap className="w-8 h-8" />,
+    icon: <GraduationCap className="w-7 h-7" />,
     title: "Education",
-    subtitle: "Student & Faculty Support",
+    subtitle: "Student & faculty support",
     description:
-      "Answer questions about courses, admissions, schedules, and policies. Free up staff to focus on education.",
-    benefits: [
-      "24/7 student assistance",
-      "Admissions inquiries",
-      "Course information",
-      "Policy explanations",
-    ],
+      "Answer questions about courses, admissions, schedules and policies from your own content. Free up staff to focus on education.",
+    benefits: ["24/7 student assistance", "Admissions inquiries", "Course information", "Policy explanations"],
     stats: { value: "60%", label: "inquiry automation" },
-    color: "from-indigo-500 to-blue-500",
   },
   {
-    icon: <HeartPulse className="w-8 h-8" />,
+    icon: <HeartPulse className="w-7 h-7" />,
     title: "Healthcare",
-    subtitle: "Patient Engagement",
+    subtitle: "Patient engagement",
     description:
-      "Provide information about services, appointment scheduling, and general health inquiries.",
-    benefits: [
-      "Appointment booking",
-      "Service information",
-      "Insurance questions",
-      "After-hours support",
-    ],
+      "Provide information about services, scheduling and general inquiries, with clean handoff to a person whenever it's needed.",
+    benefits: ["Appointment guidance", "Service information", "Insurance questions", "After-hours support"],
     stats: { value: "40%", label: "call reduction" },
-    color: "from-teal-500 to-cyan-500",
   },
 ];
 
+const darkPanel: CSSProperties = {
+  position: "relative",
+  overflow: "hidden",
+  background: "linear-gradient(160deg,#11151b,#1b2230 70%,#10141b)",
+  color: "#fff",
+  padding: "32px 28px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  minHeight: 230,
+};
+
 export default function UseCasesPage() {
   return (
-    <>
-      <Header />
-      <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white pt-24">
-        {/* Hero */}
-        <section className="max-w-6xl mx-auto px-6 py-16 text-center">
-          <span className="inline-block px-3 py-1 text-sm font-medium text-blue-600 bg-blue-50 rounded-full mb-4">
-            Use Cases
-          </span>
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-            Stop Answering the Same Questions
-          </h1>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            Whether you&apos;re a consultant, store owner, or founder—FrontFace
-            handles 89% of customer questions automatically so you can focus
-            on what matters.
-          </p>
-        </section>
+    <main>
+      <PageHero
+        eyebrow="Use cases"
+        title="One agent. Every kind of customer conversation."
+        sub="Whether you run a SaaS, a store, or a services firm — FrontFace answers from your knowledge base, captures leads, and hands off cleanly when a human is needed."
+      />
 
-        {/* Use Cases */}
-        <section className="max-w-6xl mx-auto px-6 py-8">
-          <div className="space-y-8">
-            {useCases.map((useCase, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300"
-              >
-                <div className="md:flex">
-                  {/* Left side - Icon and stats */}
-                  <div
-                    className={`md:w-1/3 bg-gradient-to-br ${useCase.color} p-8 flex flex-col items-center justify-center text-white min-h-[250px]`}
-                  >
-                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4">
-                      {useCase.icon}
-                    </div>
-                    <div className="text-4xl font-bold mb-1">
-                      {useCase.stats.value}
-                    </div>
-                    <div className="text-sm opacity-80">
-                      {useCase.stats.label}
-                    </div>
-                  </div>
-
-                  {/* Right side - Content */}
-                  <div className="md:w-2/3 p-8">
-                    <div className="mb-4">
-                      <h2 className="text-2xl font-bold text-slate-900 mb-1">
-                        {useCase.title}
-                      </h2>
-                      <p className="text-blue-600 font-medium">
-                        {useCase.subtitle}
-                      </p>
-                    </div>
-                    <p className="text-slate-600 mb-6 leading-relaxed">
-                      {useCase.description}
-                    </p>
-                    <div className="grid sm:grid-cols-2 gap-3 mb-6">
-                      {useCase.benefits.map((benefit, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <svg
-                              className="w-3 h-3 text-green-600"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          </div>
-                          <span className="text-sm text-slate-700">
-                            {benefit}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <Link
-                      href="/login"
-                      className="inline-flex items-center text-blue-600 font-medium hover:gap-2 transition-all"
-                    >
-                      Get started for {useCase.title.toLowerCase()}
-                      <ArrowRight className="w-4 h-4 ml-1" />
-                    </Link>
-                  </div>
+      <section style={{ ...WRAP, padding: "clamp(24px,4vh,48px) clamp(20px,5vw,40px)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          {useCases.map((u, i) => (
+            <div
+              key={u.title}
+              className={"reveal ff-uc-card d" + ((i % 3) + 1)}
+              style={{
+                background: "var(--ff-card)",
+                border: "1px solid var(--ff-line)",
+                borderRadius: 20,
+                overflow: "hidden",
+                boxShadow: "0 2px 12px -8px rgba(16,24,40,.1)",
+                display: "grid",
+                gridTemplateColumns: "minmax(0,300px) minmax(0,1fr)",
+              }}
+            >
+              <div className="ff-uc-panel" style={darkPanel}>
+                <div
+                  className="lattice"
+                  style={
+                    {
+                      position: "absolute",
+                      inset: 0,
+                      "--lt": "rgba(255,255,255,.05)",
+                      "--lt-size": "44px",
+                      maskImage: "radial-gradient(120% 80% at 50% 0%, #000 30%, transparent 82%)",
+                      WebkitMaskImage: "radial-gradient(120% 80% at 50% 0%, #000 30%, transparent 82%)",
+                    } as CSSProperties
+                  }
+                />
+                <div style={{ position: "relative" }}>
+                  <span style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.14)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                    {u.icon}
+                  </span>
+                  <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-.03em", lineHeight: 1 }}>{u.stats.value}</div>
+                  <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.6)", marginTop: 6 }}>{u.stats.label}</div>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
 
-        {/* Custom Solution CTA */}
-        <section className="max-w-6xl mx-auto px-6 py-20">
-          <div className="bg-slate-900 rounded-2xl p-12 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Don&apos;t See Your Industry?
-            </h2>
-            <p className="text-slate-400 mb-8 max-w-2xl mx-auto">
-              FrontFace is flexible enough to work with any business that
-              needs intelligent customer support. Our RAG technology adapts to
-              your unique content and use case.
-            </p>
-            <Link
-              href="/login"
-              className="inline-block px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all shadow-lg"
-            >
-              Try It Free
-            </Link>
-          </div>
-        </section>
+              <div style={{ padding: "clamp(26px,3vw,36px)" }}>
+                <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", color: "var(--ff-ink)", lineHeight: 1.15 }}>{u.title}</h2>
+                <p style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ff-accent-2)", marginTop: 4 }}>{u.subtitle}</p>
+                <p style={{ fontSize: 15, lineHeight: 1.6, color: "var(--ff-soft)", marginTop: 14, textWrap: "pretty" }}>{u.description}</p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "10px 18px", marginTop: 20 }}>
+                  {u.benefits.map((b) => (
+                    <div key={b} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13.5, color: "var(--ff-text)" }}>
+                      <span style={{ width: 18, height: 18, borderRadius: 99, background: "var(--ff-accent-soft)", color: "var(--ff-accent-2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {Ic("check", { size: 12, sw: 2.6 })}
+                      </span>
+                      {b}
+                    </div>
+                  ))}
+                </div>
+                <Link
+                  href="/login"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 22, fontSize: 14, fontWeight: 600, color: "var(--ff-ink)" }}
+                >
+                  Get started for {u.title.toLowerCase()} {Ic("arrowR", { size: 15 })}
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-        {/* CTA */}
-        <section className="bg-gradient-to-r from-blue-600 to-purple-600 py-20">
-          <div className="max-w-4xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Ready to Stop Answering the Same Questions?
-            </h2>
-            <p className="text-blue-100 mb-8 text-lg">
-              5-minute setup. 89% of questions answered automatically. Free during beta.
-            </p>
-            <Link
-              href="/login"
-              className="inline-block px-8 py-4 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-colors shadow-lg"
-            >
-              Start Free Today
-            </Link>
-          </div>
-        </section>
-      </main>
-      <Footer />
-    </>
+      {/* Custom solution */}
+      <section style={{ ...WRAP, padding: "clamp(24px,4vh,48px) clamp(20px,5vw,40px)" }}>
+        <div
+          className="reveal"
+          style={{ position: "relative", overflow: "hidden", borderRadius: 22, border: "1px solid var(--ff-line)", background: "var(--ff-card)", padding: "clamp(32px,4vw,56px)", textAlign: "center", boxShadow: "0 2px 14px -8px rgba(16,24,40,.1)" }}
+        >
+          <h2 style={{ fontSize: "clamp(24px,3.4vw,36px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.1, textWrap: "balance" }}>
+            Don&apos;t see your industry?
+          </h2>
+          <p style={{ fontSize: 16.5, lineHeight: 1.55, color: "var(--ff-soft)", marginTop: 14, maxWidth: 560, marginInline: "auto", textWrap: "pretty" }}>
+            FrontFace works for any business that needs intelligent support. Its RAG retrieval adapts to your unique content
+            and use case — point it at what you already have.
+          </p>
+        </div>
+      </section>
+
+      <DarkCta
+        title="Stop answering the same questions."
+        sub="5-minute setup. 89% of questions answered automatically. Free during beta."
+      />
+    </main>
   );
 }

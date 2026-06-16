@@ -1,13 +1,14 @@
-import { ArrowLeft, Clock, Calendar, Share2 } from "lucide-react";
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Script from "next/script";
+import type { CSSProperties } from "react";
 import ReactMarkdown from "react-markdown";
 
-import { Footer } from "../../components/footer";
-import { Header } from "../../components/header";
+import { Btn } from "../../components/marketing-button";
+import { Ic, WRAP } from "../../components/marketing-kit";
 import { blogPosts, getBlogPost, getAllBlogSlugs } from "../blog-data";
+import { Cover, coverKindFor } from "../cover-scene";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -17,27 +18,18 @@ export async function generateStaticParams() {
   return getAllBlogSlugs().map((slug) => ({ slug }));
 }
 
-export async function generateMetadata({
-  params,
-}: BlogPostPageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = getBlogPost(slug);
 
   if (!post) {
-    return {
-      title: "Post Not Found",
-    };
+    return { title: "Post Not Found" };
   }
 
   return {
     title: post.title,
     description: post.description,
-    keywords: [
-      post.category.toLowerCase(),
-      "AI agent",
-      "AI lead capture",
-      "FrontFace",
-    ],
+    keywords: [post.category.toLowerCase(), "AI support agent", "knowledge base AI", "RAG chatbot", "FrontFace"],
     authors: [{ name: "FrontFace Team" }],
     openGraph: {
       title: post.title,
@@ -46,14 +38,7 @@ export async function generateMetadata({
       type: "article",
       publishedTime: post.date,
       authors: ["FrontFace Team"],
-      images: [
-        {
-          url: post.image,
-          width: 1200,
-          height: 630,
-          alt: post.title,
-        },
-      ],
+      images: [{ url: post.image, width: 1200, height: 630, alt: post.title }],
     },
     twitter: {
       card: "summary_large_image",
@@ -67,12 +52,9 @@ export async function generateMetadata({
   };
 }
 
-const categoryColors: Record<string, string> = {
-  Tutorial: "bg-blue-100 text-blue-700",
-  Strategy: "bg-green-100 text-green-700",
-  Technology: "bg-purple-100 text-purple-700",
-  Trends: "bg-orange-100 text-orange-700",
-};
+function fmt(date: string) {
+  return new Date(date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = await params;
@@ -82,278 +64,184 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     notFound();
   }
 
-  // Get related posts (same category or random)
   const relatedPosts = blogPosts
     .filter((p) => p.slug !== post.slug)
-    .sort(
-      (a, b) =>
-        Number(b.category === post.category) -
-        Number(a.category === post.category)
-    )
+    .sort((a, b) => Number(b.category === post.category) - Number(a.category === post.category))
     .slice(0, 3);
 
-  // Article Schema
   const articleSchema = {
     "@context": "https://schema.org",
-    "@type": "Article",
+    "@type": "BlogPosting",
     headline: post.title,
     description: post.description,
     image: `https://frontface.app${post.image}`,
     datePublished: post.date,
     dateModified: post.date,
-    author: {
-      "@type": "Organization",
-      name: "FrontFace",
-      url: "https://frontface.app",
-    },
+    author: { "@type": "Organization", name: "FrontFace", url: "https://frontface.app" },
     publisher: {
       "@type": "Organization",
       name: "FrontFace",
-      logo: {
-        "@type": "ImageObject",
-        url: "https://frontface.app/logo.png",
-      },
+      logo: { "@type": "ImageObject", url: "https://frontface.app/logo.png" },
     },
-    mainEntityOfPage: {
-      "@type": "WebPage",
-      "@id": `https://frontface.app/blog/${post.slug}`,
-    },
+    mainEntityOfPage: { "@type": "WebPage", "@id": `https://frontface.app/blog/${post.slug}` },
   };
 
-  // BreadcrumbList Schema
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: "https://frontface.app",
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Blog",
-        item: "https://frontface.app/blog",
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: post.title,
-        item: `https://frontface.app/blog/${post.slug}`,
-      },
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://frontface.app" },
+      { "@type": "ListItem", position: 2, name: "Blog", item: "https://frontface.app/blog" },
+      { "@type": "ListItem", position: 3, name: post.title, item: `https://frontface.app/blog/${post.slug}` },
     ],
+  };
+
+  const shareBtn: CSSProperties = {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    border: "1px solid var(--ff-line-2)",
+    background: "#fff",
+    color: "var(--ff-soft)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   };
 
   return (
     <>
-      <Script
-        id="article-schema"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
-      <Script
-        id="breadcrumb-schema"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
-      <Header />
-      <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white pt-24">
-        <article className="max-w-4xl mx-auto px-6 pb-16">
-          {/* Breadcrumb */}
-          <nav className="mb-8">
-            <Link
-              href="/blog"
-              className="inline-flex items-center text-sm text-slate-600 hover:text-blue-600 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Blog
-            </Link>
-          </nav>
+      <Script id="article-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
+      <Script id="breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
 
-          {/* Header */}
-          <header className="mb-12">
-            <div className="flex items-center gap-3 mb-4">
-              <span
-                className={`px-3 py-1 text-sm font-medium rounded-full ${categoryColors[post.category]}`}
-              >
-                {post.category}
-              </span>
-              <span className="flex items-center text-sm text-slate-500">
-                <Clock className="w-4 h-4 mr-1" />
-                {post.readTime}
-              </span>
-              <span className="flex items-center text-sm text-slate-500">
-                <Calendar className="w-4 h-4 mr-1" />
-                {new Date(post.date).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </span>
+      <main style={{ overflowX: "hidden" }}>
+        {/* header */}
+        <header style={{ position: "relative", overflow: "hidden", paddingTop: "clamp(36px,5vh,56px)", paddingBottom: "clamp(28px,4vh,40px)" }}>
+          <div
+            className="lattice"
+            style={
+              {
+                position: "absolute",
+                inset: 0,
+                "--lt": "rgba(17,21,27,.04)",
+                "--lt-size": "70px",
+                maskImage: "radial-gradient(120% 70% at 50% 0%, #000 30%, transparent 78%)",
+                WebkitMaskImage: "radial-gradient(120% 70% at 50% 0%, #000 30%, transparent 78%)",
+              } as CSSProperties
+            }
+          />
+          <div style={{ ...WRAP, position: "relative", maxWidth: 760 }}>
+            <div className="reveal in" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--ff-muted)", marginBottom: 22 }}>
+              <Link href="/blog" style={{ fontWeight: 600, color: "var(--ff-soft)" }}>
+                Blog
+              </Link>
+              {Ic("chevron", { size: 14, style: { transform: "rotate(-90deg)" } })}
+              <span style={{ fontWeight: 600, color: "var(--ff-ink)" }}>{post.category}</span>
             </div>
-
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-6 leading-tight">
+            <h1 className="reveal in d1" style={{ fontSize: "clamp(32px,5vw,52px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.06, textWrap: "balance" }}>
               {post.title}
             </h1>
-
-            <p className="text-xl text-slate-600 leading-relaxed">
+            <p className="reveal in d2" style={{ fontSize: "clamp(17px,2vw,21px)", lineHeight: 1.55, color: "var(--ff-soft)", marginTop: 18, maxWidth: 640, textWrap: "pretty" }}>
               {post.description}
             </p>
-          </header>
-
-          {/* Featured Image Placeholder */}
-          <div className="mb-12 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 h-64 md:h-96 flex items-center justify-center">
-            <div className="text-white text-center">
-              <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-10 h-10"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                  />
-                </svg>
+            <div className="reveal in d3" style={{ display: "flex", alignItems: "center", gap: 13, marginTop: 28, flexWrap: "wrap" }}>
+              <span style={{ width: 42, height: 42, borderRadius: 99, background: "linear-gradient(150deg,var(--ff-ink),var(--ff-ink-3))", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14 }}>
+                FF
+              </span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ff-ink)" }}>The FrontFace Team</div>
+                <div style={{ fontSize: 12.5, color: "var(--ff-muted)" }}>
+                  {fmt(post.date)} · {post.readTime}
+                </div>
+              </div>
+              <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                <span style={shareBtn} aria-hidden>
+                  {Ic("link", { size: 16 })}
+                </span>
+                <span style={shareBtn} aria-hidden>
+                  {Ic("mail", { size: 16 })}
+                </span>
               </div>
             </div>
           </div>
+        </header>
 
-          {/* Content */}
-          <article className="prose prose-lg prose-slate max-w-none prose-headings:font-bold prose-headings:text-slate-900 prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4 prose-p:text-slate-700 prose-p:leading-relaxed prose-p:mb-6 prose-li:text-slate-700 prose-li:my-2 prose-strong:text-slate-900 prose-strong:font-semibold prose-ul:my-6 prose-ol:my-6 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline">
-            <ReactMarkdown
-              components={{
-                h2: ({ children }) => (
-                  <h2 className="text-2xl font-bold text-slate-900 mt-12 mb-6 pb-2 border-b border-slate-200">
-                    {children}
-                  </h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="text-xl font-bold text-slate-900 mt-8 mb-4">
-                    {children}
-                  </h3>
-                ),
-                p: ({ children }) => (
-                  <p className="text-slate-700 leading-relaxed mb-6">
-                    {children}
-                  </p>
-                ),
-                ul: ({ children }) => (
-                  <ul className="list-disc pl-6 my-6 space-y-3 text-slate-700">
-                    {children}
-                  </ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="list-decimal pl-6 my-6 space-y-3 text-slate-700">
-                    {children}
-                  </ol>
-                ),
-                li: ({ children }) => (
-                  <li className="leading-relaxed">{children}</li>
-                ),
-                strong: ({ children }) => (
-                  <strong className="font-semibold text-slate-900">{children}</strong>
-                ),
-              }}
-            >
-              {post.content}
-            </ReactMarkdown>
-          </article>
+        {/* cover */}
+        <div style={{ ...WRAP, maxWidth: 760 }}>
+          <div className="reveal" style={{ borderRadius: 20, overflow: "hidden", border: "1px solid var(--ff-line)" }}>
+            <Cover kind={coverKindFor(post)} height={300} />
+          </div>
+        </div>
 
-          {/* Share Section */}
-          <div className="mt-12 pt-8 border-t border-slate-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span className="text-slate-600 font-medium">Share:</span>
-                <button className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
-                  <Share2 className="w-5 h-5" />
-                </button>
+        {/* body */}
+        <article className="prose-ff" style={{ padding: "clamp(32px,5vh,52px) clamp(20px,5vw,40px) 0" }}>
+          <ReactMarkdown>{post.content}</ReactMarkdown>
+
+          {/* article CTA */}
+          <div
+            className="reveal"
+            style={{
+              position: "relative",
+              overflow: "hidden",
+              margin: "48px auto 0",
+              maxWidth: 720,
+              borderRadius: 20,
+              background: "linear-gradient(150deg,#11151b,#1b2230 70%,#10141b)",
+              color: "#fff",
+              padding: "clamp(28px,4vw,40px)",
+            }}
+          >
+            <div
+              className="lattice"
+              style={
+                {
+                  position: "absolute",
+                  inset: 0,
+                  "--lt": "rgba(255,255,255,.05)",
+                  "--lt-size": "44px",
+                  maskImage: "radial-gradient(120% 90% at 80% 0%, #000 30%, transparent 80%)",
+                  WebkitMaskImage: "radial-gradient(120% 90% at 80% 0%, #000 30%, transparent 80%)",
+                } as CSSProperties
+              }
+            />
+            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 240 }}>
+                <h3 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1.15, color: "#fff" }}>
+                  See grounded answers on your own content.
+                </h3>
+                <p style={{ fontSize: 15, lineHeight: 1.55, color: "rgba(255,255,255,.66)", marginTop: 10, textWrap: "pretty" }}>
+                  Point FrontFace at your site and watch it answer a real question — with sources — in minutes.
+                </p>
               </div>
-              <Link
-                href="/login"
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg transition-all shadow-md hover:shadow-lg"
-              >
-                Try FrontFace Free
-              </Link>
+              <Btn kind="lightPrimary" size="lg" href="/login">
+                Build your agent {Ic("arrowR", { size: 18 })}
+              </Btn>
             </div>
           </div>
         </article>
 
-        {/* Related Posts */}
-        <section className="bg-slate-50 py-16">
-          <div className="max-w-6xl mx-auto px-6">
-            <h2 className="text-2xl font-bold text-slate-900 mb-8">
-              Related Articles
-            </h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              {relatedPosts.map((relatedPost) => (
-                <Link
-                  key={relatedPost.slug}
-                  href={`/blog/${relatedPost.slug}`}
-                  className="group"
-                >
-                  <article className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                    <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                      <div className="w-12 h-12 bg-white rounded-lg shadow-sm flex items-center justify-center">
-                        <svg
-                          className="w-6 h-6 text-slate-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
-                          />
-                        </svg>
-                      </div>
-                    </div>
-                    <div className="p-5">
-                      <span
-                        className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${categoryColors[relatedPost.category]} mb-2`}
-                      >
-                        {relatedPost.category}
-                      </span>
-                      <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2">
-                        {relatedPost.title}
-                      </h3>
-                      <p className="text-sm text-slate-500 mt-2">
-                        {relatedPost.readTime}
-                      </p>
-                    </div>
-                  </article>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="bg-gradient-to-r from-blue-600 to-purple-600 py-16">
-          <div className="max-w-4xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Ready to Capture Leads with AI?
-            </h2>
-            <p className="text-blue-100 mb-8 text-lg">
-              Get started with FrontFace in minutes. No credit card required.
-            </p>
-            <Link
-              href="/login"
-              className="inline-block px-8 py-4 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-colors shadow-lg"
-            >
-              Start Free Today
-            </Link>
+        {/* related */}
+        <section style={{ ...WRAP, padding: "clamp(56px,8vh,90px) clamp(20px,5vw,40px) clamp(56px,8vh,90px)", maxWidth: 1100 }}>
+          <h2 className="reveal" style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-.02em", color: "var(--ff-ink)", marginBottom: 24 }}>
+            Keep reading
+          </h2>
+          <div className="ff-rel-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>
+            {relatedPosts.map((rp, i) => (
+              <Link
+                key={rp.slug}
+                href={`/blog/${rp.slug}`}
+                className={"reveal d" + (i + 1)}
+                style={{ display: "flex", flexDirection: "column", background: "var(--ff-card)", border: "1px solid var(--ff-line)", borderRadius: 16, overflow: "hidden" }}
+              >
+                <Cover kind={coverKindFor(rp)} height={130} />
+                <div style={{ padding: "16px 18px 20px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".05em", color: "var(--ff-muted)", textTransform: "uppercase", marginBottom: 8 }}>{rp.category}</div>
+                  <div style={{ fontSize: 16.5, fontWeight: 700, letterSpacing: "-.01em", color: "var(--ff-ink)", lineHeight: 1.25 }}>{rp.title}</div>
+                </div>
+              </Link>
+            ))}
           </div>
         </section>
       </main>
-      <Footer />
     </>
   );
 }

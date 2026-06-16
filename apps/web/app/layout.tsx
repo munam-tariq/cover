@@ -1,41 +1,47 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600"],
+  variable: "--font-mono",
+});
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#ffffff",
+  themeColor: "#f6f7f9",
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://frontface.app"),
   title: {
-    default: "FrontFace — AI Lead Capture & Sales Agent",
+    default: "FrontFace — AI Support Agent That Knows Your Product",
     template: "%s | FrontFace",
   },
   description:
-    "Deploy an AI agent on your website that captures leads, qualifies visitors, and answers product questions 24/7 using your knowledge base. Free to start.",
+    "FrontFace is an AI support agent trained on your knowledge base. It answers customers instantly with cited sources, captures leads, and hands off to your team — on your site or anywhere. Free during beta.",
   keywords: [
+    "AI support agent",
+    "AI customer support",
+    "knowledge base AI",
+    "RAG chatbot",
+    "grounded AI answers",
+    "AI help desk",
+    "self-service support AI",
+    "customer support automation",
+    "AI agent for website",
+    "answer engine",
+    "human handoff chatbot",
     "AI lead capture",
-    "AI sales agent",
-    "website AI agent",
-    "lead generation chatbot",
-    "conversational AI for sales",
-    "AI SDR",
     "knowledge base chatbot",
-    "website chatbot",
-    "AI agent for business",
-    "lead capture automation",
-    "AI qualifier",
-    "chatbot for lead generation",
     "no-code AI agent",
-    "AI for small business",
     "embed AI agent",
   ],
   authors: [{ name: "FrontFace Team" }],
@@ -54,23 +60,23 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://frontface.app",
     siteName: "FrontFace",
-    title: "FrontFace — AI Lead Capture & Sales Agent",
+    title: "FrontFace — AI Support Agent That Knows Your Product",
     description:
-      "Deploy an AI agent on your website that captures leads, qualifies visitors, and answers product questions 24/7 using your knowledge base. Free to start.",
+      "An AI support agent trained on your knowledge base — answering customers instantly with cited sources, capturing leads, and handing off to your team. Free during beta.",
     images: [
       {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI Lead Capture & Sales Agent",
+        alt: "FrontFace — AI support agent that knows your product",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "FrontFace — AI Lead Capture & Sales Agent",
+    title: "FrontFace — AI Support Agent That Knows Your Product",
     description:
-      "Deploy an AI agent on your website that captures leads, qualifies visitors, and answers product questions 24/7.",
+      "An AI support agent trained on your knowledge base — instant, cited answers, lead capture, and human handoff. Free during beta.",
     images: ["https://frontface.app/og-image.png"],
     creator: "@frontface",
   },
@@ -101,7 +107,7 @@ const organizationSchema = {
   url: "https://frontface.app",
   logo: "https://frontface.app/logo.png",
   description:
-    "AI lead capture and sales agent for your website. Captures leads, qualifies visitors, and answers product questions 24/7 using your knowledge base.",
+    "AI support agent for your website that answers customers from your knowledge base with cited sources, captures leads, and hands off to your team 24/7.",
   foundingDate: "2025",
   sameAs: [
     "https://twitter.com/frontface",
@@ -130,14 +136,14 @@ const softwareSchema = {
     worstRating: "1",
   },
   featureList: [
-    "AI lead capture",
-    "Lead qualification",
-    "Knowledge base Q&A",
-    "AI sales agent",
-    "API tool calling",
-    "Human handoff",
-    "Analytics dashboard",
-    "Works on any website",
+    "Knowledge base Q&A with cited sources",
+    "RAG-grounded AI answers",
+    "Lead capture & qualification",
+    "Human handoff & queues",
+    "One-line website widget",
+    "Hosted public agent page",
+    "Multi-channel (WhatsApp, Slack, email)",
+    "Conversation analytics",
   ],
 };
 
@@ -149,7 +155,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <head>
-        <link rel="icon" href="/logo.png" type="image/png" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/logo.png" type="image/png" sizes="any" />
         <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="manifest" href="/manifest.json" />
         {/* Google Analytics */}
@@ -176,7 +183,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
         />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className={`${inter.className} ${jetbrainsMono.variable}`}>
+        {children}
+      </body>
     </html>
   );
 }

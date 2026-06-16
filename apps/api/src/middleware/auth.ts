@@ -1,8 +1,11 @@
+import * as Sentry from "@sentry/node";
 import { NextFunction, Request, Response } from "express";
+
 import { supabaseAdmin, createUserClient } from "../lib/supabase";
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
+  userEmail?: string;
   projectId?: string;
   supabase?: ReturnType<typeof createUserClient>;
 }
@@ -41,7 +44,11 @@ export async function authMiddleware(
 
     // Attach user info and user-scoped Supabase client
     req.userId = user.id;
+    req.userEmail = user.email ?? undefined;
     req.supabase = createUserClient(token);
+
+    // Tag the Sentry scope so any error during this request carries the user.
+    Sentry.setUser({ id: user.id, email: user.email ?? undefined });
 
     next();
   } catch (error) {

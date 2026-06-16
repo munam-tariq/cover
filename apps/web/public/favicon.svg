@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="FrontFace">
+  <rect width="32" height="32" rx="7.5" fill="#11151b"/>
+  <g transform="translate(16 16) scale(1.15) translate(-12 -11)" fill="none" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 8h8a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2ZM12 4v4M9 13h.01M15 13h.01M4 12v3M20 12v3"/>
+  </g>
+</svg>

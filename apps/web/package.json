@@ -15,6 +15,7 @@
     "@chatbot/shared": "workspace:*",
     "@chatbot/ui": "workspace:*",
     "@elevenlabs/client": "^0.15.0",
+    "@sentry/nextjs": "^10.57.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "2.88.0",
     "@tailwindcss/typography": "^0.5.19",

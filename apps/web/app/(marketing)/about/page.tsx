@@ -1,24 +1,25 @@
 import { Target, Users, Zap, Heart } from "lucide-react";
 import { Metadata } from "next";
-import Link from "next/link";
 
-import { Footer } from "../components/footer";
-import { Header } from "../components/header";
+import { Btn } from "../components/marketing-button";
+import { Ic, WRAP } from "../components/marketing-kit";
+import { DarkCta, PageHero } from "../components/page-kit";
 
 export const metadata: Metadata = {
-  title: "About FrontFace | AI Lead Capture & Sales Agent for Your Website",
+  title: "About FrontFace | The AI Support Agent That Knows Your Product",
   description:
-    "FrontFace puts an AI agent on your website that captures leads, qualifies visitors, and answers product questions 24/7 from your knowledge base.",
+    "FrontFace is an AI support agent trained on your knowledge base. It answers customers instantly with cited sources, captures leads, and hands off to your team 24/7.",
   keywords: [
     "about FrontFace",
-    "AI lead capture company",
-    "AI sales agent platform",
-    "website AI agent",
+    "AI support agent",
+    "AI customer support",
     "knowledge base AI",
+    "RAG chatbot",
   ],
   openGraph: {
     title: "About FrontFace",
-    description: "AI lead capture and sales agent for your website. Captures leads, qualifies visitors, and answers product questions 24/7.",
+    description:
+      "The AI support agent that knows your product — instant, cited answers from your knowledge base, lead capture, and human handoff.",
     url: "https://frontface.app/about",
     type: "website",
     images: [
@@ -26,14 +27,15 @@ export const metadata: Metadata = {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI Lead Capture & Sales Agent",
+        alt: "FrontFace — AI support agent that knows your product",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: "About FrontFace",
-    description: "AI lead capture and sales agent for your website. Captures leads, qualifies visitors, and answers product questions 24/7.",
+    description:
+      "The AI support agent that knows your product — instant, cited answers, lead capture, and human handoff.",
     images: ["https://frontface.app/og-image.png"],
   },
   alternates: {
@@ -43,25 +45,25 @@ export const metadata: Metadata = {
 
 const values = [
   {
-    icon: <Zap className="w-6 h-6" />,
+    icon: <Zap className="w-5 h-5" />,
     title: "Speed Over Everything",
     description:
-      "Your time is valuable. That's why FrontFace takes 5 minutes to set up—not days or weeks. No consultants, no complicated setup.",
+      "Your time is valuable. That's why FrontFace takes 5 minutes to set up — not days or weeks. No consultants, no complicated setup.",
   },
   {
-    icon: <Target className="w-6 h-6" />,
+    icon: <Target className="w-5 h-5" />,
     title: "Simple By Design",
     description:
-      "You shouldn't need to be technical to use AI. Upload your FAQs, paste one line of code, and you're live. That's it.",
+      "You shouldn't need to be technical to use AI. Point it at your site or upload your docs, paste one line of code, and you're live.",
   },
   {
-    icon: <Users className="w-6 h-6" />,
-    title: "Built for Small Business",
+    icon: <Users className="w-5 h-5" />,
+    title: "Built for Lean Teams",
     description:
-      "We know small business owners are stretched thin. FrontFace handles the repetitive questions so you can focus on what you do best.",
+      "We know support and growth teams are stretched thin. FrontFace handles the repetitive questions so you can focus on what matters.",
   },
   {
-    icon: <Heart className="w-6 h-6" />,
+    icon: <Heart className="w-5 h-5" />,
     title: "Customer Obsession",
     description:
       "Every feature we build starts with a customer problem. We talk to users constantly and iterate based on real feedback.",
@@ -71,150 +73,140 @@ const values = [
 const stats = [
   { value: "5 min", label: "Setup time" },
   { value: "89%", label: "Questions answered by AI" },
-  { value: "24/7", label: "AI availability" },
+  { value: "24/7", label: "Always-on availability" },
   { value: "Free", label: "During beta" },
 ];
 
+const story = [
+  "FrontFace started with a simple observation: teams spend hours every week answering the same questions over and over. “What are your hours?” “What's your return policy?” “Do you support SSO?”",
+  "Every hour spent on basic questions is an hour not spent on real work. Slow responses mean lost customers and missed leads. The problem was clear — but the solutions weren't.",
+  "Enterprise chatbots cost thousands per month. Static FAQ pages don't actually answer questions. And generic AI confidently makes things up about your product.",
+  "We built FrontFace to change that: an AI support agent that's trained on YOUR content, answers from it with cited sources, captures leads, and hands off cleanly to a human — live in 5 minutes, no technical skills required.",
+];
+
+const cardStyle = {
+  background: "var(--ff-card)",
+  border: "1px solid var(--ff-line)",
+  borderRadius: 18,
+  padding: "26px 24px",
+  boxShadow: "0 2px 10px -6px rgba(16,24,40,.08)",
+} as const;
+
+const iconChip = {
+  width: 46,
+  height: 46,
+  borderRadius: 13,
+  background: "var(--ff-accent-soft)",
+  color: "var(--ff-accent-2)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  marginBottom: 16,
+} as const;
+
 export default function AboutPage() {
   return (
-    <>
-      <Header />
-      <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white pt-24">
-        {/* Hero */}
-        <section className="max-w-6xl mx-auto px-6 py-16 text-center">
-          <span className="inline-block px-3 py-1 text-sm font-medium text-blue-600 bg-blue-50 rounded-full mb-4">
-            About Us
-          </span>
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-            AI Customer Support for Small Business
-          </h1>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            FrontFace exists because we believe every small business deserves
-            great customer support—without hiring a team or spending thousands
-            on enterprise software.
-          </p>
-        </section>
+    <main>
+      <PageHero
+        eyebrow="About us"
+        title="The AI support agent that knows your product."
+        sub="FrontFace exists because every business deserves great customer support — without hiring a team or spending thousands on enterprise software."
+      />
 
-        {/* Story */}
-        <section className="max-w-4xl mx-auto px-6 py-16">
-          <h2 className="text-3xl font-bold text-slate-900 mb-8 text-center">
-            Our Story
-          </h2>
-          <div className="prose prose-lg prose-slate max-w-none">
-            <p className="text-slate-700 leading-relaxed mb-6">
-              FrontFace started with a simple observation: small business
-              owners spend hours every week answering the same questions over
-              and over. &quot;What are your hours?&quot; &quot;What&apos;s your return policy?&quot;
-              &quot;Where&apos;s my order?&quot;
+      {/* Story */}
+      <section style={{ ...WRAP, maxWidth: 760, padding: "clamp(32px,5vh,56px) clamp(20px,5vw,40px)" }}>
+        <h2
+          className="reveal"
+          style={{ fontSize: "clamp(26px,3.4vw,38px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.1, marginBottom: 24, textWrap: "balance" }}
+        >
+          Our story
+        </h2>
+        <div className="reveal d1">
+          {story.map((p, i) => (
+            <p key={i} style={{ fontSize: 17.5, lineHeight: 1.72, color: "#2a323d", marginBottom: 20, textWrap: "pretty" }}>
+              {p}
             </p>
-            <p className="text-slate-700 leading-relaxed mb-6">
-              For consultants and professionals, every hour spent on basic
-              questions is an hour not spent on billable work. For store owners,
-              slow responses mean lost sales. The problem was clear—but the
-              solutions weren&apos;t.
-            </p>
-            <p className="text-slate-700 leading-relaxed mb-6">
-              Enterprise chatbots cost thousands per month. Simple FAQ pages
-              don&apos;t actually answer questions. And hiring support staff
-              isn&apos;t realistic when you&apos;re running a small team.
-            </p>
-            <p className="text-slate-700 leading-relaxed">
-              We built FrontFace to change that. An AI chatbot that actually
-              learns from YOUR content, answers 89% of questions automatically,
-              and takes just 5 minutes to set up. No technical skills required.
-              No enterprise pricing. Just upload your FAQs and go.
-            </p>
-          </div>
-        </section>
+          ))}
+        </div>
+      </section>
 
-        {/* Stats */}
-        <section className="bg-gradient-to-r from-blue-600 to-purple-600 py-16">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              {stats.map((stat, index) => (
-                <div key={index} className="text-center">
-                  <div className="text-4xl md:text-5xl font-bold text-white mb-2">
-                    {stat.value}
-                  </div>
-                  <div className="text-blue-100">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Values */}
-        <section className="max-w-6xl mx-auto px-6 py-20">
-          <h2 className="text-3xl font-bold text-slate-900 mb-4 text-center">
-            Our Values
-          </h2>
-          <p className="text-slate-600 text-center mb-12 max-w-2xl mx-auto">
-            These principles guide every decision we make, from product features
-            to customer interactions.
-          </p>
-          <div className="grid md:grid-cols-2 gap-8">
-            {values.map((value, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-xl border border-slate-200 p-8 hover:shadow-lg transition-shadow"
-              >
-                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-4">
-                  {value.icon}
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">
-                  {value.title}
-                </h3>
-                <p className="text-slate-600">{value.description}</p>
+      {/* Stats */}
+      <section style={{ ...WRAP, padding: "clamp(8px,2vh,24px) clamp(20px,5vw,40px) clamp(32px,5vh,56px)" }}>
+        <div
+          className="reveal"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+            gap: 1,
+            background: "var(--ff-line)",
+            borderRadius: 20,
+            overflow: "hidden",
+            border: "1px solid var(--ff-line)",
+          }}
+        >
+          {stats.map((s) => (
+            <div key={s.label} style={{ background: "var(--ff-card)", padding: "30px 26px", textAlign: "center" }}>
+              <div style={{ fontSize: "clamp(30px,4vw,44px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1 }}>
+                {s.value}
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Vision */}
-        <section className="bg-slate-50 py-20">
-          <div className="max-w-4xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-bold text-slate-900 mb-6">
-              Our Vision
-            </h2>
-            <p className="text-xl text-slate-600 leading-relaxed mb-8">
-              We believe small businesses deserve the same quality customer
-              support as the big companies—without the big company budget.
-              AI should handle the routine stuff so you can focus on what
-              actually matters: your customers, your craft, your business.
-            </p>
-            <p className="text-slate-600 leading-relaxed">
-              We&apos;re just getting started. Join us on this journey.
-            </p>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="py-20">
-          <div className="max-w-4xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-bold text-slate-900 mb-4">
-              Ready to Get Started?
-            </h2>
-            <p className="text-slate-600 mb-8">
-              Join the businesses saving hours every week with AI customer support.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/login"
-                className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl"
-              >
-                Start Free Today
-              </Link>
-              <Link
-                href="/#features"
-                className="px-8 py-4 bg-white border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors"
-              >
-                See Features
-              </Link>
+              <div style={{ fontSize: 13.5, color: "var(--ff-soft)", marginTop: 10, fontWeight: 500 }}>{s.label}</div>
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Values */}
+      <section style={{ ...WRAP, padding: "clamp(40px,6vh,80px) clamp(20px,5vw,40px)" }}>
+        <div className="reveal" style={{ textAlign: "center", maxWidth: 560, margin: "0 auto 40px" }}>
+          <h2 style={{ fontSize: "clamp(26px,3.8vw,42px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.08, textWrap: "balance" }}>
+            What we believe
+          </h2>
+          <p style={{ fontSize: 16.5, lineHeight: 1.55, color: "var(--ff-soft)", marginTop: 14, textWrap: "pretty" }}>
+            These principles guide every decision we make — from product features to customer conversations.
+          </p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 18 }}>
+          {values.map((v, i) => (
+            <div key={v.title} className={"reveal d" + ((i % 4) + 1)} style={cardStyle}>
+              <span style={iconChip}>{v.icon}</span>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--ff-ink)", letterSpacing: "-.01em", marginBottom: 8 }}>{v.title}</h3>
+              <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--ff-soft)", textWrap: "pretty" }}>{v.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Vision */}
+      <section style={{ ...WRAP, padding: "clamp(8px,2vh,24px) clamp(20px,5vw,40px) clamp(40px,6vh,72px)" }}>
+        <div
+          className="reveal"
+          style={{ position: "relative", overflow: "hidden", borderRadius: 24, border: "1px solid var(--ff-line)", background: "var(--ff-card)", padding: "clamp(36px,5vw,64px)", textAlign: "center", boxShadow: "0 2px 14px -8px rgba(16,24,40,.1)" }}
+        >
+          <span style={{ ...iconChip, margin: "0 auto 18px", width: 52, height: 52, borderRadius: 15, background: "var(--ff-ink)", color: "#fff" }}>
+            {Ic("target", { size: 26 })}
+          </span>
+          <h2 style={{ fontSize: "clamp(24px,3.4vw,36px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.1, textWrap: "balance" }}>
+            Our vision
+          </h2>
+          <p style={{ fontSize: 18, lineHeight: 1.6, color: "var(--ff-soft)", marginTop: 16, maxWidth: 640, marginInline: "auto", textWrap: "pretty" }}>
+            Every business should give customers the same instant, accurate support as the biggest companies — without the
+            big-company budget. AI should handle the routine so you can focus on what actually matters. We&apos;re just
+            getting started.
+          </p>
+          <div style={{ marginTop: 26, display: "flex", justifyContent: "center" }}>
+            <Btn kind="primary" size="lg" href="/login">
+              Start free {Ic("arrowR", { size: 18 })}
+            </Btn>
           </div>
-        </section>
-      </main>
-      <Footer />
-    </>
+        </div>
+      </section>
+
+      <DarkCta
+        title="Ready to give every customer an answer?"
+        sub="5-minute setup. 89% of questions answered automatically. Free during beta."
+        secondaryLabel="See features"
+        secondaryHref="/features"
+      />
+    </main>
   );
 }

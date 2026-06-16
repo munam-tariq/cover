@@ -1,26 +1,27 @@
-import { Code, ExternalLink } from "lucide-react";
+import { Code } from "lucide-react";
 import { Metadata } from "next";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
-import { Footer } from "../components/footer";
-import { Header } from "../components/header";
+import { Eyebrow, Ic, WRAP } from "../components/marketing-kit";
+import { DarkCta, PageHero } from "../components/page-kit";
 
 export const metadata: Metadata = {
   title: "Integrations | Works on Any Website | FrontFace",
   description:
-    "Add FrontFace to Shopify, WordPress, Wix, Squarespace, or any website. One line of code, 5-minute setup. Connect with Slack, HubSpot, and more.",
+    "Add FrontFace to Shopify, WordPress, Wix, Squarespace, or any website with one line of code. Connect Slack, HubSpot, Zapier, and more. 5-minute setup.",
   keywords: [
     "Shopify chatbot",
     "WordPress chatbot",
     "Wix chatbot",
-    "ecommerce chatbot",
     "website chatbot integration",
-    "Slack chatbot",
+    "Slack integration",
     "HubSpot integration",
+    "MCP protocol",
   ],
   openGraph: {
     title: "FrontFace Integrations",
-    description: "Works on any website. Shopify, WordPress, Wix, and more.",
+    description: "Works on any website. Shopify, WordPress, Wix, and more — one line of code.",
     url: "https://frontface.app/integrations",
     type: "website",
     images: [
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI Lead Capture & Sales Agent",
+        alt: "FrontFace — AI support agent that knows your product",
       },
     ],
   },
@@ -47,11 +48,11 @@ const featuredIntegrations = [
   {
     name: "Shopify",
     description:
-      "Add AI customer support to your Shopify store. Answer product questions, track orders, and handle returns automatically.",
+      "Add AI support to your Shopify store. Answer product questions, order status and returns automatically from your own policies.",
     category: "Ecommerce",
     status: "Available",
     icon: (
-      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+      <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
         <path d="M15.5 2.5L14 3l-1 4-2 1v11l6.5-3V5.5l-2-3z" />
         <path d="M11 8l-4.5 2v10l4.5-2V8z" />
         <path d="M6.5 10L4 11v8l2.5-1V10z" />
@@ -61,309 +62,231 @@ const featuredIntegrations = [
   {
     name: "WordPress",
     description:
-      "Works with any WordPress site. Install with a simple plugin or paste one line of code. Compatible with WooCommerce too.",
+      "Works with any WordPress site. Install via plugin or paste one line of code. Fully compatible with WooCommerce.",
     category: "Website",
     status: "Available",
     icon: (
-      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.05-7.44 7-7.93v15.86zm2 0V4.07c3.94.49 7 3.85 7 7.93s-3.05 7.44-7 7.93z" stroke="white" strokeWidth="0.5" />
+      <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M5 8l4 11M12 4v16M19 8l-4 11" />
       </svg>
     ),
   },
   {
     name: "Wix",
     description:
-      "Add to your Wix website in minutes. No coding required—just paste the embed code in your site settings.",
+      "Add to your Wix site in minutes. No coding required — just paste the embed code in your site settings.",
     category: "Website",
     status: "Available",
     icon: (
-      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M4 6l4 12 4-8 4 8 4-12" stroke="white" strokeWidth="2" fill="none" />
+      <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 7l3.5 10L10 9l3.5 8L17 7" />
+        <path d="M19 7v10" />
       </svg>
     ),
   },
 ];
 
 const integrations = [
-  {
-    name: "Squarespace",
-    description:
-      "Add to any Squarespace site. Just paste the embed code in your site's code injection settings.",
-    category: "Website",
-    status: "Available",
-  },
-  {
-    name: "Custom Website",
-    description:
-      "Works on any website. Just paste one line of code before the closing body tag.",
-    category: "Website",
-    status: "Available",
-  },
-  {
-    name: "WooCommerce",
-    description:
-      "Full support for WooCommerce stores. Answer product questions and check order status.",
-    category: "Ecommerce",
-    status: "Available",
-  },
-  {
-    name: "Slack",
-    description:
-      "Get notified of new leads and escalations directly in Slack. Reply from Slack threads.",
-    category: "Communication",
-    status: "Coming Soon",
-  },
-  {
-    name: "Email",
-    description:
-      "Receive daily summaries and instant alerts for conversations that need your attention.",
-    category: "Communication",
-    status: "Coming Soon",
-  },
-  {
-    name: "HubSpot",
-    description:
-      "Sync leads directly to HubSpot CRM. Track chatbot-generated leads through your sales pipeline.",
-    category: "CRM",
-    status: "Coming Soon",
-  },
-  {
-    name: "Zapier",
-    description:
-      "Connect FrontFace to 5,000+ apps. Automate lead capture, notifications, and more.",
-    category: "Automation",
-    status: "Coming Soon",
-  },
-  {
-    name: "Google Analytics",
-    description:
-      "Track chatbot engagement in GA4. Understand how AI support impacts your conversion funnel.",
-    category: "Analytics",
-    status: "Coming Soon",
-  },
-  {
-    name: "REST API",
-    description:
-      "Full-featured REST API for custom integrations. Manage chatbots, knowledge bases, and conversations.",
-    category: "Developer",
-    status: "Available",
-  },
-  {
-    name: "Webhook",
-    description:
-      "Receive real-time notifications for new conversations, leads, and escalations.",
-    category: "Developer",
-    status: "Available",
-  },
-  {
-    name: "MCP Protocol",
-    description:
-      "For developers: Native Model Context Protocol support. Works with Cursor, Claude, and other AI tools.",
-    category: "Developer",
-    status: "Available",
-  },
-  {
-    name: "JavaScript SDK",
-    description:
-      "For developers: Advanced embed customization with React, Vue, and vanilla JS support.",
-    category: "Developer",
-    status: "Available",
-  },
+  { name: "Squarespace", description: "Add to any Squarespace site via the code injection settings.", category: "Website", status: "Available" },
+  { name: "Custom Website", description: "Works on any website — paste one line of code before the closing body tag.", category: "Website", status: "Available" },
+  { name: "WooCommerce", description: "Full support for WooCommerce stores. Answer product and order questions.", category: "Ecommerce", status: "Available" },
+  { name: "Slack", description: "Get notified of new leads and escalations in Slack. Reply from threads.", category: "Communication", status: "Coming Soon" },
+  { name: "Email", description: "Receive daily summaries and instant alerts for conversations that need you.", category: "Communication", status: "Coming Soon" },
+  { name: "HubSpot", description: "Sync leads directly to HubSpot CRM and track them through your pipeline.", category: "CRM", status: "Coming Soon" },
+  { name: "Zapier", description: "Connect FrontFace to 5,000+ apps. Automate lead capture and notifications.", category: "Automation", status: "Coming Soon" },
+  { name: "Google Analytics", description: "Track agent engagement in GA4 and its impact on your conversion funnel.", category: "Analytics", status: "Coming Soon" },
+  { name: "REST API", description: "Full-featured REST API for custom integrations across agents and conversations.", category: "Developer", status: "Available" },
+  { name: "Webhooks", description: "Real-time notifications for new conversations, leads and escalations.", category: "Developer", status: "Available" },
+  { name: "MCP Protocol", description: "Native Model Context Protocol support. Works with Cursor, Claude and more.", category: "Developer", status: "Available" },
+  { name: "JavaScript SDK", description: "Advanced embed customization with React, Vue and vanilla JS support.", category: "Developer", status: "Available" },
 ];
 
 const categories = ["All", "Website", "Ecommerce", "Communication", "CRM", "Automation", "Analytics", "Developer"];
 
+function StatusBadge({ status }: { status: string }) {
+  const available = status === "Available";
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: ".02em",
+        padding: "4px 9px",
+        borderRadius: 99,
+        color: available ? "#fff" : "var(--ff-soft)",
+        background: available ? "var(--ff-ink)" : "transparent",
+        border: available ? "1px solid var(--ff-ink)" : "1px solid var(--ff-line-2)",
+      }}
+    >
+      {available && <span style={{ width: 5, height: 5, borderRadius: 99, background: "#fff" }} />}
+      {status}
+    </span>
+  );
+}
+
+const cardStyle: CSSProperties = {
+  background: "var(--ff-card)",
+  border: "1px solid var(--ff-line)",
+  borderRadius: 18,
+  padding: "24px 22px",
+};
+
 export default function IntegrationsPage() {
   return (
-    <>
-      <Header />
-      <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white pt-24">
-        {/* Hero */}
-        <section className="max-w-6xl mx-auto px-6 py-16 text-center">
-          <span className="inline-block px-3 py-1 text-sm font-medium text-blue-600 bg-blue-50 rounded-full mb-4">
-            Integrations
-          </span>
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-            Works on Any Website
-          </h1>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            Shopify, WordPress, Wix, Squarespace, or custom site—FrontFace
-            works everywhere. Just paste one line of code and you&apos;re live.
-          </p>
-        </section>
+    <main>
+      <PageHero
+        eyebrow="Integrations"
+        title="Works on any website."
+        sub="Shopify, WordPress, Wix, Squarespace or a custom site — FrontFace works everywhere. Paste one line of code and you're live."
+      />
 
-        {/* Featured Integrations */}
-        <section className="max-w-6xl mx-auto px-6 py-8">
-          <h2 className="text-2xl font-bold text-slate-900 mb-8 text-center">
-            Featured Integrations
-          </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {featuredIntegrations.map((integration, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl border border-slate-200 p-8 hover:shadow-xl transition-all duration-300 relative overflow-hidden"
-              >
-                <div className="absolute top-4 right-4">
-                  <span className="px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">
-                    {integration.status}
-                  </span>
-                </div>
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white mb-4">
-                  {integration.icon}
-                </div>
-                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                  {integration.category}
-                </span>
-                <h3 className="text-xl font-bold text-slate-900 mt-1 mb-2">
-                  {integration.name}
-                </h3>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  {integration.description}
-                </p>
+      {/* Featured */}
+      <section style={{ ...WRAP, padding: "clamp(24px,4vh,48px) clamp(20px,5vw,40px)" }}>
+        <div className="reveal" style={{ marginBottom: 28 }}>
+          <Eyebrow>Featured</Eyebrow>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 18 }}>
+          {featuredIntegrations.map((it, i) => (
+            <div key={it.name} className={"reveal ff-cap-card d" + ((i % 3) + 1)} style={{ ...cardStyle, position: "relative" }}>
+              <div style={{ position: "absolute", top: 18, right: 18 }}>
+                <StatusBadge status={it.status} />
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* All Integrations */}
-        <section className="bg-slate-50 py-20">
-          <div className="max-w-6xl mx-auto px-6">
-            <h2 className="text-2xl font-bold text-slate-900 mb-4 text-center">
-              All Integrations
-            </h2>
-            <p className="text-slate-600 text-center mb-8 max-w-2xl mx-auto">
-              Growing ecosystem of integrations to connect FrontFace with your
-              entire stack.
-            </p>
-
-            {/* Category Pills */}
-            <div className="flex flex-wrap gap-2 justify-center mb-12">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    category === "All"
-                      ? "bg-blue-600 text-white"
-                      : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-
-            {/* Integrations Grid */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {integrations.map((integration, index) => (
-                <div
-                  key={index}
-                  className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                      <Code className="w-5 h-5 text-slate-600" />
-                    </div>
-                    <span
-                      className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                        integration.status === "Available"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {integration.status}
-                    </span>
-                  </div>
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                    {integration.category}
-                  </span>
-                  <h3 className="font-bold text-slate-900 mt-1 mb-2">
-                    {integration.name}
-                  </h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    {integration.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Easy Setup Section */}
-        <section className="max-w-6xl mx-auto px-6 py-20">
-          <div className="bg-slate-900 rounded-2xl p-12 md:flex items-center gap-12">
-            <div className="md:w-1/2 mb-8 md:mb-0">
-              <span className="inline-block px-3 py-1 text-sm font-medium text-blue-400 bg-blue-500/20 rounded-full mb-4">
-                Simple Setup
+              <span style={{ width: 52, height: 52, borderRadius: 14, background: "var(--ff-ink)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                {it.icon}
               </span>
-              <h2 className="text-3xl font-bold text-white mb-4">
-                One Line of Code
-              </h2>
-              <p className="text-slate-400 leading-relaxed mb-6">
-                Adding FrontFace to your website is as simple as copying and
-                pasting one line of code. No technical skills required. Works
-                with any website builder or custom site.
-              </p>
-              <Link
-                href="/login"
-                className="inline-flex items-center text-blue-400 font-medium hover:text-blue-300 transition-colors"
-              >
-                Get Started Free
-                <ExternalLink className="w-4 h-4 ml-2" />
-              </Link>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", color: "var(--ff-muted)", textTransform: "uppercase" }}>{it.category}</span>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--ff-ink)", letterSpacing: "-.01em", marginTop: 4, marginBottom: 8 }}>{it.name}</h3>
+              <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--ff-soft)", textWrap: "pretty" }}>{it.description}</p>
             </div>
-            <div className="md:w-1/2">
-              <div className="bg-slate-800 rounded-xl p-6 font-mono text-sm">
-                <div className="text-slate-500 mb-2">
-                  {/* Add this before &lt;/body&gt; */}
-                </div>
-                <div className="text-green-400">
-                  &lt;script
-                </div>
-                <div className="text-green-400 pl-4">
-                  src=&quot;https://frontface.app/widget.js&quot;
-                </div>
-                <div className="text-green-400 pl-4">
-                  data-id=&quot;your-chatbot-id&quot;
-                </div>
-                <div className="text-green-400">
-                  &gt;&lt;/script&gt;
-                </div>
-                <div className="text-slate-500 mt-4">
-                  {/* That&apos;s it! Your AI chatbot is live. */}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+          ))}
+        </div>
+      </section>
 
-        {/* CTA */}
-        <section className="bg-gradient-to-r from-blue-600 to-purple-600 py-20">
-          <div className="max-w-4xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Ready to Add AI Support to Your Website?
-            </h2>
-            <p className="text-blue-100 mb-8 text-lg">
-              Works with any website. Setup takes 5 minutes. Free during beta.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/login"
-                className="px-8 py-4 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-colors shadow-lg"
+      {/* All integrations */}
+      <section style={{ ...WRAP, padding: "clamp(24px,4vh,48px) clamp(20px,5vw,40px)" }}>
+        <div className="reveal" style={{ textAlign: "center", maxWidth: 560, margin: "0 auto 28px" }}>
+          <h2 style={{ fontSize: "clamp(26px,3.8vw,42px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.08, textWrap: "balance" }}>
+            All integrations
+          </h2>
+          <p style={{ fontSize: 16.5, lineHeight: 1.55, color: "var(--ff-soft)", marginTop: 14, textWrap: "pretty" }}>
+            A growing ecosystem to connect FrontFace with your entire stack.
+          </p>
+        </div>
+
+        <div className="reveal" style={{ display: "flex", flexWrap: "wrap", gap: 9, justifyContent: "center", marginBottom: 36 }}>
+          {categories.map((c, i) => {
+            const on = i === 0;
+            return (
+              <span
+                key={c}
+                style={{
+                  padding: "8px 15px",
+                  borderRadius: 99,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  border: "1px solid " + (on ? "var(--ff-ink)" : "var(--ff-line-2)"),
+                  background: on ? "var(--ff-ink)" : "#fff",
+                  color: on ? "#fff" : "var(--ff-soft)",
+                }}
               >
-                Get Started Free
-              </Link>
-              <a
-                href="mailto:hello@frontface.app"
-                className="px-8 py-4 bg-blue-500/30 text-white font-semibold rounded-lg hover:bg-blue-500/40 transition-colors border border-white/20"
-              >
-                Request Integration
-              </a>
+                {c}
+              </span>
+            );
+          })}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 18 }}>
+          {integrations.map((it, i) => (
+            <div key={it.name} className={"reveal ff-cap-card d" + ((i % 3) + 1)} style={cardStyle}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
+                <span style={{ width: 40, height: 40, borderRadius: 11, background: "var(--ff-accent-soft)", color: "var(--ff-accent-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Code className="w-5 h-5" />
+                </span>
+                <StatusBadge status={it.status} />
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", color: "var(--ff-muted)", textTransform: "uppercase" }}>{it.category}</span>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--ff-ink)", letterSpacing: "-.01em", marginTop: 4, marginBottom: 7 }}>{it.name}</h3>
+              <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--ff-soft)", textWrap: "pretty" }}>{it.description}</p>
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* One line of code (dark) */}
+      <section style={{ ...WRAP, padding: "clamp(32px,5vh,64px) clamp(20px,5vw,40px)" }}>
+        <div
+          className="reveal ff-code-split"
+          style={{
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: 24,
+            background: "linear-gradient(160deg,#11151b,#0d1117)",
+            color: "#fff",
+            padding: "clamp(32px,4vw,56px)",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "clamp(28px,4vw,48px)",
+            alignItems: "center",
+          }}
+        >
+          <div
+            className="lattice"
+            style={
+              {
+                position: "absolute",
+                inset: 0,
+                "--lt": "rgba(255,255,255,.045)",
+                "--lt-size": "60px",
+                maskImage: "radial-gradient(120% 100% at 0% 0%, #000 30%, transparent 80%)",
+                WebkitMaskImage: "radial-gradient(120% 100% at 0% 0%, #000 30%, transparent 80%)",
+              } as CSSProperties
+            }
+          />
+          <div style={{ position: "relative" }}>
+            <Eyebrow light>Simple setup</Eyebrow>
+            <h2 style={{ fontSize: "clamp(26px,3.4vw,38px)", fontWeight: 800, letterSpacing: "-.03em", lineHeight: 1.08, textWrap: "balance" }}>
+              One line of code.
+            </h2>
+            <p style={{ fontSize: 15.5, lineHeight: 1.6, color: "rgba(255,255,255,.62)", marginTop: 14, marginBottom: 22, textWrap: "pretty" }}>
+              Adding FrontFace is as simple as pasting one line. No technical skills, no build step — works with any website
+              builder or custom site.
+            </p>
+            <Link href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 14.5, fontWeight: 600, color: "#fff" }}>
+              Get started free {Ic("arrowR", { size: 16 })}
+            </Link>
           </div>
-        </section>
-      </main>
-      <Footer />
-    </>
+          <div style={{ position: "relative", borderRadius: 14, overflow: "hidden", border: "1px solid rgba(255,255,255,.1)", background: "#0b0e13" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
+              {["#3a4150", "#2f3543", "#262b37"].map((c) => (
+                <span key={c} style={{ width: 9, height: 9, borderRadius: 99, background: c }} />
+              ))}
+              <span className="mono" style={{ marginLeft: 6, fontSize: 11, color: "rgba(255,255,255,.4)" }}>index.html</span>
+            </div>
+            <pre className="mono" style={{ margin: 0, padding: "16px 16px", fontSize: 12.5, lineHeight: 1.75, color: "rgba(255,255,255,.85)", overflowX: "auto" }}>
+              <span style={{ color: "#6b7686" }}>&lt;!-- Add before &lt;/body&gt; --&gt;</span>
+              {"\n"}
+              <span style={{ color: "#7aa2f7" }}>&lt;script</span>
+              {"\n  "}
+              <span style={{ color: "#9ece6a" }}>src</span>=<span style={{ color: "#e0af68" }}>&quot;https://cdn.frontface.app/widget.js&quot;</span>
+              {"\n  "}
+              <span style={{ color: "#9ece6a" }}>data-agent-id</span>=<span style={{ color: "#e0af68" }}>&quot;your-agent-id&quot;</span>
+              {"\n"}
+              <span style={{ color: "#7aa2f7" }}>&gt;&lt;/script&gt;</span>
+            </pre>
+          </div>
+        </div>
+      </section>
+
+      <DarkCta
+        title="Add AI support to your site in 5 minutes."
+        sub="Works with any website. Free during beta."
+        secondaryLabel="Request an integration"
+        secondaryHref="mailto:hello@frontface.app"
+      />
+    </main>
   );
 }

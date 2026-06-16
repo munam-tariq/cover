@@ -1,88 +1,118 @@
-"use client";
+import { Btn } from "./marketing-button";
+import { Eyebrow, Ic, WRAP } from "./marketing-kit";
 
-import { motion } from "framer-motion";
-import { ArrowRight, Check } from "lucide-react";
-import Link from "next/link";
-
-const features = [
+const PLAN_FEATURES = [
   "Unlimited AI conversations",
-  "Knowledge base (docs, URLs, files)",
+  "Knowledge base (site, docs, files)",
   "Lead capture & qualification",
-  "Human handoff",
-  "Analytics dashboard",
-  "Custom branding",
+  "Human handoff & queues",
+  "Website widget + public page",
+  "Multi-channel (WhatsApp, Slack…)",
+  "Campaigns & analytics",
   "API & MCP access",
-  "Priority support",
 ];
 
 export function PricingSection() {
   return (
-    <section id="pricing" className="py-24 md:py-40">
-      <div className="max-w-4xl mx-auto px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-16"
+    <section id="pricing" style={{ ...WRAP, padding: "clamp(56px,9vh,110px) clamp(20px,5vw,40px)", scrollMarginTop: 80 }}>
+      <div className="reveal" style={{ textAlign: "center", maxWidth: 560, margin: "0 auto 44px" }}>
+        <Eyebrow center>Pricing</Eyebrow>
+        <h2
+          style={{
+            fontSize: "clamp(30px,4.4vw,50px)",
+            fontWeight: 800,
+            letterSpacing: "-.03em",
+            color: "var(--ff-ink)",
+            lineHeight: 1.06,
+            textWrap: "balance",
+          }}
         >
-          <p className="text-xs uppercase tracking-[0.2em] text-zinc-400 mb-4">
-            Pricing
-          </p>
-          <h2 className="text-3xl md:text-5xl font-bold text-zinc-900 tracking-tight mb-4">
-            Free while we build.
-          </h2>
-          <p className="text-zinc-500 max-w-lg mx-auto">
-            Full access. No credit card. Help us shape the product and lock in
-            early adopter pricing forever.
-          </p>
-        </motion.div>
+          Free while we build.
+        </h2>
+        <p style={{ fontSize: 17, lineHeight: 1.55, color: "var(--ff-soft)", marginTop: 14, textWrap: "pretty" }}>
+          Full access, no credit card. Help us shape the product and lock in early-adopter pricing for good.
+        </p>
+      </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="max-w-md mx-auto"
+      <div className="reveal" style={{ maxWidth: 460, margin: "0 auto", position: "relative" }}>
+        <div
+          style={{
+            position: "absolute",
+            inset: "-6% -4%",
+            background: "radial-gradient(60% 60% at 50% 0%, rgba(var(--ff-accent-rgb),.12), transparent 70%)",
+            filter: "blur(8px)",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "relative",
+            background: "var(--ff-card)",
+            border: "1px solid var(--ff-line)",
+            borderRadius: 24,
+            overflow: "hidden",
+            boxShadow: "0 40px 80px -44px rgba(16,24,40,.34)",
+          }}
         >
-          <div className="rounded-2xl border border-black/[0.08] bg-white overflow-hidden shadow-xl shadow-black/[0.04]">
-            <div className="p-8 text-center border-b border-black/[0.06]">
-              <div className="flex items-baseline justify-center gap-1 mb-1">
-                <span className="text-5xl font-bold text-zinc-900">$0</span>
-                <span className="text-zinc-400 text-sm">/mo</span>
-              </div>
-              <p className="text-zinc-400 text-sm">
-                <span className="line-through">$49/mo</span>
-                <span className="text-emerald-600 ml-2">Free during beta</span>
-              </p>
+          <div style={{ padding: "32px 32px 26px", textAlign: "center", borderBottom: "1px solid var(--ff-line)" }}>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: ".04em",
+                color: "var(--ff-accent-2)",
+                background: "var(--ff-accent-soft)",
+                borderRadius: 99,
+                padding: "5px 12px",
+                marginBottom: 18,
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: 99, background: "var(--ff-accent)" }} /> BETA ACCESS
+            </span>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 8 }}>
+              <span style={{ fontSize: 60, fontWeight: 800, letterSpacing: "-.04em", color: "var(--ff-ink)", lineHeight: 1 }}>$0</span>
+              <span style={{ fontSize: 16, color: "var(--ff-muted)", fontWeight: 500 }}>/mo</span>
             </div>
-
-            <div className="p-8 space-y-4">
-              {features.map((feature, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                  <span className="text-sm text-zinc-600">{feature}</span>
+            <div style={{ marginTop: 10, fontSize: 14, color: "var(--ff-soft)" }}>
+              <span style={{ textDecoration: "line-through", color: "var(--ff-muted)" }}>$49/mo</span> &nbsp;
+              <span style={{ color: "var(--ff-ok)", fontWeight: 700 }}>Free during beta</span>
+            </div>
+          </div>
+          <div style={{ padding: "26px 32px 30px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 18px", marginBottom: 26 }}>
+              {PLAN_FEATURES.map((f) => (
+                <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 9, fontSize: 13.5, color: "var(--ff-text)" }}>
+                  <span
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: 99,
+                      background: "var(--ff-accent-soft)",
+                      color: "var(--ff-accent-2)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      marginTop: 1,
+                    }}
+                  >
+                    {Ic("check", { size: 12, sw: 2.6 })}
+                  </span>
+                  {f}
                 </div>
               ))}
             </div>
-
-            <div className="p-8 pt-0">
-              <Link
-                href="/login"
-                className="group flex items-center justify-center gap-2 w-full bg-zinc-900 text-white py-3.5 rounded-full font-medium text-sm hover:bg-zinc-800 transition-colors"
-              >
-                Start Free
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </div>
-
-            <div className="px-8 pb-6">
-              <p className="text-[11px] text-zinc-400 text-center">
-                Early adopters get grandfathered pricing at launch.
-              </p>
+            <Btn kind="primary" size="lg" href="/login" style={{ width: "100%" }}>
+              Build your agent {Ic("arrowR", { size: 18 })}
+            </Btn>
+            <div style={{ textAlign: "center", marginTop: 16, fontSize: 12.5, color: "var(--ff-muted)" }}>
+              Early adopters get grandfathered pricing at launch.
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

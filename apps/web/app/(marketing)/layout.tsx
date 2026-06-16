@@ -1,8 +1,10 @@
 import Script from "next/script";
 
 import { CursorGlow } from "./components/cursor-glow";
+import { Footer } from "./components/footer";
 import { Header } from "./components/header";
 import { ScrollProgress } from "./components/scroll-progress";
+import { ScrollReveal } from "./components/scroll-reveal";
 
 export default function MarketingLayout({
   children,
@@ -10,11 +12,13 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="marketing-light min-h-screen bg-white text-[#09090b]">
+    <div className="marketing-light min-h-screen">
       <ScrollProgress />
       <CursorGlow />
+      <ScrollReveal />
       <Header />
       {children}
+      <Footer />
       {/* FrontFace Help Chat Widget */}
       <Script
         src="https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets/widget.js"
@@ -22,7 +26,7 @@ export default function MarketingLayout({
         data-api-url="https://api.frontface.app"
         data-title="Help"
         data-greeting="Hi! Have questions about FrontFace? I'm here to help."
-        data-primary-color="#3b82f6"
+        data-primary-color="#11151b"
         data-position="bottom-right"
         strategy="lazyOnload"
       />

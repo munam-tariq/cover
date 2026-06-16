@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 
-import { Footer } from "../components/footer";
-import { Header } from "../components/header";
+import { WRAP } from "../components/marketing-kit";
+import { PageHero } from "../components/page-kit";
 
 export const metadata: Metadata = {
   title: "Terms of Service | FrontFace",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI Lead Capture & Sales Agent",
+        alt: "FrontFace — AI support agent that knows your product",
       },
     ],
   },
@@ -34,20 +34,16 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <>
-      <Header />
-      <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white pt-24">
-        <article className="max-w-4xl mx-auto px-6 py-16">
-          {/* Header */}
-          <div className="mb-12">
-            <h1 className="text-4xl font-bold text-slate-900 mb-4">
-              Terms of Service
-            </h1>
-            <p className="text-slate-500">Last Updated: January 2026</p>
-          </div>
-
-          {/* Content */}
-          <div className="prose prose-slate max-w-none">
+    <main>
+      <PageHero
+        eyebrow="Legal"
+        title="Terms of Service"
+        sub="The terms that govern your use of FrontFace."
+      />
+      <article style={{ ...WRAP, maxWidth: 820, padding: "clamp(8px,2vh,24px) clamp(20px,5vw,40px) clamp(40px,6vh,80px)" }}>
+        <p style={{ fontSize: 13.5, color: "var(--ff-muted)", marginBottom: 28 }}>Last updated: January 2026</p>
+        {/* Content */}
+        <div className="prose-ff" style={{ maxWidth: "none" }}>
             {/* Acceptance */}
             <section className="mb-10">
               <h2 className="text-2xl font-bold text-slate-900 mb-4">
@@ -545,10 +541,8 @@ export default function TermsPage() {
                 </a>
               </p>
             </section>
-          </div>
-        </article>
-      </main>
-      <Footer />
-    </>
+        </div>
+      </article>
+    </main>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -149,8 +148,20 @@ export function Sidebar() {
     <aside className="w-64 bg-card border-r min-h-screen p-4">
       <div className="mb-8">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-            <Image src="/logo.png" alt="FrontFace logo" width={20} height={20} className="h-5 w-5 object-contain" priority />
+          <div className="w-8 h-8 bg-[#11151b] rounded-lg flex items-center justify-center">
+            <svg
+              width="19"
+              height="19"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth={1.7}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M8 8h8a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2ZM12 4v4M9 13h.01M15 13h.01M4 12v3M20 12v3" />
+            </svg>
           </div>
           <span className="text-xl font-bold">FrontFace</span>
         </Link>
