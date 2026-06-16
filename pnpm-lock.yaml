@@ -230,6 +230,9 @@ importers:
       '@supabase/realtime-js':
         specifier: 2.90.1
         version: 2.90.1
+      '@supabase/supabase-js':
+        specifier: 2.88.0
+        version: 2.88.0
     devDependencies:
       '@chatbot/eslint-config':
         specifier: workspace:*

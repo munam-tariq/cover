@@ -11,7 +11,8 @@
   "dependencies": {
     "@chatbot/shared": "workspace:*",
     "@elevenlabs/client": "^0.15.0",
-    "@supabase/realtime-js": "2.90.1"
+    "@supabase/realtime-js": "2.90.1",
+    "@supabase/supabase-js": "2.88.0"
   },
   "devDependencies": {
     "@chatbot/eslint-config": "workspace:*",
