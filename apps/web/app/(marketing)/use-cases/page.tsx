@@ -31,20 +31,31 @@ export const metadata: Metadata = {
       "Resolve customer questions instantly from your own content — deflect tickets, capture leads, and hand off to humans. For SaaS, ecommerce, services, and more.",
     url: "https://frontface.app/use-cases",
     type: "website",
+    siteName: "FrontFace",
+    locale: "en_US",
     images: [
       {
-        url: "https://frontface.app/og-image.png",
+        url: "https://frontface.app/blog-og/use-cases.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI support agent that resolves customer questions instantly",
+        alt: "FrontFace Use Cases — AI support for SaaS, ecommerce, and services",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
+    site: "@frontface",
+    creator: "@frontface",
     title: "FrontFace Use Cases",
     description: "AI support that resolves customer questions instantly — deflects tickets, captures leads, and hands off to humans.",
-    images: ["https://frontface.app/og-image.png"],
+    images: [
+      {
+        url: "https://frontface.app/blog-og/use-cases.png",
+        width: 1200,
+        height: 630,
+        alt: "FrontFace Use Cases — AI support for SaaS, ecommerce, and services",
+      },
+    ],
   },
   alternates: {
     canonical: "https://frontface.app/use-cases",

@@ -24,20 +24,31 @@ export const metadata: Metadata = {
     description: "Works on any website. Shopify, WordPress, Wix, and more — one line of code.",
     url: "https://frontface.app/integrations",
     type: "website",
+    siteName: "FrontFace",
+    locale: "en_US",
     images: [
       {
-        url: "https://frontface.app/og-image.png",
+        url: "https://frontface.app/blog-og/integrations.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI support agent that resolves customer questions instantly",
+        alt: "FrontFace Integrations — works on Shopify, WordPress, Wix, and more",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
+    site: "@frontface",
+    creator: "@frontface",
     title: "FrontFace Integrations",
     description: "Works on any website. Shopify, WordPress, Wix, and more.",
-    images: ["https://frontface.app/og-image.png"],
+    images: [
+      {
+        url: "https://frontface.app/blog-og/integrations.png",
+        width: 1200,
+        height: 630,
+        alt: "FrontFace Integrations — works on Shopify, WordPress, Wix, and more",
+      },
+    ],
   },
   alternates: {
     canonical: "https://frontface.app/integrations",

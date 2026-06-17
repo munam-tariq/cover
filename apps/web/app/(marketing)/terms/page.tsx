@@ -12,6 +12,8 @@ export const metadata: Metadata = {
     description: "Terms and conditions for using FrontFace.",
     url: "https://frontface.app/terms",
     type: "website",
+    siteName: "FrontFace",
+    locale: "en_US",
     images: [
       {
         url: "https://frontface.app/og-image.png",
@@ -23,9 +25,18 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@frontface",
+    creator: "@frontface",
     title: "Terms of Service | FrontFace",
     description: "Terms and conditions for using FrontFace.",
-    images: ["https://frontface.app/og-image.png"],
+    images: [
+      {
+        url: "https://frontface.app/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "FrontFace — AI support agent that resolves customer questions instantly",
+      },
+    ],
   },
   alternates: {
     canonical: "https://frontface.app/terms",

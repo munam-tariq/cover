@@ -12,7 +12,9 @@ import { SocialProof } from "./components/social-proof";
 import { StatsBar } from "./components/stats-bar";
 
 export const metadata: Metadata = {
-  title: "FrontFace — AI Support Agent That Resolves Questions Instantly",
+  title: {
+    absolute: "FrontFace — AI Support Agent That Resolves Questions Instantly",
+  },
   description:
     "FrontFace resolves customer questions instantly from your knowledge base — so you support more customers without hiring more agents. Grounded answers with cited sources, lead capture, and human handoff. Free during beta.",
   keywords: [
@@ -28,6 +30,13 @@ export const metadata: Metadata = {
     "knowledge base chatbot",
   ],
   openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://frontface.app",
+    siteName: "FrontFace",
+    title: "FrontFace — AI Support Agent That Resolves Questions Instantly",
+    description:
+      "FrontFace resolves customer questions instantly from your knowledge base — so you support more customers without hiring more agents. Grounded answers with cited sources, lead capture, and human handoff. Free during beta.",
     images: [
       {
         url: "https://frontface.app/og-image.png",
@@ -38,8 +47,20 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
+    card: "summary_large_image",
+    site: "@frontface",
     creator: "@frontface",
-    images: ["https://frontface.app/og-image.png"],
+    title: "FrontFace — AI Support Agent That Resolves Questions Instantly",
+    description:
+      "FrontFace resolves customer questions instantly from your knowledge base — so you support more customers without hiring more agents. Grounded answers with cited sources, lead capture, and human handoff. Free during beta.",
+    images: [
+      {
+        url: "https://frontface.app/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "FrontFace — AI support agent that resolves customer questions instantly",
+      },
+    ],
   },
 };
 

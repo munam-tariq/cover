@@ -22,21 +22,32 @@ export const metadata: Metadata = {
       "Resolve customer questions instantly from your knowledge base — with cited sources, lead capture, and human handoff. Built for lean teams.",
     url: "https://frontface.app/about",
     type: "website",
+    siteName: "FrontFace",
+    locale: "en_US",
     images: [
       {
-        url: "https://frontface.app/og-image.png",
+        url: "https://frontface.app/blog-og/about.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI support agent that resolves customer questions instantly",
+        alt: "About FrontFace — AI support agent that resolves customer questions instantly",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
+    site: "@frontface",
+    creator: "@frontface",
     title: "About FrontFace",
     description:
       "Resolve customer questions instantly from your knowledge base — cited answers, lead capture, and human handoff.",
-    images: ["https://frontface.app/og-image.png"],
+    images: [
+      {
+        url: "https://frontface.app/blog-og/about.png",
+        width: 1200,
+        height: 630,
+        alt: "About FrontFace — AI support agent that resolves customer questions instantly",
+      },
+    ],
   },
   alternates: {
     canonical: "https://frontface.app/about",

@@ -18,7 +18,7 @@ export const blogPosts: BlogPost[] = [
     date: "2026-01-10",
     readTime: "8 min read",
     category: "Tutorial",
-    image: "/og-image.png",
+    image: "/blog-og/how-to-add-ai-chatbot-to-website.png",
     content: `
 Adding an AI chatbot to your website has never been easier. In 2026, with advances in large language models and RAG (Retrieval-Augmented Generation) technology, you can deploy intelligent customer support that actually understands your business.
 
@@ -153,7 +153,7 @@ Ready to get started? The future of customer support is here.
     date: "2025-01-08",
     readTime: "10 min read",
     category: "Strategy",
-    image: "/og-image.png",
+    image: "/blog-og/ai-customer-support-guide-startups.png",
     content: `
 You're building a startup. Resources are tight. Your team is small. But your customers expect Amazon-level support. Sound familiar?
 
@@ -338,7 +338,7 @@ Start today. Your future self will thank you.
     date: "2025-01-05",
     readTime: "7 min read",
     category: "Technology",
-    image: "/og-image.png",
+    image: "/blog-og/rag-vs-traditional-chatbots.png",
     content: `
 If you've researched AI chatbots, you've probably encountered the term "RAG." But what does it actually mean, and why should you care?
 
@@ -530,7 +530,7 @@ The chatbot revolution isn't coming. It's here. And RAG is leading the way.
     date: "2024-12-22",
     readTime: "8 min read",
     category: "Strategy",
-    image: "/og-image.png",
+    image: "/blog-og/chatbot-lead-generation-guide.png",
     content: `
 Your website gets visitors. But visitors don't pay bills. Customers do.
 
@@ -827,7 +827,7 @@ Your visitors are waiting to become customers. Help them make that journey.
     date: "2026-06-15",
     readTime: "7 min read",
     category: "Strategy",
-    image: "/og-image.png",
+    image: "/blog-og/cut-support-tickets-without-hiring.png",
     content: `
 Every growing business hits the same wall: support volume climbs faster than the team can. You answer the same handful of questions over and over, replies get slower, and customers feel it. The instinct is to hire. But for repetitive questions, hiring is the expensive answer to the wrong problem.
 
@@ -894,7 +894,7 @@ Your team's time is your scarcest resource. Stop spending it answering the same 
     date: "2026-06-12",
     readTime: "9 min read",
     category: "Strategy",
-    image: "/og-image.png",
+    image: "/blog-og/best-ai-customer-support-tools-startups.png",
     content: `
 If you're a startup or small team, "AI customer support" has gone from nice-to-have to table stakes. Customers expect instant, accurate answers, and you can't staff a 24/7 team. A category of tools now resolves the bulk of routine questions for you. The hard part is choosing.
 
@@ -956,7 +956,7 @@ Most of these offer a free trial or tier. If you want the fastest path from noth
     date: "2026-06-10",
     readTime: "6 min read",
     category: "Tutorial",
-    image: "/og-image.png",
+    image: "/blog-og/add-ai-support-to-shopify-store.png",
     content: `
 Shopify makes it easy to open a store. Keeping up with customer questions is the hard part — "Where's my order?", "Do you ship to...?", "What's your return policy?", "Will this fit?" — asked over and over, often after hours, often right before someone decides whether to buy.
 
@@ -1042,7 +1042,7 @@ Ready to try it? FrontFace works on any Shopify store with one line of code and 
     date: "2026-06-17",
     readTime: "10 min read",
     category: "Strategy",
-    image: "/og-image.png",
+    image: "/blog-og/frontface-vs-chatbase-vs-intercom.png",
     content: `
 If you're shopping for AI customer support in 2026, three names keep coming up: FrontFace, Chatbase, and Intercom's Fin. They overlap on the headline promise — resolve customer questions automatically — but they're built for different teams. This is an honest comparison for startups and small teams deciding where to start.
 

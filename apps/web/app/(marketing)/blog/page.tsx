@@ -22,20 +22,31 @@ export const metadata: Metadata = {
     description: "Field notes on AI customer support, RAG-grounded answers, lead capture and human handoff.",
     url: "https://frontface.app/blog",
     type: "website",
+    siteName: "FrontFace",
+    locale: "en_US",
     images: [
       {
-        url: "https://frontface.app/og-image.png",
+        url: "https://frontface.app/blog-og/blog.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI support agent that resolves customer questions instantly",
+        alt: "FrontFace Blog — AI support agent playbooks and guides",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
+    site: "@frontface",
+    creator: "@frontface",
     title: "FrontFace Blog",
     description: "Field notes on AI customer support, RAG-grounded answers, lead capture and human handoff.",
-    images: ["https://frontface.app/og-image.png"],
+    images: [
+      {
+        url: "https://frontface.app/blog-og/blog.png",
+        width: 1200,
+        height: 630,
+        alt: "FrontFace Blog — AI support agent playbooks and guides",
+      },
+    ],
   },
   alternates: {
     canonical: "https://frontface.app/blog",

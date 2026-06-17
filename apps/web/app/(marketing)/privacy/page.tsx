@@ -12,6 +12,8 @@ export const metadata: Metadata = {
     description: "How FrontFace handles your data and protects your privacy.",
     url: "https://frontface.app/privacy",
     type: "website",
+    siteName: "FrontFace",
+    locale: "en_US",
     images: [
       {
         url: "https://frontface.app/og-image.png",
@@ -23,9 +25,18 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@frontface",
+    creator: "@frontface",
     title: "Privacy Policy | FrontFace",
     description: "How FrontFace handles your data and protects your privacy.",
-    images: ["https://frontface.app/og-image.png"],
+    images: [
+      {
+        url: "https://frontface.app/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "FrontFace — AI support agent that resolves customer questions instantly",
+      },
+    ],
   },
   alternates: {
     canonical: "https://frontface.app/privacy",
