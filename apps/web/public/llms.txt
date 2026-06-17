@@ -1,31 +1,53 @@
 # FrontFace
 
-> FrontFace is an AI chatbot platform built for developers using AI coding tools like Cursor, Claude Code, and Windsurf. It enables adding customer support chatbots to any website with a single line of code. The platform features MCP (Model Context Protocol) integration, allowing developers to manage chatbots entirely from within their AI editor without context switching.
+> FrontFace is an AI support agent for small teams. It resolves customer questions instantly from your knowledge base, answers with cited sources, captures qualified leads, and hands off complex chats to your team.
 
-FrontFace lets you create AI chatbots that answer customer questions using your knowledge base (PDFs, text, URLs). Key differentiators:
+FrontFace is built for founders, startups, ecommerce stores, service businesses, and lean support teams that keep answering the same customer questions but are not ready to hire more agents or adopt a heavy helpdesk suite.
 
-- **MCP-First**: Manage everything via AI tools (Cursor, Claude Code, Windsurf) without leaving your editor
-- **One-Line Install**: Single `<script>` tag embeds the chat widget on any website
-- **15-Minute Setup**: From zero to live chatbot in minutes
-- **RAG-Powered**: Semantic chunking, contextual embeddings, and hybrid search for accurate answers
-- **Lead Capture**: Automatically collects emails when the bot can't answer
+## Core Positioning
 
-## Getting Started
+- **Outcome**: Resolve customer questions instantly.
+- **Audience**: Small teams, SaaS founders, ecommerce stores, service businesses, and agencies.
+- **Proof**: Answers are grounded in your own content and show cited sources.
+- **Setup**: Add FrontFace to any website with one script tag.
+- **Workflow**: Let AI handle repetitive questions and route complex chats to humans.
+- **Secondary value**: Capture qualified leads from real conversations.
 
-- [Sign Up](https://frontface.app/login): Create a free account with magic link authentication
-- [Dashboard](https://frontface.app/dashboard): Manage projects, knowledge base, and settings
-- [Embed Guide](https://frontface.app/embed): Get your widget embed code with customization options
+## Public Pages
 
-## Features
+- [Home](https://frontface.app): AI support agent overview and live demo.
+- [Use Cases](https://frontface.app/use-cases): SaaS, ecommerce, professional services, agencies, education, and healthcare.
+- [Integrations](https://frontface.app/integrations): Shopify, WordPress, Wix, Squarespace, custom websites, API, webhooks, and coming-soon workflow integrations.
+- [Features](https://frontface.app/features): Knowledge-base answers, cited sources, lead capture, human handoff, analytics, and website deployment.
+- [Blog](https://frontface.app/blog): Buyer guides and field notes on AI customer support, RAG, support-ticket reduction, Shopify support, and tool comparisons.
+- [About](https://frontface.app/about): Company story and mission.
+- [Sign Up](https://frontface.app/login): Create a free account during beta.
 
-- [Knowledge Base](https://frontface.app/knowledge): Upload PDFs, text files, or scrape URLs to train your chatbot
-- [API Endpoints](https://frontface.app/api-endpoints): Connect external APIs for real-time data (order status, inventory, etc.)
-- [Analytics](https://frontface.app/analytics): View conversation metrics, top questions, and trends
-- [Playground](https://frontface.app/playground): Test your chatbot before deploying
+## Buyer-Intent Blog Topics
+
+- How to add an AI chatbot to your website.
+- AI customer support for startups.
+- RAG vs traditional chatbots.
+- Chatbot lead generation.
+- How to cut support tickets without hiring.
+- Best AI customer support tools for startups.
+- How to add AI support to a Shopify store.
+- FrontFace vs Chatbase vs Intercom Fin for small teams.
+
+## Product Capabilities
+
+- Knowledge-base ingestion from websites, docs, PDFs, FAQs, and policies.
+- RAG-grounded answers with cited sources.
+- Website chat widget with one-line install.
+- Hosted public agent pages.
+- Lead capture and qualification.
+- Human handoff for complex or high-intent conversations.
+- Conversation history and analytics.
+- REST API, webhooks, and MCP endpoint for integrations.
 
 ## MCP Integration
 
-Connect AI coding tools to manage your chatbot via natural language:
+FrontFace exposes an MCP endpoint for authenticated project management and agent operations.
 
 ```json
 {
@@ -39,36 +61,32 @@ Connect AI coding tools to manage your chatbot via natural language:
 }
 ```
 
-Available MCP tools: `list_projects`, `create_project`, `get_project_info`, `update_project_settings`, `list_knowledge`, `upload_knowledge`, `delete_knowledge`, `list_api_endpoints`, `add_api_endpoint`, `delete_api_endpoint`, `ask_question`, `get_embed_code`
+Available MCP tools include project management, knowledge management, API endpoint management, embed-code retrieval, and test questions against an agent.
 
 ## Widget Embed Code
 
 ```html
 <script
-  src="https://hynaqwwofkpaafvlckdm.supabase.co/storage/v1/object/public/assets/widget.js"
+  src="https://cdn.frontface.app/widget.js"
   data-project-id="YOUR_PROJECT_ID"
   data-position="bottom-right"
-  data-primary-color="#2563eb"
+  data-primary-color="#11151b"
+  data-title="Ask us anything"
+  data-greeting="Hi! How can I help?"
   async>
 </script>
 ```
 
-Configuration options: `data-project-id` (required), `data-api-url`, `data-position` (bottom-right/bottom-left), `data-primary-color`, `data-title`, `data-greeting`
+Configuration options include `data-project-id`, `data-api-url`, `data-position`, `data-primary-color`, `data-title`, and `data-greeting`.
 
 ## Technical Details
 
-- **Frontend**: Next.js 14, React 18, Tailwind CSS, shadcn/ui
-- **Backend**: Node.js/Express, OpenAI GPT-4o-mini, text-embedding-3-small
-- **Database**: Supabase PostgreSQL with pgvector for vector search
-- **Widget**: Vanilla JS with Shadow DOM for style isolation
-- **Auth**: Supabase Auth with magic links
-
-## API Reference
-
-- `POST /api/chat/message`: Send messages to chatbot (public, rate-limited)
-- `GET /api/projects`: List user's chatbot projects (auth required)
-- `POST /api/knowledge`: Upload knowledge sources (auth required)
-- `POST /mcp`: MCP server endpoint (API key auth)
+- **Frontend**: Next.js, React, Tailwind CSS.
+- **Backend**: Node.js/Express API.
+- **Database**: Supabase PostgreSQL with pgvector for vector search.
+- **AI**: Retrieval-augmented generation for grounded support answers.
+- **Widget**: JavaScript embed with isolated styling.
+- **Auth**: Magic-link authentication.
 
 ## Contact
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
@@ -44,5 +44,32 @@ test("comparison post does not overstate coming-soon channel support", () => {
     comparison.content.includes("FrontFace: website, plus WhatsApp, Slack, and email."),
     false,
     "comparison post should not present coming-soon channels as fully available",
+  );
+});
+
+test("public SEO and LLM files use the current support-resolution positioning", () => {
+  const checkedFiles = [
+    "apps/web/app/layout.tsx",
+    "apps/web/public/manifest.json",
+    "apps/web/public/llms.txt",
+  ];
+
+  for (const file of checkedFiles) {
+    const content = readFileSync(path.join(process.cwd(), file), "utf8");
+
+    assert.equal(
+      content.includes("AI support agent that knows your product"),
+      false,
+      `${file} should not use the retired headline framing`,
+    );
+  }
+
+  const llms = readFileSync(path.join(process.cwd(), "apps/web/public/llms.txt"), "utf8");
+
+  assert.match(llms, /resolves customer questions instantly/i);
+  assert.equal(
+    llms.includes("built for developers using AI coding tools"),
+    false,
+    "llms.txt should not position FrontFace as developer-first",
   );
 });

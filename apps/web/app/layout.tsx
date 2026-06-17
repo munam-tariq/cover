@@ -22,11 +22,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://frontface.app"),
   title: {
-    default: "FrontFace — AI Support Agent That Knows Your Product",
+    default: "FrontFace — AI Support Agent That Resolves Questions Instantly",
     template: "%s | FrontFace",
   },
   description:
-    "FrontFace is an AI support agent trained on your knowledge base. It answers customers instantly with cited sources, captures leads, and hands off to your team — on your site or anywhere. Free during beta.",
+    "FrontFace resolves customer questions instantly from your knowledge base — so small teams can support more customers without hiring. Cited answers, lead capture, and human handoff. Free during beta.",
   keywords: [
     "AI support agent",
     "AI customer support",
@@ -60,23 +60,23 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://frontface.app",
     siteName: "FrontFace",
-    title: "FrontFace — AI Support Agent That Knows Your Product",
+    title: "FrontFace — AI Support Agent That Resolves Questions Instantly",
     description:
-      "An AI support agent trained on your knowledge base — answering customers instantly with cited sources, capturing leads, and handing off to your team. Free during beta.",
+      "Resolve customer questions instantly from your knowledge base — with cited answers, lead capture, and human handoff. Free during beta.",
     images: [
       {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI support agent that knows your product",
+        alt: "FrontFace — AI support agent that resolves customer questions instantly",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "FrontFace — AI Support Agent That Knows Your Product",
+    title: "FrontFace — AI Support Agent That Resolves Questions Instantly",
     description:
-      "An AI support agent trained on your knowledge base — instant, cited answers, lead capture, and human handoff. Free during beta.",
+      "Resolve customer questions instantly from your knowledge base — with cited answers, lead capture, and human handoff. Free during beta.",
     images: ["https://frontface.app/og-image.png"],
     creator: "@frontface",
   },
@@ -107,7 +107,7 @@ const organizationSchema = {
   url: "https://frontface.app",
   logo: "https://frontface.app/logo.png",
   description:
-    "AI support agent for your website that answers customers from your knowledge base with cited sources, captures leads, and hands off to your team 24/7.",
+    "AI support agent that resolves customer questions instantly from your knowledge base, with cited answers, lead capture, and human handoff.",
   foundingDate: "2025",
   sameAs: [
     "https://twitter.com/frontface",
@@ -120,6 +120,8 @@ const softwareSchema = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   name: "FrontFace",
+  description:
+    "FrontFace resolves customer questions instantly from your knowledge base, so small teams can support more customers without hiring.",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   offers: {
@@ -128,13 +130,6 @@ const softwareSchema = {
     priceCurrency: "USD",
     description: "Free during beta",
   },
-  aggregateRating: {
-    "@type": "AggregateRating",
-    ratingValue: "4.9",
-    ratingCount: "50",
-    bestRating: "5",
-    worstRating: "1",
-  },
   featureList: [
     "Knowledge base Q&A with cited sources",
     "RAG-grounded AI answers",
@@ -142,7 +137,7 @@ const softwareSchema = {
     "Human handoff & queues",
     "One-line website widget",
     "Hosted public agent page",
-    "Multi-channel (WhatsApp, Slack, email)",
+    "Handoff alerts and workflow integrations",
     "Conversation analytics",
   ],
 };

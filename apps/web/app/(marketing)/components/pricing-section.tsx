@@ -7,7 +7,7 @@ const PLAN_FEATURES = [
   "Lead capture & qualification",
   "Human handoff & queues",
   "Website widget + public page",
-  "Multi-channel (WhatsApp, Slack…)",
+  "Handoff alerts & workflows",
   "Campaigns & analytics",
   "API & MCP access",
 ];

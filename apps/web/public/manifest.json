@@ -1,7 +1,7 @@
 {
   "name": "FrontFace",
   "short_name": "FrontFace",
-  "description": "AI support agent that knows your product — instant, cited answers from your knowledge base, lead capture, and human handoff.",
+  "description": "AI support agent that resolves customer questions instantly from your knowledge base, with cited answers, lead capture, and human handoff.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f6f7f9",
