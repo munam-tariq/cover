@@ -73,7 +73,7 @@ export function Footer() {
                 fontSize: 12,
                 fontWeight: 700,
                 letterSpacing: ".08em",
-                color: "rgba(255,255,255,.4)",
+                color: "rgba(255,255,255,.55)",
                 textTransform: "uppercase",
                 marginBottom: 16,
               }}
@@ -108,10 +108,10 @@ export function Footer() {
           gap: 12,
         }}
       >
-        <span style={{ fontSize: 13, color: "rgba(255,255,255,.4)" }}>
+        <span style={{ fontSize: 13, color: "rgba(255,255,255,.55)" }}>
           &copy; {new Date().getFullYear()} FrontFace. All rights reserved.
         </span>
-        <span style={{ fontSize: 13, color: "rgba(255,255,255,.4)" }}>
+        <span style={{ fontSize: 13, color: "rgba(255,255,255,.55)" }}>
           Built for support teams that move fast.
         </span>
       </div>

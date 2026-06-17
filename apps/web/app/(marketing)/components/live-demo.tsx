@@ -5,8 +5,19 @@
    redesign/landing-demo.jsx, typed, with timer cleanup and a static
    reduced-motion fallback. */
 
-import { useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+
+function useReducedMotion() {
+  const [prefersReduced, setPrefersReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReduced(mq.matches);
+    const update = (e: MediaQueryListEvent) => setPrefersReduced(e.matches);
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return prefersReduced;
+}
 
 import { DEMOS, type Demo } from "../landing-data";
 

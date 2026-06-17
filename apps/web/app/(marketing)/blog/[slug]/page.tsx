@@ -90,7 +90,53 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       logo: { "@type": "ImageObject", url: "https://frontface.app/logo.png" },
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": `https://frontface.app/blog/${post.slug}` },
+    about: [
+      { "@type": "Thing", name: "AI customer support" },
+      { "@type": "Thing", name: post.category },
+    ],
+    keywords: `${post.category}, AI support agent, knowledge base AI, RAG chatbot, FrontFace`,
   };
+
+  // HowTo schema for step-by-step tutorial posts
+  const isTutorial = post.slug.startsWith("how-to") || post.slug.startsWith("add-ai-support");
+  const howToSchema = isTutorial
+    ? {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        name: post.title,
+        description: post.description,
+        image: `https://frontface.app${post.image}`,
+        totalTime: "PT5M",
+        supply: [{ "@type": "HowToSupply", name: "Your website or knowledge base content" }],
+        tool: [{ "@type": "HowToTool", name: "FrontFace account (free during beta)" }],
+        step: [
+          {
+            "@type": "HowToStep",
+            position: 1,
+            name: "Choose your AI chatbot platform",
+            text: "Select an AI support platform that supports RAG (Retrieval-Augmented Generation) for knowledge-based responses, easy integration, and lead capture.",
+          },
+          {
+            "@type": "HowToStep",
+            position: 2,
+            name: "Prepare and upload your knowledge base",
+            text: "Gather your FAQ documents, product documentation, support articles, and pricing information. Upload them to FrontFace to create your grounded knowledge base.",
+          },
+          {
+            "@type": "HowToStep",
+            position: 3,
+            name: "Configure and customize your agent",
+            text: "Set your brand colors, logo, and welcome message. Test the agent against real customer questions before going live.",
+          },
+          {
+            "@type": "HowToStep",
+            position: 4,
+            name: "Embed on your website",
+            text: "Copy the one-line embed script and paste it into your website — works on Shopify, WordPress, Wix, Squarespace, or any custom site.",
+          },
+        ],
+      }
+    : null;
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",
@@ -118,6 +164,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     <>
       <Script id="article-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       <Script id="breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      {howToSchema && <Script id="howto-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }} />}
 
       <main style={{ overflowX: "hidden" }}>
         {/* header */}

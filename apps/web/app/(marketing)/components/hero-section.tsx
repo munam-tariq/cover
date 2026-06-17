@@ -1,8 +1,27 @@
+"use client";
+
+import dynamic from "next/dynamic";
 import type { CSSProperties } from "react";
 
-import { LiveDemo } from "./live-demo";
 import { Btn } from "./marketing-button";
 import { Ic, Pill } from "./marketing-kit";
+
+const LiveDemo = dynamic(
+  () => import("./live-demo").then((m) => ({ default: m.LiveDemo })),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        style={{
+          height: 480,
+          borderRadius: 24,
+          background: "var(--ff-card)",
+          border: "1px solid var(--ff-line)",
+        }}
+      />
+    ),
+  },
+);
 
 /* Hero — headline "Resolve customer questions instantly."
    (outcome-led; "knows your product" lives on as proof via the pill + grounded demo). */

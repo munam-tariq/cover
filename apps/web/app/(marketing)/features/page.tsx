@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Metadata } from "next";
+import Script from "next/script";
 
 import { Eyebrow, WRAP } from "../components/marketing-kit";
 import { DarkCta, PageHero } from "../components/page-kit";
@@ -115,6 +116,92 @@ const steps = [
   { step: "03", title: "Go live in 5 minutes", description: "Drop one line of code on any site — Shopify, WordPress, Wix or custom — or share a hosted public agent page." },
 ];
 
+const howToSchema = {
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  name: "How to Add an AI Support Agent to Your Website in 5 Minutes",
+  description:
+    "Set up FrontFace — an AI support agent that resolves customer questions from your knowledge base — on any website in three steps, no coding required.",
+  totalTime: "PT5M",
+  supply: [{ "@type": "HowToSupply", name: "Your website or knowledge base content" }],
+  tool: [{ "@type": "HowToTool", name: "FrontFace account (free during beta)" }],
+  step: [
+    {
+      "@type": "HowToStep",
+      position: 1,
+      name: "Feed it your knowledge",
+      text: "Point FrontFace at your website or upload docs, PDFs and FAQs. It reads everything and builds a grounded knowledge base in minutes.",
+    },
+    {
+      "@type": "HowToStep",
+      position: 2,
+      name: "Make it yours",
+      text: "Add your logo, pick your colors, write a welcome message. Test it against real questions before it goes live.",
+    },
+    {
+      "@type": "HowToStep",
+      position: 3,
+      name: "Go live in 5 minutes",
+      text: "Drop one line of code on any site — Shopify, WordPress, Wix or custom — or share a hosted public agent page.",
+    },
+  ],
+};
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "How does FrontFace know my product?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "FrontFace uses RAG (Retrieval-Augmented Generation) to index your existing content — website pages, PDFs, docs, and FAQs. When a customer asks a question, it retrieves the relevant content and generates a cited, accurate answer grounded in your actual material.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How long does setup take?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Most teams are live in under 5 minutes. Point FrontFace at your website or upload your docs, customize the widget, and paste one line of code. No developers or technical skills required.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Does FrontFace hallucinate or make up answers?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "No. FrontFace only answers from your indexed content and cites its sources in every response. If it doesn't find a match in your knowledge base, it says so and offers to connect the customer to a human — rather than guessing.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "What websites does FrontFace support?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "FrontFace works on any website with a single line of code — Shopify, WordPress, Wix, Squarespace, Webflow, Framer, or fully custom sites. It also offers a hosted public agent page with no embed required.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "What does FrontFace cost?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "FrontFace is free during the beta period. No credit card required to get started.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "What happens when the AI can't answer a question?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "FrontFace hands the conversation off to a human agent instantly, with the full conversation context included. Your team picks up exactly where the AI left off — no repeated context needed from the customer.",
+      },
+    },
+  ],
+};
+
 const cardStyle = {
   background: "var(--ff-card)",
   border: "1px solid var(--ff-line)",
@@ -148,7 +235,10 @@ const softChip = {
 
 export default function FeaturesPage() {
   return (
-    <main>
+    <>
+      <Script id="features-howto-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }} />
+      <Script id="features-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <main>
       <PageHero
         eyebrow="Features"
         title="Everything support needs. One agent."
@@ -231,5 +321,6 @@ export default function FeaturesPage() {
         secondaryHref="/use-cases"
       />
     </main>
+    </>
   );
 }

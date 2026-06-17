@@ -23,16 +23,25 @@ FrontFace is built for founders, startups, ecommerce stores, service businesses,
 - [About](https://frontface.app/about): Company story and mission.
 - [Sign Up](https://frontface.app/login): Create a free account during beta.
 
-## Buyer-Intent Blog Topics
+## Buyer-Intent Blog Posts
 
-- How to add an AI chatbot to your website.
-- AI customer support for startups.
-- RAG vs traditional chatbots.
-- Chatbot lead generation.
-- How to cut support tickets without hiring.
-- Best AI customer support tools for startups.
-- How to add AI support to a Shopify store.
-- FrontFace vs Chatbase vs Intercom Fin for small teams.
+- [How to Add an AI Chatbot to Your Website in 2026](https://frontface.app/blog/how-to-add-ai-chatbot-to-website): Step-by-step guide covering RAG setup, embedding, and configuration.
+- [AI Customer Support Guide for Startups](https://frontface.app/blog/ai-customer-support-guide-startups): Playbook for lean teams deploying AI support.
+- [RAG vs Traditional Chatbots](https://frontface.app/blog/rag-vs-traditional-chatbots): Why retrieval-augmented generation outperforms rule-based bots.
+- [Chatbot Lead Generation Guide](https://frontface.app/blog/chatbot-lead-generation-guide): Using conversational AI to capture and qualify leads.
+- [How to Cut Support Tickets Without Hiring](https://frontface.app/blog/cut-support-tickets-without-hiring): Deflecting 80%+ of routine questions with AI.
+- [Best AI Customer Support Tools for Startups](https://frontface.app/blog/best-ai-customer-support-tools-startups): Tool comparison focused on SMBs and lean teams.
+- [How to Add AI Support to a Shopify Store](https://frontface.app/blog/add-ai-support-to-shopify-store): Shopify-specific integration guide.
+- [FrontFace vs Chatbase vs Intercom for Small Teams](https://frontface.app/blog/frontface-vs-chatbase-vs-intercom): Honest comparison — pricing, features, and SMB fit.
+
+## Competitive Positioning
+
+FrontFace competes with Chatbase, Intercom Fin, Tidio, Crisp, and Zendesk AI.
+
+- vs **Chatbase**: Chatbase has moved upmarket (enterprise, SOC 2). FrontFace targets the SMB/founder segment they vacated — simpler setup, no enterprise pricing.
+- vs **Intercom Fin**: Intercom charges $74–$139/seat/month. FrontFace is free during beta, built for teams that can't afford per-seat pricing.
+- vs **Tidio/Crisp**: Those are live chat tools with bolt-on AI. FrontFace is AI-first — grounded answers from your knowledge base are the core product, not an add-on.
+- vs **Zendesk AI**: Zendesk is a full helpdesk suite. FrontFace is a focused support agent — live on any site in 5 minutes, no helpdesk migration required.
 
 ## Product Capabilities
 

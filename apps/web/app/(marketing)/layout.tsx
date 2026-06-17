@@ -6,6 +6,8 @@ import { Header } from "./components/header";
 import { ScrollProgress } from "./components/scroll-progress";
 import { ScrollReveal } from "./components/scroll-reveal";
 
+export const dynamic = "force-static";
+
 export default function MarketingLayout({
   children,
 }: {

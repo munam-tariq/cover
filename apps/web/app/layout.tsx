@@ -113,10 +113,25 @@ const organizationSchema = {
   "@type": "Organization",
   name: "FrontFace",
   url: "https://frontface.app",
-  logo: "https://frontface.app/logo.png",
+  logo: {
+    "@type": "ImageObject",
+    url: "https://frontface.app/logo.png",
+    width: 512,
+    height: 512,
+  },
   description:
     "AI support agent that resolves customer questions instantly from your knowledge base, with cited answers, lead capture, and human handoff.",
   foundingDate: "2025",
+  knowsAbout: [
+    "AI customer support",
+    "RAG chatbot",
+    "Knowledge base AI",
+    "Customer support automation",
+    "AI lead capture",
+    "Human handoff",
+    "Retrieval-Augmented Generation",
+    "AI support agent",
+  ],
   sameAs: [
     "https://twitter.com/frontface",
     "https://github.com/frontface",
@@ -158,6 +173,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <head>
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/logo.png" type="image/png" sizes="any" />
         <link rel="apple-touch-icon" href="/logo.png" />
@@ -165,9 +181,9 @@ export default function RootLayout({
         {/* Google Analytics */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-YLCW8JGB3W"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
-        <Script id="google-analytics" strategy="afterInteractive">
+        <Script id="google-analytics" strategy="lazyOnload">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
@@ -186,7 +202,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
         />
       </head>
-      <body className={`${inter.className} ${jetbrainsMono.variable}`}>
+      <body className={`${inter.className} ${jetbrainsMono.variable}`} suppressHydrationWarning>
         {children}
       </body>
     </html>

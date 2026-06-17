@@ -4,8 +4,6 @@ import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { createClient } from "@/lib/supabase/client";
-
 import { NAV } from "../landing-data";
 
 import { Btn } from "./marketing-button";
@@ -15,7 +13,6 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -25,20 +22,13 @@ export function Header() {
   }, []);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const supabase = createClient();
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        setIsLoggedIn(!!session);
-      } catch (error) {
-        console.error("Error checking auth:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    checkAuth();
+    // Lightweight session check via cookie — avoids loading the full supabase-js bundle.
+    // @supabase/ssr stores the session in a cookie named sb-{ref}-auth-token.
+    const hasSession = document.cookie.split(";").some((c) => {
+      const name = c.trim().split("=")[0];
+      return name.startsWith("sb-") && name.includes("-auth-token");
+    });
+    setIsLoggedIn(hasSession);
   }, []);
 
   const ctaHref = isLoggedIn ? "/dashboard" : "/login";
@@ -68,6 +58,7 @@ export function Header() {
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10 }} aria-label="FrontFace home">
           <Logo />
           <span
+            aria-hidden="true"
             style={{
               fontSize: 10.5,
               fontWeight: 700,
@@ -98,8 +89,7 @@ export function Header() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {!isLoading &&
-            (isLoggedIn ? (
+          {isLoggedIn ? (
               <Link
                 href="/dashboard"
                 style={{
@@ -140,7 +130,7 @@ export function Header() {
                   Build your agent {Ic("arrowR", { size: 15 })}
                 </Btn>
               </span>
-            ))}
+            )}
 
           {/* mobile menu toggle */}
           <button
