@@ -1,6 +1,8 @@
 import { MetadataRoute } from "next";
 
 import { blogPosts } from "./(marketing)/blog/blog-data";
+import { integrations as integrationPages } from "./(marketing)/integrations/integrations-data";
+import { useCases as useCasePages } from "./(marketing)/use-cases/use-cases-data";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://frontface.app";
@@ -19,6 +21,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/terms`,             lastModified: new Date("2026-06-17"), changeFrequency: "yearly"  as const, priority: 0.3 },
   ];
 
+  const integrationSubPages = integrationPages.map((p) => ({
+    url: `${baseUrl}/integrations/${p.slug}`,
+    lastModified: new Date("2026-06-18"),
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  }));
+
+  const useCaseSubPages = useCasePages.map((p) => ({
+    url: `${baseUrl}/use-cases/${p.slug}`,
+    lastModified: new Date("2026-06-18"),
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  }));
+
   // Blog posts — real lastModified from post.date so Google sees actual freshness
   const blogPages = blogPosts.map((post) => ({
     url: `${baseUrl}/blog/${post.slug}`,
@@ -27,5 +43,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...blogPages];
+  return [...staticPages, ...integrationSubPages, ...useCaseSubPages, ...blogPages];
 }

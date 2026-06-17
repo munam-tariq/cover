@@ -6,6 +6,8 @@ import type { CSSProperties } from "react";
 import { Eyebrow, Ic, WRAP } from "../components/marketing-kit";
 import { DarkCta, PageHero } from "../components/page-kit";
 
+import { integrations as integrationPages } from "./integrations-data";
+
 export const metadata: Metadata = {
   title: "Integrations | Works on Any Website",
   description:
@@ -54,6 +56,10 @@ export const metadata: Metadata = {
     canonical: "https://frontface.app/integrations",
   },
 };
+
+const slugMap: Record<string, string> = Object.fromEntries(
+  integrationPages.map((p) => [p.name, p.slug])
+);
 
 const featuredIntegrations = [
   {
@@ -163,6 +169,9 @@ export default function IntegrationsPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 18 }}>
           {featuredIntegrations.map((it, i) => (
             <div key={it.name} className={"reveal ff-cap-card d" + ((i % 3) + 1)} style={{ ...cardStyle, position: "relative" }}>
+              {slugMap[it.name] && (
+                <Link href={`/integrations/${slugMap[it.name]}`} aria-label={`${it.name} integration`} style={{ position: "absolute", inset: 0, zIndex: 0 }} />
+              )}
               <div style={{ position: "absolute", top: 18, right: 18 }}>
                 <StatusBadge status={it.status} />
               </div>
@@ -212,7 +221,10 @@ export default function IntegrationsPage() {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 18 }}>
           {integrations.map((it, i) => (
-            <div key={it.name} className={"reveal ff-cap-card d" + ((i % 3) + 1)} style={cardStyle}>
+            <div key={it.name} className={"reveal ff-cap-card d" + ((i % 3) + 1)} style={{ ...cardStyle, position: "relative" }}>
+              {slugMap[it.name] && (
+                <Link href={`/integrations/${slugMap[it.name]}`} aria-label={`${it.name} integration`} style={{ position: "absolute", inset: 0, zIndex: 0 }} />
+              )}
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
                 <span style={{ width: 40, height: 40, borderRadius: 11, background: "var(--ff-accent-soft)", color: "var(--ff-accent-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Code className="w-5 h-5" />

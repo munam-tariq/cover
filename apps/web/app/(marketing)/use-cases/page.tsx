@@ -62,6 +62,13 @@ export const metadata: Metadata = {
   },
 };
 
+const titleToSlug: Record<string, string> = {
+  "SaaS & Startups": "saas",
+  "E-commerce Stores": "ecommerce",
+  "Agencies": "agencies",
+  "Professional Services": "professional-services",
+};
+
 const useCases = [
   {
     icon: <Rocket className="w-7 h-7" />,
@@ -149,6 +156,7 @@ export default function UseCasesPage() {
               key={u.title}
               className={"reveal ff-uc-card d" + ((i % 3) + 1)}
               style={{
+                position: "relative",
                 background: "var(--ff-card)",
                 border: "1px solid var(--ff-line)",
                 borderRadius: 20,
@@ -158,6 +166,9 @@ export default function UseCasesPage() {
                 gridTemplateColumns: "minmax(0,300px) minmax(0,1fr)",
               }}
             >
+              {titleToSlug[u.title] && (
+                <Link href={`/use-cases/${titleToSlug[u.title]}`} aria-label={`Learn more about ${u.title}`} style={{ position: "absolute", inset: 0, zIndex: 0 }} />
+              )}
               <div className="ff-uc-panel" style={darkPanel}>
                 <div
                   className="lattice"
@@ -197,7 +208,7 @@ export default function UseCasesPage() {
                 </div>
                 <Link
                   href="/login"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 22, fontSize: 14, fontWeight: 600, color: "var(--ff-ink)" }}
+                  style={{ position: "relative", zIndex: 1, display: "inline-flex", alignItems: "center", gap: 7, marginTop: 22, fontSize: 14, fontWeight: 600, color: "var(--ff-ink)" }}
                 >
                   Get started for {u.title.toLowerCase()} {Ic("arrowR", { size: 15 })}
                 </Link>

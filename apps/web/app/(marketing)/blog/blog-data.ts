@@ -1111,6 +1111,659 @@ All three escalate to a human. The difference is where the human lives: Fin hand
 These are good tools solving the same core problem from different starting points. For most startups and small teams, the right first move is the one that gets accurate, grounded answers live on your site today, without adopting a whole support suite first. That's the bet FrontFace makes — and it's free during beta, so you can see it answer your own questions before you commit.
     `,
   },
+  {
+    slug: "how-to-add-chatbot-to-wordpress",
+    title: "How to Add an AI Chatbot to WordPress in 2026 (No Plugins Needed)",
+    description:
+      "Step-by-step guide to adding an AI customer support chatbot to your WordPress site. Works with any theme — no plugin required, no developer needed.",
+    date: "2026-01-20",
+    readTime: "7 min read",
+    category: "Tutorial",
+    image: "/blog-og/how-to-add-chatbot-to-wordpress.png",
+    content: `
+WordPress powers over 40% of the web — and most of those sites have zero automated customer support. If someone lands on your pricing page at 2am with a question, they bounce. An AI chatbot changes that.
+
+The good news: you don't need a plugin, a developer, or a three-month integration project. You need a snippet of HTML and five minutes.
+
+## Why WordPress Sites Need AI Chat
+
+Your WordPress site is working 24/7. Your support team isn't. That gap — nights, weekends, public holidays — is where customer questions go unanswered and deals quietly die.
+
+A well-deployed AI chatbot:
+- **Answers product questions instantly**, even when you're asleep
+- **Reduces repetitive support tickets** by handling FAQs automatically
+- **Captures leads** from visitors who are engaged but not ready to buy
+- **Books meetings** or escalates to a human when the question needs it
+
+Unlike static FAQ pages, an AI chatbot has a conversation. It asks follow-up questions, handles ambiguous phrasing, and gives answers grounded in your actual content.
+
+## The Traditional Plugin Approach (And Why It Falls Short)
+
+Search "WordPress chatbot plugin" and you'll find dozens of options: Tidio, Tawk.to, LiveChat, WP-Chatbot. Most of these were built for live chat — a human on the other end — with AI bolted on later.
+
+The problems:
+- **Generic AI responses**: They use generic LLMs with no grounding in your knowledge base. The bot will confidently answer questions about your product with made-up information.
+- **Plugin conflicts**: WordPress plugins conflict with each other. A chatbot plugin is another dependency to maintain, update, and debug when your theme updates.
+- **Pricing bloat**: Many charge per seat or per conversation at scale, which becomes expensive fast.
+- **Setup complexity**: "No-code" often means clicking through six wizard screens and connecting a dozen integrations.
+
+The alternative is simpler: use a tool that gives you an embed snippet and paste it into WordPress directly.
+
+## The Embed-Code Approach (Better)
+
+Modern AI support tools — like [FrontFace](/integrations/wordpress) — give you a small JavaScript snippet after you set up your chatbot. You paste it into your WordPress site once, and it runs everywhere.
+
+This approach:
+- **Requires no plugin** — no plugin directory approval, no conflict risk
+- **Works with any theme** — Divi, Elementor, GeneratePress, Astra, custom themes, all of them
+- **Loads asynchronously** — doesn't slow your page speed
+- **Stays updated automatically** — updates come from the provider, not a plugin update you have to approve
+
+## Step-by-Step: Adding an AI Chatbot to WordPress
+
+### Step 1: Set Up Your AI Chatbot
+
+Before touching WordPress, build your chatbot:
+
+1. Create a free account at frontface.app
+2. Upload your knowledge base — paste your FAQ, add your docs URL, or connect your help center
+3. Configure the widget: name, greeting message, colors to match your brand
+4. Copy the embed snippet from the dashboard
+
+The snippet looks something like this:
+
+\`\`\`html
+<script src="https://cdn.frontface.app/widget.js" data-id="YOUR_ID" async></script>
+\`\`\`
+
+### Step 2: Add the Snippet to WordPress
+
+There are two clean ways to do this — choose based on your setup.
+
+**Option A: Theme Footer (Recommended)**
+
+1. Go to **Appearance → Theme File Editor** in your WordPress dashboard
+2. Open \`footer.php\` (or your theme's equivalent)
+3. Paste the snippet just before the closing \`</body>\` tag
+4. Save changes
+
+If your theme doesn't have a \`footer.php\` you can edit directly, use a child theme — this protects your changes from being overwritten on theme updates.
+
+**Option B: Text Widget in Footer**
+
+1. Go to **Appearance → Widgets**
+2. Add a **Custom HTML** widget to your footer widget area
+3. Paste the embed snippet
+4. Save
+
+This approach works without editing code and survives theme updates, but only if your theme has a widgetized footer.
+
+**Option C: Using a Header/Footer Plugin**
+
+If neither option above works for your setup, a lightweight plugin like **Insert Headers and Footers** (by WPBeginner) lets you paste scripts into the footer without touching theme files. It's a single-purpose plugin with minimal conflict risk.
+
+### Step 3: Test Your Integration
+
+1. Visit your WordPress site in an incognito window
+2. The chat widget should appear in the corner
+3. Ask it a question that's covered in your knowledge base
+4. Verify the answer is accurate and cites your content
+
+If the widget doesn't appear: clear your WordPress cache (if you use WP Rocket, W3 Total Cache, or similar), then reload.
+
+## Tips for WooCommerce Stores
+
+If you're running WooCommerce, your chatbot has a specific job: answer product questions fast enough that customers don't abandon their cart.
+
+**Feed it the right content:**
+- Product descriptions and specifications
+- Shipping and return policies
+- Size guides or compatibility charts
+- Your most common pre-purchase questions
+
+**Place it strategically:**
+- Make sure it loads on product pages and the checkout page — not just your homepage
+
+**Set up lead capture:**
+- If a visitor asks about a product you're out of stock on, capture their email. Most AI chatbot tools have a lead capture flow you can configure for exactly this scenario.
+
+## Frequently Asked Questions
+
+**Q: Will adding a chatbot slow down my WordPress site?**
+
+No — the embed snippet loads asynchronously, which means it doesn't block your page from rendering. It loads after your main content is ready. Your Core Web Vitals score won't be affected.
+
+**Q: Do I need a developer to set this up?**
+
+No. If you can paste text into a WordPress text field, you can do this. The only "technical" step is pasting a snippet into your footer, which anyone comfortable with their WordPress dashboard can do.
+
+**Q: What if I use a page builder like Elementor or Divi?**
+
+Page builders usually don't interfere with the footer — the snippet goes in \`footer.php\` or a text widget, not inside a page builder canvas. Both Elementor and Divi play nicely with this approach.
+
+**Q: Can I add the chatbot to specific pages only?**
+
+Yes. If you want the chatbot only on certain pages (for example, your pricing page or contact page), you can use conditional logic in \`footer.php\` using WordPress's \`is_page()\` function. Alternatively, many chatbot providers let you configure URL-based display rules from their dashboard without touching code.
+
+**Q: How do I keep the chatbot's knowledge up to date?**
+
+With a RAG-based chatbot like FrontFace, you update your knowledge base in the dashboard and the chatbot immediately reflects the new content. You don't redeploy anything to WordPress — the snippet is just a loader, and the AI runs on the provider's infrastructure.
+    `,
+  },
+  {
+    slug: "zendesk-alternative-small-business",
+    title: "Best Zendesk Alternatives for Small Business in 2026",
+    description:
+      "Zendesk is built for enterprise support teams. Here are the best alternatives for small businesses and startups that want powerful AI support without the complexity or price.",
+    date: "2026-01-25",
+    readTime: "9 min read",
+    category: "Comparison",
+    image: "/blog-og/zendesk-alternative-small-business.png",
+    content: `
+Zendesk is a great product — if you're running a 50-person support team with complex workflows, SLA management, and a dedicated IT department to configure it. For everyone else, it's a very expensive way to answer customer emails.
+
+If you're a small business or startup that signed up for Zendesk because it was "the industry standard," you've probably noticed: you're using 10% of its features and paying for all of them.
+
+Here's what to use instead.
+
+## Why Small Businesses Leave Zendesk
+
+The three most common complaints from small business owners switching away from Zendesk:
+
+**Pricing.** Zendesk's Support plans start at $19/agent/month — which sounds reasonable until you realize that "agent" pricing means every team member handling support costs extra. Add the AI features, and you're looking at significantly more. For a 5-person team at a startup, this adds up fast.
+
+**Complexity.** Zendesk was built for enterprise. Its configuration options, workflow engine, and admin interface were designed for a support ops team to manage. If you're a founder-operator or a small support team without dedicated IT, setting it up correctly is a project in itself.
+
+**Overkill for your actual needs.** Most small businesses need: a way to answer customer questions, some AI to handle common ones automatically, and a simple inbox to see what's coming in. Zendesk delivers all of that buried under ticket routing rules, custom fields, macros, triggers, automations, and views you'll never touch.
+
+## The 5 Best Zendesk Alternatives for Small Business
+
+### 1. FrontFace — Best for AI-First Ticket Deflection
+
+**What it is:** An AI support agent that answers customer questions directly from your knowledge base, without a human in the loop.
+
+**Who it's for:** Startups and small teams that want to deflect 60–80% of support tickets automatically, not just organize them into a better inbox.
+
+**How it works:** You upload your documentation, FAQs, and product content. FrontFace builds a knowledge base and deploys an AI agent that answers questions with cited, grounded responses — not hallucinated LLM guesses. It captures leads, escalates to a human when needed, and sits on your site as a chat widget.
+
+**Pricing:** Free during beta.
+
+**What it doesn't do:** It's not a full help desk ticketing system. If you need SLA management, internal agent routing, and a shared inbox for complex escalations, you'll want to pair it with a lightweight help desk tool.
+
+**Best for:** Teams whose biggest problem is volume — too many repetitive questions, not enough hours to answer them all.
+
+See [FrontFace features](/features) for the full breakdown.
+
+### 2. Freshdesk — Best Traditional Help Desk Alternative
+
+**What it is:** A full-featured help desk with ticketing, email, live chat, and AI assist features.
+
+**Who it's for:** Teams that need a proper shared inbox and ticketing system with a gentler learning curve than Zendesk.
+
+**Pricing:** Free plan available; paid plans start at $15/agent/month.
+
+**AI capabilities:** Freddy AI handles basic ticket routing, suggested replies, and summarization — useful, but not purpose-built for fully automated ticket deflection.
+
+**Verdict:** The most direct Zendesk alternative in terms of feature set, but at a more accessible price point and with a cleaner setup experience for small teams.
+
+### 3. Help Scout — Best for Email-Focused Teams
+
+**What it is:** A shared inbox platform built around email support, with a simple, email-like interface.
+
+**Who it's for:** Teams where support happens primarily over email and you want to manage it without a full ticketing system.
+
+**Pricing:** Starts at $22/user/month (annual billing).
+
+**AI capabilities:** AI Drafts and AI Summarize are included, but Help Scout is primarily a human-assisted tool — the AI helps agents, not replaces them.
+
+**Verdict:** Excellent for teams that love email and want a polished, focused tool without enterprise complexity. Less useful if you need website chat or automated deflection.
+
+### 4. Tidio — Best for Live Chat + Basic AI
+
+**What it is:** Live chat with an AI chatbot layer called Lyro.
+
+**Who it's for:** Ecommerce and small business sites that want live chat with some AI coverage for off-hours.
+
+**Pricing:** Free plan available; Lyro AI starts at $39/month.
+
+**AI capabilities:** Lyro can answer FAQs automatically. It's decent for basic coverage but less accurate on complex, product-specific questions compared to RAG-based tools.
+
+**Verdict:** A good entry point if you want live chat with light AI. The AI answers are reasonable for simple questions but can struggle with nuanced product queries.
+
+### 5. Zoho Desk — Best Budget Full-Stack Option
+
+**What it is:** A help desk platform in the Zoho ecosystem, with ticketing, AI, and multichannel support.
+
+**Who it's for:** Teams already in the Zoho ecosystem, or those who need full help desk features at the lowest possible price.
+
+**Pricing:** Free plan for up to 3 agents; paid plans start at $14/agent/month.
+
+**AI capabilities:** Zia (Zoho's AI) handles sentiment analysis, ticket tagging, and response suggestions.
+
+**Verdict:** The best price-to-feature ratio for a traditional help desk. The UI is dated compared to Help Scout or Freshdesk, and the AI is assistant-grade rather than autonomous — but at this price, it's hard to argue with.
+
+## Comparison Table
+
+| Tool | Starting Price | AI Ticket Deflection | Setup Time | Best For |
+|------|---------------|---------------------|------------|----------|
+| FrontFace | Free (beta) | Yes — RAG-based, grounded | ~30 min | Startups wanting auto-deflection |
+| Freshdesk | $15/agent/mo | Partial (AI assist) | 1–2 hours | Teams needing full ticketing |
+| Help Scout | $22/user/mo | No (AI assists humans) | 1–2 hours | Email-first support teams |
+| Tidio | $39/mo (AI) | Partial (basic FAQ) | ~1 hour | Ecommerce + live chat |
+| Zoho Desk | $14/agent/mo | Partial (AI assist) | 2–4 hours | Budget-conscious full help desk |
+
+## Who Each Tool Is Best For
+
+**Choose FrontFace if:** Your biggest problem is answering the same questions over and over, and you want AI to handle them without a human in the loop. Especially effective for SaaS products and ecommerce stores with a clear knowledge base.
+
+**Choose Freshdesk if:** You need a proper ticketing system with agent routing, SLAs, and multichannel support — but want something less overwhelming than Zendesk.
+
+**Choose Help Scout if:** Your support is email-heavy and your team values simplicity over features. The inbox-first design is genuinely pleasant to work in.
+
+**Choose Tidio if:** You want live chat coverage on your site and light AI for the gaps. Good for ecommerce where "is my order shipped?" type questions dominate.
+
+**Choose Zoho Desk if:** You're budget-constrained and need a full-featured help desk. Also good if you're already using Zoho CRM or Zoho One.
+
+## The Real Question: What Problem Are You Solving?
+
+Before switching tools, get clear on what's actually painful:
+
+- **Too many tickets to answer?** You need deflection, not a better inbox. AI-first tools (FrontFace) solve this better than ticketing systems.
+- **Disorganized team inbox?** You need a shared inbox with assignment and routing. Freshdesk or Help Scout.
+- **Need coverage outside business hours?** Any AI tool with a website widget. FrontFace, Tidio, or Intercom's Fin.
+- **Need SLAs and compliance tracking?** Stay in the traditional help desk category. Freshdesk or Zoho Desk.
+
+Most small businesses switching from Zendesk discover that what they actually wanted was simpler: fewer tickets reaching their inbox in the first place. That's what an AI-first deflection tool delivers.
+    `,
+  },
+  {
+    slug: "tidio-alternatives",
+    title: "Tidio Alternatives: Better AI Customer Support for Growing Teams",
+    description:
+      "Looking for a Tidio alternative? Compare the best options for AI-powered customer support in 2026 — including tools that go beyond live chat into full ticket deflection.",
+    date: "2026-02-01",
+    readTime: "8 min read",
+    category: "Comparison",
+    image: "/blog-og/tidio-alternatives.png",
+    content: `
+Tidio built its reputation on live chat — a widget that lets your team talk to customers in real time. The AI layer (Lyro) came later, and it shows. If you're evaluating Tidio because you want AI customer support and not just a chat box, you're probably already asking the right question: is there something better?
+
+Here's an honest breakdown.
+
+## What Tidio Does Well
+
+Before talking about alternatives, it's worth being clear on where Tidio shines:
+
+- **Live chat UX is polished.** The visitor-facing widget is clean and the agent interface is straightforward.
+- **Quick to deploy.** You can be live with a chat widget in under an hour.
+- **Ecommerce integrations.** Shopify, WooCommerce, and other ecommerce platforms work natively.
+- **Free plan available.** Good for testing the concept before committing budget.
+
+If you want a live chat tool with a human on the other end most of the time, Tidio is a reasonable choice.
+
+## Where Tidio Falls Short
+
+The friction points show up when you lean on the AI:
+
+**AI accuracy on product-specific questions.** Lyro uses a limited FAQ matching approach and a general LLM. It handles simple, pre-loaded questions well but struggles with complex, nuanced product queries. The answers are often generic or incorrect when customers ask anything beyond the FAQ.
+
+**No RAG grounding.** Lyro doesn't retrieve from a comprehensive knowledge base and reason over it the way RAG-based tools do. This means it can't accurately answer questions about your docs, policies, or product features without you manually curating a separate FAQ set.
+
+**Pricing tiers gate the AI.** The free plan has minimal Lyro conversations. Meaningful AI coverage requires the Lyro plan at $39/month plus conversations, which adds up.
+
+**Scaling the AI requires manual work.** As your product or policies change, you have to update Lyro's responses manually. A RAG-based tool automatically picks up changes when you update your knowledge base.
+
+## 5 Tidio Alternatives Worth Considering
+
+### 1. FrontFace — Best for Accurate AI Answers Grounded in Your Content
+
+**The core difference:** FrontFace is built on RAG (Retrieval-Augmented Generation). When a customer asks a question, the AI searches your actual knowledge base — your docs, FAQs, help articles — and generates an answer from that content, with citations showing which source it used.
+
+This means:
+- **No hallucinations**: The AI only answers from what you've given it. If it doesn't know, it says so.
+- **Automatic updates**: Update your docs, and the chatbot immediately reflects the change.
+- **Complex questions handled accurately**: Product compatibility, pricing edge cases, integration questions — all answered correctly because the AI is reasoning over your real content.
+
+**Also includes:** Lead capture, human handoff, website widget, and analytics.
+
+**Pricing:** Free during beta.
+
+**Best for:** SaaS products, service businesses, and ecommerce stores where accurate, product-specific answers matter more than live chat throughput.
+
+See [FrontFace features](/features) to compare with what you currently use.
+
+### 2. Intercom — Best for Enterprise-Grade Omnichannel Support
+
+**What it is:** A full customer communications platform with Fin (their AI agent), a shared inbox, and extensive CRM-style features.
+
+**AI approach:** Fin is one of the strongest AI agents on the market, built on GPT-4-class models with strong reasoning. It handles complex multi-step questions well and integrates deeply with the Intercom ecosystem.
+
+**Pricing:** Starts at $39/seat/month; Fin is priced per resolution on top of that, which makes it expensive at scale.
+
+**Verdict:** More powerful than Tidio's AI, but you're buying a whole communications platform. Only makes sense if you need omnichannel support (email, chat, product tours, outbound messages) and have budget for it.
+
+### 3. Crisp — Best Budget Live Chat with Light AI
+
+**What it is:** A multi-channel messaging platform with live chat, a shared inbox, and basic bot functionality.
+
+**AI approach:** Crisp's AI assistant helps agents draft replies but doesn't do autonomous customer-facing AI at Lyro's level. More of a human-assist tool.
+
+**Pricing:** Free plan; paid plans from $25/workspace/month.
+
+**Verdict:** A strong Tidio alternative if you mainly want live chat with team collaboration features. Cheaper than Tidio for the same live chat use case, but the AI is less capable if autonomous deflection is your goal.
+
+### 4. LiveChat — Best for High-Volume Live Chat Teams
+
+**What it is:** A polished live chat platform with AI-powered chat routing and response suggestions.
+
+**AI approach:** AI helps human agents respond faster — it's not a fully autonomous AI that handles conversations without a person. Strong on workflow automation for human agents.
+
+**Pricing:** Starts at $20/agent/month.
+
+**Verdict:** If your team does a lot of live chat and you want AI to make your agents faster (not replace them), LiveChat is a quality upgrade from Tidio. Not the right tool if you want to deflect tickets without a human.
+
+### 5. Freshchat — Best for Teams Wanting AI + Ticketing Together
+
+**What it is:** Freshworks' messaging platform, which combines live chat with AI bots (Freddy AI) and connects to the broader Freshdesk ticketing ecosystem.
+
+**AI approach:** Freddy AI handles FAQ-level automated responses and can escalate to agents. Better than Tidio's Lyro for routing logic; weaker than RAG-based tools for complex content-grounded answers.
+
+**Pricing:** Free plan; paid plans from $15/agent/month.
+
+**Verdict:** A good option if you want live chat + AI + ticketing in one ecosystem, especially if you're already in the Freshworks suite.
+
+## Who Should Switch Away from Tidio — and Why
+
+**Switch if your customers ask product-specific questions.** Lyro's FAQ-matching approach means it often gives incorrect or generic answers for anything beyond simple "what are your hours?" questions. A RAG-based tool like FrontFace handles this correctly.
+
+**Switch if you're spending time manually updating your bot.** Every time your product or policy changes, you update Lyro manually. With a RAG-based tool, you update your knowledge base (which you were doing anyway) and the bot is automatically current.
+
+**Switch if you want coverage without a human standby.** Tidio is built around the expectation of a human available to jump in. If you're a small team and want AI to handle conversations fully while you sleep, tools purpose-built for autonomous AI support are a better fit.
+
+**Stay on Tidio if:** Your support is primarily human-led live chat, your questions are simple and stable, and you value the ecommerce integrations and polished chat UX. Tidio does live chat well — the question is whether live chat is what you actually need.
+
+## The Core Trade-Off
+
+Most Tidio alternatives split into two categories:
+
+1. **Better live chat** (Crisp, LiveChat, Freshchat) — improve on Tidio's UX and team features, similar AI level
+2. **Better AI deflection** (FrontFace, Intercom Fin) — shift from chat-with-humans to AI-handles-it-first
+
+If you're growing and finding that live chat doesn't scale — that you can't be online every time a customer has a question — the second category is where to look. The goal shifts from "faster responses by humans" to "fewer questions that need a human at all."
+    `,
+  },
+  {
+    slug: "chatbot-for-small-business",
+    title: "AI Chatbot for Small Business: What Actually Works in 2026",
+    description:
+      "Most AI chatbots fail small businesses because they hallucinate or can't answer product-specific questions. Here's what actually works — and what to avoid.",
+    date: "2026-02-08",
+    readTime: "8 min read",
+    category: "Strategy",
+    image: "/blog-og/chatbot-for-small-business.png",
+    content: `
+You've seen the demos. Smooth AI chat, instant answers, happy customers. Then you try it on your own site and the bot confidently answers a question about your return policy with something you've never written in your life.
+
+That's not a chatbot problem. That's a hallucination problem — and it's the single biggest reason AI chatbots fail small businesses.
+
+Here's what actually works, what to look for, and how to avoid the failure modes.
+
+## Why Most AI Chatbots Fail Small Businesses
+
+### Failure Mode 1: Hallucination
+
+A general-purpose LLM (like the one powering many chatbot products) doesn't know anything about your business. It knows what language looks like. So when you ask it about your refund policy and it doesn't have that information, it makes something up that sounds plausible.
+
+This is worse than no chatbot at all. A customer acts on the wrong information, contacts your support team anyway, and is now also frustrated about the wrong answer they got.
+
+**The fix:** RAG (Retrieval-Augmented Generation). The AI retrieves from your actual knowledge base before generating a response. If the answer isn't in your content, it says it doesn't know. No hallucination.
+
+### Failure Mode 2: Can't Answer Product-Specific Questions
+
+Most chatbots are trained on generic data. They can answer "what is your refund policy?" if you've explicitly loaded that. But "Does your software integrate with Xero?" or "Can I use your product with a Shopify subscription app?" — questions that require reasoning over your docs — are beyond them.
+
+**The fix:** A knowledge base that's broad enough to cover your real product. And an AI that retrieves and reasons, not just matches keywords to pre-written answers.
+
+### Failure Mode 3: Expensive to Maintain
+
+You set up your chatbot in January. By March, you've launched two new features, changed your pricing, and updated your return policy. Now your chatbot is giving customers outdated information and you have to go back in and manually update every affected response.
+
+**The fix:** RAG-based tools that read from your existing docs. When you update your documentation, the chatbot automatically reflects the change. No separate FAQ to maintain.
+
+### Failure Mode 4: Setup Requires a Developer
+
+"No-code" on the sales page often means "a developer can set this up without writing custom code." The difference matters when you're a founder running support yourself.
+
+**The fix:** Look for tools with a genuine one-snippet embed and a documentation upload that doesn't require an API key and three hours of configuration.
+
+## What to Look for in an AI Chatbot for Small Business
+
+When evaluating options, prioritize these:
+
+**RAG-based answers with cited sources.** If the tool can show you which part of your knowledge base it used to answer a question, that's a good signal. Citations mean accountability. The AI can't hide a hallucination behind a vague response.
+
+**Easy knowledge base setup.** You should be able to paste a URL, upload a PDF, or connect your help center — and have it working in under an hour. If it takes days to configure your knowledge base, you'll never keep it updated.
+
+**Human handoff.** When a question is genuinely outside the AI's scope, it should escalate gracefully to a human — not give a wrong answer or leave the customer hanging.
+
+**Lead capture built in.** If a customer engages and then leaves, you've lost a warm contact. Good chatbot tools capture email or phone before the conversation ends.
+
+**Transparent pricing.** Volume-based pricing that scales unpredictably makes budgeting impossible. Look for flat-rate plans or a clear per-conversation model.
+
+## Common Mistakes When Buying or Building an AI Chatbot
+
+**Mistake 1: Buying based on the demo, not your own content.**
+Every chatbot looks good in a polished demo with curated questions. Before committing, test it with your actual product questions. Upload your real knowledge base and ask the bot what your most commonly confused customers ask.
+
+**Mistake 2: Optimizing for features instead of accuracy.**
+A chatbot with 50 features but mediocre answer accuracy is worse than one with 5 features and accurate answers. For small businesses, accuracy is the only metric that matters day one.
+
+**Mistake 3: Setting it and forgetting it.**
+AI chatbots aren't install-once tools. In the first 30 days, review the conversations regularly. Find the questions it's getting wrong or escalating too often, and fill those gaps in your knowledge base.
+
+**Mistake 4: Hiding the chatbot.**
+Some businesses are nervous that the chatbot will give a wrong answer and embarrass them. So they hide it — only showing it on FAQs pages, not on product or pricing pages where it matters most. The risk of a visible, helpful bot is lower than the risk of invisible support.
+
+## ROI Calculation Framework
+
+Before buying anything, estimate the value of your chatbot:
+
+1. **Volume baseline**: How many support questions do you get per week? (Email + chat + DMs)
+2. **Deflection rate**: A well-configured AI chatbot deflects 60–80% of repetitive questions
+3. **Your time cost**: What's your hourly rate, or your support person's hourly cost?
+4. **Monthly savings**: \`(weekly questions × deflection rate × average handle time) × hourly cost × 4\`
+
+Example: 50 questions/week × 70% deflection × 15 minutes × $50/hour × 4 = **$3,500/month** in time recovered. At that math, even a $200/month tool pays for itself in days.
+
+## Top Picks by Business Type
+
+### Ecommerce (Shopify, WooCommerce)
+
+Your customers ask about order status, shipping times, returns, product compatibility, and sizing. You need a chatbot that:
+- Integrates with your store platform
+- Answers questions about your actual products (not generic ecommerce answers)
+- Handles returns/refunds policy questions accurately
+
+**Look for:** [FrontFace for ecommerce](/use-cases/ecommerce), Tidio (for live chat coverage), or Gorgias (if you need full helpdesk ticketing too).
+
+### SaaS / Software Products
+
+Your customers ask about features, integrations, pricing tiers, API limits, and how to do specific things in your product. You need:
+- A chatbot that can reason over your documentation
+- Ability to handle "how do I..." questions from your help center
+- Lead capture for trial signups
+
+**Look for:** [FrontFace for SaaS](/use-cases/saas), Intercom Fin (if budget allows), or a RAG-based tool that ingests your docs cleanly.
+
+### Service Businesses (Agencies, Consultants, Coaches)
+
+Your customers ask about your services, pricing, availability, and process. You need:
+- Lead capture (the main job)
+- FAQ coverage for common pre-sales questions
+- Meeting booking or handoff to your calendar
+
+**Look for:** FrontFace (free during beta — free trial with lead capture built in), Calendly chatbot integration, or a simple RAG widget with a meeting booking CTA.
+
+## The Short Answer
+
+The AI chatbots that work for small businesses in 2026 have one thing in common: they're grounded in your actual content, not general LLM knowledge. They retrieve before they respond. They cite sources. They escalate when they don't know.
+
+Everything else — the widget design, the integrations, the pricing model — is secondary to that one question: does this bot actually know my business?
+
+Start with that filter. Shortlist accordingly. Test with your real questions before committing. And if you're still figuring out what your chatbot should do, FrontFace is free during beta — you can build your knowledge base and test it against your real support questions without spending anything.
+    `,
+  },
+  {
+    slug: "wix-chatbot",
+    title: "How to Add an AI Chatbot to Your Wix Website",
+    description:
+      "Add an AI support agent to your Wix site in under 10 minutes — no coding, no Wix app market required. Step-by-step guide for 2026.",
+    date: "2026-02-15",
+    readTime: "6 min read",
+    category: "Tutorial",
+    image: "/blog-og/wix-chatbot.png",
+    content: `
+Wix is one of the easiest ways to build a website. Adding an AI chatbot to it should be equally simple — and it is, once you know the right approach.
+
+This guide covers how to add an AI support agent to your Wix site in two ways: through Wix Velo (their custom code layer) and through the HTML embed widget. Either works. Pick the one that matches your comfort level.
+
+## Why Wix Site Owners Need AI Chat
+
+Wix sites typically belong to small business owners — coaches, consultants, retailers, local services, creators. These businesses share a common support problem: questions come in faster than one person can answer them, especially after hours.
+
+A well-configured AI chatbot handles the most common questions automatically:
+- **Business hours and location** (for local businesses)
+- **Service and pricing questions** (for consultants and agencies)
+- **Product details and availability** (for ecommerce)
+- **Booking and scheduling questions** (for service providers)
+
+And it does it at 2am on a Saturday, when you're not watching your inbox.
+
+## The Problem with Wix's Native Chat
+
+Wix offers Wix Chat — a built-in messaging widget that lets you chat with visitors in real time. It's fine for what it is: live chat where a human responds.
+
+But it's not an AI chatbot. There's no automated response layer, no knowledge base, and no ability to answer questions without you online. If you want AI, Wix Chat isn't it.
+
+The Wix App Market has a few third-party chatbot options, but most are limited in their AI capabilities — they're FAQ-matchers, not true AI agents. For an AI chatbot that reasons over your actual knowledge base, you need to bring your own tool.
+
+That's where the embed approach comes in.
+
+## Method 1: HTML Embed Widget (Easiest)
+
+This is the simplest approach and works in Wix Editor, Wix Studio, and on all Wix templates.
+
+### Step 1: Set Up Your AI Chatbot
+
+Before adding anything to Wix, build your chatbot:
+
+1. Create a free account at frontface.app
+2. Add your knowledge base — paste your FAQ content, upload a document, or add your site's URL
+3. Customize the widget appearance to match your brand
+4. Copy the embed code from your dashboard
+
+The embed code is a short \`<script>\` tag.
+
+### Step 2: Add the HTML Embed to Wix
+
+1. In the Wix Editor, click the **+** button to add an element
+2. Go to **Embed Code → HTML iFrame**
+3. Drag the HTML element to your page (place it anywhere — the chatbot widget will float in the corner regardless of where the embed block sits)
+4. Click the HTML element to open the editor
+5. Select **Code** mode and paste your embed snippet
+6. Click **Apply**
+
+The chatbot widget will appear on your published site (not always in the editor preview — publish first to test it).
+
+### Step 3: Apply to All Pages
+
+If you want the chatbot on every page (recommended), add the HTML embed to your **site header or footer** rather than an individual page:
+
+1. In the Wix Editor, click on your header or footer
+2. Click **Edit Header** (or Footer)
+3. Add the HTML Embed element there
+4. The embed will appear on every page automatically
+
+### Step 4: Publish and Test
+
+Hit **Publish** and visit your live site in an incognito window. The chatbot widget should appear in the corner. Ask it a question from your knowledge base and verify the answer is accurate.
+
+## Method 2: Wix Velo (For Developers or Advanced Users)
+
+Wix Velo is Wix's JavaScript development environment. If you're comfortable with code, this gives you more control — including the ability to show/hide the chatbot based on page, user type, or other conditions.
+
+### Step 1: Enable Velo
+
+In the Wix Editor, go to **Dev Mode → Turn on Dev Mode**. This activates the Velo code panel.
+
+### Step 2: Add to masterPage.js
+
+1. In the left panel, open **Site Structure → masterPage.js**
+2. This file runs on every page — perfect for a sitewide chatbot
+3. Add the following code:
+
+\`\`\`javascript
+$w.onReady(function () {
+  const script = document.createElement('script');
+  script.src = 'https://cdn.frontface.app/widget.js';
+  script.setAttribute('data-id', 'YOUR_CHATBOT_ID');
+  script.async = true;
+  document.body.appendChild(script);
+});
+\`\`\`
+
+Replace \`YOUR_CHATBOT_ID\` with the ID from your FrontFace dashboard.
+
+### Step 3: Preview and Publish
+
+Use **Preview** to test, then **Publish** to go live. The chatbot will load on every page after the site's main content.
+
+## Tips for Wix Ecommerce Stores
+
+If you're running Wix Stores (Wix's ecommerce platform), your AI chatbot has specific jobs:
+
+**Feed it your product content.** The chatbot is only as good as your knowledge base. Upload your product descriptions, shipping policy, return policy, and any common questions you get about your products.
+
+**Let it handle pre-purchase questions.** "Does this come in size L?" or "How long does shipping take to Canada?" are exactly the questions that prevent purchases when unanswered. A chatbot that handles these at the product page level can meaningfully increase conversion.
+
+**Use lead capture for out-of-stock items.** If customers ask about something you don't have, the chatbot can capture their email for a back-in-stock notification. Configure this in your FrontFace dashboard.
+
+**Check your Wix mobile view.** Wix separates mobile and desktop editor views. Verify the chatbot widget appears correctly on mobile — you may need to ensure the HTML embed element is included in your mobile header/footer as well.
+
+## Wix Editor vs. Wix Studio
+
+Both platforms support the HTML embed approach. The main difference:
+
+- **Wix Editor**: More constrained layout system. Add the HTML embed via the **+** menu and place it in your site header.
+- **Wix Studio**: More flexible. You can add the embed in the global header/footer via the Site Components panel, which gives cleaner sitewide coverage.
+
+The Velo method works the same in both.
+
+## Frequently Asked Questions
+
+**Q: Do I need to be a developer to add a chatbot to Wix?**
+
+No. The HTML embed method requires only pasting a code snippet into a Wix HTML element — no programming knowledge needed. If you can follow a step-by-step guide, you can do this.
+
+**Q: Will the chatbot slow down my Wix site?**
+
+No. The chatbot script loads asynchronously — after your main page content — so it doesn't affect your page speed or Wix's built-in SEO performance.
+
+**Q: Can I add the chatbot to specific pages only on Wix?**
+
+Yes. Instead of adding the HTML embed to your header/footer (which is sitewide), add it to individual page elements. The chatbot will only appear on pages where the embed is present.
+
+**Q: Does this work with Wix's mobile version?**
+
+Yes, but check it. Wix's mobile editor is separate from desktop. If you add the embed to the desktop header, verify it's also included in the mobile header — Wix sometimes requires this to be set separately.
+
+**Q: How do I update the chatbot's knowledge base?**
+
+Update your knowledge base in the FrontFace dashboard — add new FAQs, update existing content, or add a new document. The change takes effect immediately. You don't need to touch your Wix site at all.
+
+See [FrontFace's Wix integration guide](/integrations/wix) for the full setup walkthrough with screenshots.
+    `,
+  },
 ].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 
 export function getBlogPost(slug: string): BlogPost | undefined {
