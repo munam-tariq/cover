@@ -137,14 +137,14 @@ export const GOAL_OPTIONS: [string, string, string, string][] = [
   ["all", "spark", "All of the above", "One agent that answers, captures, and routes."],
 ];
 
-/* Testimonials + logos use only the JustPeople / OneGo / Sleet demo brands. */
+/* Testimonials + logos use only the HofMigration / OneGo / Sleet demo brands. */
 export const TESTIMONIALS = [
-  { co: "JustPeople", quote: "Setup took an afternoon. It reads our HR docs and just knows the answers — and quietly captures leads while it's at it.", who: "Maya Okonkwo", role: "Head of CX" },
+  { co: "HofMigration", quote: "Setup took an afternoon. It reads our immigration guides and just knows the answers — and quietly captures leads while it's at it.", who: "Maya Okonkwo", role: "Head of CX" },
   { co: "OneGo", quote: "It qualifies buyers before they ever reach our inbox. We start every morning with warm, pre-screened conversations.", who: "Tom Albrecht", role: "Growth" },
   { co: "Sleet", quote: "Handoff to a human is seamless. Customers never feel stuck, and we only step in when it actually matters.", who: "Priya Anand", role: "Support Manager" },
 ];
 
-export const LOGOS = ["JustPeople", "OneGo", "Sleet"];
+export const LOGOS = ["HofMigration", "OneGo", "Sleet"];
 
 export const FEATURES: [string, string, string][] = [
   ["sources", "Answers from your knowledge base", "Trained on your site, docs and FAQs — accurate replies, every time."],

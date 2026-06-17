@@ -40,7 +40,7 @@ interface KnowledgeListResponse {
   capacity?: CrawlCapacity;
 }
 
-/** Strip the protocol so cards show e.g. "www.justpeople.ai/privacy". */
+/** Strip the protocol so cards show e.g. "www.hofmigration.com/privacy". */
 function formatSourceUrl(url: string): string {
   return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
 }

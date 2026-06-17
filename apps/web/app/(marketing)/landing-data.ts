@@ -20,17 +20,17 @@ export interface Demo {
 /* rotating demo businesses for the hero answer-engine */
 export const DEMOS: Demo[] = [
   {
-    name: "JustPeople",
-    domain: "justpeople.ai",
-    mono: "JP",
-    tag: "HR platform",
-    pages: ["/product", "/payroll", "/onboarding", "/pricing", "/security", "/integrations"],
-    greeting: "Hi! I'm the JustPeople assistant — ask me anything.",
-    q: "Does JustPeople handle payroll and onboarding?",
-    cites: ["/payroll", "/onboarding"],
-    a: "Yes — JustPeople includes full payroll plus a guided employee onboarding flow, alongside hiring, scheduling and performance reviews — all in one place.",
-    q2: "Can someone help us roll this out for 200 employees?",
-    a2: "Happy to help with a rollout that size — I'll connect you with an onboarding specialist. What's the best work email to reach you?",
+    name: "HofMigration",
+    domain: "hofmigration.com",
+    mono: "HM",
+    tag: "Migration support",
+    pages: ["/services", "/visa-types", "/process", "/pricing", "/faq", "/contact"],
+    greeting: "Hi! I'm the HofMigration assistant — ask me anything about your move.",
+    q: "What visa options do you support for skilled workers?",
+    cites: ["/visa-types", "/process"],
+    a: "HofMigration supports skilled-worker visas, family reunification, student permits, and permanent residency applications — with end-to-end case management and document review.",
+    q2: "Can someone guide our team of 12 through the relocation process?",
+    a2: "Absolutely — I'll connect you with a relocation specialist for a tailored plan. What's the best email to reach you?",
   },
   {
     name: "OneGo",
@@ -148,9 +148,9 @@ export interface Testimonial {
 }
 export const TESTI: Testimonial[] = [
   {
-    co: "JustPeople",
+    co: "HofMigration",
     quote:
-      "We deflect 68% of support tickets now. Customers get instant, accurate answers and our team finally has room to breathe.",
+      "We deflect 68% of support tickets now. Clients get instant answers on visa requirements and our consultants finally have room to breathe.",
     who: "Maya Okonkwo",
     role: "Head of CX",
   },
@@ -170,7 +170,7 @@ export const TESTI: Testimonial[] = [
   },
 ];
 
-export const LOGOS = ["JustPeople", "OneGo", "Sleet"];
+export const LOGOS = ["HofMigration", "OneGo", "Sleet"];
 
 /* nav — [label, href]. Anchors are prefixed with "/" so they navigate to the
    landing page first when clicked from another marketing route. */
