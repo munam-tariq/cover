@@ -14,9 +14,9 @@ import { Ic, WRAP } from "../components/marketing-kit";
 import { DarkCta, PageHero } from "../components/page-kit";
 
 export const metadata: Metadata = {
-  title: "Use Cases | AI Support Agent for Every Industry | FrontFace",
+  title: "Use Cases | AI Support Agent for Every Industry",
   description:
-    "See how SaaS teams, ecommerce stores, professional services, and agencies use FrontFace to answer customers from their knowledge base, capture leads, and hand off to humans.",
+    "See how SaaS teams, ecommerce stores, professional services, and agencies use FrontFace to resolve customer questions instantly from their own content — deflecting tickets, capturing leads, and handing off to humans.",
   keywords: [
     "AI support for SaaS",
     "ecommerce AI support",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "FrontFace Use Cases — AI Support for Every Industry",
     description:
-      "Answer customers from your knowledge base, capture leads, and hand off to humans — for SaaS, ecommerce, services, and more.",
+      "Resolve customer questions instantly from your own content — deflect tickets, capture leads, and hand off to humans. For SaaS, ecommerce, services, and more.",
     url: "https://frontface.app/use-cases",
     type: "website",
     images: [
@@ -36,14 +36,14 @@ export const metadata: Metadata = {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI support agent that knows your product",
+        alt: "FrontFace — AI support agent that resolves customer questions instantly",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: "FrontFace Use Cases",
-    description: "AI support that answers from your knowledge base, captures leads, and hands off to humans.",
+    description: "AI support that resolves customer questions instantly — deflects tickets, captures leads, and hands off to humans.",
     images: ["https://frontface.app/og-image.png"],
   },
   alternates: {
@@ -128,7 +128,7 @@ export default function UseCasesPage() {
       <PageHero
         eyebrow="Use cases"
         title="One agent. Every kind of customer conversation."
-        sub="Whether you run a SaaS, a store, or a services firm — FrontFace answers from your knowledge base, captures leads, and hands off cleanly when a human is needed."
+        sub="Whether you run a SaaS, a store, or a services firm, FrontFace resolves customer questions instantly from your own content — capturing leads and handing off cleanly when a human's needed."
       />
 
       <section style={{ ...WRAP, padding: "clamp(24px,4vh,48px) clamp(20px,5vw,40px)" }}>

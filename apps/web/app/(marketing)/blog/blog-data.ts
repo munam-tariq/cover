@@ -12,15 +12,15 @@ export interface BlogPost {
 export const blogPosts: BlogPost[] = [
   {
     slug: "how-to-add-ai-chatbot-to-website",
-    title: "How to Add an AI Chatbot to Your Website in 2025",
+    title: "How to Add an AI Chatbot to Your Website in 2026",
     description:
       "A complete guide to adding AI-powered customer support to your website. Learn the best tools, implementation strategies, and tips for maximizing engagement.",
-    date: "2025-01-10",
+    date: "2026-01-10",
     readTime: "8 min read",
     category: "Tutorial",
-    image: "/blog/ai-chatbot-guide.png",
+    image: "/og-image.png",
     content: `
-Adding an AI chatbot to your website has never been easier. In 2025, with advances in large language models and RAG (Retrieval-Augmented Generation) technology, you can deploy intelligent customer support that actually understands your business.
+Adding an AI chatbot to your website has never been easier. In 2026, with advances in large language models and RAG (Retrieval-Augmented Generation) technology, you can deploy intelligent customer support that actually understands your business.
 
 ## Why Add an AI Chatbot?
 
@@ -153,7 +153,7 @@ Ready to get started? The future of customer support is here.
     date: "2025-01-08",
     readTime: "10 min read",
     category: "Strategy",
-    image: "/blog/startup-support.png",
+    image: "/og-image.png",
     content: `
 You're building a startup. Resources are tight. Your team is small. But your customers expect Amazon-level support. Sound familiar?
 
@@ -338,7 +338,7 @@ Start today. Your future self will thank you.
     date: "2025-01-05",
     readTime: "7 min read",
     category: "Technology",
-    image: "/blog/rag-chatbots.png",
+    image: "/og-image.png",
     content: `
 If you've researched AI chatbots, you've probably encountered the term "RAG." But what does it actually mean, and why should you care?
 
@@ -523,441 +523,6 @@ The chatbot revolution isn't coming. It's here. And RAG is leading the way.
     `,
   },
   {
-    slug: "vibe-coding-building-apps-with-ai",
-    title: "The Rise of Vibe Coding: Building Apps with AI Assistants",
-    description:
-      "How AI coding assistants like Cursor and Claude are changing software development. A guide to the vibe coding movement.",
-    date: "2025-01-02",
-    readTime: "9 min read",
-    category: "Trends",
-    image: "/blog/vibe-coding.png",
-    content: `
-There's a new way to build software, and it's called vibe coding.
-
-Forget the image of developers hunched over keyboards, typing every character. In 2025, the best developers work differently. They describe what they want. AI builds it. They refine and ship.
-
-## What is Vibe Coding?
-
-Vibe coding is a development approach where:
-- You describe intentions in natural language
-- AI assistants generate the code
-- You guide, review, and iterate
-- The focus shifts from typing to thinking
-
-It's not about replacing developers. It's about amplifying them.
-
-## The Tools of Vibe Coding
-
-### Cursor
-The AI-first IDE that's taken over developer Twitter. Features:
-- Chat with your codebase
-- Tab completion on steroids
-- Multi-file edits from prompts
-- Deep context understanding
-
-### Claude
-Anthropic's AI assistant, available via API and directly in editors. Known for:
-- Long context windows
-- Code explanation and generation
-- Thoughtful, thorough responses
-- Strong reasoning capabilities
-
-### GitHub Copilot
-The original AI pair programmer:
-- Real-time suggestions
-- IDE integration
-- Learning from your patterns
-- Broad language support
-
-### MCP (Model Context Protocol)
-The new standard for connecting AI to tools:
-- Give AI access to your data
-- Enable real actions, not just chat
-- Build integrations once, use everywhere
-- Growing ecosystem of connectors
-
-## A Day in the Life of a Vibe Coder
-
-### 9:00 AM - Starting a Feature
-Instead of planning detailed implementation, you write:
-
-"Add a user settings page with options for email notifications, theme preference, and data export. Use our existing design system components."
-
-Cursor generates the component, hooks, and API routes. You review for 5 minutes, make adjustments.
-
-### 10:30 AM - Debugging
-You encounter an error. Instead of Stack Overflow:
-
-"This component is re-rendering infinitely. Here's the code. What's causing it?"
-
-Claude identifies the missing dependency array in useEffect. Fixed in 30 seconds.
-
-### 2:00 PM - Integration
-You need to connect a third-party API:
-
-"Write a service to fetch weather data from OpenWeather API. Cache results for 1 hour. Handle rate limiting gracefully."
-
-Complete, tested implementation in minutes.
-
-### 4:00 PM - Documentation
-"Generate comprehensive JSDoc comments for all functions in this file. Include parameter descriptions and example usage."
-
-Documentation that would take an hour: 2 minutes.
-
-## Why Vibe Coding Works
-
-### 1. Leverage, Not Replacement
-AI handles the mundane:
-- Boilerplate code
-- Syntax details
-- Common patterns
-- Documentation
-
-You handle the important:
-- Architecture decisions
-- Business logic
-- Edge cases
-- User experience
-
-### 2. Faster Iteration
-Traditional development:
-Plan → Code → Test → Debug → Repeat
-
-Vibe coding:
-Describe → Review → Refine → Ship
-
-The feedback loop tightens dramatically.
-
-### 3. Learning Accelerator
-New framework? Ask AI to explain as it generates. Learn the patterns while shipping features.
-
-### 4. Reduced Context Switching
-Stay in flow state. No more:
-- Searching documentation
-- Copying from Stack Overflow
-- Looking up syntax
-- Writing boilerplate
-
-## Common Objections (And Why They're Wrong)
-
-### "It's just for beginners"
-Wrong. Senior developers are the biggest adopters. They know what good code looks like and can guide AI effectively.
-
-### "AI code is buggy"
-Sometimes. But so is human code. The difference: AI generates bugs in seconds. You can iterate faster.
-
-### "Developers will become obsolete"
-The opposite. Developers become MORE valuable. The bottleneck was never typing speed - it's design, judgment, and product thinking.
-
-### "It's cheating"
-Using a debugger was cheating. Using an IDE was cheating. Using Google was cheating. Tools evolve. Professionals adapt.
-
-## Best Practices for Vibe Coding
-
-### 1. Be Specific
-Bad: "Add authentication"
-Good: "Add email/password authentication using NextAuth. Include signup, login, and password reset flows. Store users in our existing Postgres database."
-
-### 2. Provide Context
-Share relevant code, requirements, and constraints. The more context, the better the output.
-
-### 3. Iterate Rapidly
-Don't aim for perfection on first prompt. Generate, review, refine. Multiple small iterations beat one big attempt.
-
-### 4. Review Everything
-AI makes mistakes. Review generated code like you'd review a junior developer's PR. Trust but verify.
-
-### 5. Understand What You Ship
-Never deploy code you don't understand. Use AI to explain code it generates. Learning compounds.
-
-## The Vibe Coder's Toolkit
-
-### Essential
-- Cursor or VS Code with Copilot
-- Claude for complex reasoning
-- Git for version control (always)
-
-### Recommended
-- MCP server connections for your stack
-- Automated tests (AI-generated work needs verification)
-- Design system (consistent outputs)
-
-### Advanced
-- Custom AI prompts for your codebase
-- RAG on your documentation
-- Automated code review with AI
-
-## Building for Vibe Coders
-
-If you're building developer tools, understand this audience:
-- They value speed over ceremony
-- They expect AI integration
-- They want one-line implementations
-- They appreciate good defaults
-
-This is why FrontFace exists. Vibe coders don't want to spend days building customer support. They want to describe what they need and ship it.
-
-"Add an AI chatbot that knows my docs" → One line of code → Done.
-
-## The Future
-
-Vibe coding is just getting started:
-- **Multi-agent systems:** Fleets of AI handling different tasks
-- **Continuous refinement:** AI that improves your code over time
-- **Natural conversation:** Voice-driven development
-- **Autonomous features:** AI that ships while you sleep
-
-## Getting Started
-
-1. **Install Cursor** - The gateway drug to vibe coding
-2. **Learn to prompt** - Be specific, provide context
-3. **Start small** - Use AI for boilerplate and docs first
-4. **Build confidence** - As you verify outputs, trust grows
-5. **Go bigger** - Entire features from descriptions
-
-The developers who embrace AI will outperform those who don't. Not because they're better coders - because they're better multiplied.
-
-The vibe is real. Join the movement.
-    `,
-  },
-  {
-    slug: "mcp-protocol-future-ai-integration",
-    title: "MCP Protocol: The Future of AI Tool Integration",
-    description:
-      "Understanding the Model Context Protocol (MCP) and how it's standardizing AI integrations. What developers need to know.",
-    date: "2024-12-28",
-    readTime: "6 min read",
-    category: "Technology",
-    image: "/blog/mcp-protocol.png",
-    content: `
-There's a new protocol changing how AI tools connect to the world: MCP.
-
-If you're building with AI or using AI development tools, understanding MCP will be crucial in the coming years.
-
-## What is MCP?
-
-MCP (Model Context Protocol) is an open standard for connecting AI assistants to external tools, data, and services.
-
-Think of it as USB for AI:
-- Before USB: Every device needed its own cable
-- After USB: Universal connectivity
-- Before MCP: Every AI integration is custom
-- After MCP: Standard protocol for all AI tools
-
-## The Problem MCP Solves
-
-### Before MCP
-
-Building an AI assistant that can:
-- Read your database
-- Search your documents
-- Access your APIs
-- Interact with external services
-
-Required:
-- Custom code for each integration
-- Different approaches for each AI provider
-- Maintenance burden that scales with integrations
-- No portability between tools
-
-### After MCP
-
-Write the integration once. Works everywhere.
-
-AI assistants that support MCP can connect to any MCP server. Build a server for your service, and every MCP-compatible AI can use it.
-
-## How MCP Works
-
-### Architecture
-
-**MCP Hosts** (AI Assistants)
-- Claude Desktop
-- Cursor
-- Other AI tools
-
-**MCP Clients** (The Protocol Handlers)
-- Built into hosts
-- Handle communication
-
-**MCP Servers** (Your Integrations)
-- Expose capabilities
-- Handle requests
-- Return results
-
-### Capabilities
-
-MCP servers can provide:
-
-**Resources**
-- Documents, files, data
-- Searchable content
-- Structured information
-
-**Tools**
-- Functions the AI can call
-- Actions it can take
-- APIs it can access
-
-**Prompts**
-- Pre-built prompt templates
-- Specialized interactions
-- Domain-specific guidance
-
-## Real-World MCP Examples
-
-### Database Access
-An MCP server that lets AI query your database:
-- AI asks "How many users signed up last week?"
-- MCP server translates to SQL
-- Executes safely
-- Returns results to AI
-
-### File System
-AI that can read and write your local files:
-- "Read the README in this project"
-- "Create a new component in /src/components"
-- Controlled, permissioned access
-
-### APIs
-Connect AI to any API:
-- "Create a new GitHub issue"
-- "Send a Slack message"
-- "Update the Notion page"
-
-### Knowledge Bases
-Give AI access to your documentation:
-- Company wiki
-- Product documentation
-- Internal knowledge
-- Customer support content
-
-## Why MCP Matters
-
-### For Developers
-
-**Build Once**
-Write an MCP server for your service. It works with every MCP-compatible AI tool, now and in the future.
-
-**Standard Protocol**
-No more learning each AI's custom integration approach. One protocol to learn.
-
-**Community Servers**
-Growing library of pre-built MCP servers. Plug and play.
-
-### For AI Tool Makers
-
-**Instant Ecosystem**
-Every MCP server becomes a capability for your tool. Massive leverage.
-
-**Focus on Core**
-Don't build integrations. Let the community build MCP servers.
-
-### For Users
-
-**More Capable AI**
-AI that can actually DO things, not just talk.
-
-**Consistent Experience**
-Same integrations work across tools.
-
-## Building with MCP
-
-### Creating an MCP Server
-
-Basic structure:
-
-1. Define your capabilities (tools, resources, prompts)
-2. Implement handlers for each
-3. Expose via MCP protocol
-4. Connect to MCP hosts
-
-### Example: FrontFace MCP
-
-We built an MCP server that lets AI assistants:
-- Create and manage chatbot projects
-- Upload knowledge bases
-- Configure settings
-- Test chatbot responses
-
-This means:
-- Cursor users can build chatbots via natural language
-- Claude can help configure support systems
-- Any MCP host gains chatbot capabilities
-
-### Getting Started
-
-1. **Read the spec:** mcp.io
-2. **Try existing servers:** Browse the MCP server directory
-3. **Build your own:** SDKs available for multiple languages
-4. **Connect:** Configure your MCP host to use servers
-
-## MCP Best Practices
-
-### Security First
-- Authenticate users properly
-- Validate all inputs
-- Limit capabilities appropriately
-- Log everything
-
-### Clear Capability Descriptions
-AI uses descriptions to decide when to use tools. Be explicit about:
-- What the tool does
-- When it should be used
-- What inputs it needs
-- What it returns
-
-### Error Handling
-AI needs to understand failures:
-- Clear error messages
-- Actionable guidance
-- Graceful degradation
-
-### Performance
-AI interactions should feel instant:
-- Cache when possible
-- Async operations
-- Timeout handling
-
-## The Future with MCP
-
-### Near Term
-- More AI tools adopting MCP
-- Growing server ecosystem
-- Enterprise adoption
-
-### Medium Term
-- MCP marketplaces
-- Paid premium servers
-- Standard security patterns
-
-### Long Term
-- Universal AI connectivity
-- AI agents with real capabilities
-- New application paradigms
-
-## Key Takeaways
-
-1. **MCP standardizes AI integrations** - Build once, works everywhere
-2. **Growing ecosystem** - More servers and hosts monthly
-3. **Real capabilities** - AI that acts, not just talks
-4. **Developer opportunity** - Early movers win
-
-## Getting Involved
-
-The MCP ecosystem is young. Opportunities abound:
-- Build servers for underserved services
-- Contribute to open source servers
-- Integrate MCP into your tools
-- Write documentation and tutorials
-
-MCP is the infrastructure layer for the AI-powered future. Understanding it now puts you ahead.
-
-The protocol is open. The community is growing. The future is being built.
-
-Will you be part of it?
-    `,
-  },
-  {
     slug: "chatbot-lead-generation-guide",
     title: "Chatbot Lead Generation: Turn Visitors into Customers",
     description:
@@ -965,7 +530,7 @@ Will you be part of it?
     date: "2024-12-22",
     readTime: "8 min read",
     category: "Strategy",
-    image: "/blog/lead-generation.png",
+    image: "/og-image.png",
     content: `
 Your website gets visitors. But visitors don't pay bills. Customers do.
 
@@ -1254,7 +819,299 @@ Tools like FrontFace make it easy:
 Your visitors are waiting to become customers. Help them make that journey.
     `,
   },
-];
+  {
+    slug: "cut-support-tickets-without-hiring",
+    title: "How to Cut Support Tickets Without Hiring (2026)",
+    description:
+      "Drowning in repetitive questions? Here's how small teams deflect most tickets with an AI agent — resolving customers instantly without adding headcount.",
+    date: "2026-06-15",
+    readTime: "7 min read",
+    category: "Strategy",
+    image: "/og-image.png",
+    content: `
+Every growing business hits the same wall: support volume climbs faster than the team can. You answer the same handful of questions over and over, replies get slower, and customers feel it. The instinct is to hire. But for repetitive questions, hiring is the expensive answer to the wrong problem.
+
+Here's how to cut ticket volume without adding headcount.
+
+## Start with the 20% of questions that cause 80% of tickets
+
+Open your inbox, your chat logs, your shared support channel, and tag the last 200 conversations. You'll almost always find the same clusters:
+
+- "How do I...?" setup and how-to questions
+- "Where's my order or invoice?"
+- "Do you support X?" (pricing, plans, integrations)
+- "How do I cancel or change my plan?"
+
+These aren't judgment calls. They're lookups. The answer already exists in your docs, FAQ, or policies. Customers just can't find it fast enough, so they open a ticket.
+
+## Why FAQ pages and canned replies don't fix it
+
+Most teams try two things first, and both fall short:
+
+- **Static FAQ pages** put the burden on the customer to read and search. Most won't — they'll open a ticket anyway.
+- **Canned replies and macros** still need a human in the loop, on the clock, during business hours. They make each reply faster; they don't remove the reply.
+
+Neither actually resolves the question the moment it's asked.
+
+## Deflect by resolving, not hiding
+
+"Deflection" gets a bad name because it usually means hiding the contact button. That just frustrates people. The version that works is resolution: answer the question instantly, accurately, in the customer's own words, so there's nothing left to escalate.
+
+A modern AI support agent does exactly this. It reads your existing content — website, docs, FAQs, policies — and answers directly in chat, with sources, 24/7. Done well, it resolves the majority of routine questions before they ever become a ticket.
+
+The key word is accurately. A generic bot that makes things up creates more tickets, not fewer. You want an agent grounded in your actual content that cites where each answer came from — so customers, and you, can trust it.
+
+## A one-afternoon playbook
+
+1. **Pull your top questions.** Tag your last 100–200 conversations and rank by frequency.
+2. **Fix the content gaps.** For each top question, make sure there's a clear, current answer in your docs or FAQ. This one step improves every channel at once.
+3. **Point an AI agent at that content.** Tools like FrontFace index your site and docs and go live with one line of code in about five minutes — no engineering project.
+4. **Set the escalation rule.** Decide what the agent hands to a human (refunds above a threshold, anything angry, anything it can't answer confidently) and route those to your inbox or Slack.
+5. **Review weekly.** Every unanswered question is a content gap. Add the answer, and the agent improves automatically.
+
+## What "without hiring" actually buys you
+
+When the routine 60–80% is handled automatically, the math changes:
+
+- Your team stops context-switching on repeat questions and focuses on conversations that need a human.
+- Response time drops to instant, around the clock, in every timezone.
+- You scale support with traffic, not with headcount.
+
+You'll still want humans for the hard, high-stakes, emotional conversations where they're irreplaceable. The point isn't to remove people — it's to stop spending them on questions your own documentation already answers.
+
+## Get started
+
+FrontFace resolves customer questions instantly from your knowledge base. Point it at your site, set your handoff rules, and watch which questions stop reaching your inbox. It's free during beta.
+
+Your team's time is your scarcest resource. Stop spending it answering the same question twice.
+    `,
+  },
+  {
+    slug: "best-ai-customer-support-tools-startups",
+    title: "Best AI Customer Support Tools for Startups (2026)",
+    description:
+      "An honest comparison of the top AI customer support tools for startups and small teams in 2026 — what each is good at, where it fits, and how to choose.",
+    date: "2026-06-12",
+    readTime: "9 min read",
+    category: "Strategy",
+    image: "/og-image.png",
+    content: `
+If you're a startup or small team, "AI customer support" has gone from nice-to-have to table stakes. Customers expect instant, accurate answers, and you can't staff a 24/7 team. A category of tools now resolves the bulk of routine questions for you. The hard part is choosing.
+
+Here's an honest look at the best AI customer support tools for small teams in 2026 — what each is genuinely good at, and how to pick.
+
+## What "good" looks like for a small team
+
+Before the list, the criteria that actually matter when you don't have a support org:
+
+- **Time to live.** Minutes, not a six-week implementation.
+- **Grounded answers.** It must answer from your content, with sources — not improvise.
+- **Honest handoff.** When it can't help, it routes to a human cleanly.
+- **Price that fits pre-scale.** Usage-based or a real free tier, not an enterprise contract.
+- **Works on your stack.** One line of code on whatever site you already run.
+
+## The tools
+
+### FrontFace — best for startups and founders
+FrontFace resolves customer questions instantly from your knowledge base and goes live on any site with one line of code in about five minutes. Answers are grounded in your own content and cited, it captures leads, and it hands off complex chats to your team. Built for lean teams who want results today, not a rollout project. Free during beta.
+Best for: SaaS, ecommerce, and services teams who want instant, accurate support without hiring.
+
+### Intercom Fin — best if you already live in Intercom
+Fin is a mature, production-proven AI agent that resolves a large share of tickets, with strong reporting. It shines for teams already invested in the Intercom suite and inbox. The trade-off is price and complexity — it's built for support orgs more than two-person teams.
+Best for: funded teams already running Intercom.
+
+### Chatbase — flexible agent builder going up-market
+Chatbase popularized "train an AI agent on your data" and has matured into a full customer-service platform with actions, integrations, and enterprise controls. As it's moved toward mid-market and enterprise, it's powerful but less tuned to the scrappy single-founder setup.
+Best for: teams wanting a configurable platform with a path to enterprise.
+
+### Zendesk AI — best if your support already runs on Zendesk
+If you're already standardized on Zendesk, its AI features bolt onto your existing tickets and workflows. A safe choice for established support teams, with the cost and overhead that implies.
+Best for: teams already on Zendesk.
+
+### Tidio / Crisp — lightweight live chat with AI add-ons
+These started as affordable live-chat widgets and added AI answers. Good entry points if you mainly want a chat box with some automation, though AI grounding and depth vary.
+Best for: very small sites wanting simple chat plus light automation.
+
+## How to choose in five minutes
+
+- **Already standardized on Intercom or Zendesk?** Start with their AI add-on — least friction.
+- **Want the most accurate answers from your own docs, live today, no rollout?** Try a purpose-built agent like FrontFace.
+- **Need a configurable platform with an enterprise path?** Look at Chatbase.
+- **Just want a cheap chat box with some AI?** Tidio or Crisp.
+
+## The one feature you shouldn't compromise on
+
+Whatever you choose, insist on grounded, cited answers. A tool that confidently makes things up about your product creates tickets and erodes trust faster than no bot at all. The whole point is to resolve questions accurately — from your content, every time.
+
+## Getting started
+
+Most of these offer a free trial or tier. If you want the fastest path from nothing to live, accurate AI support on your site, FrontFace is free during beta — point it at your content and see which questions stop reaching your inbox.
+    `,
+  },
+  {
+    slug: "add-ai-support-to-shopify-store",
+    title: "How to Add AI Support to Your Shopify Store",
+    description:
+      "A step-by-step guide to adding an AI support agent to your Shopify store — answer product, shipping, and returns questions automatically, 24/7, in about five minutes.",
+    date: "2026-06-10",
+    readTime: "6 min read",
+    category: "Tutorial",
+    image: "/og-image.png",
+    content: `
+Shopify makes it easy to open a store. Keeping up with customer questions is the hard part — "Where's my order?", "Do you ship to...?", "What's your return policy?", "Will this fit?" — asked over and over, often after hours, often right before someone decides whether to buy.
+
+An AI support agent answers all of it instantly, from your own store policies and product info. Here's how to add one to your Shopify store in about five minutes.
+
+## Why Shopify stores need this
+
+Unanswered questions cost sales. A shopper with a sizing, shipping, or returns question at 11pm won't wait for your morning reply — they'll leave. The questions are also extremely repetitive, which makes them perfect for automation:
+
+- Order status and tracking
+- Shipping options, costs, and timelines
+- Returns, refunds, and exchanges
+- Product details, sizing, and compatibility
+- Discounts and policies
+
+An agent grounded in your own policies answers these accurately, the moment they're asked, in any timezone.
+
+## What you'll need
+
+- Your Shopify store (any plan)
+- Your existing content: shipping policy, return policy, FAQ, product pages
+- An AI support tool that installs with one line of code (this guide uses FrontFace)
+
+## Step 1: Gather your content
+
+Your agent is only as good as what it learns from. Before installing, make sure these are written down and current:
+
+- Shipping policy (regions, costs, timelines)
+- Return and refund policy
+- A short FAQ of your most-asked questions
+- Clear product descriptions
+
+You don't need anything fancy — your existing pages are enough. FrontFace can crawl your storefront and index these automatically.
+
+## Step 2: Create and train your agent
+
+1. Sign up and create a new agent.
+2. Point it at your store URL so it indexes your pages, or upload your policy docs directly.
+3. Give it a name and tone that match your brand.
+
+Because answers are grounded in your content and cited, the agent says "I don't know" or hands off rather than inventing a shipping date — exactly what you want for a store.
+
+## Step 3: Add it to Shopify
+
+You have two easy options.
+
+**Option A — theme code (works on every plan):**
+1. In Shopify admin, go to **Online Store → Themes → Edit code**.
+2. Open the **theme.liquid** file.
+3. Paste your FrontFace embed snippet just before the closing **body** tag.
+4. Save.
+
+**Option B — custom-code section** if your theme supports one, under Theme customization.
+
+That's it — the widget is now live on every page of your store.
+
+## Step 4: Set your handoff and lead rules
+
+Decide what the agent should escalate to you:
+
+- Order problems it can't resolve
+- Refund or damage claims
+- Anything it can't answer confidently
+
+Route those to your email or Slack so nothing slips. You can also let the agent capture an email when a shopper wants a follow-up — turning an after-hours question into a warm lead instead of a lost sale.
+
+## Step 5: Test and refine
+
+Ask it the questions your customers actually ask: "Where's my order?", "Can I return this after 30 days?", "Do you ship to Canada?" Check that answers match your real policies. Each week, review what it couldn't answer and add that content — the agent improves automatically.
+
+## The result
+
+A Shopify store that answers product, shipping, and returns questions instantly, 24/7, in the customer's own words — recovering sales you'd otherwise lose to silence, without hiring a support rep.
+
+Ready to try it? FrontFace works on any Shopify store with one line of code and is free during beta. Point it at your store and let it handle the questions you're tired of answering.
+    `,
+  },
+  {
+    slug: "frontface-vs-chatbase-vs-intercom",
+    title: "FrontFace vs Chatbase vs Intercom Fin: Which Fits a Small Team? (2026)",
+    description:
+      "An honest head-to-head of FrontFace, Chatbase, and Intercom Fin for startups and small teams — setup, answer accuracy, handoff, pricing, and who each is really for.",
+    date: "2026-06-17",
+    readTime: "10 min read",
+    category: "Strategy",
+    image: "/og-image.png",
+    content: `
+If you're shopping for AI customer support in 2026, three names keep coming up: FrontFace, Chatbase, and Intercom's Fin. They overlap on the headline promise — resolve customer questions automatically — but they're built for different teams. This is an honest comparison for startups and small teams deciding where to start.
+
+We'll keep it concrete: what each one is, where it's strong, where it isn't, and how to choose.
+
+## The 30-second verdict
+
+- **FrontFace** — best if you're a startup or small team that wants accurate, grounded answers live on your site today, with no rollout project. Free during beta.
+- **Chatbase** — best if you want a highly configurable agent platform and expect to grow into mid-market or enterprise features.
+- **Intercom Fin** — best if you already run support inside Intercom and want AI bolted onto that inbox.
+
+If you don't already pay for a support suite, a purpose-built agent is usually the faster, cheaper place to start.
+
+## The contenders
+
+### FrontFace
+FrontFace is an AI support agent that resolves customer questions instantly from your knowledge base. You point it at your site or docs, it answers in chat with cited sources, captures leads, and hands off complex chats to your team. It installs with one line of code on any site in about five minutes.
+Strengths: fast time-to-live, grounded and cited answers, SMB-friendly pricing (free during beta), works on any website.
+Trade-offs: newer product; not aimed at large support orgs with heavy ticketing workflows.
+Best for: founders and small teams who want results today.
+
+### Chatbase
+Chatbase popularized training an AI agent on your own data and has grown into a full customer-service platform — actions on your systems, integrations, analytics, and enterprise controls like SSO and advanced security. It's powerful and flexible.
+Strengths: configurability, integrations, a clear path to enterprise.
+Trade-offs: as it's moved up-market, it's more platform than plug-and-play; more to configure than a one-afternoon setup.
+Best for: teams that want a configurable platform and expect to scale into enterprise needs.
+
+### Intercom Fin
+Fin is Intercom's AI agent, and it's production-proven — it resolves a large share of tickets and reports well. It shines when you already live in Intercom's inbox and messenger.
+Strengths: maturity, strong resolution rates, deep Intercom integration.
+Trade-offs: it assumes you're on (and paying for) Intercom; pricing and complexity suit support orgs more than two-person teams.
+Best for: funded teams already standardized on Intercom.
+
+## Head-to-head on what matters
+
+### Time to live
+- FrontFace: minutes — point it at your content, paste one line of code.
+- Chatbase: quick to start, more to configure for actions and integrations.
+- Fin: fast if you're already set up in Intercom; otherwise you're adopting Intercom first.
+
+### Answer accuracy (the one that matters most)
+All three use retrieval to ground answers in your content. Whatever you pick, insist on the same thing: answers grounded in your own material, with sources, and an honest "I don't know" instead of a confident guess. FrontFace leans hard on cited, grounded answers; Chatbase and Fin both support grounding with their own guardrails.
+
+### Human handoff
+All three escalate to a human. The difference is where the human lives: Fin hands to the Intercom inbox; Chatbase and FrontFace route to your team via live chat, email, or Slack. If you don't already run a support inbox, a tool that routes to email or Slack is less to adopt.
+
+### Channels
+- FrontFace: website widget today, with broader channel and handoff integrations depending on your rollout.
+- Chatbase: website plus a broad set of channels and integrations.
+- Fin: strongest inside Intercom's own messenger and channels.
+
+### Pricing for a small team
+- FrontFace: free during beta; built for pre-scale budgets.
+- Chatbase: usage-based tiers; reasonable to start, more as you add enterprise features.
+- Fin: priced per resolution on top of Intercom — powerful, but a bigger commitment.
+
+## How to choose
+
+- **You're a startup or small team with no support suite yet.** Start with a purpose-built agent like FrontFace — fastest path to accurate, live support without a rollout.
+- **You want a configurable platform and see enterprise in your future.** Look hard at Chatbase.
+- **You already run support in Intercom.** Turn on Fin — least friction for you.
+- **You mainly want a cheap chat box with light AI.** A lightweight live-chat tool may be enough.
+
+## The bottom line
+
+These are good tools solving the same core problem from different starting points. For most startups and small teams, the right first move is the one that gets accurate, grounded answers live on your site today, without adopting a whole support suite first. That's the bet FrontFace makes — and it's free during beta, so you can see it answer your own questions before you commit.
+    `,
+  },
+].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 
 export function getBlogPost(slug: string): BlogPost | undefined {
   return blogPosts.find((post) => post.slug === slug);

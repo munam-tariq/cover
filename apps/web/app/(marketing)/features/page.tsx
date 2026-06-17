@@ -18,9 +18,9 @@ import { Eyebrow, WRAP } from "../components/marketing-kit";
 import { DarkCta, PageHero } from "../components/page-kit";
 
 export const metadata: Metadata = {
-  title: "Features | Knowledge-Base Answers, Lead Capture & Handoff | FrontFace",
+  title: "Features | Knowledge-Base Answers, Lead Capture & Handoff",
   description:
-    "FrontFace features: RAG-grounded answers from your knowledge base with cited sources, lead capture, human handoff, multi-channel, and analytics. 5-minute setup on any website.",
+    "Resolve customer questions instantly with RAG-grounded answers from your knowledge base — cited sources, lead capture, human handoff, multi-channel, and analytics. 5-minute setup on any website.",
   keywords: [
     "AI support agent features",
     "knowledge base AI",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "FrontFace Features — Grounded Answers, Lead Capture & Handoff",
     description:
-      "RAG-grounded answers from your knowledge base with sources, lead capture, and human handoff. 5-minute setup on any website.",
+      "Resolve questions instantly with RAG-grounded answers from your knowledge base — cited sources, lead capture, and human handoff. 5-minute setup on any website.",
     url: "https://frontface.app/features",
     type: "website",
     images: [
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI support agent that knows your product",
+        alt: "FrontFace — AI support agent that resolves customer questions instantly",
       },
     ],
   },
@@ -141,7 +141,7 @@ export default function FeaturesPage() {
       <PageHero
         eyebrow="Features"
         title="Everything support needs. One agent."
-        sub="Feed it your knowledge, let it answer 89% of questions with cited sources, capture leads, and hand off cleanly when a human is needed."
+        sub="FrontFace resolves customer questions instantly from your own content — answering with cited sources, capturing leads, and handing off cleanly when a human's needed."
       />
 
       {/* Core features */}

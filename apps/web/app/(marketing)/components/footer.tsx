@@ -62,8 +62,8 @@ export function Footer() {
               textWrap: "pretty",
             }}
           >
-            The AI support agent that knows your product — answering customers, capturing leads, and handing off
-            to your team, 24/7.
+            FrontFace resolves customer questions instantly from your knowledge base — capturing leads and
+            handing off to your team, 24/7.
           </p>
         </div>
         {FOOT_COLS.map(([title, links]) => (

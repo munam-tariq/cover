@@ -4,7 +4,7 @@ import { WRAP } from "../components/marketing-kit";
 import { PageHero } from "../components/page-kit";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | FrontFace",
+  title: "Terms of Service",
   description:
     "Read the Terms of Service for FrontFace. These terms govern your use of our AI-powered customer support platform.",
   openGraph: {
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI support agent that knows your product",
+        alt: "FrontFace — AI support agent that resolves customer questions instantly",
       },
     ],
   },

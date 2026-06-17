@@ -6,9 +6,9 @@ import { Ic, WRAP } from "../components/marketing-kit";
 import { DarkCta, PageHero } from "../components/page-kit";
 
 export const metadata: Metadata = {
-  title: "About FrontFace | The AI Support Agent That Knows Your Product",
+  title: "About — AI Support That Resolves Customer Questions Instantly",
   description:
-    "FrontFace is an AI support agent trained on your knowledge base. It answers customers instantly with cited sources, captures leads, and hands off to your team 24/7.",
+    "FrontFace resolves customer questions instantly from your knowledge base — with cited sources — so you support more customers without hiring more agents. Lead capture and human handoff included.",
   keywords: [
     "about FrontFace",
     "AI support agent",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "About FrontFace",
     description:
-      "The AI support agent that knows your product — instant, cited answers from your knowledge base, lead capture, and human handoff.",
+      "Resolve customer questions instantly from your knowledge base — with cited sources, lead capture, and human handoff. Built for lean teams.",
     url: "https://frontface.app/about",
     type: "website",
     images: [
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI support agent that knows your product",
+        alt: "FrontFace — AI support agent that resolves customer questions instantly",
       },
     ],
   },
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "About FrontFace",
     description:
-      "The AI support agent that knows your product — instant, cited answers, lead capture, and human handoff.",
+      "Resolve customer questions instantly from your knowledge base — cited answers, lead capture, and human handoff.",
     images: ["https://frontface.app/og-image.png"],
   },
   alternates: {
@@ -109,7 +109,7 @@ export default function AboutPage() {
     <main>
       <PageHero
         eyebrow="About us"
-        title="The AI support agent that knows your product."
+        title="Great support shouldn't need a big team."
         sub="FrontFace exists because every business deserves great customer support — without hiring a team or spending thousands on enterprise software."
       />
 

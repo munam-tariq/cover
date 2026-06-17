@@ -7,7 +7,7 @@ import { Eyebrow, Ic, WRAP } from "../components/marketing-kit";
 import { DarkCta, PageHero } from "../components/page-kit";
 
 export const metadata: Metadata = {
-  title: "Integrations | Works on Any Website | FrontFace",
+  title: "Integrations | Works on Any Website",
   description:
     "Add FrontFace to Shopify, WordPress, Wix, Squarespace, or any website with one line of code. Connect Slack, HubSpot, Zapier, and more. 5-minute setup.",
   keywords: [
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI support agent that knows your product",
+        alt: "FrontFace — AI support agent that resolves customer questions instantly",
       },
     ],
   },

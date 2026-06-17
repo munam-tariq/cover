@@ -4,8 +4,8 @@ import { LiveDemo } from "./live-demo";
 import { Btn } from "./marketing-button";
 import { Ic, Pill } from "./marketing-kit";
 
-/* Hero — headline "An AI agent that actually knows your product."
-   (faithful port of redesign Hero, headline variant 3). */
+/* Hero — headline "Resolve customer questions instantly."
+   (outcome-led; "knows your product" lives on as proof via the pill + grounded demo). */
 export function HeroSection() {
   return (
     <section
@@ -92,8 +92,8 @@ export function HeroSection() {
             maxWidth: 1000,
           }}
         >
-          <span style={{ display: "block" }}>An AI agent that actually</span>
-          <span style={{ display: "block", color: "var(--ff-accent)" }}>knows your product.</span>
+          <span style={{ display: "block" }}>Resolve customer questions</span>
+          <span style={{ display: "block", color: "var(--ff-accent)" }}>instantly.</span>
         </h1>
 
         <p
@@ -107,8 +107,7 @@ export function HeroSection() {
             textWrap: "pretty",
           }}
         >
-          FrontFace is an AI support agent trained on your knowledge base. It answers customers instantly with
-          sources, captures leads, and hands off to your team — on your site, or anywhere.
+          Answers from your docs, captures qualified leads, and hands off complex chats to your team.
         </p>
 
         <div

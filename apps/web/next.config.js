@@ -4,6 +4,20 @@ const { withSentryConfig } = require("@sentry/nextjs");
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@chatbot/ui", "@chatbot/db", "@chatbot/shared"],
+  async redirects() {
+    return [
+      {
+        source: "/blog/vibe-coding-building-apps-with-ai",
+        destination: "/blog/ai-customer-support-guide-startups",
+        permanent: true,
+      },
+      {
+        source: "/blog/mcp-protocol-future-ai-integration",
+        destination: "/blog/rag-vs-traditional-chatbots",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 module.exports = withSentryConfig(nextConfig, {

@@ -12,9 +12,9 @@ import { SocialProof } from "./components/social-proof";
 import { StatsBar } from "./components/stats-bar";
 
 export const metadata: Metadata = {
-  title: "FrontFace — AI Support Agent That Knows Your Product",
+  title: "FrontFace — AI Support Agent That Resolves Questions Instantly",
   description:
-    "FrontFace is an AI support agent trained on your knowledge base. It answers customers instantly with cited sources, captures leads, and hands off to your team — on your site or anywhere. Free during beta.",
+    "FrontFace resolves customer questions instantly from your knowledge base — so you support more customers without hiring more agents. Grounded answers with cited sources, lead capture, and human handoff. Free during beta.",
   keywords: [
     "AI support agent",
     "AI customer support",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
         url: "https://frontface.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "FrontFace — AI support agent that knows your product",
+        alt: "FrontFace — AI support agent that resolves customer questions instantly",
       },
     ],
   },
@@ -52,7 +52,7 @@ const faqSchema = {
       name: "What is FrontFace?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "FrontFace is an AI support agent you embed on your website. Trained on your knowledge base, it answers customer questions instantly with cited sources, captures leads, and hands off to your team 24/7 — no coding required.",
+        text: "FrontFace is an AI support agent you embed on your website. It resolves customer questions instantly from your knowledge base — with cited sources — so you support more customers without hiring more agents. It also captures qualified leads and hands off to your team 24/7, with no coding required.",
       },
     },
     {
