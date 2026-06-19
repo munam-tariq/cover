@@ -52,67 +52,6 @@ const cardStyle = {
   padding: "24px 22px",
 } as const;
 
-function relatedResourcesFor(slug: string) {
-  const shared = [
-    {
-      href: "/tools/support-ticket-deflection-calculator",
-      label: "Support ticket deflection calculator",
-    },
-    {
-      href: "/blog/cut-support-tickets-without-hiring",
-      label: "How to cut support tickets without hiring",
-    },
-    {
-      href: "/blog/frontface-vs-chatbase-vs-intercom",
-      label: "FrontFace vs Chatbase vs Intercom Fin",
-    },
-  ];
-
-  if (slug === "ecommerce") {
-    return [
-      { href: "/integrations/shopify", label: "Shopify AI chatbot integration" },
-      {
-        href: "/blog/add-ai-support-to-shopify-store",
-        label: "How to add AI support to Shopify",
-      },
-      ...shared,
-    ];
-  }
-
-  if (slug === "saas") {
-    return [
-      {
-        href: "/blog/ai-customer-support-guide-startups",
-        label: "AI customer support guide for startups",
-      },
-      {
-        href: "/blog/best-ai-customer-support-tools-startups",
-        label: "Best AI support tools for startups",
-      },
-      ...shared,
-    ];
-  }
-
-  if (slug === "agencies") {
-    return [
-      { href: "/integrations/wordpress", label: "WordPress AI chatbot integration" },
-      { href: "/integrations/webflow", label: "Webflow AI chatbot integration" },
-      ...shared,
-    ];
-  }
-
-  return [
-    {
-      href: "/blog/chatbot-for-small-business",
-      label: "AI chatbot for small business",
-    },
-    {
-      href: "/blog/how-to-add-ai-chatbot-to-website",
-      label: "How to add an AI chatbot to your website",
-    },
-    ...shared,
-  ];
-}
 
 export default async function UseCaseSlugPage({
   params,
@@ -132,7 +71,7 @@ export default async function UseCaseSlugPage({
       acceptedAnswer: { "@type": "Answer", text: faq.a },
     })),
   };
-  const relatedResources = relatedResourcesFor(d.slug);
+  const relatedResources = d.relatedLinks;
 
   return (
     <>

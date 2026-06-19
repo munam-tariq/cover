@@ -91,6 +91,8 @@ const resourceLinks = [
   { href: "/tools/customer-support-cost-calculator", label: "Customer support cost calculator" },
   { href: "/tools/support-team-sizing-calculator", label: "Support team sizing calculator" },
   { href: "/blog/frontface-vs-chatbase-vs-intercom", label: "FrontFace vs Chatbase vs Intercom Fin" },
+  { href: "/vs/zendesk", label: "FrontFace vs Zendesk" },
+  { href: "/vs/chatbase", label: "FrontFace vs Chatbase" },
 ];
 
 export default function AiVsHumanSupportCalculatorPage() {

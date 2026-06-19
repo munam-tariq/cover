@@ -12,11 +12,18 @@ export interface IntegrationPage {
   ogImageAlt: string;
   benefits: Array<{ title: string; description: string }>;
   faqs: Array<{ q: string; a: string }>;
+  relatedLinks: Array<{ href: string; label: string }>;
 }
 
 export const integrations: IntegrationPage[] = [
   {
     slug: "shopify",
+    relatedLinks: [
+      { href: "/use-cases/ecommerce", label: "AI support for ecommerce" },
+      { href: "/vs/tidio", label: "FrontFace vs Tidio" },
+      { href: "/blog/add-ai-support-to-shopify-store", label: "How to add AI support to Shopify" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Shopify",
     heroEyebrow: "Shopify Integration",
     heroTitle: "Shopify AI Chatbot — Live in 5 Minutes",
@@ -79,6 +86,12 @@ export const integrations: IntegrationPage[] = [
   },
   {
     slug: "wordpress",
+    relatedLinks: [
+      { href: "/use-cases/agencies", label: "AI support for agencies" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/blog/how-to-add-chatbot-to-wordpress", label: "How to add an AI chatbot to WordPress" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "WordPress",
     heroEyebrow: "WordPress Integration",
     heroTitle: "WordPress AI Chatbot — No Plugin Required",
@@ -141,6 +154,12 @@ export const integrations: IntegrationPage[] = [
   },
   {
     slug: "wix",
+    relatedLinks: [
+      { href: "/use-cases/professional-services", label: "AI support for professional services" },
+      { href: "/blog/wix-chatbot", label: "How to add an AI chatbot to Wix" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Wix",
     heroEyebrow: "Wix Integration",
     heroTitle: "AI Chatbot for Wix — Add in 10 Minutes",
@@ -203,6 +222,12 @@ export const integrations: IntegrationPage[] = [
   },
   {
     slug: "squarespace",
+    relatedLinks: [
+      { href: "/use-cases/professional-services", label: "AI support for professional services" },
+      { href: "/blog/how-to-add-ai-chatbot-to-website", label: "How to add an AI chatbot to your website" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Squarespace",
     heroEyebrow: "Squarespace Integration",
     heroTitle: "AI Chatbot for Squarespace — Live in Minutes",
@@ -265,6 +290,12 @@ export const integrations: IntegrationPage[] = [
   },
   {
     slug: "webflow",
+    relatedLinks: [
+      { href: "/use-cases/agencies", label: "AI support for agencies" },
+      { href: "/blog/how-to-add-ai-chatbot-to-website", label: "How to add an AI chatbot to your website" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Webflow",
     heroEyebrow: "Webflow Integration",
     heroTitle: "AI Chatbot for Webflow — No Dev Required",
@@ -327,6 +358,12 @@ export const integrations: IntegrationPage[] = [
   },
   {
     slug: "framer",
+    relatedLinks: [
+      { href: "/use-cases/saas", label: "AI support for SaaS teams" },
+      { href: "/blog/how-to-add-ai-chatbot-to-website", label: "How to add an AI chatbot to your website" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Framer",
     heroEyebrow: "Framer Integration",
     heroTitle: "AI Chatbot for Framer — Live in 5 Minutes",
@@ -389,6 +426,12 @@ export const integrations: IntegrationPage[] = [
   },
   {
     slug: "bubble",
+    relatedLinks: [
+      { href: "/use-cases/saas", label: "AI support for SaaS teams" },
+      { href: "/blog/how-to-add-ai-chatbot-to-website", label: "How to add an AI chatbot to your website" },
+      { href: "/vs/chatbase", label: "FrontFace vs Chatbase" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Bubble",
     heroEyebrow: "Bubble Integration",
     heroTitle: "AI Chatbot for Bubble Apps — No Plugin Needed",
@@ -451,6 +494,12 @@ export const integrations: IntegrationPage[] = [
   },
   {
     slug: "ghost",
+    relatedLinks: [
+      { href: "/use-cases/saas", label: "AI support for SaaS teams" },
+      { href: "/blog/how-to-add-ai-chatbot-to-website", label: "How to add an AI chatbot to your website" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Ghost",
     heroEyebrow: "Ghost Integration",
     heroTitle: "AI Chatbot for Ghost Publications",
@@ -513,6 +562,12 @@ export const integrations: IntegrationPage[] = [
   },
   {
     slug: "nextjs",
+    relatedLinks: [
+      { href: "/use-cases/developers", label: "AI support for developer tools" },
+      { href: "/integrations/react", label: "React AI chatbot integration" },
+      { href: "/blog/how-to-add-ai-chatbot-to-website", label: "How to add an AI chatbot to your website" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Next.js",
     heroEyebrow: "Next.js Integration",
     heroTitle: "AI Chatbot for Next.js Apps — Script Component Ready",
@@ -575,6 +630,12 @@ export const integrations: IntegrationPage[] = [
   },
   {
     slug: "html",
+    relatedLinks: [
+      { href: "/use-cases/developers", label: "AI support for developer tools" },
+      { href: "/integrations/nextjs", label: "Next.js AI chatbot integration" },
+      { href: "/blog/how-to-add-ai-chatbot-to-website", label: "How to add an AI chatbot to your website" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "HTML / Static Sites",
     heroEyebrow: "HTML Integration",
     heroTitle: "AI Chatbot for Any HTML Website",
@@ -637,6 +698,12 @@ export const integrations: IntegrationPage[] = [
   },
   {
     slug: "godaddy",
+    relatedLinks: [
+      { href: "/use-cases/professional-services", label: "AI support for professional services" },
+      { href: "/blog/how-to-add-ai-chatbot-to-website", label: "How to add an AI chatbot to your website" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "GoDaddy",
     heroEyebrow: "GoDaddy Integration",
     heroTitle: "AI Chatbot for GoDaddy Websites",
@@ -699,6 +766,12 @@ export const integrations: IntegrationPage[] = [
   },
   {
     slug: "weebly",
+    relatedLinks: [
+      { href: "/use-cases/professional-services", label: "AI support for professional services" },
+      { href: "/blog/how-to-add-ai-chatbot-to-website", label: "How to add an AI chatbot to your website" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Weebly",
     heroEyebrow: "Weebly Integration",
     heroTitle: "AI Chatbot for Weebly Websites",
@@ -761,6 +834,12 @@ export const integrations: IntegrationPage[] = [
   },
   {
     slug: "react",
+    relatedLinks: [
+      { href: "/use-cases/developers", label: "AI support for developer tools" },
+      { href: "/integrations/nextjs", label: "Next.js AI chatbot integration" },
+      { href: "/blog/how-to-add-ai-chatbot-to-website", label: "How to add an AI chatbot to your website" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "React",
     heroEyebrow: "React Integration",
     heroTitle: "AI Chatbot for React Apps",

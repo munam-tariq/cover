@@ -88,57 +88,6 @@ const steps = [
   },
 ];
 
-function relatedResourcesFor(slug: string) {
-  const shared = [
-    {
-      href: "/tools/support-ticket-deflection-calculator",
-      label: "Support ticket deflection calculator",
-    },
-    {
-      href: "/blog/frontface-vs-chatbase-vs-intercom",
-      label: "FrontFace vs Chatbase vs Intercom Fin",
-    },
-  ];
-
-  if (slug === "shopify") {
-    return [
-      {
-        href: "/blog/add-ai-support-to-shopify-store",
-        label: "How to add AI support to a Shopify store",
-      },
-      { href: "/use-cases/ecommerce", label: "AI support for ecommerce" },
-      ...shared,
-    ];
-  }
-
-  if (slug === "wordpress") {
-    return [
-      {
-        href: "/blog/how-to-add-chatbot-to-wordpress",
-        label: "How to add an AI chatbot to WordPress",
-      },
-      { href: "/integrations/shopify", label: "Shopify AI chatbot setup" },
-      ...shared,
-    ];
-  }
-
-  if (slug === "wix") {
-    return [
-      { href: "/blog/wix-chatbot", label: "How to add an AI chatbot to Wix" },
-      { href: "/use-cases/professional-services", label: "AI support for services" },
-      ...shared,
-    ];
-  }
-
-  return [
-    {
-      href: "/blog/how-to-add-ai-chatbot-to-website",
-      label: "How to add an AI chatbot to your website",
-    },
-    { href: "/blog/cut-support-tickets-without-hiring", label: "Cut support tickets without hiring" },
-    ...shared,
-  ];
-}
 
 export default async function IntegrationSlugPage({
   params,
@@ -158,7 +107,7 @@ export default async function IntegrationSlugPage({
       acceptedAnswer: { "@type": "Answer", text: faq.a },
     })),
   };
-  const relatedResources = relatedResourcesFor(d.slug);
+  const relatedResources = d.relatedLinks;
 
   return (
     <>

@@ -91,6 +91,8 @@ const resourceLinks = [
   { href: "/blog/ai-customer-support-guide-startups", label: "AI customer support for small teams" },
   { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
   { href: "/tools/ai-vs-human-support-calculator", label: "AI vs human support cost comparison" },
+  { href: "/vs/zendesk", label: "FrontFace vs Zendesk" },
+  { href: "/use-cases/saas", label: "AI support for SaaS teams" },
 ];
 
 export default function CustomerSupportCostCalculatorPage() {

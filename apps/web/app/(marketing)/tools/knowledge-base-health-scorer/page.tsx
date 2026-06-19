@@ -91,6 +91,8 @@ const resourceLinks = [
   { href: "/blog/cut-support-tickets-without-hiring", label: "How to cut tickets without hiring" },
   { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
   { href: "/use-cases/ecommerce", label: "AI customer support for ecommerce" },
+  { href: "/blog/rag-vs-traditional-chatbots", label: "RAG vs traditional chatbots" },
+  { href: "/use-cases/saas", label: "AI support for SaaS teams" },
 ];
 
 export default function KnowledgeBaseHealthScorerPage() {

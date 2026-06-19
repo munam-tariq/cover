@@ -92,6 +92,8 @@ const resourceLinks = [
   { href: "/use-cases/ecommerce", label: "AI customer support for ecommerce" },
   { href: "/integrations/shopify", label: "Shopify AI chatbot setup" },
   { href: "/blog/frontface-vs-chatbase-vs-intercom", label: "FrontFace vs Chatbase vs Intercom Fin" },
+  { href: "/vs/zendesk", label: "FrontFace vs Zendesk" },
+  { href: "/vs/chatbase", label: "FrontFace vs Chatbase" },
 ];
 
 export default function SupportTicketDeflectionCalculatorPage() {

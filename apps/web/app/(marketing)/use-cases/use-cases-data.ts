@@ -15,11 +15,19 @@ export interface UseCasePage {
   stat3: { value: string; label: string };
   painPoints: Array<{ problem: string; solution: string }>;
   faqs: Array<{ q: string; a: string }>;
+  relatedLinks: Array<{ href: string; label: string }>;
 }
 
 export const useCases: UseCasePage[] = [
   {
     slug: "saas",
+    relatedLinks: [
+      { href: "/vs/chatbase", label: "FrontFace vs Chatbase" },
+      { href: "/vs/intercom", label: "FrontFace vs Intercom Fin" },
+      { href: "/blog/ai-customer-support-guide-startups", label: "AI customer support guide for startups" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+      { href: "/tools/ai-vs-human-support-calculator", label: "AI vs human support cost comparison" },
+    ],
     name: "SaaS & Startups",
     heroEyebrow: "For SaaS & Startups",
     heroTitle: "AI Support for SaaS — Deflect 68% of Tickets",
@@ -89,6 +97,12 @@ export const useCases: UseCasePage[] = [
   },
   {
     slug: "ecommerce",
+    relatedLinks: [
+      { href: "/integrations/shopify", label: "Shopify AI chatbot integration" },
+      { href: "/vs/tidio", label: "FrontFace vs Tidio" },
+      { href: "/blog/add-ai-support-to-shopify-store", label: "How to add AI support to Shopify" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Ecommerce",
     heroEyebrow: "For Ecommerce Stores",
     heroTitle: "AI Customer Support for Ecommerce — 89% Questions Answered",
@@ -158,6 +172,12 @@ export const useCases: UseCasePage[] = [
   },
   {
     slug: "agencies",
+    relatedLinks: [
+      { href: "/integrations/wordpress", label: "WordPress AI chatbot integration" },
+      { href: "/integrations/webflow", label: "Webflow AI chatbot integration" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Agencies",
     heroEyebrow: "For Agencies",
     heroTitle: "White-Label AI Chatbot for Agencies",
@@ -227,6 +247,12 @@ export const useCases: UseCasePage[] = [
   },
   {
     slug: "professional-services",
+    relatedLinks: [
+      { href: "/integrations/wix", label: "Wix AI chatbot integration" },
+      { href: "/vs/freshdesk", label: "FrontFace vs Freshdesk" },
+      { href: "/blog/chatbot-for-small-business", label: "AI chatbot for small business" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Professional Services",
     heroEyebrow: "For Professional Services",
     heroTitle: "AI Support for Professional Services — 2+ Hours Saved Daily",
@@ -297,6 +323,11 @@ export const useCases: UseCasePage[] = [
   },
   {
     slug: "healthcare",
+    relatedLinks: [
+      { href: "/vs/zendesk", label: "FrontFace vs Zendesk" },
+      { href: "/blog/chatbot-for-small-business", label: "AI chatbot for small business" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Healthcare",
     heroEyebrow: "For Healthcare Providers",
     heroTitle: "AI Patient Support — Answer FAQs Without Staff Time",
@@ -362,6 +393,11 @@ export const useCases: UseCasePage[] = [
   },
   {
     slug: "real-estate",
+    relatedLinks: [
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/blog/chatbot-lead-generation-guide", label: "Chatbot lead generation guide" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Real Estate",
     heroEyebrow: "For Real Estate Agents & Brokerages",
     heroTitle: "AI Lead Qualification for Real Estate — 3x More Qualified Inquiries",
@@ -427,6 +463,11 @@ export const useCases: UseCasePage[] = [
   },
   {
     slug: "education",
+    relatedLinks: [
+      { href: "/vs/tidio", label: "FrontFace vs Tidio" },
+      { href: "/blog/chatbot-for-small-business", label: "AI chatbot for small business" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Education",
     heroEyebrow: "For Schools, Courses & EdTech",
     heroTitle: "AI Student Support — Answer Enrollment Questions Instantly",
@@ -492,6 +533,12 @@ export const useCases: UseCasePage[] = [
   },
   {
     slug: "fintech",
+    relatedLinks: [
+      { href: "/vs/intercom", label: "FrontFace vs Intercom Fin" },
+      { href: "/vs/zendesk", label: "FrontFace vs Zendesk" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+      { href: "/tools/ai-vs-human-support-calculator", label: "AI vs human support cost comparison" },
+    ],
     name: "Fintech",
     heroEyebrow: "For Fintech Products",
     heroTitle: "AI Support for Fintech — Accurate Answers, Zero Compliance Risk",
@@ -557,6 +604,12 @@ export const useCases: UseCasePage[] = [
   },
   {
     slug: "restaurants",
+    relatedLinks: [
+      { href: "/integrations/wix", label: "Wix AI chatbot integration" },
+      { href: "/integrations/squarespace", label: "Squarespace AI chatbot integration" },
+      { href: "/blog/chatbot-for-small-business", label: "AI chatbot for small business" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Restaurants & Hospitality",
     heroEyebrow: "For Restaurants & Hospitality",
     heroTitle: "AI Support for Restaurants — Answer Menu Questions Instantly",
@@ -622,6 +675,12 @@ export const useCases: UseCasePage[] = [
   },
   {
     slug: "b2b",
+    relatedLinks: [
+      { href: "/vs/drift", label: "FrontFace vs Drift" },
+      { href: "/vs/hubspot-chat", label: "FrontFace vs HubSpot Live Chat" },
+      { href: "/blog/chatbot-lead-generation-guide", label: "Chatbot lead generation guide" },
+      { href: "/tools/ai-vs-human-support-calculator", label: "AI vs human support cost comparison" },
+    ],
     name: "B2B Companies",
     heroEyebrow: "For B2B Sales Teams",
     heroTitle: "AI Support for B2B — Qualify Prospects Before Sales Touches Them",
@@ -687,6 +746,12 @@ export const useCases: UseCasePage[] = [
   },
   {
     slug: "developers",
+    relatedLinks: [
+      { href: "/integrations/nextjs", label: "Next.js AI chatbot integration" },
+      { href: "/integrations/react", label: "React AI chatbot integration" },
+      { href: "/vs/intercom", label: "FrontFace vs Intercom Fin" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Developer Tools & APIs",
     heroEyebrow: "For Developer Products",
     heroTitle: "AI Docs Chatbot for Developer Tools — 4x Faster Onboarding",
@@ -752,6 +817,11 @@ export const useCases: UseCasePage[] = [
   },
   {
     slug: "nonprofits",
+    relatedLinks: [
+      { href: "/blog/chatbot-for-small-business", label: "AI chatbot for small business" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     name: "Nonprofits",
     heroEyebrow: "For Nonprofits & Charities",
     heroTitle: "AI Support for Nonprofits — Handle Volunteer & Donor FAQ Automatically",

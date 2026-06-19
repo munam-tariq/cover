@@ -5,6 +5,8 @@ import Script from "next/script";
 
 import { Eyebrow, WRAP } from "../../components/marketing-kit";
 import { DarkCta, PageHero } from "../../components/page-kit";
+import { integrations } from "../../integrations/integrations-data";
+import { useCases } from "../../use-cases/use-cases-data";
 import { vsPages } from "../vs-data";
 
 export function generateStaticParams() {
@@ -83,6 +85,9 @@ export default async function VsSlugPage({
   const { slug } = await params;
   const d = vsPages.find((p) => p.slug === slug);
   if (!d) notFound();
+
+  const relatedUseCase = d.relatedUseCaseSlug ? useCases.find((u) => u.slug === d.relatedUseCaseSlug) : null;
+  const relatedIntegration = d.relatedIntegrationSlug ? integrations.find((i) => i.slug === d.relatedIntegrationSlug) : null;
 
   const faqSchema = {
     "@context": "https://schema.org",
@@ -324,8 +329,8 @@ export default async function VsSlugPage({
             ))}
           </dl>
 
-          {/* Related blog post */}
-          {d.relatedBlogSlug && (
+          {/* Related resources */}
+          {(d.relatedBlogSlug || relatedUseCase || relatedIntegration) && (
             <div
               className="reveal"
               style={{
@@ -343,23 +348,43 @@ export default async function VsSlugPage({
                   fontWeight: 800,
                   color: "var(--ff-ink)",
                   letterSpacing: "-.01em",
-                  margin: "0 0 10px",
+                  margin: "0 0 12px",
                 }}
               >
-                Related reading
+                Related resources
               </h3>
-              <Link
-                href={"/blog/" + d.relatedBlogSlug}
-                style={{
-                  fontSize: 14,
-                  fontWeight: 650,
-                  color: "var(--ff-ink)",
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >
-                Read our in-depth {d.heroTitle} analysis →
-              </Link>
+              <div style={{ display: "grid", gap: 9 }}>
+                {d.relatedBlogSlug && (
+                  <Link
+                    href={"/blog/" + d.relatedBlogSlug}
+                    style={{ fontSize: 14, fontWeight: 650, color: "var(--ff-ink)", textDecoration: "underline", textUnderlineOffset: 3 }}
+                  >
+                    Read our in-depth {d.heroTitle} analysis
+                  </Link>
+                )}
+                {relatedUseCase && (
+                  <Link
+                    href={"/use-cases/" + d.relatedUseCaseSlug}
+                    style={{ fontSize: 14, fontWeight: 650, color: "var(--ff-ink)", textDecoration: "underline", textUnderlineOffset: 3 }}
+                  >
+                    AI support for {relatedUseCase.name}
+                  </Link>
+                )}
+                {relatedIntegration && (
+                  <Link
+                    href={"/integrations/" + d.relatedIntegrationSlug}
+                    style={{ fontSize: 14, fontWeight: 650, color: "var(--ff-ink)", textDecoration: "underline", textUnderlineOffset: 3 }}
+                  >
+                    {relatedIntegration.name} AI chatbot integration
+                  </Link>
+                )}
+                <Link
+                  href="/tools/support-ticket-deflection-calculator"
+                  style={{ fontSize: 14, fontWeight: 650, color: "var(--ff-ink)", textDecoration: "underline", textUnderlineOffset: 3 }}
+                >
+                  Support ticket deflection calculator
+                </Link>
+              </div>
             </div>
           )}
 

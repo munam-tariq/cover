@@ -9,11 +9,18 @@ export interface BlogPost {
   image: string;
   content: string;
   clusterPillar?: { slug: string; title: string };
+  relatedLinks: Array<{ href: string; label: string }>;
 }
 
 export const blogPosts: BlogPost[] = [
   {
     slug: "how-to-add-ai-chatbot-to-website",
+    relatedLinks: [
+      { href: "/integrations/shopify", label: "Shopify AI chatbot setup" },
+      { href: "/integrations/wordpress", label: "WordPress AI chatbot setup" },
+      { href: "/use-cases/saas", label: "AI support for SaaS teams" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     title: "How to Add an AI Chatbot to Your Website in 2026",
     description:
       "A complete guide to adding AI-powered customer support to your website. Learn the best tools, implementation strategies, and tips for maximizing engagement.",
@@ -170,6 +177,12 @@ Look for RAG-based tools that answer from your own knowledge base with cited sou
   },
   {
     slug: "ai-customer-support-guide-startups",
+    relatedLinks: [
+      { href: "/vs/chatbase", label: "FrontFace vs Chatbase" },
+      { href: "/vs/intercom", label: "FrontFace vs Intercom Fin" },
+      { href: "/use-cases/saas", label: "AI support for SaaS teams" },
+      { href: "/tools/ai-vs-human-support-calculator", label: "AI vs human support cost comparison" },
+    ],
     title: "AI Customer Support: The Complete Guide for Startups",
     description:
       "How startups can leverage AI to deliver enterprise-grade customer support on a bootstrap budget. Real strategies that work.",
@@ -369,6 +382,12 @@ Choose a RAG-based platform, upload your existing docs and FAQs, configure your 
   },
   {
     slug: "rag-vs-traditional-chatbots",
+    relatedLinks: [
+      { href: "/vs/chatbase", label: "FrontFace vs Chatbase" },
+      { href: "/blog/ai-customer-support-guide-startups", label: "AI customer support guide for startups" },
+      { href: "/tools/knowledge-base-health-scorer", label: "Knowledge base health scorer" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     title: "RAG vs Traditional Chatbots: Why Knowledge-Based AI Wins",
     description:
       "Understanding the technology behind modern AI chatbots. Why RAG (Retrieval-Augmented Generation) is revolutionizing customer support.",
@@ -570,6 +589,12 @@ A FAQ bot matches keywords to pre-written answers. A RAG chatbot retrieves from 
   },
   {
     slug: "chatbot-lead-generation-guide",
+    relatedLinks: [
+      { href: "/vs/drift", label: "FrontFace vs Drift" },
+      { href: "/vs/hubspot-chat", label: "FrontFace vs HubSpot Live Chat" },
+      { href: "/use-cases/b2b", label: "AI support for B2B companies" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     title: "Chatbot Lead Generation: Turn Visitors into Customers",
     description:
       "How to use AI chatbots for lead capture and qualification. Strategies that convert website visitors into qualified leads.",
@@ -869,6 +894,12 @@ Configure the bot to offer something of value — a resource, a follow-up, a sum
   },
   {
     slug: "cut-support-tickets-without-hiring",
+    relatedLinks: [
+      { href: "/vs/zendesk", label: "FrontFace vs Zendesk" },
+      { href: "/vs/freshdesk", label: "FrontFace vs Freshdesk" },
+      { href: "/tools/ai-vs-human-support-calculator", label: "AI vs human support cost comparison" },
+      { href: "/tools/customer-support-cost-calculator", label: "Customer support cost calculator" },
+    ],
     title: "How to Cut Support Tickets Without Hiring (2026)",
     description:
       "Drowning in repetitive questions? Here's how small teams deflect most tickets with an AI agent — resolving customers instantly without adding headcount.",
@@ -952,6 +983,12 @@ No. Modern tools like FrontFace index your site and docs automatically and deplo
   },
   {
     slug: "best-ai-customer-support-tools-startups",
+    relatedLinks: [
+      { href: "/vs/chatbase", label: "FrontFace vs Chatbase" },
+      { href: "/vs/tidio", label: "FrontFace vs Tidio" },
+      { href: "/vs/zendesk", label: "FrontFace vs Zendesk" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     title: "Best AI Customer Support Tools for Startups (2026)",
     description:
       "An honest comparison of the top AI customer support tools for startups and small teams in 2026 — what each is good at, where it fits, and how to choose.",
@@ -1040,6 +1077,12 @@ Grounded answers from your own content with cited sources, honest escalation whe
   },
   {
     slug: "add-ai-support-to-shopify-store",
+    relatedLinks: [
+      { href: "/integrations/shopify", label: "Shopify AI chatbot setup" },
+      { href: "/use-cases/ecommerce", label: "AI support for ecommerce" },
+      { href: "/vs/tidio", label: "FrontFace vs Tidio" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     title: "How to Add AI Support to Your Shopify Store",
     description:
       "A step-by-step guide to adding an AI support agent to your Shopify store — answer product, shipping, and returns questions automatically, 24/7, in about five minutes.",
@@ -1142,6 +1185,12 @@ About five minutes to install the embed snippet, plus 30–60 minutes to gather 
   },
   {
     slug: "frontface-vs-chatbase-vs-intercom",
+    relatedLinks: [
+      { href: "/vs/chatbase", label: "FrontFace vs Chatbase (full comparison)" },
+      { href: "/vs/intercom", label: "FrontFace vs Intercom Fin" },
+      { href: "/use-cases/saas", label: "AI support for SaaS teams" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     title: "FrontFace vs Chatbase vs Intercom Fin: Which Fits a Small Team? (2026)",
     description:
       "An honest head-to-head of FrontFace, Chatbase, and Intercom Fin for startups and small teams — setup, answer accuracy, handoff, pricing, and who each is really for.",
@@ -1248,6 +1297,12 @@ These are good tools solving the same core problem from different starting point
   },
   {
     slug: "how-to-add-chatbot-to-wordpress",
+    relatedLinks: [
+      { href: "/integrations/wordpress", label: "WordPress AI chatbot setup" },
+      { href: "/use-cases/agencies", label: "AI support for agencies" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     title: "How to Add an AI Chatbot to WordPress in 2026 (No Plugins Needed)",
     description:
       "Step-by-step guide to adding an AI customer support chatbot to your WordPress site. Works with any theme — no plugin required, no developer needed.",
@@ -1389,6 +1444,12 @@ With a RAG-based chatbot like FrontFace, you update your knowledge base in the d
   },
   {
     slug: "zendesk-alternative-small-business",
+    relatedLinks: [
+      { href: "/vs/zendesk", label: "FrontFace vs Zendesk" },
+      { href: "/vs/freshdesk", label: "FrontFace vs Freshdesk" },
+      { href: "/use-cases/saas", label: "AI support for SaaS teams" },
+      { href: "/tools/ai-vs-human-support-calculator", label: "AI vs human support cost comparison" },
+    ],
     title: "Best Zendesk Alternatives for Small Business in 2026",
     description:
       "Zendesk is built for enterprise support teams. Here are the best alternatives for small businesses and startups that want powerful AI support without the complexity or price.",
@@ -1530,6 +1591,12 @@ FrontFace — purpose-built for AI deflection using RAG grounded in your knowled
   },
   {
     slug: "tidio-alternatives",
+    relatedLinks: [
+      { href: "/vs/tidio", label: "FrontFace vs Tidio" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/use-cases/ecommerce", label: "AI support for ecommerce" },
+      { href: "/integrations/shopify", label: "Shopify AI chatbot setup" },
+    ],
     title: "Tidio Alternatives: Better AI Customer Support for Growing Teams",
     description:
       "Looking for a Tidio alternative? Compare the best options for AI-powered customer support in 2026 — including tools that go beyond live chat into full ticket deflection.",
@@ -1671,6 +1738,12 @@ Lyro matches questions to a manually curated FAQ set using a general LLM. A RAG 
   },
   {
     slug: "chatbot-for-small-business",
+    relatedLinks: [
+      { href: "/vs/chatbase", label: "FrontFace vs Chatbase" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/use-cases/saas", label: "AI support for SaaS teams" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     title: "AI Chatbot for Small Business: What Actually Works in 2026",
     description:
       "Most AI chatbots fail small businesses because they hallucinate or can't answer product-specific questions. Here's what actually works — and what to avoid.",
@@ -1816,6 +1889,12 @@ RAG (Retrieval-Augmented Generation) means the chatbot retrieves from your knowl
   },
   {
     slug: "wix-chatbot",
+    relatedLinks: [
+      { href: "/integrations/wix", label: "Wix AI chatbot setup" },
+      { href: "/use-cases/professional-services", label: "AI support for professional services" },
+      { href: "/vs/crisp", label: "FrontFace vs Crisp" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     title: "How to Add an AI Chatbot to Your Wix Website",
     description:
       "Add an AI support agent to your Wix site in under 10 minutes — no coding, no Wix app market required. Step-by-step guide for 2026.",
@@ -1969,6 +2048,12 @@ See [FrontFace's Wix integration guide](/integrations/wix) for the full setup wa
   },
   {
     slug: "ai-customer-support-complete-guide",
+    relatedLinks: [
+      { href: "/vs/chatbase", label: "FrontFace vs Chatbase" },
+      { href: "/vs/intercom", label: "FrontFace vs Intercom Fin" },
+      { href: "/use-cases/saas", label: "AI support for SaaS teams" },
+      { href: "/tools/knowledge-base-health-scorer", label: "Knowledge base health scorer" },
+    ],
     title: "The Complete Guide to AI Customer Support for Small Business (2026)",
     description:
       "Everything a small business needs to know about AI customer support in 2026 — how it works, how to set it up, how to choose the right tool, and how to measure success.",
@@ -2185,6 +2270,12 @@ Yes. Modern tools deploy with a single JavaScript snippet — no coding required
   },
   {
     slug: "how-to-add-ai-support-agent-to-website",
+    relatedLinks: [
+      { href: "/integrations/shopify", label: "Shopify AI chatbot setup" },
+      { href: "/integrations/wordpress", label: "WordPress AI chatbot setup" },
+      { href: "/use-cases/saas", label: "AI support for SaaS teams" },
+      { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    ],
     title: "How to Add an AI Support Agent to Any Website (2026)",
     description:
       "The complete guide to adding an AI support agent to your website — covering the right approach, knowledge base setup, deployment on any platform, and how to test before going live.",

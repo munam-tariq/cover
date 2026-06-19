@@ -75,28 +75,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     .filter((p) => p.slug !== post.slug)
     .sort((a, b) => Number(b.category === post.category) - Number(a.category === post.category))
     .slice(0, 3);
-  const relatedResourceLinks = [
-    {
-      href: "/tools/support-ticket-deflection-calculator",
-      label: "Support ticket deflection calculator",
-    },
-    {
-      href: "/blog/cut-support-tickets-without-hiring",
-      label: "How to cut support tickets without hiring",
-    },
-    {
-      href: "/use-cases/saas",
-      label: "AI support for SaaS and startups",
-    },
-    {
-      href: "/integrations/shopify",
-      label: "Shopify AI chatbot setup",
-    },
-    {
-      href: "/blog/frontface-vs-chatbase-vs-intercom",
-      label: "FrontFace vs Chatbase vs Intercom Fin",
-    },
-  ].filter((link) => link.href !== `/blog/${post.slug}`);
+  const DEFAULT_BLOG_LINKS = [
+    { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
+    { href: "/blog/cut-support-tickets-without-hiring", label: "How to cut support tickets without hiring" },
+    { href: "/use-cases/saas", label: "AI support for SaaS and startups" },
+    { href: "/integrations/shopify", label: "Shopify AI chatbot setup" },
+    { href: "/blog/frontface-vs-chatbase-vs-intercom", label: "FrontFace vs Chatbase vs Intercom Fin" },
+  ];
+  const relatedResourceLinks = (post.relatedLinks ?? DEFAULT_BLOG_LINKS)
+    .filter((link) => link.href !== `/blog/${post.slug}`);
 
   if (post.clusterPillar && post.clusterPillar.slug !== post.slug) {
     relatedResourceLinks.unshift({

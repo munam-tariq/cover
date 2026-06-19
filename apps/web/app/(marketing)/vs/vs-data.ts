@@ -21,6 +21,8 @@ export interface VsPage {
   verdictCompetitor: string;
   faqs: Array<{ q: string; a: string }>;
   relatedBlogSlug?: string;
+  relatedUseCaseSlug?: string;
+  relatedIntegrationSlug?: string;
 }
 
 export const vsPages: VsPage[] = [
@@ -77,6 +79,7 @@ export const vsPages: VsPage[] = [
       },
     ],
     relatedBlogSlug: "frontface-vs-chatbase-vs-intercom",
+    relatedUseCaseSlug: "saas",
   },
   {
     slug: "intercom",
@@ -131,6 +134,7 @@ export const vsPages: VsPage[] = [
       },
     ],
     relatedBlogSlug: "frontface-vs-chatbase-vs-intercom",
+    relatedUseCaseSlug: "saas",
   },
   {
     slug: "zendesk",
@@ -185,6 +189,7 @@ export const vsPages: VsPage[] = [
       },
     ],
     relatedBlogSlug: "zendesk-alternative-small-business",
+    relatedUseCaseSlug: "saas",
   },
   {
     slug: "tidio",
@@ -239,6 +244,8 @@ export const vsPages: VsPage[] = [
       },
     ],
     relatedBlogSlug: "tidio-alternatives",
+    relatedUseCaseSlug: "ecommerce",
+    relatedIntegrationSlug: "shopify",
   },
   {
     slug: "crisp",
@@ -292,6 +299,7 @@ export const vsPages: VsPage[] = [
         a: "FrontFace — because it works autonomously without requiring a human to be online. Crisp's value is in its team collaboration features, which are less relevant if you're a one-person or founder-led support operation.",
       },
     ],
+    relatedUseCaseSlug: "saas",
   },
   {
     slug: "freshdesk",
@@ -345,6 +353,8 @@ export const vsPages: VsPage[] = [
         a: "Depends on the problem. If you're drowning in repetitive questions, FrontFace deflects them at source. If you have a dedicated support person who needs ticket organization across email, phone, and chat, Freshdesk's free plan is a solid starting point.",
       },
     ],
+    relatedBlogSlug: "zendesk-alternative-small-business",
+    relatedUseCaseSlug: "professional-services",
   },
   {
     slug: "help-scout",
@@ -398,6 +408,7 @@ export const vsPages: VsPage[] = [
         a: "FrontFace — because it doesn't require a human to be available. A solo founder doesn't need an inbox collaboration tool; they need AI to handle the questions that don't need them. FrontFace resolves those autonomously, and the rest comes to your email directly.",
       },
     ],
+    relatedUseCaseSlug: "saas",
   },
   {
     slug: "drift",
@@ -450,6 +461,7 @@ export const vsPages: VsPage[] = [
         a: "Drift is primarily a conversational marketing and sales tool — it routes target accounts to specific sales reps, runs account-based playbooks, and integrates deeply with enterprise CRM and marketing automation. It's a revenue acceleration tool, not primarily a support tool.",
       },
     ],
+    relatedUseCaseSlug: "b2b",
   },
   {
     slug: "hubspot-chat",
@@ -502,6 +514,7 @@ export const vsPages: VsPage[] = [
         a: "For immediate AI-assisted lead capture without a CRM dependency: FrontFace. The agent captures contact info conversationally and routes it to you. For leads that go directly into HubSpot contacts and trigger email sequences: HubSpot chat, if you're already on the platform.",
       },
     ],
+    relatedUseCaseSlug: "b2b",
   },
   {
     slug: "livechat",
@@ -555,5 +568,7 @@ export const vsPages: VsPage[] = [
         a: "Depends on the volume source. If high volume is mostly repetitive questions, FrontFace deflects 60–80% automatically — reducing volume before it reaches agents. If volume is complex conversations that need humans, LiveChat's agent workspace handles it better.",
       },
     ],
+    relatedUseCaseSlug: "ecommerce",
+    relatedIntegrationSlug: "shopify",
   },
 ];
