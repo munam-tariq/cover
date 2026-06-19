@@ -77,12 +77,12 @@ export function AnalyticsConsent() {
             bottom: 18,
             zIndex: 70,
             width: "min(420px, calc(100vw - 36px))",
-            border: "1px solid var(--ff-line-2)",
+            border: "1px solid #e0e3e8",
             borderRadius: 14,
             background: "#fff",
             boxShadow: "0 24px 70px -36px rgba(16,24,40,.45)",
             padding: 16,
-            color: "var(--ff-ink)",
+            color: "#11151b",
           }}
         >
           <div style={{ fontSize: 14.5, fontWeight: 800, marginBottom: 6 }}>
@@ -91,7 +91,7 @@ export function AnalyticsConsent() {
           <p
             style={{
               margin: 0,
-              color: "var(--ff-soft)",
+              color: "#5a6573",
               fontSize: 13.5,
               lineHeight: 1.55,
             }}
@@ -113,12 +113,13 @@ export function AnalyticsConsent() {
               style={{
                 height: 36,
                 borderRadius: 9,
-                border: "1px solid var(--ff-line-2)",
+                border: "1px solid #e0e3e8",
                 background: "#fff",
-                color: "var(--ff-soft)",
+                color: "#5a6573",
                 padding: "0 12px",
                 fontSize: 13,
                 fontWeight: 700,
+                cursor: "pointer",
               }}
             >
               No thanks
@@ -129,12 +130,13 @@ export function AnalyticsConsent() {
               style={{
                 height: 36,
                 borderRadius: 9,
-                border: "1px solid var(--ff-ink)",
-                background: "var(--ff-ink)",
+                border: "1px solid #11151b",
+                background: "#11151b",
                 color: "#fff",
                 padding: "0 12px",
                 fontSize: 13,
-                fontWeight: 750,
+                fontWeight: 700,
+                cursor: "pointer",
               }}
             >
               Allow analytics
