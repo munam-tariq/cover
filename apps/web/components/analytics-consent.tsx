@@ -7,10 +7,7 @@ declare global {
   interface Window {
     dataLayer?: unknown[];
     gtag?: (...args: unknown[]) => void;
-    clarity?: (
-      command: "consentv2",
-      consent: { ad_Storage: "granted" | "denied"; analytics_Storage: "granted" | "denied" },
-    ) => void;
+    clarity?: (command: string, ...args: unknown[]) => void;
   }
 }
 
@@ -35,10 +32,6 @@ export function AnalyticsConsent() {
   const saveChoice = (nextChoice: "granted" | "denied") => {
     window.localStorage.setItem(CONSENT_KEY, nextChoice);
     setChoice(nextChoice);
-    window.clarity?.("consentv2", {
-      ad_Storage: nextChoice,
-      analytics_Storage: nextChoice,
-    });
   };
 
   return (
@@ -63,17 +56,13 @@ export function AnalyticsConsent() {
             </>
           )}
           {clarityProjectId && (
-            <Script
-              id="microsoft-clarity"
-              src={`https://www.clarity.ms/tag/${clarityProjectId}`}
-              strategy="afterInteractive"
-              onLoad={() =>
-                window.clarity?.("consentv2", {
-                  ad_Storage: "granted",
-                  analytics_Storage: "granted",
-                })
-              }
-            />
+            <Script id="microsoft-clarity" strategy="afterInteractive">
+              {`(function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+              })(window,document,"clarity","script","${clarityProjectId}");`}
+            </Script>
           )}
         </>
       )}
