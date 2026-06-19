@@ -53,6 +53,15 @@ export const metadata: Metadata = {
   },
 };
 
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://frontface.app" },
+    { "@type": "ListItem", position: 2, name: "Blog", item: "https://frontface.app/blog" },
+  ],
+};
+
 const blogSchema = {
   "@context": "https://schema.org",
   "@type": "Blog",
@@ -71,6 +80,7 @@ const blogSchema = {
 export default function BlogPage() {
   return (
     <>
+      <Script id="blog-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <Script
         id="blog-schema"
         type="application/ld+json"

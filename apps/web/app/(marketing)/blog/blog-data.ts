@@ -8,6 +8,7 @@ export interface BlogPost {
   coverKind?: string;
   image: string;
   content: string;
+  clusterPillar?: { slug: string; title: string };
 }
 
 export const blogPosts: BlogPost[] = [
@@ -21,6 +22,7 @@ export const blogPosts: BlogPost[] = [
     category: "Tutorial",
     coverKind: "website",
     image: "/blog-og/how-to-add-ai-chatbot-to-website.png",
+    clusterPillar: { slug: "how-to-add-ai-support-agent-to-website", title: "How to Add an AI Support Agent to Any Website (2026)" },
     content: `
 Adding an AI chatbot to your website has never been easier. In 2026, with advances in large language models and RAG (Retrieval-Augmented Generation) technology, you can deploy intelligent customer support that actually understands your business.
 
@@ -176,6 +178,7 @@ Look for RAG-based tools that answer from your own knowledge base with cited sou
     category: "Strategy",
     coverKind: "startup",
     image: "/blog-og/ai-customer-support-guide-startups.png",
+    clusterPillar: { slug: "ai-customer-support-complete-guide", title: "The Complete Guide to AI Customer Support for Small Business" },
     content: `
 You're building a startup. Resources are tight. Your team is small. But your customers expect Amazon-level support. Sound familiar?
 
@@ -374,6 +377,7 @@ Choose a RAG-based platform, upload your existing docs and FAQs, configure your 
     category: "Technology",
     coverKind: "rag",
     image: "/blog-og/rag-vs-traditional-chatbots.png",
+    clusterPillar: { slug: "ai-customer-support-complete-guide", title: "The Complete Guide to AI Customer Support for Small Business" },
     content: `
 If you've researched AI chatbots, you've probably encountered the term "RAG." But what does it actually mean, and why should you care?
 
@@ -873,6 +877,7 @@ Configure the bot to offer something of value — a resource, a follow-up, a sum
     category: "Strategy",
     coverKind: "deflection",
     image: "/blog-og/cut-support-tickets-without-hiring.png",
+    clusterPillar: { slug: "ai-customer-support-complete-guide", title: "The Complete Guide to AI Customer Support for Small Business" },
     content: `
 Every growing business hits the same wall: support volume climbs faster than the team can. You answer the same handful of questions over and over, replies get slower, and customers feel it. The instinct is to hire. But for repetitive questions, hiring is the expensive answer to the wrong problem.
 
@@ -955,6 +960,7 @@ No. Modern tools like FrontFace index your site and docs automatically and deplo
     category: "Strategy",
     coverKind: "toolkit",
     image: "/blog-og/best-ai-customer-support-tools-startups.png",
+    clusterPillar: { slug: "ai-customer-support-complete-guide", title: "The Complete Guide to AI Customer Support for Small Business" },
     content: `
 If you're a startup or small team, "AI customer support" has gone from nice-to-have to table stakes. Customers expect instant, accurate answers, and you can't staff a 24/7 team. A category of tools now resolves the bulk of routine questions for you. The hard part is choosing.
 
@@ -1042,6 +1048,7 @@ Grounded answers from your own content with cited sources, honest escalation whe
     category: "Tutorial",
     coverKind: "shopify",
     image: "/blog-og/add-ai-support-to-shopify-store.png",
+    clusterPillar: { slug: "how-to-add-ai-support-agent-to-website", title: "How to Add an AI Support Agent to Any Website (2026)" },
     content: `
 Shopify makes it easy to open a store. Keeping up with customer questions is the hard part — "Where's my order?", "Do you ship to...?", "What's your return policy?", "Will this fit?" — asked over and over, often after hours, often right before someone decides whether to buy.
 
@@ -1249,6 +1256,7 @@ These are good tools solving the same core problem from different starting point
     category: "Tutorial",
     coverKind: "wordpress",
     image: "/blog-og/how-to-add-chatbot-to-wordpress.png",
+    clusterPillar: { slug: "how-to-add-ai-support-agent-to-website", title: "How to Add an AI Support Agent to Any Website (2026)" },
     content: `
 WordPress powers over 40% of the web — and most of those sites have zero automated customer support. If someone lands on your pricing page at 2am with a question, they bounce. An AI chatbot changes that.
 
@@ -1671,6 +1679,7 @@ Lyro matches questions to a manually curated FAQ set using a general LLM. A RAG 
     category: "Strategy",
     coverKind: "smallbiz",
     image: "/blog-og/chatbot-for-small-business.png",
+    clusterPillar: { slug: "ai-customer-support-complete-guide", title: "The Complete Guide to AI Customer Support for Small Business" },
     content: `
 You've seen the demos. Smooth AI chat, instant answers, happy customers. Then you try it on your own site and the bot confidently answers a question about your return policy with something you've never written in your life.
 
@@ -1815,6 +1824,7 @@ RAG (Retrieval-Augmented Generation) means the chatbot retrieves from your knowl
     category: "Tutorial",
     coverKind: "wix",
     image: "/blog-og/wix-chatbot.png",
+    clusterPillar: { slug: "how-to-add-ai-support-agent-to-website", title: "How to Add an AI Support Agent to Any Website (2026)" },
     content: `
 Wix is one of the easiest ways to build a website. Adding an AI chatbot to it should be equally simple — and it is, once you know the right approach.
 
@@ -1955,6 +1965,418 @@ Yes, but check it. Wix's mobile editor is separate from desktop. If you add the 
 Update your knowledge base in the FrontFace dashboard — add new FAQs, update existing content, or add a new document. The change takes effect immediately. You don't need to touch your Wix site at all.
 
 See [FrontFace's Wix integration guide](/integrations/wix) for the full setup walkthrough with screenshots.
+    `,
+  },
+  {
+    slug: "ai-customer-support-complete-guide",
+    title: "The Complete Guide to AI Customer Support for Small Business (2026)",
+    description:
+      "Everything a small business needs to know about AI customer support in 2026 — how it works, how to set it up, how to choose the right tool, and how to measure success.",
+    date: "2026-06-19",
+    readTime: "14 min read",
+    category: "Guide",
+    coverKind: "startup",
+    image: "/blog-og/ai-customer-support-complete-guide.png",
+    content: `
+AI customer support has gone from experiment to expectation. Small businesses that used to need a full-time support hire to keep up with incoming questions can now handle most of that volume automatically — with better response times, around the clock, at a fraction of the cost.
+
+This guide covers everything you need to know: how modern AI support actually works, how to set it up in a day, how to choose the right tool, and how to measure whether it's working.
+
+## What is AI customer support?
+
+AI customer support means software that answers customer questions automatically — without a human in the loop — by drawing on your business's own content. Product documentation, FAQs, policies, pricing pages: the AI reads all of it, and when a customer asks a question, it retrieves the relevant information and generates an accurate, grounded response.
+
+This is different from the rule-based chatbots of the 2010s that matched keywords to pre-written replies. Modern AI support agents understand natural language, handle follow-up questions, and can reason across your full knowledge base — not just the questions you explicitly anticipated.
+
+## Why small businesses need it now
+
+The economics changed. Three years ago, a capable AI support agent cost tens of thousands of dollars to set up and required a dedicated engineering team to maintain. Today the same capability is available for $0–200/month with a no-code setup that takes an afternoon.
+
+The business case is straightforward:
+
+| Factor | Typical numbers |
+|--------|----------------|
+| Cost per human-handled ticket | $15–25 |
+| Share of tickets that are repetitive | 60–80% |
+| AI deflection rate (well configured) | 60–80% of routine volume |
+| AI coverage | 24/7, every timezone |
+
+A small business handling 200 support tickets a month, at $20 per ticket, spends $4,000/month on support labor. AI handling 70% of those tickets recovers $2,800/month. Most AI support tools cost $0–100/month. The math is not close.
+
+Beyond cost, there are two things the math doesn't capture:
+
+**Speed.** A customer question answered in 10 seconds converts at a higher rate than one answered in 10 hours. AI support is instant, at any hour, in any timezone.
+
+**Founder time.** For early-stage teams, the real cost of support is founder hours. Three hours a day answering the same questions is three hours not spent building. AI support buys back that time without waiting until you can afford a support hire.
+
+## How it works: RAG explained simply
+
+The technology behind modern AI support agents is called RAG — Retrieval-Augmented Generation. Understanding it helps you set it up correctly and have realistic expectations.
+
+When a customer asks your AI agent a question, three things happen:
+
+1. **Retrieve.** The system searches your indexed knowledge base — your docs, FAQ, policies, product pages — and pulls the most relevant content chunks.
+2. **Augment.** Those content chunks are passed to a large language model (LLM) alongside the customer's question.
+3. **Generate.** The LLM writes a response grounded in your actual content — not its general training data.
+
+The result: accurate, specific, citable answers that reflect your actual policies and product. Not generic LLM guesses.
+
+If the answer isn't in your knowledge base, a properly configured RAG agent says "I don't know" and offers to connect the customer to a human. This is the critical difference between a RAG agent and a raw LLM chatbot. Raw LLMs hallucinate — they confidently generate plausible-sounding answers with no factual basis. RAG agents ground every response in your content.
+
+For a deeper look at how RAG compares to older chatbot approaches, see [RAG vs Traditional Chatbots: Why Knowledge-Based AI Wins](/blog/rag-vs-traditional-chatbots).
+
+## What AI handles vs what humans handle
+
+A useful mental model: AI handles volume, humans handle judgment.
+
+**AI handles well:**
+- How-to and setup questions
+- Pricing and plan comparisons
+- Policy questions (shipping, returns, cancellation)
+- Feature explanations
+- Standard troubleshooting
+- FAQ lookups
+
+**Keep humans for:**
+- High-stakes complaints or upset customers
+- Refund decisions above a threshold
+- Complex multi-step technical issues
+- Sales conversations that need negotiation
+- Edge cases and bug reports that need investigation
+
+Most small business support queues are 70–80% the first category. That's the volume AI can absorb. For more on how this plays out in practice, see [How to Cut Support Tickets Without Hiring (2026)](/blog/cut-support-tickets-without-hiring).
+
+## Setting it up: a five-step process
+
+### Step 1: Audit your current queue
+
+Before deploying anything, open your last 100–200 support conversations and tag them by topic. You'll almost always find 3–5 question clusters that account for most volume: "how do I set up X," "what's your return policy," "do you integrate with Y." These are your automation targets.
+
+This step also tells you what's missing from your knowledge base. If the same question keeps getting asked, the answer isn't documented clearly enough.
+
+### Step 2: Build your knowledge base
+
+The AI is only as good as what you give it. Before deploying:
+
+- Write clear answers to your top 10 most-asked questions
+- Make sure your policies (shipping, returns, pricing, cancellation) are documented in plain language
+- Add product documentation for common workflows
+- Write a short "about us" that covers what you do, who you serve, and what makes you different
+
+You don't need perfect documentation — you can start with what you have and improve based on what the AI gets wrong. But the more complete your content is at launch, the better the first week of performance.
+
+### Step 3: Choose and configure your tool
+
+Pick a RAG-based tool that fits your stage. Key criteria:
+
+- **Grounded answers with cited sources** — non-negotiable. Generic LLM answers without grounding will create more tickets.
+- **Setup in hours, not days** — if it takes a consultant to deploy, it's wrong for a small team.
+- **Honest escalation** — when the AI can't confidently answer, it should hand off cleanly rather than guess.
+- **Lead capture** — for most small businesses, converting engaged visitors is as valuable as deflecting tickets.
+- **Price that fits pre-scale** — free tiers or flat-rate pricing you can budget.
+
+For a full comparison of what's available, see [Best AI Customer Support Tools for Startups (2026)](/blog/best-ai-customer-support-tools-startups).
+
+### Step 4: Deploy to your site
+
+Most modern tools deploy with a single JavaScript snippet pasted before the closing \`</body>\` tag on your site. This works on any platform: Shopify, WordPress, Wix, Squarespace, Webflow, or a custom-built site. See our platform-specific guides:
+
+- [How to add AI support to your Shopify store](/blog/add-ai-support-to-shopify-store)
+- [How to add an AI chatbot to WordPress](/blog/how-to-add-chatbot-to-wordpress)
+- [How to add an AI chatbot to your Wix website](/blog/wix-chatbot)
+
+Set your escalation rules before going live. Decide what the agent should hand to a human — anything it can't answer confidently, complaint-tone conversations, refund requests above a certain amount. Route those to your inbox or Slack so nothing slips.
+
+### Step 5: Measure, iterate, improve
+
+In the first 30 days, review what the AI is escalating. Every escalation is either:
+
+- A content gap (add the missing answer to your knowledge base)
+- An edge case that belongs in human hands (correct)
+
+Most teams see deflection improve significantly in the first 30 days just from filling content gaps identified by the escalation log. The AI improves automatically as your knowledge base grows.
+
+## Choosing the right tool
+
+Your choice depends on where you're starting:
+
+**No existing support tool:** Start with a purpose-built AI support agent. You get the fastest path to live, accurate support without adopting a full help desk. FrontFace is free during beta.
+
+**Already on Intercom:** Turn on Fin. Least friction — it connects directly to your existing Intercom inbox and starts resolving tickets immediately.
+
+**Already on Zendesk:** Use Zendesk's AI features, or evaluate alternatives if the price feels out of step with your team size. See [Best Zendesk Alternatives for Small Business](/blog/zendesk-alternative-small-business).
+
+**Evaluating Tidio:** If accurate, product-specific answers are important, look at RAG-based alternatives. See [Tidio Alternatives](/blog/tidio-alternatives).
+
+The one feature you should never compromise on: answers grounded in your own content with cited sources. A tool that confidently makes things up about your product creates more support work than it saves.
+
+## Building your knowledge base
+
+This is the single biggest lever on AI performance. A great knowledge base makes a mediocre AI tool good. A weak knowledge base makes a great AI tool mediocre.
+
+**What to include:**
+
+1. **Product documentation.** Walkthroughs for your core workflows, feature explanations, integration guides.
+2. **Policies.** Pricing, plans, refunds, cancellations, shipping times — in plain language, not legal language.
+3. **FAQ.** Your real top questions, answered directly.
+4. **Troubleshooting guides.** The most common problems customers run into and how to fix them.
+5. **About / scope.** What you do, who you serve, what you don't do.
+
+**What to avoid:**
+
+- Long walls of text with no structure — chunk content into clear sections
+- Outdated information — the AI will confidently serve stale answers
+- Legal boilerplate where plain language would serve — customers don't need the full terms, they need the 30-word version
+
+**Maintenance:** RAG tools pull from your knowledge base at query time. Update your docs, and the AI automatically reflects the change. The main maintenance task is adding new content when new questions surface in the escalation log.
+
+## Measuring success
+
+Track four numbers:
+
+| Metric | What it tells you |
+|--------|-----------------|
+| **Deflection rate** | % of conversations resolved by AI without escalation |
+| **Escalation rate** | % handed to humans — high rate means content gaps |
+| **Conversation rate** | % of site visitors who engage with the agent |
+| **Lead capture rate** | % of conversations that result in an email captured |
+
+A well-configured agent typically deflects 60–80% of routine volume. If you're below 50% after the first month, focus on the escalation log — every frequent escalation topic is a content gap.
+
+For a more detailed breakdown of the ROI calculation, see [AI Chatbot for Small Business: What Actually Works in 2026](/blog/chatbot-for-small-business).
+
+## Common mistakes
+
+**1. Launching with a thin knowledge base.** The most common failure. Customers ask real questions; if your docs don't cover them, the AI escalates everything. Audit your top 20 questions before launch, not after.
+
+**2. Testing with ideal questions.** Every AI tool looks good when you ask clean, well-phrased versions of the questions you anticipated. Test with variations, misspellings, and the ambiguous phrasing real customers use.
+
+**3. No escalation path.** If the agent can't reach a human, customers with urgent issues get stuck. Always configure a human handoff — and test it before going live.
+
+**4. Set and forget.** AI support is not a one-time setup. The first 30 days require active review of what's working and what isn't. After that, monthly check-ins to add new content as your product evolves.
+
+**5. Hiding the agent.** Some teams worry about wrong answers and limit the agent to low-traffic pages. This limits deflection while still incurring the setup cost. Deploy it where your questions actually come from — pricing pages, checkout, support pages.
+
+## For startups specifically
+
+If you're pre-product-market fit, AI support has an underrated advantage beyond deflection: your support conversations become a product research feed. Every question the AI escalates is a signal about what customers are confused by, what documentation is missing, and where the product experience breaks.
+
+Review your escalation log the same way you'd review user interviews. The questions customers are asking — especially the ones that surprised you — are exactly the problems worth solving in the product or documentation.
+
+For a deeper look at the startup-specific playbook, see [AI Customer Support: The Complete Guide for Startups](/blog/ai-customer-support-guide-startups).
+
+## Frequently Asked Questions
+
+**How much does AI customer support cost for a small business?**
+Free tiers and beta plans exist — FrontFace is free during beta. Paid plans for small teams typically run $50–200/month. At $20 per ticket and 60–80% deflection, most small businesses break even within the first month on even modest ticket volume.
+
+**How long does it take to set up AI customer support?**
+A focused afternoon — 3–4 hours — is enough to gather your content, configure the tool, and deploy to your site. The first week is about reviewing what the AI gets wrong and filling those content gaps. Most teams feel the deflection benefit within the first 48 hours.
+
+**Will AI customer support replace my support team?**
+No. AI handles the repetitive, lookup-based questions that don't require judgment. Your team focuses on the 20–40% that does: complex issues, complaints that need empathy, high-stakes decisions. Most teams find that AI changes what the support role is, not whether a support role is needed.
+
+**What if the AI gives a wrong answer?**
+A well-configured RAG agent doesn't give wrong answers — it gives "I don't know" answers when it can't find relevant content, and routes to a human. The risk of wrong answers comes from raw LLM tools (not RAG) or from deploying without enough content in the knowledge base. Both are avoidable with the setup process above.
+
+**Can I use AI support without a developer?**
+Yes. Modern tools deploy with a single JavaScript snippet — no coding required. If you can edit your site's footer or theme file, you can install it. See the platform-specific guides above for step-by-step instructions.
+    `,
+  },
+  {
+    slug: "how-to-add-ai-support-agent-to-website",
+    title: "How to Add an AI Support Agent to Any Website (2026)",
+    description:
+      "The complete guide to adding an AI support agent to your website — covering the right approach, knowledge base setup, deployment on any platform, and how to test before going live.",
+    date: "2026-06-18",
+    readTime: "12 min read",
+    category: "Tutorial",
+    coverKind: "website",
+    image: "/blog-og/how-to-add-ai-support-agent-to-website.png",
+    content: `
+You can add a capable AI support agent to any website — Shopify, WordPress, Wix, Squarespace, Webflow, or a custom site — in an afternoon. No developer required. No plugin dependencies. No six-week implementation project.
+
+This guide covers the full process: choosing the right approach, building the knowledge base that makes the agent work, deploying it to your site, and testing it before you go live.
+
+## The right approach: embed code, not plugins
+
+The most common mistake when adding AI support to a website is reaching for a plugin or native integration first. These sound simpler but usually aren't:
+
+- **Plugins** add a dependency to your platform (especially problematic on WordPress where plugins conflict). They update on someone else's schedule, can break when your theme updates, and are limited to whatever platform they were built for.
+- **Native chat tools** (like Wix Chat, Shopify Inbox) are built for live, human-to-human chat. They aren't AI — they're messaging tools with light automation bolted on.
+
+The approach that actually works for AI support: a JavaScript embed snippet from a purpose-built AI support tool. You paste one script tag before the closing \`</body>\` of your site. It loads asynchronously (no impact on page speed), works on every page, survives theme updates, and runs on the provider's infrastructure — so you're never managing an AI stack yourself.
+
+## Before you deploy: build the knowledge base
+
+The knowledge base is the difference between an AI agent that deflects 70% of tickets and one that escalates everything. The tool is almost secondary. An excellent tool on a thin knowledge base performs worse than a decent tool on a comprehensive one.
+
+**What to document before you go live:**
+
+### Your policies — in plain language
+
+Customers ask about policies constantly. Write each one in the form they actually ask:
+
+- **Shipping:** "How long does shipping take?" → write a clear answer: regions, timelines, carrier, tracking.
+- **Returns:** "Can I return this?" → write the exact window, conditions, and process.
+- **Pricing/plans:** "What's included in [plan]?" → describe each plan in a few sentences each.
+- **Cancellation:** "How do I cancel?" → the exact steps, no ambiguity.
+
+Don't write legal language. Write what you'd say if a customer called.
+
+### Your top 10–20 questions
+
+Pull your last 50–100 support messages and tag them by topic. The top clusters — the questions you answer the same way every time — need a clear, complete answer in your knowledge base. If you haven't documented these yet, this is the work.
+
+### Your product or service
+
+For SaaS: document your core workflows, features, and integrations in a help center or a set of articles. For ecommerce: write clear product descriptions, size guides, and compatibility notes. For services: document your process, what's included, and what isn't.
+
+The AI retrieves from what you give it. Gaps in your content become gaps in your answers.
+
+## Choosing your AI support tool
+
+You need a RAG-based tool — one that retrieves from your knowledge base before generating a response, rather than improvising from general training data. The difference matters: RAG agents answer from your actual content with cited sources. Generic LLMs hallucinate your pricing, policies, and features.
+
+Three criteria that should be non-negotiable:
+
+1. **Grounded, cited answers.** The response should show which part of your knowledge base it came from.
+2. **Honest escalation.** When it can't find a confident answer, it says so and routes to a human — not a confident guess.
+3. **One-snippet deploy.** If setup requires more than pasting a script tag, the overhead will kill your maintenance budget.
+
+For a comparison of what's available, see [Best AI Customer Support Tools for Startups (2026)](/blog/best-ai-customer-support-tools-startups).
+
+## Step-by-step deployment
+
+### Step 1: Set up and train the agent
+
+1. Create your account with your chosen AI support tool.
+2. Add your knowledge base — paste your FAQ, upload PDFs, or enter your site URL to crawl.
+3. Name the agent and write a welcome message that matches your brand tone.
+4. Set escalation rules: decide what gets handed to a human (anything it can't answer, refund requests, complaints).
+
+Test the agent before deploying. Ask it your top 10 most-asked questions and verify the answers are accurate and cited. Ask it a question that's NOT in your knowledge base — it should say it doesn't know, not make something up.
+
+### Step 2: Get your embed snippet
+
+Your tool's dashboard will give you a JavaScript snippet that looks roughly like:
+
+\`\`\`html
+<script src="https://cdn.yourprovider.com/widget.js" data-id="YOUR_ID" async></script>
+\`\`\`
+
+Copy this snippet. You'll paste it once into your site.
+
+### Step 3: Deploy by platform
+
+The snippet goes before the closing \`</body>\` tag on every page. How you do that depends on your platform:
+
+**Shopify**
+Online Store → Themes → Edit Code → open \`theme.liquid\` → paste before \`</body>\` → Save.
+Full guide: [How to Add AI Support to Your Shopify Store](/blog/add-ai-support-to-shopify-store)
+
+**WordPress**
+Appearance → Theme File Editor → \`footer.php\` → paste before \`</body>\` → Save.
+Alternatively, use a lightweight "Insert Headers and Footers" plugin to avoid touching theme files.
+Full guide: [How to Add an AI Chatbot to WordPress (No Plugins Needed)](/blog/how-to-add-chatbot-to-wordpress)
+
+**Wix**
+Editor → click the header/footer → Edit Header/Footer → add an HTML Embed element → paste snippet → Apply → Publish.
+Full guide: [How to Add an AI Chatbot to Your Wix Website](/blog/wix-chatbot)
+
+**Squarespace**
+Settings → Advanced → Code Injection → paste in the Footer section → Save.
+
+**Webflow**
+Project Settings → Custom Code → Footer Code → paste → Publish.
+
+**Framer**
+Site Settings → General → Custom Code → paste before \`</body>\` → Publish.
+
+**Custom HTML site**
+Find your shared \`footer.html\` or base template and paste before \`</body>\`.
+
+### Step 4: Verify the deployment
+
+Visit your live site in an incognito window. The chat widget should appear in the corner. Ask it a question from your knowledge base and confirm:
+- The answer is accurate
+- It cites a source
+- The widget loads without slowing your page (it should be invisible to performance)
+
+If the widget doesn't appear, clear your CDN or platform cache (common on WordPress, Shopify, and Wix) and reload.
+
+## Setting escalation rules
+
+Escalation is what happens when the AI can't help. Getting this right prevents the worst customer experiences.
+
+**Always escalate:**
+- Questions the agent answers with low confidence
+- Anything with upset/complaint tone
+- Refund, damage, or billing disputes above a threshold you set
+- Any question that requires looking up account-specific data you haven't connected
+
+**Route escalations to:** your email inbox, Slack, or an existing help desk — whatever your team actually monitors. Configure this before you go live.
+
+**Set availability context:** if you're a solo founder who can't respond to escalations at 2am, tell the agent your business hours and have it set expectations clearly: "I'll connect you with our team, who'll reply by [next business day]."
+
+## Testing before you go live
+
+Testing against ideal questions isn't testing. Here's how to test properly:
+
+**Test your real top 10.** Pull your most common support questions and ask each one in two or three different phrasings. Customers rarely ask questions the "right" way.
+
+**Test gaps.** Ask something you know isn't in your knowledge base. The agent should say it doesn't know — not generate a confident wrong answer.
+
+**Test edge cases.** Ask about a discontinued product, an out-of-stock item, a policy you haven't documented. These are where raw LLMs fail and RAG agents hold.
+
+**Test escalation.** Trigger an escalation and confirm it reaches the right place.
+
+**Test mobile.** On platforms with separate mobile editors (Wix especially), confirm the widget appears on mobile. It's easy to miss.
+
+## Lead capture setup
+
+Most AI support tools include a lead capture flow — asking for an email before the agent answers, or offering to follow up after a helpful conversation. This is worth configuring before launch.
+
+The effective pattern: don't gate the first answer behind an email. Let the agent help first, then offer to send a summary or follow-up resource to an email the customer provides. Trust-earn-then-capture outperforms gate-then-help 3–5x on lead capture rate.
+
+For ecommerce specifically: configure the lead capture for out-of-stock scenarios. A customer asking about a product you don't have is a warm lead — capturing their email is a real opportunity.
+
+## What to watch in the first 30 days
+
+**The escalation log is your product research.** Every escalated question is a content gap. Add the answer to your knowledge base and the agent improves automatically.
+
+**Track deflection rate.** Most tools show this in their analytics. Expect 40–60% in week one, rising to 60–80% by week four as you fill content gaps identified by escalations.
+
+**Track conversation rate.** Are visitors engaging with the agent? If engagement is low, the positioning of the widget or the welcome message may need adjusting.
+
+**Watch for patterns.** If the same question escalates repeatedly, that's your highest-priority content to add. If the same wrong answer appears repeatedly, find the conflicting or missing content in your knowledge base and fix it.
+
+## Common pitfalls
+
+**Deploying before the knowledge base is ready.** A thin knowledge base means most conversations escalate. Customers who tried the AI and got "I don't know" are harder to re-engage than customers who never tried it. Spend the afternoon before launch on content.
+
+**Not testing escalation.** The escalation path is the safety net. If it doesn't work, complex conversations just disappear. Test it explicitly.
+
+**Only deploying on one page.** The widget should be sitewide. Questions come from pricing pages, product pages, checkout, and documentation — not just the home page.
+
+**Treating it as finished after launch.** The first 30 days of escalation logs contain more product-improvement signal than most user research sessions. Review them actively.
+
+## Frequently Asked Questions
+
+**Do I need a developer to add an AI chatbot to my website?**
+No. Modern AI support tools provide a single JavaScript snippet. If you can edit your site's footer or theme file — a task that typically takes two minutes with no coding knowledge — you can install the agent. The platform-specific guides above cover each major CMS step by step.
+
+**Will an AI chatbot slow down my website?**
+No. The snippet loads asynchronously, which means it loads after your main page content and doesn't block rendering. Your Core Web Vitals score won't be affected.
+
+**How many pages should the AI chatbot appear on?**
+All of them. Questions come from every page type, and limiting to one page limits deflection without reducing setup effort. The widget is unobtrusive — visitors who don't need it ignore it.
+
+**How long does it take to set up an AI support agent on a website?**
+Allow 3–4 hours: 1–2 hours to gather and document your knowledge base content, 30 minutes to configure the agent and test answers, 15 minutes to deploy the snippet and verify. Most teams are live the same afternoon they start.
+
+**What happens if the AI gives a wrong answer?**
+A RAG-based agent grounded in your content doesn't make up answers — it cites its sources. If it can't find a confident answer in your knowledge base, it says so and escalates to a human. The risk of wrong answers comes from generic LLM chatbots not grounded in your content — choose a RAG tool to avoid this entirely.
     `,
   },
 ].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));

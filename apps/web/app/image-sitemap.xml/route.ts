@@ -2,6 +2,7 @@ import { blogPosts } from "../(marketing)/blog/blog-data";
 import { integrations } from "../(marketing)/integrations/integrations-data";
 import { tools } from "../(marketing)/tools/tools-data";
 import { useCases } from "../(marketing)/use-cases/use-cases-data";
+import { vsPages } from "../(marketing)/vs/vs-data";
 
 const BASE_URL = "https://frontface.app";
 
@@ -39,6 +40,16 @@ export function GET() {
       page: tool.canonical,
       image: tool.ogImage,
       title: tool.ogImageAlt,
+    })),
+    {
+      page: `${BASE_URL}/vs`,
+      image: `${BASE_URL}/blog-og/vs-index.png`,
+      title: "FrontFace competitor comparisons",
+    },
+    ...vsPages.map((page) => ({
+      page: page.canonical,
+      image: page.ogImage,
+      title: page.ogImageAlt,
     })),
   ];
 

@@ -98,6 +98,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     },
   ].filter((link) => link.href !== `/blog/${post.slug}`);
 
+  if (post.clusterPillar && post.clusterPillar.slug !== post.slug) {
+    relatedResourceLinks.unshift({
+      href: `/blog/${post.clusterPillar.slug}`,
+      label: post.clusterPillar.title,
+    });
+  }
+
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -238,6 +245,30 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 </span>
               </div>
             </div>
+
+            {post.clusterPillar && post.clusterPillar.slug !== post.slug && (
+              <div className="reveal in d4" style={{ marginTop: 20 }}>
+                <Link
+                  href={`/blog/${post.clusterPillar.slug}`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 7,
+                    fontSize: 13,
+                    fontWeight: 650,
+                    color: "var(--ff-accent-2)",
+                    background: "var(--ff-accent-soft)",
+                    border: "1px solid var(--ff-accent-soft)",
+                    borderRadius: 99,
+                    padding: "5px 13px 5px 10px",
+                    textDecoration: "none",
+                  }}
+                >
+                  {Ic("link", { size: 13 })}
+                  Part of series: {post.clusterPillar.title}
+                </Link>
+              </div>
+            )}
           </div>
         </header>
 

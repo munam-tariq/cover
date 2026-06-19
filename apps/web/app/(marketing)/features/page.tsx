@@ -147,58 +147,12 @@ const howToSchema = {
   ],
 };
 
-const faqSchema = {
+const breadcrumbSchema = {
   "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: [
-    {
-      "@type": "Question",
-      name: "How does FrontFace know my product?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "FrontFace uses RAG (Retrieval-Augmented Generation) to index your existing content — website pages, PDFs, docs, and FAQs. When a customer asks a question, it retrieves the relevant content and generates a cited, accurate answer grounded in your actual material.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "How long does setup take?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Most teams are live in under 5 minutes. Point FrontFace at your website or upload your docs, customize the widget, and paste one line of code. No developers or technical skills required.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Does FrontFace hallucinate or make up answers?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "No. FrontFace only answers from your indexed content and cites its sources in every response. If it doesn't find a match in your knowledge base, it says so and offers to connect the customer to a human — rather than guessing.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "What websites does FrontFace support?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "FrontFace works on any website with a single line of code — Shopify, WordPress, Wix, Squarespace, Webflow, Framer, or fully custom sites. It also offers a hosted public agent page with no embed required.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "What does FrontFace cost?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "FrontFace is free during the beta period. No credit card required to get started.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "What happens when the AI can't answer a question?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "FrontFace hands the conversation off to a human agent instantly, with the full conversation context included. Your team picks up exactly where the AI left off — no repeated context needed from the customer.",
-      },
-    },
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://frontface.app" },
+    { "@type": "ListItem", position: 2, name: "Features", item: "https://frontface.app/features" },
   ],
 };
 
@@ -237,7 +191,7 @@ export default function FeaturesPage() {
   return (
     <>
       <Script id="features-howto-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }} />
-      <Script id="features-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <Script id="features-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <main>
       <PageHero
         eyebrow="Features"

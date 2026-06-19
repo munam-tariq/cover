@@ -1,5 +1,6 @@
 import { Target, Users, Zap, Heart } from "lucide-react";
 import { Metadata } from "next";
+import Script from "next/script";
 
 import { Btn } from "../components/marketing-button";
 import { Ic, WRAP } from "../components/marketing-kit";
@@ -52,6 +53,15 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://frontface.app/about",
   },
+};
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://frontface.app" },
+    { "@type": "ListItem", position: 2, name: "About", item: "https://frontface.app/about" },
+  ],
 };
 
 const values = [
@@ -117,6 +127,8 @@ const iconChip = {
 
 export default function AboutPage() {
   return (
+    <>
+      <Script id="about-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
     <main>
       <PageHero
         eyebrow="About us"
@@ -219,5 +231,6 @@ export default function AboutPage() {
         secondaryHref="/features"
       />
     </main>
+    </>
   );
 }
