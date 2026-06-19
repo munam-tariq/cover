@@ -16,8 +16,9 @@ FrontFace is built for founders, startups, ecommerce stores, service businesses,
 ## Public Pages
 
 - [Home](https://frontface.app): AI support agent overview and live demo.
-- [Use Cases](https://frontface.app/use-cases): SaaS, ecommerce, professional services, agencies, education, and healthcare.
-- [Integrations](https://frontface.app/integrations): Shopify, WordPress, Wix, Squarespace, custom websites, API, webhooks, and coming-soon workflow integrations.
+- [Use Cases](https://frontface.app/use-cases): SaaS, ecommerce, professional services, agencies, education, healthcare, real estate, fintech, restaurants, B2B, developer tools, and nonprofits.
+- [Integrations](https://frontface.app/integrations): Shopify, WordPress, Wix, Squarespace, Webflow, Framer, Bubble, Ghost, Next.js, React, HTML/static sites, GoDaddy, Weebly, API, webhooks, and coming-soon workflow integrations.
+- [Compare](https://frontface.app/vs): Head-to-head comparisons of FrontFace against Chatbase, Intercom Fin, Zendesk, Tidio, Crisp, Freshdesk, Help Scout, Drift, HubSpot Chat, and LiveChat.
 - [Tools](https://frontface.app/tools): Free AI support calculators and planning tools for small teams.
 - [Support Ticket Deflection Calculator](https://frontface.app/tools/support-ticket-deflection-calculator): Estimate routine tickets deflected, support hours saved, and monthly cost savings from AI customer support.
 - [Features](https://frontface.app/features): Knowledge-base answers, cited sources, lead capture, human handoff, analytics, and website deployment.
@@ -35,7 +36,7 @@ The main content cluster explains how founders, startups, ecommerce stores, agen
 - [How to Cut Support Tickets Without Hiring](https://frontface.app/blog/cut-support-tickets-without-hiring)
 - [Support Ticket Deflection Calculator](https://frontface.app/tools/support-ticket-deflection-calculator)
 - [Best AI Customer Support Tools for Startups](https://frontface.app/blog/best-ai-customer-support-tools-startups)
-- [FrontFace vs Chatbase vs Intercom for Small Teams](https://frontface.app/blog/frontface-vs-chatbase-vs-intercom)
+- [AI Chatbot for Small Business](https://frontface.app/blog/chatbot-for-small-business)
 
 ### Website platform setup
 
@@ -48,6 +49,48 @@ This cluster helps small teams add an AI support agent to a specific site builde
 - [WordPress AI Chatbot Integration](https://frontface.app/integrations/wordpress)
 - [How to Add an AI Chatbot to Your Wix Website](https://frontface.app/blog/wix-chatbot)
 - [Wix AI Chatbot Integration](https://frontface.app/integrations/wix)
+- [Squarespace AI Chatbot Integration](https://frontface.app/integrations/squarespace)
+- [Webflow AI Chatbot Integration](https://frontface.app/integrations/webflow)
+- [Framer AI Chatbot Integration](https://frontface.app/integrations/framer)
+- [Bubble AI Chatbot Integration](https://frontface.app/integrations/bubble)
+- [Ghost AI Chatbot Integration](https://frontface.app/integrations/ghost)
+- [Next.js AI Chatbot Integration](https://frontface.app/integrations/nextjs)
+- [HTML / Static Site AI Chatbot](https://frontface.app/integrations/html)
+- [GoDaddy AI Chatbot Integration](https://frontface.app/integrations/godaddy)
+- [Weebly AI Chatbot Integration](https://frontface.app/integrations/weebly)
+- [React AI Chatbot Integration](https://frontface.app/integrations/react)
+
+### AI support by industry
+
+This cluster covers AI customer support for specific verticals.
+
+- [AI Support for SaaS & Startups](https://frontface.app/use-cases/saas)
+- [AI Customer Support for Ecommerce](https://frontface.app/use-cases/ecommerce)
+- [White-Label AI Chatbot for Agencies](https://frontface.app/use-cases/agencies)
+- [AI Support for Professional Services](https://frontface.app/use-cases/professional-services)
+- [AI Patient Support for Healthcare](https://frontface.app/use-cases/healthcare)
+- [AI Lead Qualification for Real Estate](https://frontface.app/use-cases/real-estate)
+- [AI Student Support for Education](https://frontface.app/use-cases/education)
+- [AI Support for Fintech](https://frontface.app/use-cases/fintech)
+- [AI Support for Restaurants & Hospitality](https://frontface.app/use-cases/restaurants)
+- [AI Support for B2B Companies](https://frontface.app/use-cases/b2b)
+- [AI Docs Chatbot for Developer Tools](https://frontface.app/use-cases/developers)
+- [AI Support for Nonprofits](https://frontface.app/use-cases/nonprofits)
+
+### Competitor comparisons
+
+This cluster targets buyer-intent "X vs Y" searches from teams actively evaluating AI support tools.
+
+- [FrontFace vs Chatbase](https://frontface.app/vs/chatbase)
+- [FrontFace vs Intercom Fin](https://frontface.app/vs/intercom)
+- [FrontFace vs Zendesk](https://frontface.app/vs/zendesk)
+- [FrontFace vs Tidio](https://frontface.app/vs/tidio)
+- [FrontFace vs Crisp](https://frontface.app/vs/crisp)
+- [FrontFace vs Freshdesk](https://frontface.app/vs/freshdesk)
+- [FrontFace vs Help Scout](https://frontface.app/vs/help-scout)
+- [FrontFace vs Drift](https://frontface.app/vs/drift)
+- [FrontFace vs HubSpot Chat](https://frontface.app/vs/hubspot-chat)
+- [FrontFace vs LiveChat](https://frontface.app/vs/livechat)
 
 ## Buyer-Intent Blog Posts
 
@@ -55,19 +98,30 @@ This cluster helps small teams add an AI support agent to a specific site builde
 - [AI Customer Support Guide for Startups](https://frontface.app/blog/ai-customer-support-guide-startups): Playbook for lean teams deploying AI support.
 - [RAG vs Traditional Chatbots](https://frontface.app/blog/rag-vs-traditional-chatbots): Why retrieval-augmented generation outperforms rule-based bots.
 - [Chatbot Lead Generation Guide](https://frontface.app/blog/chatbot-lead-generation-guide): Using conversational AI to capture and qualify leads.
-- [How to Cut Support Tickets Without Hiring](https://frontface.app/blog/cut-support-tickets-without-hiring): Deflecting 80%+ of routine questions with AI.
+- [How to Cut Support Tickets Without Hiring](https://frontface.app/blog/cut-support-tickets-without-hiring): Deflecting 60–80% of routine questions with AI.
 - [Best AI Customer Support Tools for Startups](https://frontface.app/blog/best-ai-customer-support-tools-startups): Tool comparison focused on SMBs and lean teams.
 - [How to Add AI Support to a Shopify Store](https://frontface.app/blog/add-ai-support-to-shopify-store): Shopify-specific integration guide.
 - [FrontFace vs Chatbase vs Intercom for Small Teams](https://frontface.app/blog/frontface-vs-chatbase-vs-intercom): Honest comparison — pricing, features, and SMB fit.
+- [How to Add an AI Chatbot to WordPress in 2026](https://frontface.app/blog/how-to-add-chatbot-to-wordpress): No-plugin install guide for any WordPress theme.
+- [How to Add an AI Chatbot to Your Wix Website](https://frontface.app/blog/wix-chatbot): HTML embed and Velo installation guide.
+- [Best Zendesk Alternatives for Small Business in 2026](https://frontface.app/blog/zendesk-alternative-small-business): Five alternatives compared by use case and price.
+- [Tidio Alternatives: Better AI Support for Growing Teams](https://frontface.app/blog/tidio-alternatives): When to move beyond Tidio's FAQ-matching approach.
+- [AI Chatbot for Small Business: What Actually Works in 2026](https://frontface.app/blog/chatbot-for-small-business): How to avoid hallucination and choose a grounded chatbot.
 
 ## Competitive Positioning
 
-FrontFace competes with Chatbase, Intercom Fin, Tidio, Crisp, and Zendesk AI.
+FrontFace competes with Chatbase, Intercom Fin, Tidio, Crisp, Freshdesk, Help Scout, Drift, HubSpot Chat, LiveChat, and Zendesk AI. See [/vs](https://frontface.app/vs) for structured feature-by-feature comparisons.
 
-- vs **Chatbase**: Chatbase has moved upmarket (enterprise, SOC 2). FrontFace targets the SMB/founder segment they vacated — simpler setup, no enterprise pricing.
-- vs **Intercom Fin**: Intercom Fin is priced from $0.99 per Fin outcome and is strongest when a team already wants an Intercom-style support suite. FrontFace is free during beta and focused on small teams that need a website support agent first.
-- vs **Tidio/Crisp**: Those are live chat tools with bolt-on AI. FrontFace is AI-first — grounded answers from your knowledge base are the core product, not an add-on.
-- vs **Zendesk AI**: Zendesk is a full helpdesk suite. FrontFace is a focused support agent — live on any site in 5 minutes, no helpdesk migration required.
+- vs **Chatbase**: Chatbase has moved upmarket (enterprise, SOC 2). FrontFace targets the SMB/founder segment — simpler setup, no enterprise pricing. ([Compare](https://frontface.app/vs/chatbase))
+- vs **Intercom Fin**: Intercom Fin is priced from $0.99 per Fin outcome and requires the Intercom platform. FrontFace is free during beta, works standalone, and is focused on small teams that need a website agent first. ([Compare](https://frontface.app/vs/intercom))
+- vs **Zendesk**: Zendesk is a full enterprise helpdesk. FrontFace is a focused AI deflection agent — live in 5 minutes, no seat-based pricing, no helpdesk migration. ([Compare](https://frontface.app/vs/zendesk))
+- vs **Tidio**: Tidio is live-chat-first with AI bolted on (Lyro uses FAQ matching). FrontFace is AI-first — RAG retrieval from your full knowledge base, automatic updates when docs change. ([Compare](https://frontface.app/vs/tidio))
+- vs **Crisp**: Crisp is a team live-chat inbox. FrontFace resolves conversations autonomously without a human in the loop. ([Compare](https://frontface.app/vs/crisp))
+- vs **Freshdesk**: Freshdesk is a help desk ticketing system. FrontFace deflects tickets before they're created. ([Compare](https://frontface.app/vs/freshdesk))
+- vs **Help Scout**: Help Scout is an email-first inbox for human support teams. FrontFace reduces the emails that need a human reply at all. ([Compare](https://frontface.app/vs/help-scout))
+- vs **Drift**: Drift is an enterprise conversational marketing platform ($2,500+/month). FrontFace is free during beta for startups needing support and lead capture. ([Compare](https://frontface.app/vs/drift))
+- vs **HubSpot Chat**: HubSpot Live Chat is tied to the HubSpot CRM and has limited autonomous AI. FrontFace works standalone with deeper RAG-grounded answers. ([Compare](https://frontface.app/vs/hubspot-chat))
+- vs **LiveChat**: LiveChat is a professional agent live-chat platform. FrontFace handles conversations autonomously without a dedicated agent. ([Compare](https://frontface.app/vs/livechat))
 
 ## Product Capabilities
 
@@ -122,7 +176,7 @@ Configuration options include `data-project-id`, `data-api-url`, `data-position`
 - **AI**: Retrieval-augmented generation for grounded support answers.
 - **Widget**: JavaScript embed with isolated styling.
 - **Auth**: Magic-link authentication.
-- **Crawl files**: Sitemap at https://frontface.app/sitemap.xml, image sitemap at https://frontface.app/image-sitemap.xml, robots at https://frontface.app/robots.txt, and IndexNow ownership key at https://frontface.app/frontface-indexnow-key.txt.
+- **Crawl files**: Sitemap at https://frontface.app/sitemap.xml, robots at https://frontface.app/robots.txt, and IndexNow ownership key at https://frontface.app/frontface-indexnow-key.txt.
 - **IndexNow**: FrontFace can notify Bing/IndexNow after deploy with `pnpm indexnow:submit`.
 
 ## Contact
