@@ -9,6 +9,7 @@
     "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
     "install:prod": "pnpm install --prod --frozen-lockfile",
     "clean": "turbo clean && rm -rf node_modules",
+    "indexnow:submit": "node scripts/submit-indexnow.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "devDependencies": {
@@ -19,5 +20,12 @@
   "packageManager": "pnpm@10.29.2",
   "engines": {
     "node": ">=22.13.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "hono": ">=4.12.25",
+      "postcss": ">=8.5.10",
+      "esbuild": ">=0.28.1"
+    }
   }
 }

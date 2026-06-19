@@ -389,8 +389,8 @@ export default function ConversationPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const conversationId = params.id as string;
-  const fromLeads = searchParams.get("from") === "leads";
+  const conversationId = String(params?.id ?? "");
+  const fromLeads = searchParams?.get("from") === "leads";
   const backHref = fromLeads ? "/leads" : "/inbox";
   const backLabel = fromLeads ? "Back to Leads" : "Back to Inbox";
   const { agent } = useAgent();

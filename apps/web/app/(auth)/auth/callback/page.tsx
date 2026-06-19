@@ -25,7 +25,7 @@ function AuthCallbackContent() {
   useEffect(() => {
     const handleCallback = async () => {
       const supabase = createClient();
-      const next = searchParams.get("next") ?? "/dashboard";
+      const next = searchParams?.get("next") ?? "/dashboard";
 
       // Check if user is coming from invitation flow - don't create default project for invited users
       // More precise detection - must be exactly /invite/{64-char-hex-token}
@@ -116,7 +116,7 @@ function AuthCallbackContent() {
       }
 
       // No existing session, try to exchange the code
-      const code = searchParams.get("code");
+      const code = searchParams?.get("code");
 
       if (!code) {
         setError("No authorization code found. Please request a new magic link.");

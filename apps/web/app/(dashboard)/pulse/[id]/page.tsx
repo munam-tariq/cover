@@ -154,7 +154,7 @@ export default function CampaignResultsPage() {
   const { currentProject } = useProject();
   const router = useRouter();
   const params = useParams();
-  const campaignId = params.id as string;
+  const campaignId = String(params?.id ?? "");
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);

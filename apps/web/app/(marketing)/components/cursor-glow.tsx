@@ -6,6 +6,9 @@ export function CursorGlow() {
   const glowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const canTrackPointer = window.matchMedia("(pointer: fine) and (min-width: 768px)");
+    if (!canTrackPointer.matches) return;
+
     const glow = glowRef.current;
     if (!glow) return;
 

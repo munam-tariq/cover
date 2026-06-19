@@ -27,6 +27,51 @@ test("blog post metadata images resolve to public assets", () => {
   }
 });
 
+test("blog posts define varied visual cover directions", () => {
+  const coverKinds = blogPosts.map((post) => post.coverKind);
+  const coverCounts = new Map<string, number>();
+
+  for (const coverKind of coverKinds) {
+    assert.equal(typeof coverKind, "string", "every blog post should have an explicit coverKind");
+    assert.ok(coverKind.length > 0, "coverKind should not be empty");
+    coverCounts.set(coverKind, (coverCounts.get(coverKind) ?? 0) + 1);
+  }
+
+  assert.ok(coverCounts.size >= 10, "blog index should not repeat the same small set of cover scenes");
+  assert.ok(Math.max(...coverCounts.values()) <= 2, "no cover scene should dominate the blog grid");
+});
+
+test("blog filter cards are visible immediately after category changes", () => {
+  const source = readFileSync(path.join(process.cwd(), "apps/web/app/(marketing)/blog/blog-index.tsx"), "utf8");
+
+  assert.match(source, /className=\{"reveal in d" \+ \(\(i % 3\) \+ 1\)\}/);
+  assert.match(source, /aria-pressed=\{on\}/);
+});
+
+test("marketing third-party scripts wait for consent or user intent", () => {
+  const rootLayout = readFileSync(path.join(process.cwd(), "apps/web/app/layout.tsx"), "utf8");
+  const marketingLayout = readFileSync(path.join(process.cwd(), "apps/web/app/(marketing)/layout.tsx"), "utf8");
+  const widgetLauncher = readFileSync(path.join(process.cwd(), "apps/web/app/(marketing)/components/marketing-widget-launcher.tsx"), "utf8");
+  const analyticsConsent = readFileSync(path.join(process.cwd(), "apps/web/components/analytics-consent.tsx"), "utf8");
+
+  assert.doesNotMatch(rootLayout, /googletagmanager\.com\/gtag\/js/);
+  assert.match(analyticsConsent, /googletagmanager\.com\/gtag\/js/);
+  assert.doesNotMatch(marketingLayout, /storage\/v1\/object\/public\/assets\/widget\.js/);
+  assert.match(marketingLayout, /MarketingWidgetLauncher/);
+  assert.match(widgetLauncher, /document\.createElement\("script"\)/);
+  assert.match(widgetLauncher, /onClick=\{loadWidget\}/);
+});
+
+test("homepage LCP hero renders static headline server-side", () => {
+  const heroSection = readFileSync(path.join(process.cwd(), "apps/web/app/(marketing)/components/hero-section.tsx"), "utf8");
+  const heroDemoSlot = readFileSync(path.join(process.cwd(), "apps/web/app/(marketing)/components/hero-demo-slot.tsx"), "utf8");
+
+  assert.doesNotMatch(heroSection, /^"use client";/);
+  assert.match(heroSection, /HeroDemoSlot/);
+  assert.match(heroDemoSlot, /^"use client";/);
+  assert.match(heroDemoSlot, /dynamic\(/);
+});
+
 test("retired blog slugs redirect to relevant live posts", async () => {
   const nextConfig = require("../../apps/web/next.config.js");
   const redirects = await nextConfig.redirects();

@@ -178,5 +178,6 @@ export const NAV: [string, string][] = [
   ["Product", "/#capabilities"],
   ["How it works", "/#how"],
   ["Pricing", "/#pricing"],
+  ["Tools", "/tools"],
   ["Blog", "/blog"],
 ];

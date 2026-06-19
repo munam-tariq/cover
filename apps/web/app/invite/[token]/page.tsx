@@ -34,7 +34,7 @@ interface InvitationDetails {
 export default function InvitePage() {
   const params = useParams();
   const router = useRouter();
-  const token = params.token as string;
+  const token = String(params?.token ?? "");
   const supabase = createClient();
 
   const [invitation, setInvitation] = useState<InvitationDetails | null>(null);

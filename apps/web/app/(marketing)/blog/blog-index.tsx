@@ -18,7 +18,7 @@ export function BlogIndex({ posts }: { posts: BlogPost[] }) {
   const [active, setActive] = useState("All");
 
   const featured = posts[0];
-  const grid = active === "All" ? posts.slice(1) : posts.filter((p) => p.category === active);
+  const grid = useMemo(() => (active === "All" ? posts.slice(1) : posts.filter((p) => p.category === active)), [active, posts]);
 
   return (
     <div style={{ overflowX: "hidden" }}>
@@ -61,6 +61,7 @@ export function BlogIndex({ posts }: { posts: BlogPost[] }) {
                 <button
                   key={c}
                   type="button"
+                  aria-pressed={on}
                   onClick={() => setActive(c)}
                   style={{
                     padding: "9px 16px",
@@ -86,7 +87,7 @@ export function BlogIndex({ posts }: { posts: BlogPost[] }) {
         <section style={{ ...WRAP, padding: "clamp(20px,3vh,32px) clamp(20px,5vw,40px) clamp(28px,4vh,44px)" }}>
           <Link
             href={`/blog/${featured.slug}`}
-            className="reveal ff-blog-feat"
+            className="reveal in ff-blog-feat"
             style={{
               display: "grid",
               gridTemplateColumns: "1.05fr 1fr",
@@ -135,7 +136,7 @@ export function BlogIndex({ posts }: { posts: BlogPost[] }) {
             <Link
               key={p.slug}
               href={`/blog/${p.slug}`}
-              className={"reveal d" + ((i % 3) + 1)}
+              className={"reveal in d" + ((i % 3) + 1)}
               style={{
                 display: "flex",
                 flexDirection: "column",

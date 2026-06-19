@@ -28,7 +28,7 @@ export default function AgentStudioPage() {
   const { projects, currentProject, switchProject, isLoading } = useProject();
   const [activeTab, setActiveTab] = useState("overview");
 
-  const projectId = params.projectId as string;
+  const projectId = String(params?.projectId ?? "");
 
   // Find the project by ID
   const project = projects.find((p) => p.id === projectId);

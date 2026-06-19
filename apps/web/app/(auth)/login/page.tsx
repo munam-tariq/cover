@@ -11,7 +11,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const errorParam = searchParams.get("error");
+  const errorParam = searchParams?.get("error");
 
   const supabase = createClient();
 
@@ -30,7 +30,7 @@ function LoginForm() {
 
     try {
       // Preserve returnUrl so user is redirected back after login
-      const returnUrl = searchParams.get("returnUrl");
+      const returnUrl = searchParams?.get("returnUrl");
       const callbackUrl = returnUrl
         ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnUrl)}`
         : `${window.location.origin}/auth/callback`;

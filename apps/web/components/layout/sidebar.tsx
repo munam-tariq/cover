@@ -103,7 +103,7 @@ const icons: Record<string, React.FC<{ className?: string }>> = {
 };
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const { role, availability, isLoading } = useAgent();
   const { currentProject } = useProject();

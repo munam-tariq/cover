@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Script from "next/script";
 import type { CSSProperties } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { Btn } from "../../components/marketing-button";
 import { Ic, WRAP } from "../../components/marketing-kit";
@@ -74,6 +75,28 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     .filter((p) => p.slug !== post.slug)
     .sort((a, b) => Number(b.category === post.category) - Number(a.category === post.category))
     .slice(0, 3);
+  const relatedResourceLinks = [
+    {
+      href: "/tools/support-ticket-deflection-calculator",
+      label: "Support ticket deflection calculator",
+    },
+    {
+      href: "/blog/cut-support-tickets-without-hiring",
+      label: "How to cut support tickets without hiring",
+    },
+    {
+      href: "/use-cases/saas",
+      label: "AI support for SaaS and startups",
+    },
+    {
+      href: "/integrations/shopify",
+      label: "Shopify AI chatbot setup",
+    },
+    {
+      href: "/blog/frontface-vs-chatbase-vs-intercom",
+      label: "FrontFace vs Chatbase vs Intercom Fin",
+    },
+  ].filter((link) => link.href !== `/blog/${post.slug}`);
 
   const articleSchema = {
     "@context": "https://schema.org",
@@ -227,7 +250,48 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
         {/* body */}
         <article className="prose-ff" style={{ padding: "clamp(32px,5vh,52px) clamp(20px,5vw,40px) 0" }}>
-          <ReactMarkdown>{post.content}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
+
+          <div
+            className="reveal"
+            style={{
+              margin: "34px auto 0",
+              maxWidth: 720,
+              border: "1px solid var(--ff-line)",
+              borderRadius: 16,
+              background: "#fff",
+              padding: "20px 22px",
+            }}
+          >
+            <h2
+              style={{
+                fontSize: 19,
+                fontWeight: 800,
+                letterSpacing: "-.015em",
+                color: "var(--ff-ink)",
+                margin: "0 0 12px",
+              }}
+            >
+              Useful next steps
+            </h2>
+            <div style={{ display: "grid", gap: 9 }}>
+              {relatedResourceLinks.slice(0, 4).map((resource) => (
+                <Link
+                  key={resource.href}
+                  href={resource.href}
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 650,
+                    color: "var(--ff-ink)",
+                    textDecoration: "underline",
+                    textUnderlineOffset: 3,
+                  }}
+                >
+                  {resource.label}
+                </Link>
+              ))}
+            </div>
+          </div>
 
           {/* article CTA */}
           <div

@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 
 import { Logo, WRAP } from "./marketing-kit";
@@ -11,6 +9,7 @@ const FOOT_COLS: [string, [string, string][]][] = [
       ["Features", "/#capabilities"],
       ["How it works", "/#how"],
       ["Pricing", "/#pricing"],
+      ["Tools", "/tools"],
       ["Blog", "/blog"],
     ],
   ],
@@ -85,9 +84,8 @@ export function Footer() {
                 <Link
                   key={label}
                   href={href}
+                  className="ff-foot-link"
                   style={{ fontSize: 14, color: "rgba(255,255,255,.6)", transition: "color .15s" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.6)")}
                 >
                   {label}
                 </Link>
@@ -117,6 +115,7 @@ export function Footer() {
       </div>
 
       <style>{`
+        .ff-foot-link:hover { color: #fff !important; }
         @media (max-width: 920px) {
           .ff-foot-grid { grid-template-columns: 1fr 1fr !important; }
         }

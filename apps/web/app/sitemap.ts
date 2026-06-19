@@ -2,6 +2,7 @@ import { MetadataRoute } from "next";
 
 import { blogPosts } from "./(marketing)/blog/blog-data";
 import { integrations as integrationPages } from "./(marketing)/integrations/integrations-data";
+import { tools as toolPages } from "./(marketing)/tools/tools-data";
 import { useCases as useCasePages } from "./(marketing)/use-cases/use-cases-data";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -16,6 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/features`,          lastModified: new Date("2026-06-17"), changeFrequency: "monthly" as const, priority: 0.8 },
     { url: `${baseUrl}/use-cases`,         lastModified: new Date("2026-06-17"), changeFrequency: "monthly" as const, priority: 0.8 },
     { url: `${baseUrl}/integrations`,      lastModified: new Date("2026-06-17"), changeFrequency: "monthly" as const, priority: 0.8 },
+    { url: `${baseUrl}/tools`,             lastModified: new Date("2026-06-19"), changeFrequency: "monthly" as const, priority: 0.8 },
     { url: `${baseUrl}/about`,             lastModified: new Date("2026-06-17"), changeFrequency: "monthly" as const, priority: 0.7 },
     { url: `${baseUrl}/privacy`,           lastModified: new Date("2026-06-17"), changeFrequency: "yearly"  as const, priority: 0.3 },
     { url: `${baseUrl}/terms`,             lastModified: new Date("2026-06-17"), changeFrequency: "yearly"  as const, priority: 0.3 },
@@ -43,5 +45,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...integrationSubPages, ...useCaseSubPages, ...blogPages];
+  const tools = toolPages.map((tool) => ({
+    url: `${baseUrl}/tools/${tool.slug}`,
+    lastModified: new Date(tool.lastModified),
+    changeFrequency: "monthly" as const,
+    priority: 0.75,
+  }));
+
+  return [...staticPages, ...integrationSubPages, ...useCaseSubPages, ...tools, ...blogPages];
 }

@@ -1,27 +1,6 @@
-"use client";
-
-import dynamic from "next/dynamic";
-import type { CSSProperties } from "react";
-
+import { HeroDemoSlot } from "./hero-demo-slot";
 import { Btn } from "./marketing-button";
 import { Ic, Pill } from "./marketing-kit";
-
-const LiveDemo = dynamic(
-  () => import("./live-demo").then((m) => ({ default: m.LiveDemo })),
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        style={{
-          height: 480,
-          borderRadius: 24,
-          background: "var(--ff-card)",
-          border: "1px solid var(--ff-line)",
-        }}
-      />
-    ),
-  },
-);
 
 /* Hero — headline "Resolve customer questions instantly."
    (outcome-led; "knows your product" lives on as proof via the pill + grounded demo). */
@@ -36,33 +15,6 @@ export function HeroSection() {
         paddingBottom: "clamp(40px,6vh,72px)",
       }}
     >
-      {/* lattice + glow backdrop */}
-      <div
-        className="lattice"
-        style={
-          {
-            position: "absolute",
-            inset: 0,
-            "--lt": "rgba(17,21,27,.045)",
-            "--lt-size": "70px",
-            maskImage: "radial-gradient(120% 78% at 50% 24%, #000 32%, transparent 76%)",
-            WebkitMaskImage: "radial-gradient(120% 78% at 50% 24%, #000 32%, transparent 76%)",
-          } as CSSProperties
-        }
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: "-12%",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "70%",
-          height: 460,
-          background: "radial-gradient(50% 50% at 50% 50%, rgba(var(--ff-accent-rgb),.10), transparent 70%)",
-          pointerEvents: "none",
-        }}
-      />
-
       <div
         style={{
           width: "100%",
@@ -76,7 +28,7 @@ export function HeroSection() {
           textAlign: "center",
         }}
       >
-        <div className="reveal in" style={{ marginBottom: 26 }}>
+        <div style={{ marginBottom: 26 }}>
           <Pill style={{ padding: "7px 7px 7px 14px", gap: 10 }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
               <span style={{ width: 6, height: 6, borderRadius: 99, background: "var(--ff-ok)" }} /> AI customer support agent
@@ -100,7 +52,6 @@ export function HeroSection() {
         </div>
 
         <h1
-          className="reveal in d1"
           style={{
             fontSize: "clamp(40px,7.2vw,84px)",
             lineHeight: 1.02,
@@ -116,7 +67,6 @@ export function HeroSection() {
         </h1>
 
         <p
-          className="reveal in d2"
           style={{
             fontSize: "clamp(16px,1.7vw,19px)",
             lineHeight: 1.55,
@@ -130,7 +80,6 @@ export function HeroSection() {
         </p>
 
         <div
-          className="reveal in d3"
           style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 32, flexWrap: "wrap", justifyContent: "center" }}
         >
           <Btn kind="primary" size="lg" href="/login">
@@ -142,7 +91,6 @@ export function HeroSection() {
         </div>
 
         <div
-          className="reveal in d4"
           style={{
             display: "flex",
             alignItems: "center",
@@ -166,7 +114,7 @@ export function HeroSection() {
 
         {/* hero demo */}
         <div id="demo" className="reveal in d5" style={{ width: "100%", marginTop: "clamp(44px,6vh,72px)", scrollMarginTop: 90 }}>
-          <LiveDemo />
+          <HeroDemoSlot />
         </div>
       </div>
     </section>

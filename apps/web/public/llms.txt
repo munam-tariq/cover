@@ -18,10 +18,36 @@ FrontFace is built for founders, startups, ecommerce stores, service businesses,
 - [Home](https://frontface.app): AI support agent overview and live demo.
 - [Use Cases](https://frontface.app/use-cases): SaaS, ecommerce, professional services, agencies, education, and healthcare.
 - [Integrations](https://frontface.app/integrations): Shopify, WordPress, Wix, Squarespace, custom websites, API, webhooks, and coming-soon workflow integrations.
+- [Tools](https://frontface.app/tools): Free AI support calculators and planning tools for small teams.
+- [Support Ticket Deflection Calculator](https://frontface.app/tools/support-ticket-deflection-calculator): Estimate routine tickets deflected, support hours saved, and monthly cost savings from AI customer support.
 - [Features](https://frontface.app/features): Knowledge-base answers, cited sources, lead capture, human handoff, analytics, and website deployment.
 - [Blog](https://frontface.app/blog): Buyer guides and field notes on AI customer support, RAG, support-ticket reduction, Shopify support, and tool comparisons.
 - [About](https://frontface.app/about): Company story and mission.
 - [Sign Up](https://frontface.app/login): Create a free account during beta.
+
+## Organic Search Clusters
+
+### AI customer support for small teams
+
+The main content cluster explains how founders, startups, ecommerce stores, agencies, and service businesses can use an AI support agent to answer repetitive questions from existing docs without hiring a full support team.
+
+- [AI Customer Support Guide for Startups](https://frontface.app/blog/ai-customer-support-guide-startups)
+- [How to Cut Support Tickets Without Hiring](https://frontface.app/blog/cut-support-tickets-without-hiring)
+- [Support Ticket Deflection Calculator](https://frontface.app/tools/support-ticket-deflection-calculator)
+- [Best AI Customer Support Tools for Startups](https://frontface.app/blog/best-ai-customer-support-tools-startups)
+- [FrontFace vs Chatbase vs Intercom for Small Teams](https://frontface.app/blog/frontface-vs-chatbase-vs-intercom)
+
+### Website platform setup
+
+This cluster helps small teams add an AI support agent to a specific site builder or commerce platform.
+
+- [How to Add an AI Chatbot to Your Website in 2026](https://frontface.app/blog/how-to-add-ai-chatbot-to-website)
+- [How to Add AI Support to a Shopify Store](https://frontface.app/blog/add-ai-support-to-shopify-store)
+- [Shopify AI Chatbot Integration](https://frontface.app/integrations/shopify)
+- [How to Add an AI Chatbot to WordPress in 2026](https://frontface.app/blog/how-to-add-chatbot-to-wordpress)
+- [WordPress AI Chatbot Integration](https://frontface.app/integrations/wordpress)
+- [How to Add an AI Chatbot to Your Wix Website](https://frontface.app/blog/wix-chatbot)
+- [Wix AI Chatbot Integration](https://frontface.app/integrations/wix)
 
 ## Buyer-Intent Blog Posts
 
@@ -39,7 +65,7 @@ FrontFace is built for founders, startups, ecommerce stores, service businesses,
 FrontFace competes with Chatbase, Intercom Fin, Tidio, Crisp, and Zendesk AI.
 
 - vs **Chatbase**: Chatbase has moved upmarket (enterprise, SOC 2). FrontFace targets the SMB/founder segment they vacated — simpler setup, no enterprise pricing.
-- vs **Intercom Fin**: Intercom charges $74–$139/seat/month. FrontFace is free during beta, built for teams that can't afford per-seat pricing.
+- vs **Intercom Fin**: Intercom Fin is priced from $0.99 per Fin outcome and is strongest when a team already wants an Intercom-style support suite. FrontFace is free during beta and focused on small teams that need a website support agent first.
 - vs **Tidio/Crisp**: Those are live chat tools with bolt-on AI. FrontFace is AI-first — grounded answers from your knowledge base are the core product, not an add-on.
 - vs **Zendesk AI**: Zendesk is a full helpdesk suite. FrontFace is a focused support agent — live on any site in 5 minutes, no helpdesk migration required.
 
@@ -96,6 +122,8 @@ Configuration options include `data-project-id`, `data-api-url`, `data-position`
 - **AI**: Retrieval-augmented generation for grounded support answers.
 - **Widget**: JavaScript embed with isolated styling.
 - **Auth**: Magic-link authentication.
+- **Crawl files**: Sitemap at https://frontface.app/sitemap.xml, image sitemap at https://frontface.app/image-sitemap.xml, robots at https://frontface.app/robots.txt, and IndexNow ownership key at https://frontface.app/frontface-indexnow-key.txt.
+- **IndexNow**: FrontFace can notify Bing/IndexNow after deploy with `pnpm indexnow:submit`.
 
 ## Contact
 

@@ -1,8 +1,4 @@
-"use client";
-
-import { Menu, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 import { NAV } from "../landing-data";
 
@@ -10,40 +6,16 @@ import { Btn } from "./marketing-button";
 import { Ic, Logo, WRAP } from "./marketing-kit";
 
 export function Header() {
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    // Lightweight session check via cookie — avoids loading the full supabase-js bundle.
-    // @supabase/ssr stores the session in a cookie named sb-{ref}-auth-token.
-    const hasSession = document.cookie.split(";").some((c) => {
-      const name = c.trim().split("=")[0];
-      return name.startsWith("sb-") && name.includes("-auth-token");
-    });
-    setIsLoggedIn(hasSession);
-  }, []);
-
-  const ctaHref = isLoggedIn ? "/dashboard" : "/login";
-
   return (
     <header
       style={{
         position: "sticky",
         top: 0,
         zIndex: 50,
-        transition: "background .25s, border-color .25s, box-shadow .25s",
-        background: scrolled ? "rgba(246,247,249,.82)" : "transparent",
-        backdropFilter: scrolled ? "blur(14px)" : "none",
-        WebkitBackdropFilter: scrolled ? "blur(14px)" : "none",
-        borderBottom: "1px solid " + (scrolled ? "var(--ff-line)" : "transparent"),
+        background: "rgba(246,247,249,.88)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        borderBottom: "1px solid var(--ff-line)",
       }}
     >
       <nav
@@ -73,127 +45,88 @@ export function Header() {
           </span>
         </Link>
 
-        {/* desktop links */}
         <div className="ff-nav-links" style={{ display: "flex", alignItems: "center", gap: 30 }}>
           {NAV.map(([label, href]) => (
-            <Link
-              key={label}
-              href={href}
-              style={{ fontSize: 14.5, fontWeight: 500, color: "var(--ff-soft)", transition: "color .15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--ff-ink)")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--ff-soft)")}
-            >
+            <Link key={label} href={href} className="ff-nav-link" style={{ fontSize: 14.5, fontWeight: 500, color: "var(--ff-soft)", transition: "color .15s" }}>
               {label}
             </Link>
           ))}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {isLoggedIn ? (
-              <Link
-                href="/dashboard"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  height: 38,
-                  padding: "0 14px 0 6px",
-                  borderRadius: 10,
-                  border: "1px solid var(--ff-line-2)",
-                  background: "#fff",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "var(--ff-ink)",
-                }}
-              >
-                <span
-                  style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: 7,
-                    background: "linear-gradient(150deg,var(--ff-ink),var(--ff-ink-3))",
-                    color: "#fff",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}
-                >
-                  FF
-                </span>
-                Dashboard
-              </Link>
-            ) : (
-              <span className="ff-cta-desktop">
-                <Btn kind="primary" size="sm" href={ctaHref}>
-                  Build your agent {Ic("arrowR", { size: 15 })}
-                </Btn>
-              </span>
-            )}
+          <span className="ff-cta-desktop">
+            <Btn kind="primary" size="sm" href="/login">
+              Build your agent {Ic("arrowR", { size: 15 })}
+            </Btn>
+          </span>
 
-          {/* mobile menu toggle */}
-          <button
-            type="button"
-            className="ff-nav-toggle"
-            aria-label={mobileOpen ? "Close menu" : "Open menu"}
-            aria-expanded={mobileOpen}
-            onClick={() => setMobileOpen((v) => !v)}
-            style={{
-              display: "none",
-              width: 40,
-              height: 40,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 10,
-              border: "1px solid var(--ff-line-2)",
-              background: "#fff",
-              color: "var(--ff-ink)",
-            }}
-          >
-            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
+          <details className="ff-nav-details">
+            <summary aria-label="Open menu">
+              <span aria-hidden="true" />
+              <span aria-hidden="true" />
+              <span aria-hidden="true" />
+            </summary>
+            <div className="ff-nav-mobile">
+              {NAV.map(([label, href]) => (
+                <Link key={label} href={href} style={{ padding: "12px 4px", fontSize: 15, fontWeight: 500, color: "var(--ff-soft)", borderBottom: "1px solid var(--ff-line)" }}>
+                  {label}
+                </Link>
+              ))}
+              <div style={{ marginTop: 12 }}>
+                <Btn kind="primary" size="md" href="/login" style={{ width: "100%" }}>
+                  Build your agent {Ic("arrowR", { size: 16 })}
+                </Btn>
+              </div>
+            </div>
+          </details>
         </div>
       </nav>
 
-      {/* mobile dropdown */}
-      {mobileOpen && (
-        <div
-          className="ff-nav-mobile"
-          style={{
-            display: "none",
-            background: "rgba(246,247,249,.96)",
-            backdropFilter: "blur(14px)",
-            WebkitBackdropFilter: "blur(14px)",
-            borderBottom: "1px solid var(--ff-line)",
-          }}
-        >
-          <div style={{ ...WRAP, padding: "12px clamp(20px,5vw,40px) 20px", display: "flex", flexDirection: "column", gap: 4 }}>
-            {NAV.map(([label, href]) => (
-              <Link
-                key={label}
-                href={href}
-                onClick={() => setMobileOpen(false)}
-                style={{ padding: "12px 4px", fontSize: 15, fontWeight: 500, color: "var(--ff-soft)", borderBottom: "1px solid var(--ff-line)" }}
-              >
-                {label}
-              </Link>
-            ))}
-            <div style={{ marginTop: 12 }}>
-              <Btn kind="primary" size="md" href={ctaHref} style={{ width: "100%" }}>
-                {isLoggedIn ? "Dashboard" : "Build your agent"} {Ic("arrowR", { size: 16 })}
-              </Btn>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* responsive rules for the nav */}
       <style>{`
+        .ff-nav-link:hover { color: var(--ff-ink) !important; }
+        .ff-nav-details {
+          position: relative;
+          display: none;
+        }
+        .ff-nav-details summary {
+          width: 40px;
+          height: 40px;
+          display: inline-flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          border-radius: 10px;
+          border: 1px solid var(--ff-line-2);
+          background: #fff;
+          color: var(--ff-ink);
+          cursor: pointer;
+          list-style: none;
+        }
+        .ff-nav-details summary::-webkit-details-marker { display: none; }
+        .ff-nav-details summary span {
+          width: 18px;
+          height: 2px;
+          border-radius: 99px;
+          background: var(--ff-ink);
+        }
+        .ff-nav-mobile {
+          position: absolute;
+          top: 50px;
+          right: 0;
+          width: min(300px, calc(100vw - 40px));
+          padding: 12px 16px 18px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          border: 1px solid var(--ff-line);
+          border-radius: 16px;
+          background: rgba(246,247,249,.98);
+          box-shadow: 0 24px 70px -38px rgba(16,24,40,.48);
+        }
         @media (max-width: 860px) {
           .ff-nav-links { display: none !important; }
-          .ff-nav-toggle { display: inline-flex !important; }
-          .ff-nav-mobile { display: block !important; }
+          .ff-nav-details { display: block !important; }
         }
         @media (max-width: 520px) {
           .ff-cta-desktop { display: none !important; }

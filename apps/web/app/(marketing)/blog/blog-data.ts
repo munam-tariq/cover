@@ -5,6 +5,7 @@ export interface BlogPost {
   date: string;
   readTime: string;
   category: string;
+  coverKind?: string;
   image: string;
   content: string;
 }
@@ -18,6 +19,7 @@ export const blogPosts: BlogPost[] = [
     date: "2026-01-10",
     readTime: "8 min read",
     category: "Tutorial",
+    coverKind: "website",
     image: "/blog-og/how-to-add-ai-chatbot-to-website.png",
     content: `
 Adding an AI chatbot to your website has never been easier. In 2026, with advances in large language models and RAG (Retrieval-Augmented Generation) technology, you can deploy intelligent customer support that actually understands your business.
@@ -153,6 +155,7 @@ Ready to get started? The future of customer support is here.
     date: "2025-01-08",
     readTime: "10 min read",
     category: "Strategy",
+    coverKind: "startup",
     image: "/blog-og/ai-customer-support-guide-startups.png",
     content: `
 You're building a startup. Resources are tight. Your team is small. But your customers expect Amazon-level support. Sound familiar?
@@ -338,6 +341,7 @@ Start today. Your future self will thank you.
     date: "2025-01-05",
     readTime: "7 min read",
     category: "Technology",
+    coverKind: "rag",
     image: "/blog-og/rag-vs-traditional-chatbots.png",
     content: `
 If you've researched AI chatbots, you've probably encountered the term "RAG." But what does it actually mean, and why should you care?
@@ -530,6 +534,7 @@ The chatbot revolution isn't coming. It's here. And RAG is leading the way.
     date: "2024-12-22",
     readTime: "8 min read",
     category: "Strategy",
+    coverKind: "lead",
     image: "/blog-og/chatbot-lead-generation-guide.png",
     content: `
 Your website gets visitors. But visitors don't pay bills. Customers do.
@@ -827,6 +832,7 @@ Your visitors are waiting to become customers. Help them make that journey.
     date: "2026-06-15",
     readTime: "7 min read",
     category: "Strategy",
+    coverKind: "deflection",
     image: "/blog-og/cut-support-tickets-without-hiring.png",
     content: `
 Every growing business hits the same wall: support volume climbs faster than the team can. You answer the same handful of questions over and over, replies get slower, and customers feel it. The instinct is to hire. But for repetitive questions, hiring is the expensive answer to the wrong problem.
@@ -894,6 +900,7 @@ Your team's time is your scarcest resource. Stop spending it answering the same 
     date: "2026-06-12",
     readTime: "9 min read",
     category: "Strategy",
+    coverKind: "toolkit",
     image: "/blog-og/best-ai-customer-support-tools-startups.png",
     content: `
 If you're a startup or small team, "AI customer support" has gone from nice-to-have to table stakes. Customers expect instant, accurate answers, and you can't staff a 24/7 team. A category of tools now resolves the bulk of routine questions for you. The hard part is choosing.
@@ -956,6 +963,7 @@ Most of these offer a free trial or tier. If you want the fastest path from noth
     date: "2026-06-10",
     readTime: "6 min read",
     category: "Tutorial",
+    coverKind: "shopify",
     image: "/blog-og/add-ai-support-to-shopify-store.png",
     content: `
 Shopify makes it easy to open a store. Keeping up with customer questions is the hard part — "Where's my order?", "Do you ship to...?", "What's your return policy?", "Will this fit?" — asked over and over, often after hours, often right before someone decides whether to buy.
@@ -1042,6 +1050,7 @@ Ready to try it? FrontFace works on any Shopify store with one line of code and 
     date: "2026-06-17",
     readTime: "10 min read",
     category: "Strategy",
+    coverKind: "compare",
     image: "/blog-og/frontface-vs-chatbase-vs-intercom.png",
     content: `
 If you're shopping for AI customer support in 2026, three names keep coming up: FrontFace, Chatbase, and Intercom's Fin. They overlap on the headline promise — resolve customer questions automatically — but they're built for different teams. This is an honest comparison for startups and small teams deciding where to start.
@@ -1055,6 +1064,14 @@ We'll keep it concrete: what each one is, where it's strong, where it isn't, and
 - **Intercom Fin** — best if you already run support inside Intercom and want AI bolted onto that inbox.
 
 If you don't already pay for a support suite, a purpose-built agent is usually the faster, cheaper place to start.
+
+| Factor | FrontFace | Chatbase | Intercom Fin |
+| --- | --- | --- | --- |
+| Best fit | Small teams that need a website support agent live today | Teams that want a configurable AI agent platform | Teams already running support in Intercom or a supported helpdesk |
+| Setup path | Train on site/docs, test answers, paste one script | Configure agents, sources, actions, and integrations | Connect Fin to Intercom or an existing helpdesk |
+| Pricing shape | Free during beta | Free tier plus paid monthly plans | Outcome pricing from $0.99 per Fin outcome |
+| Main strength | Fast, grounded answers with cited sources | Broad platform depth and integrations | Mature support automation inside an established helpdesk |
+| Trade-off | Newer product, focused on small teams | More configuration as needs grow | Bigger commitment if you do not already need Intercom |
 
 ## The contenders
 
@@ -1096,8 +1113,10 @@ All three escalate to a human. The difference is where the human lives: Fin hand
 
 ### Pricing for a small team
 - FrontFace: free during beta; built for pre-scale budgets.
-- Chatbase: usage-based tiers; reasonable to start, more as you add enterprise features.
-- Fin: priced per resolution on top of Intercom — powerful, but a bigger commitment.
+- Chatbase: free plan available; paid plans currently scale from Hobby to Standard to Pro tiers as message credits, agents, actions, and integrations grow.
+- Fin: priced from $0.99 per outcome. It can run with Intercom or a supported existing helpdesk, but the model is still designed for teams ready to measure support outcomes carefully.
+
+If you are still estimating whether AI support makes economic sense, start with the [support ticket deflection calculator](/tools/support-ticket-deflection-calculator). It gives you a rough monthly ticket, hour, and cost estimate before you test any vendor.
 
 ## How to choose
 
@@ -1105,6 +1124,24 @@ All three escalate to a human. The difference is where the human lives: Fin hand
 - **You want a configurable platform and see enterprise in your future.** Look hard at Chatbase.
 - **You already run support in Intercom.** Turn on Fin — least friction for you.
 - **You mainly want a cheap chat box with light AI.** A lightweight live-chat tool may be enough.
+
+## Frequently asked questions
+
+### Is FrontFace a Chatbase alternative?
+Yes, for small teams that mainly need accurate website support from their own docs. Chatbase is broader and more configurable; FrontFace is intentionally simpler: train on your content, show cited answers, capture leads, and hand off when a human should step in.
+
+### Is Intercom Fin worth it for a startup?
+It can be if you already use Intercom or want outcome-based AI support inside a mature helpdesk. If you do not need a full support suite yet, compare the total rollout cost and setup time against a focused website agent first.
+
+### What should I measure before choosing?
+Measure monthly support volume, the share of repetitive questions, minutes spent per routine ticket, and the cost of support time. Those inputs matter more than vendor demos because they tell you whether automation will actually save your team time.
+
+## Sources and citations
+
+- [Intercom pricing](https://www.intercom.com/pricing): Fin is listed from $0.99 per Fin outcome, with outcome rules and supported helpdesk details.
+- [Intercom help: Fin AI Agent outcomes](https://www.intercom.com/help/en/articles/8205718-fin-ai-agent-outcomes): Intercom explains how outcomes are counted and notes one outcome per conversation.
+- [Chatbase pricing](https://www.chatbase.co/pricing): Chatbase lists the current free and paid plan structure, including message credits, agents, actions, seats, and integrations.
+- [Chatbase homepage](https://www.chatbase.co/): Chatbase positions itself as a platform for building and deploying AI support agents.
 
 ## The bottom line
 
@@ -1119,6 +1156,7 @@ These are good tools solving the same core problem from different starting point
     date: "2026-01-20",
     readTime: "7 min read",
     category: "Tutorial",
+    coverKind: "wordpress",
     image: "/blog-og/how-to-add-chatbot-to-wordpress.png",
     content: `
 WordPress powers over 40% of the web — and most of those sites have zero automated customer support. If someone lands on your pricing page at 2am with a question, they bounce. An AI chatbot changes that.
@@ -1258,6 +1296,7 @@ With a RAG-based chatbot like FrontFace, you update your knowledge base in the d
     date: "2026-01-25",
     readTime: "9 min read",
     category: "Comparison",
+    coverKind: "handoff",
     image: "/blog-og/zendesk-alternative-small-business.png",
     content: `
 Zendesk is a great product — if you're running a 50-person support team with complex workflows, SLA management, and a dedicated IT department to configure it. For everyone else, it's a very expensive way to answer customer emails.
@@ -1384,6 +1423,7 @@ Most small businesses switching from Zendesk discover that what they actually wa
     date: "2026-02-01",
     readTime: "8 min read",
     category: "Comparison",
+    coverKind: "alternatives",
     image: "/blog-og/tidio-alternatives.png",
     content: `
 Tidio built its reputation on live chat — a widget that lets your team talk to customers in real time. The AI layer (Lyro) came later, and it shows. If you're evaluating Tidio because you want AI customer support and not just a chat box, you're probably already asking the right question: is there something better?
@@ -1438,7 +1478,7 @@ See [FrontFace features](/features) to compare with what you currently use.
 
 **AI approach:** Fin is one of the strongest AI agents on the market, built on GPT-4-class models with strong reasoning. It handles complex multi-step questions well and integrates deeply with the Intercom ecosystem.
 
-**Pricing:** Starts at $39/seat/month; Fin is priced per resolution on top of that, which makes it expensive at scale.
+**Pricing:** Intercom lists Fin from $0.99 per Fin outcome, with helpdesk/platform costs depending on the rollout. That outcome-based model is worth modeling carefully before you automate a high-volume queue.
 
 **Verdict:** More powerful than Tidio's AI, but you're buying a whole communications platform. Only makes sense if you need omnichannel support (email, chat, product tours, outbound messages) and have budget for it.
 
@@ -1500,6 +1540,7 @@ If you're growing and finding that live chat doesn't scale — that you can't be
     date: "2026-02-08",
     readTime: "8 min read",
     category: "Strategy",
+    coverKind: "smallbiz",
     image: "/blog-og/chatbot-for-small-business.png",
     content: `
 You've seen the demos. Smooth AI chat, instant answers, happy customers. Then you try it on your own site and the bot confidently answers a question about your return policy with something you've never written in your life.
@@ -1621,6 +1662,7 @@ Start with that filter. Shortlist accordingly. Test with your real questions bef
     date: "2026-02-15",
     readTime: "6 min read",
     category: "Tutorial",
+    coverKind: "wix",
     image: "/blog-og/wix-chatbot.png",
     content: `
 Wix is one of the easiest ways to build a website. Adding an AI chatbot to it should be equally simple — and it is, once you know the right approach.

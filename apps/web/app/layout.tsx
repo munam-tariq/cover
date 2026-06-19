@@ -2,12 +2,14 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 
+import { AnalyticsConsent } from "../components/analytics-consent";
+
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], display: "swap" });
+const inter = Inter({ subsets: ["latin"], display: "optional" });
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  display: "swap",
+  display: "optional",
   weight: ["400", "500", "600"],
   variable: "--font-mono",
 });
@@ -165,6 +167,8 @@ const softwareSchema = {
   ],
 };
 
+const hasAnalyticsConsent = Boolean(process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID);
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -173,24 +177,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <head>
-        <link rel="preconnect" href="https://www.googletagmanager.com" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/logo.png" type="image/png" sizes="any" />
         <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="manifest" href="/manifest.json" />
-        {/* Google Analytics */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-YLCW8JGB3W"
-          strategy="lazyOnload"
-        />
-        <Script id="google-analytics" strategy="lazyOnload">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-YLCW8JGB3W');
-          `}
-        </Script>
         <Script
           id="organization-schema"
           type="application/ld+json"
@@ -204,6 +194,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} ${jetbrainsMono.variable}`} suppressHydrationWarning>
         {children}
+        {hasAnalyticsConsent && <AnalyticsConsent />}
       </body>
     </html>
   );

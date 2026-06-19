@@ -37,7 +37,7 @@ export default function ProjectsPage() {
 
   // Open create modal if ?create=true in URL
   useEffect(() => {
-    if (searchParams.get("create") === "true") {
+    if (searchParams?.get("create") === "true") {
       setIsCreateModalOpen(true);
       // Clean up URL
       router.replace("/projects");
