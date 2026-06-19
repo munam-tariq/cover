@@ -36,14 +36,14 @@ export function FinalCta() {
           width: 640,
           height: 640,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(var(--ff-accent-rgb),.18), transparent 64%)",
+          background: "radial-gradient(circle, rgba(255,255,255,.12), transparent 64%)",
           pointerEvents: "none",
         }}
       />
       <div style={{ ...WRAP, position: "relative", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div className="reveal" style={{ position: "relative", width: 72, height: 72, marginBottom: 28 }}>
-          <span style={{ position: "absolute", inset: 0, borderRadius: 20, border: "2px solid var(--ff-accent)", animation: "ff-ring 2.2s ease-out infinite" }} />
-          <span style={{ position: "absolute", inset: 0, borderRadius: 20, border: "2px solid var(--ff-accent)", animation: "ff-ring 2.2s ease-out infinite 1.1s" }} />
+          <span style={{ position: "absolute", inset: 0, borderRadius: 20, border: "2px solid rgba(255,255,255,.65)", animation: "ff-ring 2.2s ease-out infinite" }} />
+          <span style={{ position: "absolute", inset: 0, borderRadius: 20, border: "2px solid rgba(255,255,255,.65)", animation: "ff-ring 2.2s ease-out infinite 1.1s" }} />
           <div
             style={{
               position: "relative",
@@ -65,7 +65,7 @@ export function FinalCta() {
           className="reveal d1"
           style={{ fontSize: "clamp(34px,5.6vw,68px)", fontWeight: 800, letterSpacing: "-.03em", lineHeight: 1.04, textWrap: "balance", maxWidth: 760 }}
         >
-          Stop making customers <span style={{ color: "var(--ff-accent)" }}>wait.</span>
+          Stop making customers <span style={{ color: "#fff" }}>wait.</span>
         </h2>
         <p className="reveal d2" style={{ fontSize: 18, lineHeight: 1.55, color: "rgba(255,255,255,.66)", marginTop: 20, maxWidth: 520, textWrap: "pretty" }}>
           Give every visitor an instant, accurate answer — and your team a head start on every lead.

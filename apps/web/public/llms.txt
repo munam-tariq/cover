@@ -21,12 +21,26 @@ FrontFace is built for founders, startups, ecommerce stores, service businesses,
 - [Compare](https://frontface.app/vs): Head-to-head comparisons of FrontFace against Chatbase, Intercom Fin, Zendesk, Tidio, Crisp, Freshdesk, Help Scout, Drift, HubSpot Chat, and LiveChat.
 - [Tools](https://frontface.app/tools): Free AI support calculators and planning tools for small teams.
 - [Support Ticket Deflection Calculator](https://frontface.app/tools/support-ticket-deflection-calculator): Estimate routine tickets deflected, support hours saved, and monthly cost savings from AI customer support.
+- [Customer Support Cost Calculator](https://frontface.app/tools/customer-support-cost-calculator): Calculate fully-loaded support team cost (salary, benefits, tools, overhead) and find your real cost per ticket.
+- [Support Team Sizing Calculator](https://frontface.app/tools/support-team-sizing-calculator): Find how many agents you need for your ticket volume using the ICMI 80% utilization model, with a 20% spike buffer.
+- [AI vs Human Support Cost Comparison](https://frontface.app/tools/ai-vs-human-support-calculator): Compare monthly cost of AI versus a human team and find the exact ticket volume where AI starts paying off.
+- [Knowledge Base Health Scorer](https://frontface.app/tools/knowledge-base-health-scorer): Score your KB across coverage, freshness, findability, and feedback loop — with a letter grade and top recommendation per dimension.
 - [Features](https://frontface.app/features): Knowledge-base answers, cited sources, lead capture, human handoff, analytics, and website deployment.
 - [Blog](https://frontface.app/blog): Buyer guides and field notes on AI customer support, RAG, support-ticket reduction, Shopify support, and tool comparisons.
 - [About](https://frontface.app/about): Company story and mission.
 - [Sign Up](https://frontface.app/login): Create a free account during beta.
 
 ## Organic Search Clusters
+
+### Free support planning tools
+
+Interactive calculators and scorers for founders and support managers planning headcount, budgets, or AI adoption. Each tool cites its data sources.
+
+- [Support Ticket Deflection Calculator](https://frontface.app/tools/support-ticket-deflection-calculator)
+- [Customer Support Cost Calculator](https://frontface.app/tools/customer-support-cost-calculator)
+- [Support Team Sizing Calculator](https://frontface.app/tools/support-team-sizing-calculator)
+- [AI vs Human Support Cost Comparison](https://frontface.app/tools/ai-vs-human-support-calculator)
+- [Knowledge Base Health Scorer](https://frontface.app/tools/knowledge-base-health-scorer)
 
 ### AI customer support for small teams
 
