@@ -3,7 +3,7 @@ import { Header } from "./components/header";
 import { MarketingWidgetLauncher } from "./components/marketing-widget-launcher";
 import { ScrollReveal } from "./components/scroll-reveal";
 
-export const dynamic = "force-static";
+export const revalidate = 3600;
 
 export default function MarketingLayout({
   children,

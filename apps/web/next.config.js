@@ -18,6 +18,30 @@ const nextConfig = {
       },
     ];
   },
+  async headers() {
+    return [
+      {
+        // Versioned static assets — cache forever (content-hashed filenames)
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        // All HTML pages — 1-hour shared cache, must revalidate after
+        source: "/((?!_next/static).*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, s-maxage=3600, must-revalidate",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = withSentryConfig(nextConfig, {
