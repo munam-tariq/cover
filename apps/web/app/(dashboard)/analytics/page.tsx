@@ -9,16 +9,24 @@ import {
   Target,
   XCircle,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useState, useCallback } from "react";
 
 import { GapsPanel } from "@/components/analytics/gaps-panel";
 import { LeadStatsCard } from "@/components/analytics/lead-stats-card";
-import { MessagesChart } from "@/components/analytics/messages-chart";
-import { SentimentPanel } from "@/components/analytics/sentiment-panel";
 import { TopQuestionsList } from "@/components/analytics/top-questions-list";
 import { TopicsPanel } from "@/components/analytics/topics-panel";
 import { useProject } from "@/contexts/project-context";
 import { apiClient } from "@/lib/api-client";
+
+const MessagesChart = dynamic(
+  () => import("@/components/analytics/messages-chart").then((m) => m.MessagesChart),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full rounded-xl" /> }
+);
+const SentimentPanel = dynamic(
+  () => import("@/components/analytics/sentiment-panel").then((m) => m.SentimentPanel),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full rounded-xl" /> }
+);
 
 interface AnalyticsSummary {
   totalMessages: number;

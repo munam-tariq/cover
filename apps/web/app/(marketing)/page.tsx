@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     absolute: "FrontFace — AI Support Agent That Resolves Questions Instantly",
   },
   description:
-    "FrontFace resolves customer questions instantly from your knowledge base — so you support more customers without hiring more agents. Grounded answers with cited sources, lead capture, and human handoff. Free during beta.",
+    "FrontFace AI resolves customer questions instantly from your knowledge base — support more customers without hiring. Free during beta.",
   keywords: [
     "AI support agent",
     "AI customer support",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     siteName: "FrontFace",
     title: "FrontFace — AI Support Agent That Resolves Questions Instantly",
     description:
-      "FrontFace resolves customer questions instantly from your knowledge base — so you support more customers without hiring more agents. Grounded answers with cited sources, lead capture, and human handoff. Free during beta.",
+      "FrontFace AI resolves customer questions instantly from your knowledge base — support more customers without hiring. Free during beta.",
     images: [
       {
         url: "https://frontface.app/og-image.png",
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     creator: "@frontface",
     title: "FrontFace — AI Support Agent That Resolves Questions Instantly",
     description:
-      "FrontFace resolves customer questions instantly from your knowledge base — so you support more customers without hiring more agents. Grounded answers with cited sources, lead capture, and human handoff. Free during beta.",
+      "FrontFace AI resolves customer questions instantly from your knowledge base — support more customers without hiring. Free during beta.",
     images: [
       {
         url: "https://frontface.app/og-image.png",

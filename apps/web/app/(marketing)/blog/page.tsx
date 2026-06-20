@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import Script from "next/script";
 
 import { blogPosts } from "./blog-data";
 import { BlogIndex } from "./blog-index";
@@ -7,7 +6,7 @@ import { BlogIndex } from "./blog-index";
 export const metadata: Metadata = {
   title: "Blog — AI Support Agent Playbooks & Guides",
   description:
-    "Field notes on AI customer support: RAG-grounded answers, lead capture, human handoff, and deploying AI agents that actually know your product. Practical guides for support and growth teams.",
+    "Field notes on AI customer support: RAG-grounded answers, lead capture, and deploying agents that actually know your product. Practical guides for lean teams.",
   keywords: [
     "AI support blog",
     "AI customer support insights",
@@ -80,8 +79,8 @@ const blogSchema = {
 export default function BlogPage() {
   return (
     <>
-      <Script id="blog-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
-      <Script
+      <script id="blog-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script
         id="blog-schema"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(blogSchema) }}

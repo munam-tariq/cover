@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Script from "next/script";
 import type { CSSProperties } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -179,9 +178,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <>
-      <Script id="article-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
-      <Script id="breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
-      {howToSchema && <Script id="howto-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }} />}
+      <script id="article-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
+      <script id="breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      {howToSchema && <script id="howto-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }} />}
 
       <main style={{ overflowX: "hidden" }}>
         {/* header */}
@@ -290,7 +289,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 margin: "0 0 12px",
               }}
             >
-              Useful next steps
+              What should you do next?
             </h2>
             <div style={{ display: "grid", gap: 9 }}>
               {relatedResourceLinks.slice(0, 4).map((resource) => (
@@ -357,7 +356,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         {/* related */}
         <section style={{ ...WRAP, padding: "clamp(56px,8vh,90px) clamp(20px,5vw,40px) clamp(56px,8vh,90px)", maxWidth: 1100 }}>
           <h2 className="reveal" style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-.02em", color: "var(--ff-ink)", marginBottom: 24 }}>
-            Keep reading
+            What should you read next?
           </h2>
           <div className="ff-rel-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>
             {relatedPosts.map((rp, i) => (

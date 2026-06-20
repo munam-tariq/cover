@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Script from "next/script";
 import type { ReactNode } from "react";
 
 import { Eyebrow, Ic, WRAP } from "../components/marketing-kit";
@@ -69,17 +68,17 @@ export function ToolPageLayout({
 
   return (
     <>
-      <Script
+      <script
         id={`${tool.slug}-web-app-schema`}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
       />
-      <Script
+      <script
         id={`${tool.slug}-breadcrumb-schema`}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <Script
+      <script
         id={`${tool.slug}-faq-schema`}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
@@ -140,7 +139,7 @@ export function ToolPageLayout({
                 margin: "0 0 14px",
               }}
             >
-              Related FrontFace guides
+              Where can you learn more?
             </h3>
             <div style={{ display: "grid", gap: 10 }}>
               {resourceLinks.map((link) => (
@@ -298,7 +297,7 @@ export function ToolPageLayout({
                 margin: 0,
               }}
             >
-              Frequently asked questions
+              Got questions about this tool?
             </h2>
             <dl style={{ display: "grid", gap: 14, marginTop: 30 }}>
               {faqs.map((item) => (

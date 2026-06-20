@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Script from "next/script";
 
 import { Eyebrow, WRAP } from "../../components/marketing-kit";
 import { DarkCta, PageHero } from "../../components/page-kit";
@@ -111,12 +110,12 @@ export default async function VsSlugPage({
 
   return (
     <>
-      <Script
+      <script
         id={"vs-" + d.slug + "-faq-schema"}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-      <Script
+      <script
         id={"vs-" + d.slug + "-breadcrumb-schema"}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
@@ -285,7 +284,7 @@ export default async function VsSlugPage({
                 textWrap: "balance",
               }}
             >
-              Frequently asked questions
+              Have questions about FrontFace vs {d.competitorName}?
             </h2>
           </div>
           <dl

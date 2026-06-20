@@ -13,7 +13,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Metadata } from "next";
-import Script from "next/script";
 
 import { Eyebrow, WRAP } from "../components/marketing-kit";
 import { DarkCta, PageHero } from "../components/page-kit";
@@ -21,7 +20,7 @@ import { DarkCta, PageHero } from "../components/page-kit";
 export const metadata: Metadata = {
   title: "Features | Knowledge-Base Answers, Lead Capture & Handoff",
   description:
-    "Resolve customer questions instantly with RAG-grounded answers from your knowledge base — cited sources, lead capture, human handoff, multi-channel, and analytics. 5-minute setup on any website.",
+    "Resolve customer questions instantly — RAG-grounded answers, lead capture, multi-channel, and analytics. 5-minute setup on any website. Free during beta.",
   keywords: [
     "AI support agent features",
     "knowledge base AI",
@@ -34,7 +33,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "FrontFace Features — Grounded Answers, Lead Capture & Handoff",
     description:
-      "Resolve questions instantly with RAG-grounded answers from your knowledge base — cited sources, lead capture, and human handoff. 5-minute setup on any website.",
+      "Resolve questions instantly with RAG-grounded answers from your knowledge base — cited sources, lead capture, and analytics. 5-minute setup on any website.",
     url: "https://frontface.app/features",
     type: "website",
     siteName: "FrontFace",
@@ -190,8 +189,8 @@ const softChip = {
 export default function FeaturesPage() {
   return (
     <>
-      <Script id="features-howto-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }} />
-      <Script id="features-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script id="features-howto-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }} />
+      <script id="features-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <main>
       <PageHero
         eyebrow="Features"
@@ -228,7 +227,7 @@ export default function FeaturesPage() {
       <section style={{ ...WRAP, padding: "clamp(24px,4vh,48px) clamp(20px,5vw,40px)" }}>
         <div className="reveal" style={{ textAlign: "center", maxWidth: 560, margin: "0 auto 40px" }}>
           <h2 style={{ fontSize: "clamp(26px,3.8vw,42px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.08, textWrap: "balance" }}>
-            And much more
+            What else does FrontFace include?
           </h2>
           <p style={{ fontSize: 16.5, lineHeight: 1.55, color: "var(--ff-soft)", marginTop: 14, textWrap: "pretty" }}>
             Every feature designed to make your team&apos;s life easier and your customers happier.
@@ -249,7 +248,7 @@ export default function FeaturesPage() {
       <section style={{ ...WRAP, padding: "clamp(40px,6vh,80px) clamp(20px,5vw,40px)" }}>
         <div className="reveal" style={{ textAlign: "center", maxWidth: 560, margin: "0 auto 44px" }}>
           <h2 style={{ fontSize: "clamp(26px,3.8vw,42px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.08, textWrap: "balance" }}>
-            Live in 5 minutes
+            How quickly can you get started?
           </h2>
           <p style={{ fontSize: 16.5, lineHeight: 1.55, color: "var(--ff-soft)", marginTop: 14, textWrap: "pretty" }}>
             Three simple steps. No technical skills required.

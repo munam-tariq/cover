@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Script from "next/script";
 import type { CSSProperties } from "react";
 
 import { Eyebrow, Ic, WRAP } from "../../components/marketing-kit";
@@ -75,7 +74,7 @@ export default async function UseCaseSlugPage({
 
   return (
     <>
-      <Script
+      <script
         id={"use-case-" + d.slug + "-faq-schema"}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
@@ -233,7 +232,7 @@ export default async function UseCaseSlugPage({
                 textWrap: "balance",
               }}
             >
-              Frequently asked questions
+              Have questions about AI support for {d.name}?
             </h2>
           </div>
           <dl
@@ -296,7 +295,7 @@ export default async function UseCaseSlugPage({
                 margin: "0 0 12px",
               }}
             >
-              Related resources for {d.name}
+              Want to learn more about {d.name}?
             </h3>
             <div style={{ display: "grid", gap: 9 }}>
               {relatedResources.map((resource) => (

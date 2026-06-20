@@ -1,12 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import Script from "next/script";
 
 import { AnalyticsConsent } from "../components/analytics-consent";
 
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], display: "optional" });
+const inter = Inter({ subsets: ["latin"], display: "swap" });
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   display: "optional",
@@ -28,7 +27,7 @@ export const metadata: Metadata = {
     template: "%s | FrontFace",
   },
   description:
-    "FrontFace resolves customer questions instantly from your knowledge base — so small teams can support more customers without hiring. Cited answers, lead capture, and human handoff. Free during beta.",
+    "FrontFace AI resolves customer questions instantly from your knowledge base — support more customers without hiring. Free during beta.",
   keywords: [
     "AI support agent",
     "AI customer support",
@@ -64,7 +63,7 @@ export const metadata: Metadata = {
     siteName: "FrontFace",
     title: "FrontFace — AI Support Agent That Resolves Questions Instantly",
     description:
-      "Resolve customer questions instantly from your knowledge base — with cited answers, lead capture, and human handoff. Free during beta.",
+      "FrontFace AI resolves customer questions instantly from your knowledge base — support more customers without hiring. Free during beta.",
     images: [
       {
         url: "https://frontface.app/og-image.png",
@@ -80,7 +79,7 @@ export const metadata: Metadata = {
     creator: "@frontface",
     title: "FrontFace — AI Support Agent That Resolves Questions Instantly",
     description:
-      "Resolve customer questions instantly from your knowledge base — with cited answers, lead capture, and human handoff. Free during beta.",
+      "FrontFace AI resolves customer questions instantly from your knowledge base — support more customers without hiring. Free during beta.",
     images: [
       {
         url: "https://frontface.app/og-image.png",
@@ -181,12 +180,12 @@ export default function RootLayout({
         <link rel="icon" href="/logo.png" type="image/png" sizes="any" />
         <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="manifest" href="/manifest.json" />
-        <Script
+        <script
           id="organization-schema"
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
         />
-        <Script
+        <script
           id="software-schema"
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}

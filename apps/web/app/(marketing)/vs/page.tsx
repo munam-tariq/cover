@@ -9,7 +9,7 @@ import { vsPages } from "./vs-data";
 export const metadata: Metadata = {
   title: "FrontFace vs Competitors — AI Support Comparisons",
   description:
-    "Honest head-to-head comparisons of FrontFace against Chatbase, Intercom, Zendesk, Tidio, and more. See how each tool stacks up on setup, AI accuracy, pricing, and who each is for.",
+    "Honest comparisons of FrontFace vs Chatbase, Intercom, Zendesk, Tidio, and more — setup time, AI accuracy, pricing, and which teams each tool fits.",
   keywords: [
     "FrontFace vs Chatbase",
     "FrontFace vs Intercom",

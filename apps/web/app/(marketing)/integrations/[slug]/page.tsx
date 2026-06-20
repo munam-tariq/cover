@@ -2,7 +2,6 @@ import { CheckCircle } from "lucide-react";
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Script from "next/script";
 
 import { Eyebrow, WRAP } from "../../components/marketing-kit";
 import { DarkCta, PageHero } from "../../components/page-kit";
@@ -111,7 +110,7 @@ export default async function IntegrationSlugPage({
 
   return (
     <>
-      <Script
+      <script
         id={"integration-" + d.slug + "-faq-schema"}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
@@ -199,7 +198,7 @@ export default async function IntegrationSlugPage({
                 textWrap: "balance",
               }}
             >
-              Live in 5 minutes
+              How do I add FrontFace to {d.name}?
             </h2>
             <p
               style={{
@@ -271,7 +270,7 @@ export default async function IntegrationSlugPage({
                 textWrap: "balance",
               }}
             >
-              Frequently asked questions
+              Have questions about {d.name}?
             </h2>
           </div>
           <dl

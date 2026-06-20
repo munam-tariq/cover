@@ -16,7 +16,7 @@ import { DarkCta, PageHero } from "../components/page-kit";
 export const metadata: Metadata = {
   title: "Use Cases | AI Support Agent for Every Industry",
   description:
-    "See how SaaS teams, ecommerce stores, professional services, and agencies use FrontFace to resolve customer questions instantly from their own content — deflecting tickets, capturing leads, and handing off to humans.",
+    "See how SaaS teams, ecommerce stores, and agencies use FrontFace to resolve customer questions instantly — deflecting tickets and capturing leads.",
   keywords: [
     "AI support for SaaS",
     "ecommerce AI support",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "FrontFace Use Cases — AI Support for Every Industry",
     description:
-      "Resolve customer questions instantly from your own content — deflect tickets, capture leads, and hand off to humans. For SaaS, ecommerce, services, and more.",
+      "Resolve customer questions instantly from your own content — deflect tickets and capture leads. For SaaS, ecommerce, professional services, and more.",
     url: "https://frontface.app/use-cases",
     type: "website",
     siteName: "FrontFace",

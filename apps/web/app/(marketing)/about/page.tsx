@@ -1,6 +1,5 @@
 import { Target, Users, Zap, Heart } from "lucide-react";
 import { Metadata } from "next";
-import Script from "next/script";
 
 import { Btn } from "../components/marketing-button";
 import { Ic, WRAP } from "../components/marketing-kit";
@@ -9,7 +8,7 @@ import { DarkCta, PageHero } from "../components/page-kit";
 export const metadata: Metadata = {
   title: "About — AI Support That Resolves Customer Questions Instantly",
   description:
-    "FrontFace resolves customer questions instantly from your knowledge base — with cited sources — so you support more customers without hiring more agents. Lead capture and human handoff included.",
+    "FrontFace AI resolves customer questions instantly from your knowledge base — so small teams support more customers without hiring. Built for lean teams.",
   keywords: [
     "about FrontFace",
     "AI support agent",
@@ -128,7 +127,7 @@ const iconChip = {
 export default function AboutPage() {
   return (
     <>
-      <Script id="about-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script id="about-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
     <main>
       <PageHero
         eyebrow="About us"
@@ -142,7 +141,7 @@ export default function AboutPage() {
           className="reveal"
           style={{ fontSize: "clamp(26px,3.4vw,38px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.1, marginBottom: 24, textWrap: "balance" }}
         >
-          Our story
+          How did FrontFace start?
         </h2>
         <div className="reveal d1">
           {story.map((p, i) => (
@@ -182,7 +181,7 @@ export default function AboutPage() {
       <section style={{ ...WRAP, padding: "clamp(40px,6vh,80px) clamp(20px,5vw,40px)" }}>
         <div className="reveal" style={{ textAlign: "center", maxWidth: 560, margin: "0 auto 40px" }}>
           <h2 style={{ fontSize: "clamp(26px,3.8vw,42px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.08, textWrap: "balance" }}>
-            What we believe
+            What principles guide us?
           </h2>
           <p style={{ fontSize: 16.5, lineHeight: 1.55, color: "var(--ff-soft)", marginTop: 14, textWrap: "pretty" }}>
             These principles guide every decision we make — from product features to customer conversations.
@@ -209,7 +208,7 @@ export default function AboutPage() {
             {Ic("target", { size: 26 })}
           </span>
           <h2 style={{ fontSize: "clamp(24px,3.4vw,36px)", fontWeight: 800, letterSpacing: "-.03em", color: "var(--ff-ink)", lineHeight: 1.1, textWrap: "balance" }}>
-            Our vision
+            What is FrontFace&apos;s vision?
           </h2>
           <p style={{ fontSize: 18, lineHeight: 1.6, color: "var(--ff-soft)", marginTop: 16, maxWidth: 640, marginInline: "auto", textWrap: "pretty" }}>
             Every business should give customers the same instant, accurate support as the biggest companies — without the
