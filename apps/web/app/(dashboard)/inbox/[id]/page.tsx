@@ -637,6 +637,7 @@ export default function ConversationPage() {
     const messageContent = newMessage.trim();
 
     // Stop typing indicator when sending
+    sendTypingIndicator(false); // unconditional — bypasses stale-closure guard in stopTypingIndicator
     stopTypingIndicator();
 
     // Clear input immediately for better UX

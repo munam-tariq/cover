@@ -1764,6 +1764,7 @@ export class ChatWindow {
     this.addMessageToDOM(storedMsg);
     setStoredMessages(this.options.projectId, this.messages);
     this.scrollToBottom();
+    this.typingIndicator.hide();
 
     if (process.env.NODE_ENV === "development") {
       console.log("[Widget] Received realtime message:", message);
@@ -1855,6 +1856,7 @@ export class ChatWindow {
           // Save to storage and scroll
           setStoredMessages(this.options.projectId, this.messages);
           this.scrollToBottom();
+          this.typingIndicator.hide();
         }
 
         // Also check conversation status to see if we should stop polling
