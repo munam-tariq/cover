@@ -22,6 +22,16 @@ const FOOT_COLS: [string, [string, string][]][] = [
     ],
   ],
   [
+    "Compare",
+    [
+      ["vs Chatbase", "/vs/chatbase"],
+      ["vs Intercom", "/vs/intercom"],
+      ["vs Zendesk", "/vs/zendesk"],
+      ["vs Tidio", "/vs/tidio"],
+      ["All comparisons", "/vs"],
+    ],
+  ],
+  [
     "Legal",
     [
       ["Privacy", "/privacy"],
@@ -45,7 +55,7 @@ export function Footer() {
           ...WRAP,
           padding: "56px clamp(20px,5vw,40px) 40px",
           display: "grid",
-          gridTemplateColumns: "2fr 1fr 1fr 1fr",
+          gridTemplateColumns: "1.8fr 1fr 1fr 1fr 1fr",
           gap: 32,
         }}
       >

@@ -416,7 +416,7 @@ export const vsPages: VsPage[] = [
     heroTitle: "FrontFace vs Drift",
     heroSub:
       "Drift is a conversational marketing platform designed for enterprise B2B sales teams. FrontFace is an AI support agent built for small teams and startups. They serve very different audiences at very different price points.",
-    metaTitle: "FrontFace vs Drift — AI Support for Startups vs Enterprise Conversational Marketing",
+    metaTitle: "FrontFace vs Drift — AI Support vs Conversational Marketing",
     metaDescription:
       "Honest comparison of FrontFace and Drift in 2026. Enterprise conversational marketing vs startup-focused AI support — pricing, setup, and who each is for.",
     metaKeywords: [

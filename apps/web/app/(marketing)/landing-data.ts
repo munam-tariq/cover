@@ -178,6 +178,15 @@ export const NAV: [string, string][] = [
   ["Product", "/#capabilities"],
   ["How it works", "/#how"],
   ["Pricing", "/#pricing"],
-  ["Tools", "/tools"],
-  ["Blog", "/blog"],
+];
+
+/* resources mega-menu — [label, href, description, icon]. Surfaced in the
+   header "Resources" dropdown and the mobile menu so /blog, /tools, /use-cases,
+   /vs and /integrations stay reachable without crowding the top nav. */
+export const RESOURCE_LINKS: [string, string, string, IconName][] = [
+  ["Blog", "/blog", "Playbooks, guides & product updates", "book"],
+  ["Tools", "/tools", "Free calculators for support teams", "sliders"],
+  ["Use cases", "/use-cases", "AI support for your industry", "layers"],
+  ["Compare", "/vs", "FrontFace vs other support tools", "chart"],
+  ["Integrations", "/integrations", "Works on any website", "grid"],
 ];

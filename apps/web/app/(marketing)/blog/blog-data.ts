@@ -1,6 +1,8 @@
 export interface BlogPost {
   slug: string;
   title: string;
+  /** Optional shorter SEO title; falls back to `title` for the document <title>. */
+  metaTitle?: string;
   description: string;
   date: string;
   readTime: string;
@@ -1192,6 +1194,7 @@ About five minutes to install the embed snippet, plus 30–60 minutes to gather 
       { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
     ],
     title: "FrontFace vs Chatbase vs Intercom Fin: Which Fits a Small Team? (2026)",
+    metaTitle: "FrontFace vs Chatbase vs Intercom Fin for Small Teams",
     description:
       "An honest head-to-head of FrontFace, Chatbase, and Intercom Fin for startups and small teams — setup, answer accuracy, handoff, pricing, and who each is really for.",
     date: "2026-06-17",
@@ -1304,6 +1307,7 @@ These are good tools solving the same core problem from different starting point
       { href: "/tools/support-ticket-deflection-calculator", label: "Support ticket deflection calculator" },
     ],
     title: "How to Add an AI Chatbot to WordPress in 2026 (No Plugins Needed)",
+    metaTitle: "How to Add an AI Chatbot to WordPress (2026)",
     description:
       "Step-by-step guide to adding an AI customer support chatbot to your WordPress site. Works with any theme — no plugin required, no developer needed.",
     date: "2026-01-20",
@@ -1598,6 +1602,7 @@ FrontFace — purpose-built for AI deflection using RAG grounded in your knowled
       { href: "/integrations/shopify", label: "Shopify AI chatbot setup" },
     ],
     title: "Tidio Alternatives: Better AI Customer Support for Growing Teams",
+    metaTitle: "Tidio Alternatives for Growing Support Teams",
     description:
       "Looking for a Tidio alternative? Compare the best options for AI-powered customer support in 2026 — including tools that go beyond live chat into full ticket deflection.",
     date: "2026-02-01",
@@ -2055,6 +2060,7 @@ See [FrontFace's Wix integration guide](/integrations/wix) for the full setup wa
       { href: "/tools/knowledge-base-health-scorer", label: "Knowledge base health scorer" },
     ],
     title: "The Complete Guide to AI Customer Support for Small Business (2026)",
+    metaTitle: "The Complete Guide to AI Customer Support (2026)",
     description:
       "Everything a small business needs to know about AI customer support in 2026 — how it works, how to set it up, how to choose the right tool, and how to measure success.",
     date: "2026-06-19",

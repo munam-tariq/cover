@@ -6,7 +6,7 @@ import { Ic, WRAP } from "../components/marketing-kit";
 import { DarkCta, PageHero } from "../components/page-kit";
 
 export const metadata: Metadata = {
-  title: "About — AI Support That Resolves Customer Questions Instantly",
+  title: "About FrontFace — Built for Lean Support Teams",
   description:
     "FrontFace AI resolves customer questions instantly from your knowledge base — so small teams support more customers without hiring. Built for lean teams.",
   keywords: [

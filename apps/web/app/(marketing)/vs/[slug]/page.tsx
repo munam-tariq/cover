@@ -21,7 +21,10 @@ export async function generateMetadata({
   const d = vsPages.find((p) => p.slug === slug);
   if (!d) return {};
   return {
-    title: d.metaTitle,
+    // `absolute` skips the "%s | FrontFace" template — these titles already
+    // start with "FrontFace vs …", so the suffix would be redundant and push
+    // them past the 70-char limit.
+    title: { absolute: d.metaTitle },
     description: d.metaDescription,
     keywords: d.metaKeywords,
     openGraph: {

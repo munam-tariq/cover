@@ -27,7 +27,9 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   }
 
   return {
-    title: post.title,
+    // metaTitle (when set) is a shorter SEO title that stays under 70 chars
+    // with the "%s | FrontFace" suffix; the full title is kept for the <h1>.
+    title: post.metaTitle ?? post.title,
     description: post.description,
     keywords: [post.category.toLowerCase(), "AI support agent", "knowledge base AI", "RAG chatbot", "FrontFace"],
     authors: [{ name: "FrontFace Team" }],
