@@ -177,8 +177,9 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <link rel="icon" href="/logo.png" type="image/png" sizes="any" />
-        <link rel="apple-touch-icon" href="/logo.png" />
+        <link rel="icon" href="/favicon/favicon-32.png" type="image/png" sizes="32x32" />
+        <link rel="icon" href="/favicon/favicon-16.png" type="image/png" sizes="16x16" />
+        <link rel="apple-touch-icon" href="/favicon/apple-touch-icon-180.png" sizes="180x180" />
         <link rel="manifest" href="/manifest.json" />
         <script
           id="organization-schema"

@@ -7,6 +7,8 @@
 
 import { type CSSProperties, type ReactNode } from "react";
 
+import { WindowMark } from "@/components/window-mark";
+
 /* ---------------- icons ---------------- */
 export const LD_ICONS = {
   bot: "M8 8h8a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2ZM12 4v4M9 13h.01M15 13h.01M4 12v3M20 12v3",
@@ -106,7 +108,7 @@ export function Logo({ size = 28, light = false }: { size?: number; light?: bool
           flexShrink: 0,
         }}
       >
-        {Ic("bot", { size: size * 0.58 })}
+        <WindowMark size={size} />
       </div>
       <span
         style={{

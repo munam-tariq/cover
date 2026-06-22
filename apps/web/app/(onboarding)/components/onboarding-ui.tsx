@@ -6,13 +6,15 @@
  */
 import React, { useState } from "react";
 
+import { WindowMark } from "@/components/window-mark";
+
 import { Ic, RAIL_STEPS, TESTIMONIALS, LOGOS, FEATURES } from "./onboarding-kit";
 
 export function Logo({ size = 30 }: { size?: number }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{ width: size, height: size, borderRadius: size * 0.3, background: "var(--ink)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {Ic("bot", { size: size * 0.56 })}
+        <WindowMark size={size} />
       </div>
       <span style={{ fontWeight: 800, fontSize: size * 0.57, letterSpacing: "-.02em", color: "var(--ink)" }}>FrontFace</span>
     </div>
