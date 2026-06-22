@@ -3,6 +3,8 @@
 import Script from "next/script";
 import { useEffect, useState } from "react";
 
+import { CONSENT_KEY, initAnalytics } from "@/lib/analytics";
+
 declare global {
   interface Window {
     dataLayer?: unknown[];
@@ -11,9 +13,12 @@ declare global {
   }
 }
 
-const CONSENT_KEY = "frontface-analytics-consent";
 const clarityProjectId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
 const googleAnalyticsId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+const hasAnyAnalytics = Boolean(
+  clarityProjectId || googleAnalyticsId || posthogToken
+);
 
 export function AnalyticsConsent() {
   const [choice, setChoice] = useState<"granted" | "denied" | null>(null);
@@ -27,7 +32,13 @@ export function AnalyticsConsent() {
     setReady(true);
   }, []);
 
-  if (!ready || (!clarityProjectId && !googleAnalyticsId)) return null;
+  // Bridge the consent decision into PostHog. PostHog only loads once consent is
+  // granted (see lib/analytics); denial leaves it uninitialized and untouched.
+  useEffect(() => {
+    if (choice === "granted") void initAnalytics();
+  }, [choice]);
+
+  if (!ready || !hasAnyAnalytics) return null;
 
   const saveChoice = (nextChoice: "granted" | "denied") => {
     window.localStorage.setItem(CONSENT_KEY, nextChoice);
@@ -67,7 +78,7 @@ export function AnalyticsConsent() {
         </>
       )}
 
-      {clarityProjectId && choice === null && (
+      {hasAnyAnalytics && choice === null && (
         <div
           role="dialog"
           aria-label="Analytics consent"

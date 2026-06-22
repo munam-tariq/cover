@@ -1,6 +1,8 @@
 import { parseSampleRate } from "@chatbot/shared";
 import * as Sentry from "@sentry/nextjs";
 
+import { initAnalytics } from "@/lib/analytics";
+
 /**
  * Client-side Sentry init (browser). DSN-guarded so it stays dormant until
  * NEXT_PUBLIC_SENTRY_DSN is configured.
@@ -19,6 +21,14 @@ if (dsn) {
     ),
   });
 }
+
+/**
+ * Client-side PostHog init (browser). Delegated to the shared analytics module,
+ * which loads PostHog only when the user has granted consent (see
+ * `lib/analytics` and `components/analytics-consent`). Fire-and-forget: the
+ * banner re-triggers init the moment consent is granted.
+ */
+void initAnalytics();
 
 // Instruments client-side navigations for tracing/error context.
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

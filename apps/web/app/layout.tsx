@@ -166,7 +166,7 @@ const softwareSchema = {
   ],
 };
 
-const hasAnalyticsConsent = Boolean(process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID);
+const hasAnalyticsConsent = Boolean(process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN);
 
 export default function RootLayout({
   children,

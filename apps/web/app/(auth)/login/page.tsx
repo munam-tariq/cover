@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import posthog from "posthog-js";
 import { Suspense, useState } from "react";
 
 import { WindowMark } from "@/components/window-mark";
@@ -51,6 +52,11 @@ function LoginForm() {
         }
         return;
       }
+
+      // Track the magic-link request (domain only — never the raw email).
+      posthog.capture("magic_link_requested", {
+        email_domain: email.split("@")[1],
+      });
 
       // Redirect to check-email page
       router.push(`/login/check-email?email=${encodeURIComponent(email)}`);

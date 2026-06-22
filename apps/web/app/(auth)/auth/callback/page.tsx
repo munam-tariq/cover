@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import posthog from "posthog-js";
 import { Suspense, useEffect, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
@@ -56,6 +57,11 @@ function AuthCallbackContent() {
       // Skip for invited users since they're joining someone else's project
       // Returns the redirect path (may be onboarding for new users)
       const setupNewUser = async (userId: string, userEmail?: string): Promise<string | null> => {
+        // Link this browser session to the authenticated user for all analytics,
+        // then record the sign-in. Brand-new users additionally emit `signed_up`.
+        posthog.identify(userId, userEmail ? { email: userEmail } : undefined);
+        posthog.capture("logged_in");
+
         // Method 1: URL-based detection (existing, more precise now)
         if (isInvitationFlow) {
           console.log("Invitation flow detected via URL, skipping onboarding");
@@ -88,6 +94,7 @@ function AuthCallbackContent() {
         // New user with no projects -> redirect to onboarding
         if (!existingProjects || existingProjects.length === 0) {
           console.log("New user detected, redirecting to onboarding");
+          posthog.capture("signed_up");
           return "/onboarding";
         }
 

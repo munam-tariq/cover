@@ -13,6 +13,7 @@
 import { Router, Request, Response } from "express";
 
 import { logger } from "../lib/logger";
+import { posthog } from "../lib/posthog";
 import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import { chatRateLimiter } from "../middleware/rate-limit";
@@ -108,6 +109,18 @@ leadCaptureRouter.post(
       if (!result.success) {
         return res.json(result);
       }
+
+      // Track the captured lead (server-side: the widget visitor is not a
+      // PostHog client, so key the event on the stable visitor id).
+      posthog?.capture({
+        distinctId: visitorId,
+        event: "lead_captured",
+        properties: {
+          project_id: projectId,
+          source: leadSource,
+          lead_id: result.leadId,
+        },
+      });
 
       // Build the assembled greeting for DOM display only (not persisted to DB).
       const { data: project } = await supabaseAdmin

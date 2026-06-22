@@ -12,6 +12,7 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 
+import { posthog } from "../lib/posthog";
 import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import {
@@ -433,6 +434,21 @@ router.post("/conversations/:id/handoff", async (req: Request, res: Response) =>
     // Try to find an available agent
     const availableAgentId = await getAvailableAgent(conversation.project_id);
     const now = new Date().toISOString();
+
+    // Track the handoff request once, for both outcomes (assigned vs queued).
+    // Widget visitors aren't PostHog clients, so key on the conversation's
+    // visitor id, falling back to the conversation id.
+    posthog?.capture({
+      distinctId: conversation.visitor_id ?? id,
+      event: "human_handoff_requested",
+      properties: {
+        project_id: conversation.project_id,
+        conversation_id: id,
+        reason,
+        source: conversation.source,
+        agent_available: Boolean(availableAgentId),
+      },
+    });
 
     // Update customer info if provided
     const customerUpdates: Record<string, unknown> = {};

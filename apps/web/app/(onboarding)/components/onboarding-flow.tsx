@@ -6,6 +6,7 @@
  * crawl, live status polling, and the agent self-test). No skip option.
  */
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiClient, apiClientFormData } from "@/lib/api-client";
@@ -87,6 +88,11 @@ export function OnboardingFlow() {
   const [training, setTraining] = useState(false);
   const [trainError, setTrainError] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusResponse | null>(null);
+
+  // Mark the start of the onboarding funnel once per mount.
+  useEffect(() => {
+    posthog.capture("onboarding_started");
+  }, []);
 
   const idx = ORDER.indexOf(step);
   const railIndex = RAIL_STEPS.indexOf(step as (typeof RAIL_STEPS)[number]);
@@ -192,6 +198,11 @@ export function OnboardingFlow() {
         if ((data.status === "completed" || data.status === "failed") && !done) {
           done = true;
           if (data.status === "completed") {
+            posthog.capture("onboarding_completed", {
+              pages_imported: data.totals?.imported ?? data.totals?.pages ?? 0,
+              sources_added: sources.length,
+              goal,
+            });
             successTimer = setTimeout(() => active && go("success"), 2800);
           }
           return;

@@ -59,7 +59,9 @@ test("marketing third-party scripts wait for consent or user intent", () => {
   assert.doesNotMatch(marketingLayout, /storage\/v1\/object\/public\/assets\/widget\.js/);
   assert.match(marketingLayout, /MarketingWidgetLauncher/);
   assert.match(widgetLauncher, /document\.createElement\("script"\)/);
-  assert.match(widgetLauncher, /onClick=\{loadWidget\}/);
+  // The hosted widget is injected only once the browser is idle (with a short
+  // fallback), so the third-party script never competes with the initial render.
+  assert.match(widgetLauncher, /requestIdleCallback/);
 });
 
 test("homepage LCP hero renders static headline server-side", () => {

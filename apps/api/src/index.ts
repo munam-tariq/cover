@@ -5,6 +5,7 @@ import express from "express";
 import helmet from "helmet";
 
 import { logger } from "./lib/logger";
+import { posthog } from "./lib/posthog";
 import { clientKeyMiddleware } from "./middleware/client-key";
 import { errorReporterMiddleware } from "./middleware/error-reporter";
 import { requestIdMiddleware } from "./middleware/request-id";
@@ -175,8 +176,19 @@ app.use(
 );
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`API server running on http://localhost:${PORT}`);
 });
+
+// Graceful shutdown — flush any queued PostHog events before exiting.
+async function shutdown(signal: string): Promise<void> {
+  logger.info(`Received ${signal}, shutting down`);
+  server.close();
+  await posthog?.shutdown();
+  process.exit(0);
+}
+
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
 
 export default app;

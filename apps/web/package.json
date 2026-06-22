@@ -25,6 +25,7 @@
     "lucide-react": "^0.312.0",
     "next": "15.5.19",
     "onborda": "^1.2.5",
+    "posthog-js": "^1.391.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",

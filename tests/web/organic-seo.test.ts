@@ -93,9 +93,16 @@ test("Microsoft Clarity is configured behind analytics consent", () => {
     path.join(process.cwd(), "apps/web/components/analytics-consent.tsx"),
     "utf8",
   );
+  // The consent key is owned by lib/analytics (single source of truth); the
+  // consent banner imports it to gate the Clarity tag behind the same value.
+  const analytics = readFileSync(
+    path.join(process.cwd(), "apps/web/lib/analytics.ts"),
+    "utf8",
+  );
 
   assert.match(layout, /AnalyticsConsent/);
   assert.match(consent, /NEXT_PUBLIC_CLARITY_PROJECT_ID/);
-  assert.match(consent, /frontface-analytics-consent/);
+  assert.match(analytics, /frontface-analytics-consent/);
+  assert.match(consent, /CONSENT_KEY/);
   assert.match(consent, /clarity\.ms\/tag/);
 });
