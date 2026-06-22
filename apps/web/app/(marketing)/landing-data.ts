@@ -139,7 +139,7 @@ export const STATS: [string, string][] = [
   ["24/7", "Always-on availability"],
 ];
 
-/* testimonials (fictional) */
+/* testimonials */
 export interface Testimonial {
   co: string;
   quote: string;
@@ -151,22 +151,22 @@ export const TESTI: Testimonial[] = [
     co: "HofMigration",
     quote:
       "We deflect 68% of support tickets now. Clients get instant answers on visa requirements and our consultants finally have room to breathe.",
-    who: "Maya Okonkwo",
-    role: "Head of CX",
+    who: "Waleed",
+    role: "CEO",
   },
   {
     co: "OneGo",
     quote:
       "It read our help center and just knew the answers. Setup took an afternoon — and it quietly captures leads while it's at it.",
-    who: "Daniel Reyes",
-    role: "Operations Lead",
+    who: "Hammad",
+    role: "CTO",
   },
   {
     co: "Sleet",
     quote:
       "Handoff is seamless. Customers never feel stuck, and our reps only step in when it actually matters.",
-    who: "Priya Anand",
-    role: "Support Manager",
+    who: "Sheraz",
+    role: "CTO",
   },
 ];
 

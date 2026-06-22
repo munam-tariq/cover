@@ -70,9 +70,9 @@ export default function LandingPage() {
       <LogoStrip />
       <StatsBar />
       <HowItWorks />
+      <SocialProof />
       <CapabilitiesSection />
       <DeployAnywhere />
-      <SocialProof />
       <PricingSection />
       <FinalCta />
     </main>
