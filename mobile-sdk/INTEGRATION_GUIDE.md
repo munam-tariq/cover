@@ -424,6 +424,12 @@ Body: { "projectId", "visitorId", "sessionId": "uuid-or-null", "email": "…", "
 
 ## 8. Customer identify (optional)
 
+> ⚠️ **Not yet available.** This endpoint is currently disabled server-side (returns
+> `404`). As a public, unauthenticated write it was an abuse vector with no clients,
+> so it has been turned off until the SDK ships. When re-enabled it will require the
+> `X-FrontFace-Key` client key (and likely a signed identity token), so treat the
+> shape below as provisional.
+
 If your app already knows who the user is (they're logged in), link that identity to the visitor:
 
 ```
@@ -432,10 +438,9 @@ Body: {
   "visitorId": "mob_…",          // required, ≤100 chars
   "projectId": "uuid",           // required
   "email": "user@example.com",   // required, valid email
-  "name": "Jane Doe",            // optional, ≤100 chars
-  "metadata": { "plan": "pro" }  // optional, arbitrary key/values
+  "name": "Jane Doe"             // optional, ≤100 chars
 }
-→ 200 { "customer": { "id", "email", "name", "metadata", … } }
+→ 200 { "customer": { "id", "email", "name", … } }
 ```
 
 Errors: `400 VALIDATION_ERROR` (with `details`), `404 PROJECT_NOT_FOUND`.

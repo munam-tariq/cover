@@ -308,6 +308,12 @@ paths:
     post:
       tags: [Customer]
       summary: Link a known email/name to the visitor
+      description: >-
+        NOT YET AVAILABLE. Disabled server-side (returns 404) until the SDK
+        ships, because as a public unauthenticated write it was an abuse vector
+        with no clients. When re-enabled it will require the X-FrontFace-Key
+        client key; treat this shape as provisional.
+      deprecated: true
       operationId: identifyCustomer
       parameters:
         - $ref: "#/components/parameters/VisitorIdHeader"
@@ -323,7 +329,6 @@ paths:
                 projectId: { type: string, format: uuid }
                 email: { type: string, format: email }
                 name: { type: string, maxLength: 100 }
-                metadata: { type: object, additionalProperties: true }
       responses:
         "200":
           description: Customer record
@@ -630,4 +635,3 @@ components:
         id: { type: string, format: uuid }
         email: { type: string }
         name: { type: string, nullable: true }
-        metadata: { type: object, additionalProperties: true }

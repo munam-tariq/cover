@@ -19,13 +19,16 @@ const router = Router();
 // Validation Schemas
 // ============================================================================
 
+// Request body for the DISABLED POST /identify endpoint (see the handler near
+// the bottom of this file for why it is commented out). Kept for easy revival.
+/*
 const IdentifyCustomerSchema = z.object({
   visitorId: z.string().min(1).max(100),
   projectId: z.string().uuid("Invalid project ID"),
   email: z.string().email("Invalid email address"),
   name: z.string().max(100).optional(),
-  metadata: z.record(z.unknown()).optional(),
 });
+*/
 
 // ============================================================================
 // Helpers
@@ -37,15 +40,86 @@ function isValidUUID(id: string): boolean {
   return UUID_REGEX.test(id);
 }
 
+/**
+ * Serialise a customer DB row into the API response shape. Centralised so every
+ * endpoint returns the same fields and stays aligned with the actual schema
+ * (e.g. `total_conversations`, not the non-existent `conversation_count`).
+ */
+function serializeCustomer(c: {
+  id: string;
+  visitor_id: string;
+  email: string | null;
+  name: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  total_conversations?: number | null;
+}) {
+  return {
+    id: c.id,
+    visitorId: c.visitor_id,
+    email: c.email,
+    name: c.name,
+    firstSeenAt: c.first_seen_at,
+    lastSeenAt: c.last_seen_at,
+    conversationCount: c.total_conversations ?? 0,
+  };
+}
+
+// `updateCustomerRow` is used only by the DISABLED POST /identify handler below.
+// It updates a customer row and returns it, throwing on any database error so
+// the error is surfaced (rather than ignored, yielding an undefined row that
+// crashes downstream). Preserved (commented) for when /identify is revived.
+/*
+async function updateCustomerRow(id: string, patch: Record<string, unknown>) {
+  const { data, error } = await supabaseAdmin
+    .from("customers")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(`Customer update failed (${id}): ${error.message}`);
+  }
+
+  return data;
+}
+*/
+
 // ============================================================================
 // Routes
 // ============================================================================
 
 /**
- * POST /api/customers/identify
- * Link an email to a visitor ID, creating or updating a customer record
- * This is called from the widget when a customer provides their email
+ * POST /api/customers/identify — CURRENTLY DISABLED (handler commented out below).
+ *
+ * Purpose: link a known email/name to an anonymous visitor id, creating or
+ * merging the customer record. Intended for a host app / mobile SDK that already
+ * knows who its logged-in user is.
+ *
+ * Why it is disabled:
+ *  - No first-party caller exists. The web widget never calls it (it captures
+ *    emails through the lead-capture flow), and the mobile SDK that documents it
+ *    (mobile-sdk/) is spec-only and has not been built yet.
+ *  - It is a PUBLIC, UNAUTHENTICATED WRITE. It is mounted under `widgetCors` with
+ *    no auth middleware, so anyone who knows a projectId — which ships inside the
+ *    public widget snippet and is therefore trivially discoverable — could
+ *    create, merge, or relabel customer rows for that project. That is a spam /
+ *    data-poisoning vector with zero upside while there are no callers.
+ *
+ * A bare public endpoint like this is the wrong shape for identity. When it is
+ * revived for a real SDK it should instead:
+ *  - authenticate with the publishable client key (X-FrontFace-Key / pk_…) like
+ *    the other mobile endpoints, and/or require a signed, short-lived token so
+ *    identity claims cannot be forged for arbitrary projects, and
+ *  - be rate-limited per project/visitor.
+ *
+ * The handler below is preserved (with the corrected merge + error handling that
+ * fixed the original 500s) so it can be re-enabled quickly once the above is in
+ * place. NOTE: re-enabling also requires uncommenting `IdentifyCustomerSchema`
+ * and `updateCustomerRow` above.
  */
+/*
 router.post("/identify", async (req: Request, res: Response) => {
   try {
     // Validate request body
@@ -60,7 +134,7 @@ router.post("/identify", async (req: Request, res: Response) => {
       });
     }
 
-    const { visitorId, projectId, email, name, metadata } = validation.data;
+    const { visitorId, projectId, email, name } = validation.data;
 
     // Verify project exists
     const { data: project } = await supabaseAdmin
@@ -96,86 +170,68 @@ router.post("/identify", async (req: Request, res: Response) => {
     let customer;
 
     if (existingByEmail && existingByVisitor) {
-      // Both exist - if they're different, we need to merge
+      // Both exist - if they're different, merge the visitor record into the
+      // email record (the email is the stronger, longer-lived identity).
       if (existingByEmail.id !== existingByVisitor.id) {
-        // Merge visitor's conversations to the email customer
+        // 1. Re-point the visitor's conversations and leads to the email customer.
         await supabaseAdmin
           .from("conversations")
           .update({ customer_id: existingByEmail.id })
           .eq("customer_id", existingByVisitor.id);
 
-        // Update the visitor record to point to this email
         await supabaseAdmin
-          .from("customers")
-          .update({
-            merged_into_id: existingByEmail.id,
-            updated_at: now,
-          })
-          .eq("id", existingByVisitor.id);
+          .from("qualified_leads")
+          .update({ customer_id: existingByEmail.id })
+          .eq("customer_id", existingByVisitor.id);
 
-        // Update the email customer with latest visitor ID
-        const { data: updated } = await supabaseAdmin
-          .from("customers")
-          .update({
-            visitor_id: visitorId,
-            name: name || existingByEmail.name,
-            metadata: { ...existingByEmail.metadata, ...metadata },
-            last_seen_at: now,
-            updated_at: now,
-          })
-          .eq("id", existingByEmail.id)
-          .select("*")
-          .single();
+        // 2. Tombstone the old visitor record. This frees the
+        //    (project_id, visitor_id) unique slot and excludes it from listings.
+        //    Must happen BEFORE the email record adopts visitorId below.
+        await updateCustomerRow(existingByVisitor.id, {
+          visitor_id: `merged:${existingByVisitor.id}`,
+          updated_at: now,
+        });
 
-        customer = updated;
+        // 3. Adopt the latest visitor id on the email record and remember the
+        //    visitor ids it has absorbed.
+        const mergedVisitorIds = Array.from(
+          new Set([
+            ...(existingByEmail.merged_visitor_ids || []),
+            existingByEmail.visitor_id,
+          ])
+        ).filter((v: string) => v && v !== visitorId);
+
+        customer = await updateCustomerRow(existingByEmail.id, {
+          visitor_id: visitorId,
+          name: name || existingByEmail.name,
+          merged_visitor_ids: mergedVisitorIds,
+          last_seen_at: now,
+          updated_at: now,
+        });
       } else {
         // Same customer - just update
-        const { data: updated } = await supabaseAdmin
-          .from("customers")
-          .update({
-            name: name || existingByEmail.name,
-            metadata: { ...existingByEmail.metadata, ...metadata },
-            last_seen_at: now,
-            updated_at: now,
-          })
-          .eq("id", existingByEmail.id)
-          .select("*")
-          .single();
-
-        customer = updated;
+        customer = await updateCustomerRow(existingByEmail.id, {
+          name: name || existingByEmail.name,
+          last_seen_at: now,
+          updated_at: now,
+        });
       }
     } else if (existingByEmail) {
       // Customer with email exists - update with new visitor ID
-      const { data: updated } = await supabaseAdmin
-        .from("customers")
-        .update({
-          visitor_id: visitorId,
-          name: name || existingByEmail.name,
-          metadata: { ...existingByEmail.metadata, ...metadata },
-          last_seen_at: now,
-          updated_at: now,
-        })
-        .eq("id", existingByEmail.id)
-        .select("*")
-        .single();
-
-      customer = updated;
+      customer = await updateCustomerRow(existingByEmail.id, {
+        visitor_id: visitorId,
+        name: name || existingByEmail.name,
+        last_seen_at: now,
+        updated_at: now,
+      });
     } else if (existingByVisitor) {
       // Customer with visitor ID exists - link email
-      const { data: updated } = await supabaseAdmin
-        .from("customers")
-        .update({
-          email,
-          name: name || existingByVisitor.name,
-          metadata: { ...existingByVisitor.metadata, ...metadata },
-          last_seen_at: now,
-          updated_at: now,
-        })
-        .eq("id", existingByVisitor.id)
-        .select("*")
-        .single();
-
-      customer = updated;
+      customer = await updateCustomerRow(existingByVisitor.id, {
+        email,
+        name: name || existingByVisitor.name,
+        last_seen_at: now,
+        updated_at: now,
+      });
     } else {
       // New customer
       const { data: created, error: createError } = await supabaseAdmin
@@ -185,7 +241,6 @@ router.post("/identify", async (req: Request, res: Response) => {
           visitor_id: visitorId,
           email,
           name,
-          metadata: metadata || {},
           first_seen_at: now,
           last_seen_at: now,
         })
@@ -202,6 +257,16 @@ router.post("/identify", async (req: Request, res: Response) => {
       customer = created;
     }
 
+    if (!customer) {
+      console.error("identify: customer upsert returned no row", {
+        projectId,
+        visitorId,
+      });
+      return res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+      });
+    }
+
     // Update any conversations with this visitor ID to link to the customer
     await supabaseAdmin
       .from("conversations")
@@ -213,19 +278,7 @@ router.post("/identify", async (req: Request, res: Response) => {
       .eq("project_id", projectId)
       .eq("visitor_id", visitorId);
 
-    res.json({
-      customer: {
-        id: customer.id,
-        visitorId: customer.visitor_id,
-        email: customer.email,
-        name: customer.name,
-        metadata: customer.metadata,
-        firstSeenAt: customer.first_seen_at,
-        lastSeenAt: customer.last_seen_at,
-        conversationCount: customer.conversation_count,
-        totalMessageCount: customer.total_message_count,
-      },
-    });
+    res.json({ customer: serializeCustomer(customer) });
   } catch (error) {
     console.error("Error in POST /customers/identify:", error);
     res.status(500).json({
@@ -233,6 +286,7 @@ router.post("/identify", async (req: Request, res: Response) => {
     });
   }
 });
+*/
 
 /**
  * GET /api/conversations/:id/customer
@@ -312,6 +366,22 @@ router.get(
           .single();
 
         customer = customerData;
+      }
+
+      // Total messages across this customer's conversations (the inbox "Messages"
+      // stat). One aggregate read; a customer has few conversations so summing in
+      // JS is fine and avoids needing a DB function.
+      let totalMessageCount = 0;
+      if (customer?.id) {
+        const { data: convoCounts } = await supabaseAdmin
+          .from("conversations")
+          .select("message_count")
+          .eq("customer_id", customer.id);
+        totalMessageCount = (convoCounts || []).reduce(
+          (sum: number, c: { message_count: number | null }) =>
+            sum + (c.message_count || 0),
+          0
+        );
       }
 
       // Get previous conversations for this customer/visitor
@@ -395,17 +465,7 @@ router.get(
 
       res.json({
         customer: customer
-          ? {
-              id: customer.id,
-              visitorId: customer.visitor_id,
-              email: customer.email,
-              name: customer.name,
-              metadata: customer.metadata,
-              firstSeenAt: customer.first_seen_at,
-              lastSeenAt: customer.last_seen_at,
-              conversationCount: customer.conversation_count,
-              totalMessageCount: customer.total_message_count,
-            }
+          ? { ...serializeCustomer(customer), totalMessageCount }
           : null,
         currentConversation: {
           visitorId: conversation.visitor_id,
@@ -506,7 +566,7 @@ router.get(
         .from("customers")
         .select("*", { count: "exact" })
         .eq("project_id", projectId)
-        .is("merged_into_id", null) // Exclude merged records
+        .not("visitor_id", "like", "merged:%") // Exclude merged (tombstoned) records
         .order("last_seen_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
@@ -524,16 +584,7 @@ router.get(
       }
 
       res.json({
-        customers: (customers || []).map((c) => ({
-          id: c.id,
-          visitorId: c.visitor_id,
-          email: c.email,
-          name: c.name,
-          firstSeenAt: c.first_seen_at,
-          lastSeenAt: c.last_seen_at,
-          conversationCount: c.conversation_count,
-          totalMessageCount: c.total_message_count,
-        })),
+        customers: (customers || []).map(serializeCustomer),
         pagination: {
           total: count || 0,
           limit,
@@ -613,17 +664,7 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
       .limit(20);
 
     res.json({
-      customer: {
-        id: customer.id,
-        visitorId: customer.visitor_id,
-        email: customer.email,
-        name: customer.name,
-        metadata: customer.metadata,
-        firstSeenAt: customer.first_seen_at,
-        lastSeenAt: customer.last_seen_at,
-        conversationCount: customer.conversation_count,
-        totalMessageCount: customer.total_message_count,
-      },
+      customer: serializeCustomer(customer),
       conversations: (conversations || []).map((c) => ({
         id: c.id,
         status: c.status,
@@ -661,7 +702,6 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
     const UpdateSchema = z.object({
       name: z.string().max(100).optional(),
       email: z.string().email().optional(),
-      metadata: z.record(z.unknown()).optional(),
     });
 
     const validation = UpdateSchema.safeParse(req.body);
@@ -720,9 +760,6 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
 
     if (validation.data.name !== undefined) updates.name = validation.data.name;
     if (validation.data.email !== undefined) updates.email = validation.data.email;
-    if (validation.data.metadata !== undefined) {
-      updates.metadata = { ...customer.metadata, ...validation.data.metadata };
-    }
 
     const { data: updated, error: updateError } = await supabaseAdmin
       .from("customers")
@@ -738,19 +775,7 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
       });
     }
 
-    res.json({
-      customer: {
-        id: updated.id,
-        visitorId: updated.visitor_id,
-        email: updated.email,
-        name: updated.name,
-        metadata: updated.metadata,
-        firstSeenAt: updated.first_seen_at,
-        lastSeenAt: updated.last_seen_at,
-        conversationCount: updated.conversation_count,
-        totalMessageCount: updated.total_message_count,
-      },
-    });
+    res.json({ customer: serializeCustomer(updated) });
   } catch (error) {
     console.error("Error in PUT /customers/:id:", error);
     res.status(500).json({
