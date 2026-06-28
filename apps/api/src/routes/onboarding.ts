@@ -14,6 +14,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import { validateCrawlUrl } from "../services/firecrawl";
+import { resolveAndValidateUrl } from "../lib/url-guard";
 import { hasCompletedOnboarding } from "../services/onboarding-completion";
 import { runSelfTest } from "../services/onboarding-self-test";
 import {
@@ -238,7 +239,7 @@ onboardingRouter.post("/crawl", async (req: AuthenticatedRequest, res: Response)
     // Verify project belongs to user
     const { data: project, error: projectError } = await supabaseAdmin
       .from("projects")
-      .select("id, settings")
+      .select("id, settings, allowed_domains")
       .eq("id", projectId)
       .eq("user_id", req.userId)
       .is("deleted_at", null)
@@ -262,6 +263,16 @@ onboardingRouter.post("/crawl", async (req: AuthenticatedRequest, res: Response)
     }
 
     const normalizedUrl = urlValidation.normalizedUrl!;
+
+    // DNS-rebinding defense: resolve the hostname and block before creating
+    // jobs or writing settings if it maps to a private/metadata IP.
+    const dnsCheck = await resolveAndValidateUrl(normalizedUrl);
+    if (!dnsCheck.ok) {
+      return res.status(400).json({
+        error: { code: "INVALID_URL", message: dnsCheck.reason || "URL blocked" },
+      });
+    }
+
     const domain = extractDomain(normalizedUrl);
     const logoUrl = getBrandfetchLogoUrl(domain);
 
@@ -287,19 +298,29 @@ onboardingRouter.post("/crawl", async (req: AuthenticatedRequest, res: Response)
     const currentSettings = (project.settings as Record<string, unknown>) || {};
     const onboardingSettings = (currentSettings.onboarding as Record<string, unknown>) || {};
 
+    const updatePayload: Record<string, unknown> = {
+      settings: {
+        ...currentSettings,
+        onboarding: {
+          ...onboardingSettings,
+          company_website: normalizedUrl,
+          company_logo_url: logoUrl,
+          crawl_job_id: job.id,
+        },
+      },
+    };
+
+    // Auto-populate allowed_domains from the crawl URL if not already configured.
+    // This seeds the domain whitelist so the widget gate can enforce origin checks
+    // once WIDGET_GATE_ENFORCE is flipped on — zero friction for the user.
+    const existingDomains = (project.allowed_domains as string[]) || [];
+    if (existingDomains.length === 0) {
+      updatePayload.allowed_domains = [domain, `*.${domain}`];
+    }
+
     await supabaseAdmin
       .from("projects")
-      .update({
-        settings: {
-          ...currentSettings,
-          onboarding: {
-            ...onboardingSettings,
-            company_website: normalizedUrl,
-            company_logo_url: logoUrl,
-            crawl_job_id: job.id,
-          },
-        },
-      })
+      .update(updatePayload)
       .eq("id", projectId);
 
     // Start crawling in background

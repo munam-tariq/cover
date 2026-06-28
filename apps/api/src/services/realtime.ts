@@ -2,7 +2,9 @@
  * Realtime Service
  *
  * Utility functions for broadcasting events to Supabase Realtime channels.
- * Uses the Supabase Admin client to broadcast to channels that clients subscribe to.
+ * Uses the HTTP Broadcast API to publish events — stateless, no WebSocket needed.
+ * When REALTIME_PRIVATE_ENABLED=true, broadcasts to private channels only;
+ * otherwise broadcasts to public channels (backward compatible).
  *
  * Channel naming conventions:
  * - `conversation:{id}` - Messages, typing, presence for a specific conversation
@@ -10,8 +12,6 @@
  * - `project:{id}:agents` - Agent status updates
  * - `agent:{id}` - Personal notifications for an agent
  */
-
-import { supabaseAdmin } from "../lib/supabase";
 
 // ============================================================================
 // Types
@@ -81,7 +81,8 @@ export function getAgentChannel(userId: string): string {
 // ============================================================================
 
 /**
- * Broadcast an event to a Supabase Realtime channel
+ * Broadcast an event to a Supabase Realtime channel via the HTTP Broadcast API.
+ * When REALTIME_PRIVATE_ENABLED=true, targets private channels (?private=true).
  */
 async function broadcast(
   channel: string,
@@ -89,25 +90,43 @@ async function broadcast(
   data: Record<string, unknown>
 ): Promise<void> {
   try {
+    const supabaseUrl =
+      process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+
+    if (!supabaseUrl || !serviceKey) {
+      console.warn("[Realtime] Missing Supabase URL or service key, skipping broadcast");
+      return;
+    }
+
     const payload: RealtimePayload = {
       type,
       data,
       timestamp: new Date().toISOString(),
     };
 
-    // Use Supabase Realtime broadcast
-    const channelInstance = supabaseAdmin.channel(channel);
+    const usePrivate = process.env.REALTIME_PRIVATE_ENABLED === "true";
+    const privateParam = usePrivate ? "?private=true" : "";
+    const url = `${supabaseUrl}/realtime/v1/api/broadcast/${encodeURIComponent(channel)}/events/${encodeURIComponent(type)}${privateParam}`;
 
-    await channelInstance.send({
-      type: "broadcast",
-      event: type,
-      payload,
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
 
-    // Clean up channel instance
-    await supabaseAdmin.removeChannel(channelInstance);
+    if (!response.ok) {
+      console.error(
+        `[Realtime] HTTP broadcast failed: ${response.status} ${response.statusText} for ${type} to ${channel}`
+      );
+      return;
+    }
 
-    console.log(`[Realtime] Broadcasted ${type} to ${channel}`);
+    console.log(`[Realtime] Broadcasted ${type} to ${channel}${usePrivate ? " (private)" : ""}`);
   } catch (error) {
     console.error(`[Realtime] Failed to broadcast ${type} to ${channel}:`, error);
     // Don't throw - realtime is best-effort

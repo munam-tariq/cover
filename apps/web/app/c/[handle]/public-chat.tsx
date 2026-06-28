@@ -29,9 +29,10 @@ import { LeadCaptureCard } from "./lead-capture-card";
 import {
   API_URL,
   closePublicConversation,
-  fetchMessages,
+  fetchMessagesResult,
   getLeadCaptureStatus,
   getRecentConversations,
+  isWidgetSessionDenied,
   recordLeadCaptureVisit,
   submitLeadForm,
   type ConversationSummary,
@@ -40,12 +41,15 @@ import {
   type PublicMessage,
 } from "./lib/public-api";
 import {
+  clearPublicConversationState,
   clearStoredSessionId,
   getLeadFormCompleted,
   getStoredSessionId,
+  getStoredSessionToken,
   getVisitorId,
   setLeadFormCompleted,
   storeSessionId,
+  storeSessionToken,
 } from "./lib/public-storage";
 import { RecentConversations } from "./recent-conversations";
 import { usePublicHandoff } from "./use-public-handoff";
@@ -291,6 +295,21 @@ export function PublicChat({
     [projectId]
   );
 
+  const handleStaleSession = useCallback(
+    (conversationId?: string | null) => {
+      const staleId = conversationId || sessionId;
+      clearPublicConversationState(projectId, staleId);
+      hydratedSessionRef.current = null;
+      seenIdsRef.current = new Set();
+      setMessages([]);
+      setSessionId(null);
+      if (staleId) {
+        setConversations((prev) => prev.filter((c) => c.id !== staleId));
+      }
+    },
+    [projectId, sessionId]
+  );
+
   const handoff = usePublicHandoff({
     projectId,
     visitorId: visitorIdRef.current,
@@ -298,6 +317,7 @@ export function PublicChat({
     enabled: live,
     onServerMessages: appendServerMessages,
     onSessionEstablished: adoptSession,
+    onStaleSession: handleStaleSession,
   });
   const {
     noteRehydratedThrough,
@@ -323,7 +343,16 @@ export function PublicChat({
       // The backend persisted the transcript — replace the thread with the DB canon.
       const id = sessionId;
       if (!id) return;
-      void fetchMessages(id).then((msgs) => {
+      void fetchMessagesResult(
+        id,
+        undefined,
+        getStoredSessionToken(id) ?? undefined
+      ).then((result) => {
+        if (!result.ok) {
+          if (result.staleSession) handleStaleSession(id);
+          return;
+        }
+        const msgs = result.data;
         const mapped = msgs
           .map(mapServerMessage)
           .filter((m): m is Msg => m !== null);
@@ -395,7 +424,16 @@ export function PublicChat({
   useEffect(() => {
     if (!live || !sessionId || hydratedSessionRef.current === sessionId) return;
     hydratedSessionRef.current = sessionId;
-    void fetchMessages(sessionId).then((msgs) => {
+    void fetchMessagesResult(
+      sessionId,
+      undefined,
+      getStoredSessionToken(sessionId) ?? undefined
+    ).then((result) => {
+      if (!result.ok) {
+        if (result.staleSession) handleStaleSession(sessionId);
+        return;
+      }
+      const msgs = result.data;
       const mapped = msgs
         .map(mapServerMessage)
         .filter((m): m is Msg => m !== null);
@@ -405,7 +443,7 @@ export function PublicChat({
         msgs.length > 0 ? msgs[msgs.length - 1].createdAt : null
       );
     });
-  }, [live, sessionId, noteRehydratedThrough]);
+  }, [handleStaleSession, live, sessionId, noteRehydratedThrough]);
 
   // Preview mode: receive draft config from the dashboard editor over postMessage.
   useEffect(() => {
@@ -446,9 +484,14 @@ export function PublicChat({
       setIsSending(true);
 
       try {
+        const hdrs: Record<string, string> = { "Content-Type": "application/json" };
+        if (sessionId) {
+          const st = getStoredSessionToken(sessionId);
+          if (st) hdrs["X-FrontFace-Session"] = st;
+        }
         const res = await fetch(`${API_URL}/api/chat/message`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: hdrs,
           body: JSON.stringify({
             projectId,
             message: content,
@@ -466,13 +509,22 @@ export function PublicChat({
           }),
         });
 
-        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => null);
+          if (sessionId && isWidgetSessionDenied(res.status, errBody)) {
+            handleStaleSession(sessionId);
+            return;
+          }
+          throw new Error(`Request failed: ${res.status}`);
+        }
         const data = await res.json();
         if (data.sessionId) {
           // Persist the session even when it equals the current id (the "New chat" case below
           // pre-generates the id, so the server echoes it back unchanged) — otherwise a reload
           // wouldn't restore the thread.
           storeSessionId(projectId, data.sessionId);
+          if (data.sessionToken)
+            storeSessionToken(data.sessionId, data.sessionToken);
           if (data.sessionId !== sessionId) adoptSession(data.sessionId);
         }
         if (data.response) {
@@ -508,6 +560,7 @@ export function PublicChat({
       adoptSession,
       config.pageTitle,
       handleChatResponse,
+      handleStaleSession,
       isSending,
       leadGate,
       messages,
@@ -584,6 +637,8 @@ export function PublicChat({
           // The server persisted the qualifying question and (in email_first mode) created the
           // conversation — adopt its id so a reload rehydrates the question from the DB and the
           // visitor's answers attach to the same thread.
+          if (result.sessionId && result.sessionToken)
+            storeSessionToken(result.sessionId, result.sessionToken);
           if (result.sessionId && result.sessionId !== sessionId) {
             adoptSession(result.sessionId);
           }

@@ -21,6 +21,16 @@ import {
   broadcastTyping,
   broadcastPresenceUpdate,
 } from "../services/realtime";
+import {
+  issueWidgetSessionToken,
+  verifyWidgetSessionToken,
+} from "../services/widget-session-token";
+import {
+  isRealtimePrivateEnabled,
+  buildRealtimeTokenResponse,
+} from "../services/realtime-jwt";
+import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
+import { requireWidgetSession } from "../middleware/require-widget-session";
 
 const router = Router();
 
@@ -860,7 +870,10 @@ router.post(
  * Create a new conversation (from widget)
  * No auth required - uses project API key header
  */
-router.post("/", async (req: Request, res: Response) => {
+router.post(
+  "/",
+  requirePublicWidgetAccess({ action: "conversation-create", projectIdSource: "body" }),
+  async (req: Request, res: Response) => {
   try {
     // Validate body
     const validation = CreateConversationSchema.safeParse(req.body);
@@ -909,6 +922,11 @@ router.post("/", async (req: Request, res: Response) => {
           status: existingConversation.status,
           isExisting: true,
         },
+        sessionToken: issueWidgetSessionToken({
+          projectId,
+          visitorId,
+          conversationId: existingConversation.id,
+        }),
       });
     }
 
@@ -982,6 +1000,11 @@ router.post("/", async (req: Request, res: Response) => {
         createdAt: conversation.created_at,
         isExisting: false,
       },
+      sessionToken: issueWidgetSessionToken({
+        projectId: conversation.project_id,
+        visitorId: conversation.visitor_id,
+        conversationId: conversation.id,
+      }),
     });
   } catch (error) {
     console.error("Error in POST /conversations:", error);
@@ -996,7 +1019,7 @@ router.post("/", async (req: Request, res: Response) => {
  * Get conversation status (for widget - public endpoint)
  * Returns minimal info for widget to understand current state
  */
-router.get("/:id/status", async (req: Request, res: Response) => {
+router.get("/:id/status", requireWidgetSession(), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -1068,7 +1091,7 @@ router.get("/:id/status", async (req: Request, res: Response) => {
  * Get messages for widget (public endpoint)
  * Returns messages with sender info for display
  */
-router.get("/:id/messages/public", async (req: Request, res: Response) => {
+router.get("/:id/messages/public", requireWidgetSession(), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const after = req.query.after as string; // ISO timestamp to get new messages
@@ -1147,6 +1170,97 @@ router.get("/:id/messages/public", async (req: Request, res: Response) => {
     });
   }
 });
+
+/**
+ * POST /api/conversations/:id/realtime-token
+ * Issue a short-lived Supabase JWT for private Realtime channel subscription.
+ * Gated by REALTIME_PRIVATE_ENABLED feature flag and requireWidgetSession.
+ */
+router.post(
+  "/:id/realtime-token",
+  requireWidgetSession(),
+  async (req: Request, res: Response) => {
+    if (!isRealtimePrivateEnabled()) {
+      return res.status(404).json({
+        error: { code: "NOT_AVAILABLE", message: "Private realtime not enabled" },
+      });
+    }
+
+    const { id } = req.params;
+
+    if (!isValidUUID(id)) {
+      return res.status(400).json({
+        error: { code: "INVALID_ID", message: "Invalid conversation ID format" },
+      });
+    }
+
+    try {
+      // Always enforce session ownership — never honour monitor mode for token issuance.
+      const raw = req.headers["x-frontface-session"];
+      const sessionToken =
+        typeof raw === "string" ? raw : Array.isArray(raw) ? raw[0] : undefined;
+      let sessionClaims;
+      try {
+        sessionClaims = verifyWidgetSessionToken(sessionToken);
+      } catch {
+        return res.status(403).json({
+          error: { code: "SESSION_INVALID", message: "Valid widget session required" },
+        });
+      }
+      if (sessionClaims.conversationId !== id) {
+        return res.status(403).json({
+          error: { code: "FORBIDDEN", message: "Session not authorized for this conversation" },
+        });
+      }
+
+      const { data: conversation, error: convError } = await supabaseAdmin
+        .from("conversations")
+        .select("id, project_id, visitor_id")
+        .eq("id", id)
+        .eq("project_id", sessionClaims.projectId)
+        .eq("visitor_id", sessionClaims.visitorId)
+        .single();
+
+      if (convError || !conversation) {
+        return res.status(403).json({
+          error: { code: "FORBIDDEN", message: "Session not authorized for this conversation" },
+        });
+      }
+
+      if (
+        sessionClaims.conversationId !== id ||
+        sessionClaims.visitorId !== conversation.visitor_id ||
+        sessionClaims.projectId !== conversation.project_id
+      ) {
+        return res.status(403).json({
+          error: { code: "FORBIDDEN", message: "Session not authorized for this conversation" },
+        });
+      }
+
+      const result = buildRealtimeTokenResponse({
+        conversationId: id,
+        projectId: conversation.project_id,
+        visitorId: conversation.visitor_id,
+      });
+
+      if (!result) {
+        return res.status(503).json({
+          error: {
+            code: "TOKEN_UNAVAILABLE",
+            message: "Could not issue realtime token",
+          },
+        });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error in POST /conversations/:id/realtime-token:", error);
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+      });
+    }
+  }
+);
 
 // ============================================================================
 // Typing Indicator Endpoints

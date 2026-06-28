@@ -43,6 +43,8 @@ interface ElevenLabsVoiceConfig {
   voiceEnabled: boolean;
   signedUrl: string;
   greeting: string;
+  /** Verified on the LLM callback (passed back via ElevenLabs extra_body). */
+  voiceSessionToken?: string;
 }
 
 export class ElevenLabsVoiceManager {
@@ -86,6 +88,7 @@ export class ElevenLabsVoiceManager {
           projectId: this.options.projectId,
           visitorId: this.options.visitorId,
           sessionId: this.options.sessionId,
+          voiceSessionToken: config.voiceSessionToken,
         },
         onConnect: () => {
           this.setState("listening");

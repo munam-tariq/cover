@@ -10,6 +10,7 @@
     "install:prod": "pnpm install --prod --frozen-lockfile",
     "clean": "turbo clean && rm -rf node_modules",
     "indexnow:submit": "node scripts/submit-indexnow.mjs",
+    "security:probe:supabase": "node scripts/security/probe-supabase-anon.mjs && node scripts/security/probe-supabase-rpc.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "devDependencies": {

@@ -1,17 +1,20 @@
 /**
  * Widget Realtime Utility
  *
- * Manages Supabase Realtime connection for the widget.
+ * Manages Supabase Realtime connection for the widget using private channels.
+ * Widget visitors authenticate via short-lived JWTs obtained from the API's
+ * /realtime-token endpoint, protected by X-FrontFace-Session.
+ *
  * Handles:
- * - Channel subscriptions
- * - Message events
- * - Status change events
- * - Queue position updates
+ * - Token-based private channel subscriptions
+ * - Token refresh before expiry
+ * - Message, status, typing, queue events
  * - Reconnection logic
- * - Fallback to polling
+ * - Fallback to polling on any failure
  */
 
 import { RealtimeChannel, RealtimeClient } from "@supabase/realtime-js";
+import { widgetHeaders } from "./request";
 import "./widget-config";
 
 // ============================================================================
@@ -52,55 +55,9 @@ export interface RealtimeEventHandlers {
   onError?: (error: Error) => void;
 }
 
-// ============================================================================
-// Configuration
-// ============================================================================
-
-// Supabase project URL - extract from API URL or use environment variable
-function getSupabaseUrl(apiUrl: string): string {
-  // If apiUrl contains supabase, extract the project ref
-  // Otherwise, use a configured Supabase URL
-  // For local dev, this would be different
-
-  // Try to detect from environment or config
-  if (typeof window !== "undefined") {
-    // Check for global config
-    const config = window.__WIDGET_CONFIG__;
-    if (config?.supabaseUrl) {
-      return config.supabaseUrl;
-    }
-  }
-
-  // Default to extracting from API URL pattern
-  // If API is https://api.example.com, Supabase might be at a known location
-  // This is a fallback - ideally the config should provide the URL
-  try {
-    const url = new URL(apiUrl);
-    // For production, Supabase URL should be configured
-    // This is a development fallback
-    if (url.hostname.includes("localhost") || url.hostname.includes("127.0.0.1")) {
-      return "http://127.0.0.1:54321"; // Local Supabase
-    }
-  } catch {
-    // Ignore URL parse errors
-  }
-
-  // Fallback - caller should provide proper config
-  console.warn("[Widget Realtime] Could not determine Supabase URL, real-time will not work");
-  return "";
-}
-
-// Supabase anon key for realtime access
-function getSupabaseAnonKey(): string {
-  if (typeof window !== "undefined") {
-    const config = window.__WIDGET_CONFIG__;
-    if (config?.supabaseAnonKey) {
-      return config.supabaseAnonKey;
-    }
-  }
-
-  // For local development
-  return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
+interface RealtimeTokenResponse {
+  token: string;
+  expiresAt: number;
 }
 
 // ============================================================================
@@ -116,59 +73,128 @@ export class WidgetRealtimeManager {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectTimeout: number | null = null;
+  private tokenRefreshTimeout: number | null = null;
+  private currentToken: string | null = null;
+  private apiUrl: string;
   private supabaseUrl: string;
-  private supabaseAnonKey: string;
+  private apiKey: string;
+  private sessionToken: string | null = null;
 
-  constructor(apiUrl: string) {
-    this.supabaseUrl = getSupabaseUrl(apiUrl);
-    this.supabaseAnonKey = getSupabaseAnonKey();
+  constructor(apiUrl: string, supabaseUrl: string, apiKey: string) {
+    this.apiUrl = apiUrl;
+    this.supabaseUrl = supabaseUrl;
+    this.apiKey = apiKey;
   }
 
-  /**
-   * Initialize the realtime client
-   */
-  private initClient(): void {
-    if (this.client) return;
+  matchesConfig(apiUrl: string, supabaseUrl: string, apiKey: string): boolean {
+    return (
+      this.apiUrl === apiUrl &&
+      this.supabaseUrl === supabaseUrl &&
+      this.apiKey === apiKey
+    );
+  }
 
-    if (!this.supabaseUrl) {
-      console.error("[Widget Realtime] No Supabase URL configured");
+  setSessionToken(token: string | null): void {
+    this.sessionToken = token;
+  }
+
+  private async fetchRealtimeToken(
+    conversationId: string
+  ): Promise<RealtimeTokenResponse | null> {
+    try {
+      const response = await fetch(
+        `${this.apiUrl}/api/widget/conversations/${conversationId}/realtime-token`,
+        {
+          method: "POST",
+          headers: widgetHeaders({ sessionToken: this.sessionToken }),
+        }
+      );
+
+      if (!response.ok) {
+        console.warn(
+          `[Widget Realtime] Token fetch failed: ${response.status}`
+        );
+        return null;
+      }
+
+      return (await response.json()) as RealtimeTokenResponse;
+    } catch (error) {
+      console.warn("[Widget Realtime] Token fetch error:", error);
+      return null;
+    }
+  }
+
+  private initClient(token: string): void {
+    if (this.client) {
+      this.client.disconnect();
+      this.client = null;
+    }
+
+    if (!this.supabaseUrl || !this.apiKey) {
+      console.error("[Widget Realtime] Missing Supabase Realtime config");
       return;
     }
 
     try {
       this.client = new RealtimeClient(`${this.supabaseUrl}/realtime/v1`, {
-        params: {
-          apikey: this.supabaseAnonKey,
-        },
+        params: { apikey: this.apiKey },
       });
 
+      this.client.setAuth(token);
       this.client.connect();
-
-      if (process.env.NODE_ENV === "development") {
-        console.log("[Widget Realtime] Client initialized");
-      }
     } catch (error) {
       console.error("[Widget Realtime] Failed to initialize client:", error);
       this.handlers.onError?.(error as Error);
     }
   }
 
-  /**
-   * Subscribe to a conversation channel
-   */
-  subscribe(conversationId: string, handlers: RealtimeEventHandlers): void {
+  private scheduleTokenRefresh(expiresAt: number): void {
+    if (this.tokenRefreshTimeout) {
+      clearTimeout(this.tokenRefreshTimeout);
+    }
+
+    const refreshAt = (expiresAt - 60) * 1000 - Date.now();
+    if (refreshAt <= 0) return;
+
+    this.tokenRefreshTimeout = window.setTimeout(async () => {
+      if (!this.conversationId) return;
+
+      const result = await this.fetchRealtimeToken(this.conversationId);
+      if (!result) {
+        console.warn("[Widget Realtime] Token refresh failed, falling back to polling");
+        this.connected = false;
+        this.handlers.onConnectionChange?.(false);
+        return;
+      }
+
+      this.currentToken = result.token;
+      this.client?.setAuth(result.token);
+      this.scheduleTokenRefresh(result.expiresAt);
+    }, refreshAt);
+  }
+
+  async subscribe(
+    conversationId: string,
+    handlers: RealtimeEventHandlers
+  ): Promise<void> {
     this.handlers = handlers;
     this.conversationId = conversationId;
 
-    // Initialize client if needed
-    this.initClient();
-
-    if (!this.client) {
-      console.warn("[Widget Realtime] Client not initialized, falling back to polling");
+    const tokenResult = await this.fetchRealtimeToken(conversationId);
+    if (!tokenResult) {
+      console.warn("[Widget Realtime] No token, falling back to polling");
+      this.handlers.onConnectionChange?.(false);
       return;
     }
 
-    // Unsubscribe from previous channel if exists
+    this.currentToken = tokenResult.token;
+    this.initClient(tokenResult.token);
+
+    if (!this.client) {
+      this.handlers.onConnectionChange?.(false);
+      return;
+    }
+
     if (this.channel) {
       this.unsubscribe();
     }
@@ -178,16 +204,12 @@ export class WidgetRealtimeManager {
     try {
       this.channel = this.client.channel(channelName, {
         config: {
-          broadcast: { self: false }, // Don't receive own broadcasts
+          broadcast: { self: false },
+          private: true,
         },
       });
 
-      // Listen for new messages
       this.channel.on("broadcast", { event: "message:new" }, (payload) => {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[Widget Realtime] Received message:", payload);
-        }
-
         const message = payload.payload?.data?.message;
         if (message && this.handlers.onMessage) {
           this.handlers.onMessage({
@@ -201,12 +223,7 @@ export class WidgetRealtimeManager {
         }
       });
 
-      // Listen for status changes
       this.channel.on("broadcast", { event: "conversation:status_changed" }, (payload) => {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[Widget Realtime] Status changed:", payload);
-        }
-
         const data = payload.payload?.data;
         if (data && this.handlers.onStatusChange) {
           this.handlers.onStatusChange({
@@ -217,12 +234,7 @@ export class WidgetRealtimeManager {
         }
       });
 
-      // Listen for agent assignment
       this.channel.on("broadcast", { event: "conversation:assigned" }, (payload) => {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[Widget Realtime] Agent assigned:", payload);
-        }
-
         const data = payload.payload?.data;
         if (data?.agent && this.handlers.onAgentJoined) {
           this.handlers.onAgentJoined({
@@ -232,24 +244,14 @@ export class WidgetRealtimeManager {
         }
       });
 
-      // Listen for queue position updates
       this.channel.on("broadcast", { event: "queue:position_updated" }, (payload) => {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[Widget Realtime] Queue position updated:", payload);
-        }
-
         const data = payload.payload?.data;
         if (data?.position !== undefined && this.handlers.onQueueUpdate) {
           this.handlers.onQueueUpdate({ position: data.position });
         }
       });
 
-      // Listen for conversation resolved
       this.channel.on("broadcast", { event: "conversation:resolved" }, (payload) => {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[Widget Realtime] Conversation resolved:", payload);
-        }
-
         const data = payload.payload?.data;
         if (data && this.handlers.onStatusChange) {
           this.handlers.onStatusChange({
@@ -259,54 +261,38 @@ export class WidgetRealtimeManager {
         }
       });
 
-      // Listen for typing indicators
       this.channel.on("broadcast", { event: "typing:start" }, (payload) => {
         const data = payload.payload?.data;
         if (data?.participant && this.handlers.onTyping) {
-          this.handlers.onTyping({
-            participant: data.participant,
-            isTyping: true,
-          });
+          this.handlers.onTyping({ participant: data.participant, isTyping: true });
         }
       });
 
       this.channel.on("broadcast", { event: "typing:stop" }, (payload) => {
         const data = payload.payload?.data;
         if (data?.participant && this.handlers.onTyping) {
-          this.handlers.onTyping({
-            participant: data.participant,
-            isTyping: false,
-          });
+          this.handlers.onTyping({ participant: data.participant, isTyping: false });
         }
       });
 
-      // Subscribe to the channel
-      this.channel
-        .subscribe((status) => {
-          if (process.env.NODE_ENV === "development") {
-            console.log("[Widget Realtime] Subscription status:", status);
-          }
-
-          if (status === "SUBSCRIBED") {
-            this.connected = true;
-            this.reconnectAttempts = 0;
-            this.handlers.onConnectionChange?.(true);
-          } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
-            this.connected = false;
-            this.handlers.onConnectionChange?.(false);
-            this.handleDisconnect();
-          }
-        });
-
+      this.channel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          this.connected = true;
+          this.reconnectAttempts = 0;
+          this.handlers.onConnectionChange?.(true);
+          this.scheduleTokenRefresh(tokenResult.expiresAt);
+        } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
+          this.connected = false;
+          this.handlers.onConnectionChange?.(false);
+          this.handleDisconnect();
+        }
+      });
     } catch (error) {
       console.error("[Widget Realtime] Failed to subscribe:", error);
       this.handlers.onError?.(error as Error);
     }
   }
 
-  /**
-   * Unsubscribe from current channel
-   */
   unsubscribe(): void {
     if (this.channel) {
       this.channel.unsubscribe();
@@ -321,11 +307,13 @@ export class WidgetRealtimeManager {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
+
+    if (this.tokenRefreshTimeout) {
+      clearTimeout(this.tokenRefreshTimeout);
+      this.tokenRefreshTimeout = null;
+    }
   }
 
-  /**
-   * Handle disconnection with reconnect logic
-   */
   private handleDisconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.warn("[Widget Realtime] Max reconnect attempts reached, falling back to polling");
@@ -335,10 +323,6 @@ export class WidgetRealtimeManager {
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
     this.reconnectAttempts++;
 
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[Widget Realtime] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
-    }
-
     this.reconnectTimeout = window.setTimeout(() => {
       if (this.conversationId && this.handlers) {
         this.subscribe(this.conversationId, this.handlers);
@@ -346,16 +330,10 @@ export class WidgetRealtimeManager {
     }, delay);
   }
 
-  /**
-   * Check if connected
-   */
   isConnected(): boolean {
     return this.connected;
   }
 
-  /**
-   * Disconnect and cleanup
-   */
   disconnect(): void {
     this.unsubscribe();
 
@@ -367,24 +345,23 @@ export class WidgetRealtimeManager {
 }
 
 // ============================================================================
-// Factory function for easy usage
+// Factory function
 // ============================================================================
 
 let realtimeManager: WidgetRealtimeManager | null = null;
 
-/**
- * Get or create the realtime manager instance
- */
-export function getRealtimeManager(apiUrl: string): WidgetRealtimeManager {
-  if (!realtimeManager) {
-    realtimeManager = new WidgetRealtimeManager(apiUrl);
+export function getRealtimeManager(
+  apiUrl: string,
+  supabaseUrl: string,
+  apiKey: string
+): WidgetRealtimeManager {
+  if (!realtimeManager || !realtimeManager.matchesConfig(apiUrl, supabaseUrl, apiKey)) {
+    realtimeManager?.disconnect();
+    realtimeManager = new WidgetRealtimeManager(apiUrl, supabaseUrl, apiKey);
   }
   return realtimeManager;
 }
 
-/**
- * Cleanup the realtime manager
- */
 export function cleanupRealtime(): void {
   if (realtimeManager) {
     realtimeManager.disconnect();

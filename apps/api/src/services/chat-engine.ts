@@ -210,7 +210,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     // even if the customer is mid-qualifying-questions flow
     // Skipped for voice calls — handoff is not supported in voice mode
     if (input.sessionId && input.source !== "voice") {
-      const handoffState = await checkConversationHandoffState(input.sessionId);
+      const handoffState = await checkConversationHandoffState(input.sessionId, input.projectId, input.visitorId);
       if (handoffState.isInHandoff) {
         // Store the customer message in the messages table
         await storeCustomerMessageOnly(input.sessionId, sanitizedMessage);
@@ -1028,17 +1028,22 @@ export class ChatError extends Error {
 }
 
 /**
- * Check if a conversation is in handoff state (agent_active or waiting)
+ * Check if a conversation is in handoff state (agent_active or waiting).
+ * Requires ownership match so a caller cannot inject messages into another
+ * visitor's live handoff by guessing the conversation UUID.
  */
 async function checkConversationHandoffState(
-  sessionId: string
+  sessionId: string,
+  projectId: string,
+  visitorId: string
 ): Promise<{ isInHandoff: boolean; status: string | null }> {
   try {
-    // Check in new conversations table first
     const { data: conversation } = await supabaseAdmin
       .from("conversations")
       .select("id, status")
       .eq("id", sessionId)
+      .eq("project_id", projectId)
+      .eq("visitor_id", visitorId)
       .single();
 
     if (conversation) {

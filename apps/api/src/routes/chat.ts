@@ -9,9 +9,12 @@ import { Router, Request, Response } from "express";
 
 import { logger } from "../lib/logger";
 import { supabaseAdmin } from "../lib/supabase";
-import { requireClientKeyOrDomain } from "../middleware/client-key";
-import { domainWhitelistMiddleware } from "../middleware/domain-whitelist";
+import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
 import { chatRateLimiter, getRateLimitStatus } from "../middleware/rate-limit";
+import {
+  authorizeWidgetMessageContinuation,
+  issueWidgetSessionToken,
+} from "../services/widget-session-token";
 import {
   processChat,
   validateChatInput,
@@ -45,14 +48,64 @@ export const chatRouter = Router();
  */
 chatRouter.post(
   "/message",
-  // A valid X-FrontFace-Key (native SDKs) satisfies the gate in place of a browser Origin;
-  // otherwise the web widget's domain whitelist still applies.
-  requireClientKeyOrDomain,
+  requirePublicWidgetAccess({ action: "chat-message" }),
   chatRateLimiter,
   async (req: Request, res: Response) => {
     try {
       // Validate input
       const input = validateChatInput(req.body);
+
+      // If the supplied id already exists, require a token binding this caller
+      // to that conversation. A caller-generated id that does not exist yet is
+      // allowed so public "New chat" can create its explicit fresh thread.
+      if (input.sessionId) {
+        const token = req.headers["x-frontface-session"];
+        const raw = typeof token === "string" ? token : Array.isArray(token) ? token[0] : undefined;
+
+        const { data: existingConversation, error: lookupError } = await supabaseAdmin
+          .from("conversations")
+          .select("id")
+          .eq("id", input.sessionId)
+          .maybeSingle();
+
+        if (lookupError) {
+          if (process.env.WIDGET_GATE_ENFORCE === "true") {
+            res.status(503).json({
+              error: {
+                code: "SESSION_LOOKUP_FAILED",
+                message: "Could not verify conversation session",
+              },
+            });
+            return;
+          }
+          logger.warn("[ChatMessage:monitor] session lookup failed", {
+            sessionId: input.sessionId,
+            projectId: input.projectId,
+            error: lookupError.message,
+          });
+        }
+
+        const auth = authorizeWidgetMessageContinuation({
+          projectId: input.projectId,
+          visitorId: input.visitorId,
+          sessionId: input.sessionId,
+          conversationExists: Boolean(existingConversation),
+          sessionToken: raw,
+        });
+
+        if (!auth.ok) {
+          if (process.env.WIDGET_GATE_ENFORCE === "true") {
+            res.status(403).json({
+              error: { code: auth.denyReason, message: "Valid session token required to continue a conversation" },
+            });
+            return;
+          }
+          logger.warn(`[ChatMessage:monitor] would-deny session check: ${auth.denyReason}`, {
+            sessionId: input.sessionId,
+            projectId: input.projectId,
+          });
+        }
+      }
 
       // Capture IP address (handle proxies)
       const forwardedFor = req.headers["x-forwarded-for"];
@@ -85,6 +138,11 @@ chatRouter.post(
       res.json({
         response: result.response,
         sessionId: result.sessionId,
+        sessionToken: issueWidgetSessionToken({
+          projectId: input.projectId,
+          visitorId: input.visitorId,
+          conversationId: result.sessionId,
+        }),
         sources: result.sources,
         toolCalls: result.toolCalls.map((tc) => ({
           name: tc.name,
@@ -132,113 +190,10 @@ chatRouter.post(
   }
 );
 
-/**
- * GET /api/chat/conversations/:id
- *
- * Get a specific conversation/session by ID.
- * Requires project authentication.
- */
-chatRouter.get("/conversations/:id", async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const projectId = req.query.projectId as string;
-
-    if (!projectId) {
-      return res.status(400).json({
-        error: { code: "INVALID_INPUT", message: "projectId is required" },
-      });
-    }
-
-    const { data: session, error } = await supabaseAdmin
-      .from("chat_sessions")
-      .select("*")
-      .eq("id", id)
-      .eq("project_id", projectId)
-      .single();
-
-    if (error || !session) {
-      return res.status(404).json({
-        error: { code: "NOT_FOUND", message: "Conversation not found" },
-      });
-    }
-
-    res.json({
-      id: session.id,
-      projectId: session.project_id,
-      visitorId: session.visitor_id,
-      messages: session.messages || [],
-      messageCount: session.message_count || 0,
-      createdAt: session.created_at,
-      updatedAt: session.updated_at,
-    });
-  } catch (error) {
-    logger.error("Get conversation error", error, { requestId: req.requestId });
-    res.status(500).json({
-      error: { code: "INTERNAL_ERROR", message: "Failed to get conversation" },
-    });
-  }
-});
-
-/**
- * GET /api/chat/conversations
- *
- * List conversations for a project.
- * Used by conversation-history feature.
- */
-chatRouter.get("/conversations", async (req: Request, res: Response) => {
-  try {
-    const projectId = req.query.projectId as string;
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
-    const offset = parseInt(req.query.offset as string) || 0;
-
-    if (!projectId) {
-      return res.status(400).json({
-        error: { code: "INVALID_INPUT", message: "projectId is required" },
-      });
-    }
-
-    // Get conversations with pagination
-    const { data: conversations, error } = await supabaseAdmin
-      .from("chat_sessions")
-      .select("id, visitor_id, message_count, created_at, updated_at")
-      .eq("project_id", projectId)
-      .order("updated_at", { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      throw error;
-    }
-
-    // Get total count
-    const { count } = await supabaseAdmin
-      .from("chat_sessions")
-      .select("*", { count: "exact", head: true })
-      .eq("project_id", projectId);
-
-    res.json({
-      conversations: (conversations || []).map((c) => ({
-        id: c.id,
-        visitorId: c.visitor_id,
-        messageCount: c.message_count || 0,
-        createdAt: c.created_at,
-        updatedAt: c.updated_at,
-      })),
-      total: count || 0,
-      limit,
-      offset,
-    });
-  } catch (error) {
-    logger.error("List conversations error", error, {
-      requestId: req.requestId,
-    });
-    res.status(500).json({
-      error: {
-        code: "INTERNAL_ERROR",
-        message: "Failed to list conversations",
-      },
-    });
-  }
-});
+// Removed (2026-06-26 security hardening): legacy public `GET /conversations` and
+// `GET /conversations/:id`. They were unauthenticated, service-role-backed reads keyed
+// only on projectId — IDOR over chat history — with no caller in the widget/web/mobile
+// clients. Authenticated dashboard conversation access lives in routes/conversations.ts.
 
 /**
  * GET /api/chat/rate-limit-status
@@ -246,14 +201,14 @@ chatRouter.get("/conversations", async (req: Request, res: Response) => {
  * Get current rate limit status for a visitor.
  * Useful for UI to show remaining messages.
  */
-chatRouter.get("/rate-limit-status", (req: Request, res: Response) => {
+chatRouter.get("/rate-limit-status", async (req: Request, res: Response) => {
   const visitorId =
     (req.query.visitorId as string) ||
     (req.headers["x-visitor-id"] as string) ||
     req.ip ||
     "anonymous";
 
-  const status = getRateLimitStatus(visitorId);
+  const status = await getRateLimitStatus(visitorId);
 
   res.json({
     visitorId,
@@ -291,7 +246,7 @@ chatRouter.get("/rate-limit-status", (req: Request, res: Response) => {
  */
 chatRouter.post(
   "/feedback",
-  domainWhitelistMiddleware({ requireDomain: false, projectIdSource: "body" }),
+  requirePublicWidgetAccess({ action: "feedback", projectIdSource: "body" }),
   async (req: Request, res: Response) => {
     try {
       const {
@@ -409,10 +364,14 @@ chatRouter.post(
  * Used by widget to restore feedback state after page refresh.
  *
  * Query params:
+ * - projectId: string (required) - The project ID (used by the widget gate)
  * - conversationId: string (required) - The conversation ID
  * - visitorId: string (required) - Visitor ID
  */
-chatRouter.get("/feedback", async (req: Request, res: Response) => {
+chatRouter.get(
+  "/feedback",
+  requirePublicWidgetAccess({ action: "feedback-read", projectIdSource: "query" }),
+  async (req: Request, res: Response) => {
   try {
     const conversationId = req.query.conversationId as string;
     const visitorId = req.query.visitorId as string;
@@ -472,7 +431,10 @@ chatRouter.get("/feedback", async (req: Request, res: Response) => {
  * Response:
  * - conversationId: string
  */
-chatRouter.post("/ensure-conversation", async (req: Request, res: Response) => {
+chatRouter.post(
+  "/ensure-conversation",
+  requirePublicWidgetAccess({ action: "ensure-conversation", projectIdSource: "body" }),
+  async (req: Request, res: Response) => {
   try {
     const { projectId, visitorId, source } = req.body;
 
@@ -507,7 +469,14 @@ chatRouter.post("/ensure-conversation", async (req: Request, res: Response) => {
       conversationSource
     );
 
-    res.json({ conversationId });
+    res.json({
+      conversationId,
+      sessionToken: issueWidgetSessionToken({
+        projectId,
+        visitorId,
+        conversationId,
+      }),
+    });
   } catch (error) {
     logger.error("Ensure conversation error", error, {
       requestId: req.requestId,

@@ -14,7 +14,12 @@ import { Router, Request, Response } from "express";
 
 import { logger } from "../lib/logger";
 import { supabaseAdmin } from "../lib/supabase";
+import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
 import { processChat, type ChatOutput } from "../services/chat-engine";
+import {
+  issueVoiceSessionToken,
+  verifyVoiceSessionToken,
+} from "../services/voice-session-token";
 
 const router = Router();
 
@@ -175,7 +180,14 @@ async function loadPriorChatHistory(
  *   visitorId  (string) — widget visitor ID
  *   sessionId  (string, optional) — existing conversation ID for continuity
  */
-router.get("/config/:projectId", async (req: Request, res: Response) => {
+router.get(
+  "/config/:projectId",
+  requirePublicWidgetAccess({
+    action: "voice-config",
+    projectIdSource: "params",
+    projectIdParam: "projectId",
+  }),
+  async (req: Request, res: Response) => {
   const { projectId } = req.params;
 
   // Validate UUID format
@@ -241,6 +253,12 @@ router.get("/config/:projectId", async (req: Request, res: Response) => {
       voiceEnabled: true,
       signedUrl,
       greeting: voiceGreeting,
+      // The widget passes this back via ElevenLabs extra_body; the LLM callback verifies it.
+      voiceSessionToken: issueVoiceSessionToken({
+        projectId,
+        visitorId: (req.query.visitorId as string) || "",
+        sessionId: req.query.sessionId as string | undefined,
+      }),
     });
   } catch (error) {
     logger.error(
@@ -275,7 +293,12 @@ interface OpenAIMessage {
 router.post("/llm/chat/completions", async (req: Request, res: Response) => {
   // Extract projectId/visitorId/sessionId from ElevenLabs extra body
   const extraBody = req.body.elevenlabs_extra_body as
-    | { projectId?: string; visitorId?: string; sessionId?: string }
+    | {
+        projectId?: string;
+        visitorId?: string;
+        sessionId?: string;
+        voiceSessionToken?: string;
+      }
     | undefined;
   const projectId =
     extraBody?.projectId ||
@@ -296,6 +319,25 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
     extraBody?.sessionId ||
     (req.headers["x-session-id"] as string) ||
     undefined;
+
+  // Verify the voice session token issued by /config (passed back via ElevenLabs extra_body).
+  // This is the only thing standing between the open LLM callback and being driven for an
+  // arbitrary project. Monitor mode logs and allows so a widget that predates the token keeps
+  // working; WIDGET_GATE_ENFORCE=true fails closed.
+  try {
+    const claims = verifyVoiceSessionToken(extraBody?.voiceSessionToken);
+    if (claims.projectId !== projectId) {
+      throw new Error("voice session project mismatch");
+    }
+  } catch (err) {
+    if (process.env.WIDGET_GATE_ENFORCE === "true") {
+      return res.status(403).json({ error: "Invalid voice session" });
+    }
+    logger.warn("[Voice LLM:monitor] would-deny voice callback", {
+      projectId,
+      reason: (err as Error).message,
+    });
+  }
 
   const { messages } = req.body as {
     messages: OpenAIMessage[];

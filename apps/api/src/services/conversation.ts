@@ -52,6 +52,7 @@ export async function getOrCreateConversation(
       .select("id, status")
       .eq("id", existingConversationId)
       .eq("project_id", projectId)
+      .eq("visitor_id", visitorId)
       .single();
 
     if (existing) {
@@ -78,24 +79,30 @@ export async function getOrCreateConversation(
       .single();
 
     if (insertError) {
-      // If insert fails (e.g., constraint violation), try to find existing again
+      // If insert fails (e.g., UUID conflict — the id belongs to another visitor),
+      // retry with full ownership check before giving up.
       const { data: retry } = await supabaseAdmin
         .from("conversations")
         .select("id")
         .eq("id", existingConversationId)
+        .eq("project_id", projectId)
+        .eq("visitor_id", visitorId)
         .single();
 
       if (retry) {
         return retry.id;
       }
-      console.error(
-        "[Conversation] Failed to create conversation with ID:",
-        insertError
-      );
-      throw new Error("Failed to create conversation");
-    }
 
-    return newConv.id;
+      // The supplied id is unusable (belongs to another visitor or violates a
+      // constraint). Fall through to create/reuse a normal conversation for this
+      // visitor instead of returning a 500.
+      console.warn(
+        "[Conversation] Supplied conversationId is unusable, falling through to create/reuse:",
+        insertError.code
+      );
+    } else {
+      return newConv.id;
+    }
   }
 
   // Find or create customer with context

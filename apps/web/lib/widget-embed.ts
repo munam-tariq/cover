@@ -7,6 +7,8 @@ export interface WidgetEmbedCodeOptions {
   projectId: string;
   apiUrl: string;
   scriptUrl: string;
+  /** Optional publishable client key (pk_…). Lets embeds authenticate via X-FrontFace-Key. */
+  clientKey?: string | null;
 }
 
 interface WidgetPreviewScriptOptions {
@@ -45,11 +47,15 @@ export function buildWidgetEmbedCode({
   projectId,
   apiUrl,
   scriptUrl,
+  clientKey,
 }: WidgetEmbedCodeOptions): string {
+  const clientKeyLine = clientKey
+    ? `\n  data-client-key="${escapeAttribute(clientKey)}"`
+    : "";
   return `<script
   src="${escapeAttribute(scriptUrl)}"
   data-project-id="${escapeAttribute(projectId)}"
-  data-api-url="${escapeAttribute(apiUrl)}"
+  data-api-url="${escapeAttribute(apiUrl)}"${clientKeyLine}
   async>
 </script>`;
 }

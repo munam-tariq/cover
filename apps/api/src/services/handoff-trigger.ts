@@ -562,6 +562,8 @@ async function createHandoffConversation(
       .from("conversations")
       .select("id, assigned_agent_id")
       .eq("id", sessionId)
+      .eq("project_id", projectId)
+      .eq("visitor_id", visitorId)
       .single();
 
     if (existing) {
@@ -591,7 +593,9 @@ async function createHandoffConversation(
               claimed_at: now,
               queue_entered_at: null,
             })
-            .eq("id", sessionId);
+            .eq("id", sessionId)
+            .eq("project_id", projectId)
+            .eq("visitor_id", visitorId);
 
           // Increment agent's chat count
           const { data: agentAvail } = await supabaseAdmin
@@ -683,7 +687,9 @@ async function createHandoffConversation(
               queue_entered_at: now,
               handoff_requested_at: now,
             })
-            .eq("id", sessionId);
+            .eq("id", sessionId)
+            .eq("project_id", projectId)
+            .eq("visitor_id", visitorId);
 
           // Calculate queue position
           const { count } = await supabaseAdmin
@@ -719,7 +725,9 @@ async function createHandoffConversation(
             queue_entered_at: now,
             handoff_requested_at: now,
           })
-          .eq("id", sessionId);
+          .eq("id", sessionId)
+          .eq("project_id", projectId)
+          .eq("visitor_id", visitorId);
 
         // Calculate queue position
         const { count } = await supabaseAdmin
@@ -778,9 +786,8 @@ async function createHandoffConversation(
     // Handle race condition: conversation might have been created by another process
     // (e.g., getOrCreateConversation called in parallel)
     if (sessionId && error.code === "23505") {
-      // Unique constraint violation - conversation already exists, try to update it
       logger.info(
-        "Conversation already exists during handoff, updating status",
+        "Conversation already exists during handoff, attempting ownership-checked update",
         {
           projectId,
           visitorId,
@@ -789,14 +796,20 @@ async function createHandoffConversation(
         }
       );
 
-      const { error: updateError } = await supabaseAdmin
+      // Ownership-checked update: .select() confirms a row was actually matched.
+      // If the UUID belongs to another visitor, zero rows match and data is null.
+      const { data: updatedRow, error: updateError } = await supabaseAdmin
         .from("conversations")
         .update({
           status: "waiting",
           queue_entered_at: now,
           handoff_requested_at: now,
         })
-        .eq("id", sessionId);
+        .eq("id", sessionId)
+        .eq("project_id", projectId)
+        .eq("visitor_id", visitorId)
+        .select("id")
+        .maybeSingle();
 
       if (updateError) {
         logger.error(
@@ -812,7 +825,48 @@ async function createHandoffConversation(
         throw updateError;
       }
 
-      // Calculate queue position
+      if (!updatedRow) {
+        // The UUID belongs to another visitor — discard it and create a fresh
+        // conversation without a caller-supplied id.
+        logger.warn(
+          "Handoff sessionId belongs to another visitor, creating fresh conversation",
+          { projectId, visitorId, sessionId, step: "handoff_discard_foreign_id" }
+        );
+        const { data: freshConv, error: freshError } = await supabaseAdmin
+          .from("conversations")
+          .insert({
+            project_id: projectId,
+            visitor_id: visitorId,
+            status: "waiting",
+            source,
+            queue_entered_at: now,
+            handoff_requested_at: now,
+          })
+          .select("id")
+          .single();
+
+        if (freshError) {
+          logger.error("Failed to create fresh handoff conversation", freshError, {
+            projectId, visitorId, step: "handoff_create_fresh",
+          });
+          throw freshError;
+        }
+
+        const { count: freshCount } = await supabaseAdmin
+          .from("conversations")
+          .select("*", { count: "exact", head: true })
+          .eq("project_id", projectId)
+          .eq("status", "waiting")
+          .lt("queue_entered_at", now);
+
+        return {
+          conversationId: freshConv.id,
+          directAssignment: false,
+          queuePosition: (freshCount || 0) + 1,
+        };
+      }
+
+      // Ownership confirmed — proceed with the matched conversation.
       const { count } = await supabaseAdmin
         .from("conversations")
         .select("*", { count: "exact", head: true })
@@ -822,7 +876,6 @@ async function createHandoffConversation(
 
       const queuePosition = (count || 0) + 1;
 
-      // Broadcast status change
       broadcastConversationStatusChanged(sessionId, projectId, "waiting", {
         queuePosition,
       }).catch((err) =>

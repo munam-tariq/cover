@@ -4,100 +4,20 @@
  * Validates that requests to widget APIs come from allowed domains.
  * This is an opt-in security feature - if no domains are configured,
  * all requests are allowed (preserving current behavior for existing customers).
+ *
+ * Pure domain matching lives in ./public-widget-gate (Supabase-free, unit-tested). This module
+ * adds the project allowlist lookup (cached) and the Express middleware.
  */
 
 import { Request, Response, NextFunction } from "express";
 
 import { supabaseAdmin } from "../lib/supabase";
-
-// Domains that are always allowed:
-// - local development hosts
-// - the first-party hosted public page (frontface.app/c/<slug>-<id>), so a tenant's own
-//   public page is never blocked by their allowed_domains list. Configurable via FIRST_PARTY_HOST.
-const FIRST_PARTY_HOST = (
-  process.env.FIRST_PARTY_HOST || "frontface.app"
-).toLowerCase();
-const ALWAYS_ALLOWED_PATTERNS: (string | RegExp)[] = [
-  "localhost",
-  "127.0.0.1",
-  /\.localhost$/,
-  /\.local$/,
-  FIRST_PARTY_HOST,
-  new RegExp(`\\.${FIRST_PARTY_HOST.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), // subdomains of the first-party host
-];
-
-/**
- * Extract domain from Origin or Referer header
- */
-function extractDomain(req: Request): string | null {
-  // Try Origin header first (most reliable for CORS requests)
-  const origin = req.headers.origin;
-  if (origin) {
-    try {
-      const url = new URL(origin);
-      return url.hostname.toLowerCase();
-    } catch {
-      // Invalid URL, try next
-    }
-  }
-
-  // Fallback to Referer header
-  const referer = req.headers.referer;
-  if (referer) {
-    try {
-      const url = new URL(referer);
-      return url.hostname.toLowerCase();
-    } catch {
-      // Invalid URL
-    }
-  }
-
-  return null;
-}
-
-/**
- * Check if domain matches an allowed pattern
- */
-function isDomainAllowed(domain: string, allowedDomains: string[]): boolean {
-  // Check always-allowed patterns (dev/preview environments)
-  for (const pattern of ALWAYS_ALLOWED_PATTERNS) {
-    if (typeof pattern === "string") {
-      if (domain === pattern) return true;
-    } else if (pattern.test(domain)) {
-      return true;
-    }
-  }
-
-  // If no domains configured, allow all (opt-in feature, no breaking change)
-  if (!allowedDomains || allowedDomains.length === 0) {
-    return true;
-  }
-
-  // Check against configured domains
-  for (const allowed of allowedDomains) {
-    const normalizedAllowed = allowed.toLowerCase().trim();
-
-    // Exact match
-    if (domain === normalizedAllowed) {
-      return true;
-    }
-
-    // Auto-include www variant
-    if (domain === `www.${normalizedAllowed}`) {
-      return true;
-    }
-
-    // Wildcard match (*.example.com)
-    if (normalizedAllowed.startsWith("*.")) {
-      const baseDomain = normalizedAllowed.slice(2); // Remove '*.'
-      if (domain === baseDomain || domain.endsWith(`.${baseDomain}`)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
+import {
+  extractDomain,
+  isAlwaysAllowedDomain,
+  isDomainAllowed,
+  matchesConfiguredDomain,
+} from "./public-widget-gate";
 
 // Cache for project domains (5 minute TTL)
 const domainCache = new Map<string, { domains: string[]; expires: number }>();
@@ -223,4 +143,10 @@ export function domainWhitelistMiddleware(
   };
 }
 
-export { extractDomain, isDomainAllowed, getProjectAllowedDomains };
+export {
+  extractDomain,
+  isAlwaysAllowedDomain,
+  isDomainAllowed,
+  matchesConfiguredDomain,
+  getProjectAllowedDomains,
+};

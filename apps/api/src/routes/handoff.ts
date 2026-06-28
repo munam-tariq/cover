@@ -15,6 +15,8 @@ import { z } from "zod";
 import { posthog } from "../lib/posthog";
 import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
+import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
+import { requireWidgetSession } from "../middleware/require-widget-session";
 import {
   broadcastConversationAssigned,
   broadcastConversationStatusChanged,
@@ -168,7 +170,14 @@ async function calculateQueuePosition(
  * Check if handoff is available (for widget)
  * No auth required - public endpoint
  */
-router.get("/projects/:id/handoff-availability", async (req: Request, res: Response) => {
+router.get(
+  "/projects/:id/handoff-availability",
+  requirePublicWidgetAccess({
+    action: "handoff-availability",
+    projectIdSource: "params",
+    projectIdParam: "id",
+  }),
+  async (req: Request, res: Response) => {
   try {
     const { id: projectId } = req.params;
 
@@ -290,10 +299,13 @@ router.get("/projects/:id/handoff-availability", async (req: Request, res: Respo
 
 /**
  * POST /api/conversations/:id/handoff
- * Trigger handoff for a conversation
- * Can be called by widget (no auth) or dashboard (with auth)
+ * Trigger handoff for a conversation (widget / hosted public page only).
+ * Gated by requireWidgetSession — callers must present X-FrontFace-Session.
  */
-router.post("/conversations/:id/handoff", async (req: Request, res: Response) => {
+router.post(
+  "/conversations/:id/handoff",
+  requireWidgetSession(),
+  async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -1298,6 +1310,11 @@ const OfflineMessageSchema = z.object({
  */
 router.post(
   "/projects/:id/offline-messages",
+  requirePublicWidgetAccess({
+    action: "offline-message",
+    projectIdSource: "params",
+    projectIdParam: "id",
+  }),
   async (req: Request, res: Response) => {
     try {
       const projectId = req.params.id;

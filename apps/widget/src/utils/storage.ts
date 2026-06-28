@@ -11,6 +11,7 @@ import { isBoolean, isNumber, isRecord, isString } from "./type-guards";
 
 const VISITOR_ID_KEY = "chatbot_visitor_id";
 const SESSION_PREFIX = "chatbot_session_";
+const SESSION_TOKEN_PREFIX = "chatbot_session_token_";
 const MESSAGES_PREFIX = "chatbot_messages_";
 const LEAD_STATE_PREFIX = "chatbot_lead_state_";
 
@@ -97,6 +98,37 @@ export function setSessionId(projectId: string, sessionId: string): void {
 }
 
 /**
+ * Get the widget session token for a project (issued at conversation create; authorizes the
+ * public per-conversation read routes). Persisted alongside the session ID across refreshes.
+ */
+export function getSessionToken(projectId: string): string | null {
+  try {
+    return localStorage.getItem(`${SESSION_TOKEN_PREFIX}${projectId}`);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save the widget session token for a project.
+ */
+export function setSessionToken(projectId: string, sessionToken: string): void {
+  try {
+    localStorage.setItem(`${SESSION_TOKEN_PREFIX}${projectId}`, sessionToken);
+  } catch {
+    // localStorage not available
+  }
+}
+
+export function clearSessionToken(projectId: string): void {
+  try {
+    localStorage.removeItem(`${SESSION_TOKEN_PREFIX}${projectId}`);
+  } catch {
+    // localStorage not available
+  }
+}
+
+/**
  * Get stored messages for a project (persists across page refreshes)
  */
 export function getStoredMessages(projectId: string): StoredMessage[] {
@@ -174,8 +206,23 @@ export function setLeadCaptureState(projectId: string, state: LeadCaptureLocalSt
 export function clearProjectData(projectId: string): void {
   try {
     localStorage.removeItem(`${SESSION_PREFIX}${projectId}`);
+    localStorage.removeItem(`${SESSION_TOKEN_PREFIX}${projectId}`);
     localStorage.removeItem(`${MESSAGES_PREFIX}${projectId}`);
     localStorage.removeItem(`${LEAD_STATE_PREFIX}${projectId}`);
+  } catch {
+    // Storage not available
+  }
+}
+
+/**
+ * Clear only conversation resume state for a project after the server rejects the stored
+ * widget session token. Lead-capture state and the visitor id are preserved.
+ */
+export function clearConversationSession(projectId: string): void {
+  try {
+    localStorage.removeItem(`${SESSION_PREFIX}${projectId}`);
+    localStorage.removeItem(`${SESSION_TOKEN_PREFIX}${projectId}`);
+    localStorage.removeItem(`${MESSAGES_PREFIX}${projectId}`);
   } catch {
     // Storage not available
   }

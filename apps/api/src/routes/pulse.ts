@@ -18,6 +18,7 @@
 
 import { Router, Request, Response } from "express";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
+import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
 import { chatRateLimiter } from "../middleware/rate-limit";
 import { supabaseAdmin } from "../lib/supabase";
 import { logger } from "../lib/logger";
@@ -800,6 +801,7 @@ export const pulseWidgetRouter = Router();
  */
 pulseWidgetRouter.get(
   "/campaigns/:projectId",
+  requirePublicWidgetAccess({ action: "pulse-campaigns", projectIdSource: "params" }),
   async (req: Request, res: Response) => {
     try {
       const { projectId } = req.params;
@@ -852,6 +854,11 @@ pulseWidgetRouter.get(
  */
 pulseWidgetRouter.post(
   "/responses",
+  requirePublicWidgetAccess({
+    action: "pulse-response",
+    projectIdSource: "body",
+    projectIdParam: "project_id",
+  }),
   chatRateLimiter,
   async (req: Request, res: Response) => {
     try {

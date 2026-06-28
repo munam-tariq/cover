@@ -1,12 +1,15 @@
 /**
- * SSRF guard for outbound fetches to tenant-configured API endpoints.
+ * SSRF guard for outbound fetches.
  *
  * Blocks requests to private / loopback / link-local / metadata addresses and non-HTTP(S)
- * schemes. This validates the URL's literal host. NOTE: it does NOT yet re-validate against
- * the DNS-resolved IP (DNS-rebinding defense) — that requires a custom lookup/agent and is
- * tracked as a scoped follow-up. See docs/security/stored-content-injection-xss-audit.md (#5).
+ * schemes. Two layers:
+ *
+ *   1. `isUrlSafeForFetch`  — validates the URL's literal host (fast, sync).
+ *   2. `resolveAndValidateUrl` — resolves DNS and re-checks the resulting IP(s)
+ *      (async, catches DNS-rebinding where a domain resolves to a private IP).
  */
 
+import { promises as dnsPromises } from "node:dns";
 import net from "node:net";
 
 const BLOCKED_HOSTNAMES = new Set([
@@ -16,7 +19,7 @@ const BLOCKED_HOSTNAMES = new Set([
   "instance-data",
 ]);
 
-function isPrivateIPv4(ip: string): boolean {
+export function isPrivateIPv4(ip: string): boolean {
   const parts = ip.split(".").map((p) => Number(p));
   if (
     parts.length !== 4 ||
@@ -35,7 +38,7 @@ function isPrivateIPv4(ip: string): boolean {
   return false;
 }
 
-function isPrivateIPv6(ip: string): boolean {
+export function isPrivateIPv6(ip: string): boolean {
   const lower = ip.toLowerCase();
   if (lower === "::1" || lower === "::") return true; // loopback / unspecified
   if (lower.startsWith("fe80")) return true; // link-local
@@ -102,6 +105,58 @@ export function isUrlSafeForFetch(rawUrl: string): {
       ok: false,
       reason: "Private, loopback or link-local address is not allowed",
     };
+  }
+
+  return { ok: true };
+}
+
+type DnsResolver = {
+  resolve4(hostname: string): Promise<string[]>;
+  resolve6(hostname: string): Promise<string[]>;
+};
+
+/**
+ * Static URL check + DNS-rebinding defense.
+ *
+ * Resolves the hostname and verifies none of the returned IPs are private. Accepts an
+ * optional `resolver` for testing (defaults to `dns.promises`).
+ *
+ * If DNS resolution fails entirely (NXDOMAIN, timeout), the request is blocked — a domain
+ * that can't be resolved can't be fetched anyway.
+ */
+export async function resolveAndValidateUrl(
+  rawUrl: string,
+  resolver?: DnsResolver
+): Promise<{ ok: boolean; reason?: string }> {
+  const staticCheck = isUrlSafeForFetch(rawUrl);
+  if (!staticCheck.ok) return staticCheck;
+
+  const url = new URL(rawUrl);
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+  if (net.isIP(host)) return { ok: true };
+
+  const dns: DnsResolver = resolver ?? dnsPromises;
+  const [v4, v6] = await Promise.allSettled([
+    dns.resolve4(host),
+    dns.resolve6(host),
+  ]);
+
+  const ips: string[] = [];
+  if (v4.status === "fulfilled") ips.push(...v4.value);
+  if (v6.status === "fulfilled") ips.push(...v6.value);
+
+  if (ips.length === 0) {
+    return { ok: false, reason: "DNS resolution returned no addresses" };
+  }
+
+  for (const ip of ips) {
+    if (net.isIP(ip) === 4 && isPrivateIPv4(ip)) {
+      return { ok: false, reason: `DNS resolved to private address ${ip}` };
+    }
+    if (net.isIP(ip) === 6 && isPrivateIPv6(ip)) {
+      return { ok: false, reason: `DNS resolved to private address ${ip}` };
+    }
   }
 
   return { ok: true };

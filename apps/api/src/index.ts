@@ -74,6 +74,7 @@ const widgetCors = cors({
     "Content-Type",
     "X-Visitor-Id",
     "X-FrontFace-Key",
+    "X-FrontFace-Session",
     "Authorization",
   ],
 });

@@ -12,6 +12,7 @@
 
 import { PulsePopup, type PulseCampaignData } from "../components/pulse-popup";
 
+import { widgetHeaders } from "./request";
 import { getVisitorId } from "./storage";
 import {
   isNumber,
@@ -28,6 +29,8 @@ const SESSION_KEY = "pulse_session";
 export interface PulseManagerOptions {
   projectId: string;
   apiUrl: string;
+  /** Optional publishable client key (pk_…); sent as X-FrontFace-Key. */
+  clientKey?: string;
   parentElement: HTMLElement;
   isChatOpen: () => boolean;
 }
@@ -117,7 +120,8 @@ export class PulseManager {
 
     try {
       const response = await fetch(
-        `${this.options.apiUrl}/api/pulse/campaigns/${this.options.projectId}`
+        `${this.options.apiUrl}/api/pulse/campaigns/${this.options.projectId}`,
+        { headers: widgetHeaders({ clientKey: this.options.clientKey, json: false }) }
       );
       if (!response.ok) return;
 
@@ -258,7 +262,7 @@ export class PulseManager {
       const visitorId = getVisitorId();
       await fetch(`${this.options.apiUrl}/api/pulse/responses`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: widgetHeaders({ visitorId, clientKey: this.options.clientKey }),
         body: JSON.stringify({
           campaign_id: campaignId,
           project_id: this.options.projectId,

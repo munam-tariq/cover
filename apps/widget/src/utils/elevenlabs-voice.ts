@@ -26,6 +26,8 @@ export type ElevenLabsVoiceState =
 export interface ElevenLabsVoiceOptions {
   projectId: string;
   apiUrl: string;
+  /** Optional publishable client key (pk_…); sent as X-FrontFace-Key on the config fetch. */
+  clientKey?: string;
   visitorId: string;
   sessionId: string | null;
   onStateChange: (state: ElevenLabsVoiceState) => void;
@@ -38,6 +40,8 @@ interface ElevenLabsVoiceConfig {
   voiceEnabled: boolean;
   signedUrl: string;
   greeting: string;
+  /** Verified on the LLM callback (passed back via ElevenLabs extra_body). */
+  voiceSessionToken?: string;
 }
 
 export class ElevenLabsVoiceManager {
@@ -77,6 +81,7 @@ export class ElevenLabsVoiceManager {
           projectId: this.options.projectId,
           visitorId: this.options.visitorId,
           sessionId: this.options.sessionId,
+          voiceSessionToken: config.voiceSessionToken,
         },
         onConnect: () => {
           this.setState("listening");
@@ -147,7 +152,11 @@ export class ElevenLabsVoiceManager {
       if (this.options.visitorId) url.searchParams.set("visitorId", this.options.visitorId);
       if (this.options.sessionId) url.searchParams.set("sessionId", this.options.sessionId);
 
-      const res = await fetch(url.toString());
+      const res = await fetch(url.toString(), {
+        headers: this.options.clientKey
+          ? { "X-FrontFace-Key": this.options.clientKey }
+          : undefined,
+      });
       if (!res.ok) return null;
       return (await res.json()) as ElevenLabsVoiceConfig;
     } catch {

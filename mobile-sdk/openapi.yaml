@@ -53,6 +53,7 @@ paths:
       operationId: sendMessage
       parameters:
         - $ref: "#/components/parameters/VisitorIdHeader"
+        - $ref: "#/components/parameters/SessionTokenHeader"
       requestBody:
         required: true
         content:
@@ -100,6 +101,9 @@ paths:
                 type: object
                 properties:
                   conversationId: { type: string, format: uuid }
+                  sessionToken:
+                    type: string
+                    description: Persist with conversationId and send as X-FrontFace-Session.
         "400": { $ref: "#/components/responses/BadRequest" }
 
   /api/projects/{projectId}/handoff-availability:
@@ -127,6 +131,7 @@ paths:
       operationId: triggerHandoff
       parameters:
         - $ref: "#/components/parameters/VisitorIdHeader"
+        - $ref: "#/components/parameters/SessionTokenHeader"
         - $ref: "#/components/parameters/ConversationIdPath"
       requestBody:
         required: true
@@ -148,6 +153,27 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/HandoffResult" }
 
+  /api/widget/conversations/{conversationId}/realtime-token:
+    post:
+      tags: [Conversation]
+      summary: Issue a short-lived JWT for private Realtime channel subscription
+      operationId: issueRealtimeToken
+      parameters:
+        - $ref: "#/components/parameters/SessionTokenHeader"
+        - $ref: "#/components/parameters/ConversationIdPath"
+      responses:
+        "200":
+          description: Realtime JWT issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, description: "Short-lived Supabase JWT (5 min)" }
+                  expiresAt: { type: integer, description: "Unix timestamp when the token expires" }
+        "403": { description: "Invalid or missing widget session" }
+        "404": { description: "Private realtime not enabled, or conversation not found" }
+
   /api/widget/conversations/{conversationId}/status:
     get:
       tags: [Conversation]
@@ -155,6 +181,7 @@ paths:
       operationId: getConversationStatus
       parameters:
         - $ref: "#/components/parameters/VisitorIdHeader"
+        - $ref: "#/components/parameters/SessionTokenHeader"
         - $ref: "#/components/parameters/ConversationIdPath"
       responses:
         "200":
@@ -171,6 +198,7 @@ paths:
       operationId: fetchMessages
       parameters:
         - $ref: "#/components/parameters/VisitorIdHeader"
+        - $ref: "#/components/parameters/SessionTokenHeader"
         - $ref: "#/components/parameters/ConversationIdPath"
         - name: after
           in: query
@@ -361,6 +389,16 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+    SessionTokenHeader:
+      name: X-FrontFace-Session
+      in: header
+      required: false
+      description: >
+        Session token returned alongside sessionId (from POST /api/chat/message,
+        /api/chat/ensure-conversation, or conversation create). Send it on continued
+        chat messages and per-conversation routes. It is required when continuing an
+        already-created conversation once server-side enforcement is enabled.
+      schema: { type: string }
 
   responses:
     Ok:
@@ -436,10 +474,11 @@ components:
             placeholder: { type: string }
         realtime:
           type: object
-          description: Supabase Realtime credentials for the handoff channel.
+          description: Supabase Realtime config for private channel handoff.
           properties:
+            enabled: { type: boolean }
             supabaseUrl: { type: string, format: uri }
-            supabaseAnonKey: { type: string, description: Public anon key (Realtime broadcast only) }
+            tokenBased: { type: boolean, description: "true when private channels are enabled — use /realtime-token endpoint" }
         leadCapture: { $ref: "#/components/schemas/LeadCaptureConfig" }
         voice:
           type: object
@@ -509,6 +548,9 @@ components:
       properties:
         response: { type: string, description: Assistant reply; may be empty during handoff. }
         sessionId: { type: string, format: uuid, description: Persist this. }
+        sessionToken:
+          type: string
+          description: Persist this with sessionId; send as X-FrontFace-Session on continued messages and reads.
         sources:
           type: array
           items:
@@ -628,6 +670,9 @@ components:
           format: uuid
           nullable: true
           description: A fresh conversation id may be returned (email_first) — persist it.
+        sessionToken:
+          type: string
+          description: Persist with sessionId; send as X-FrontFace-Session on continued messages and reads.
 
     Customer:
       type: object

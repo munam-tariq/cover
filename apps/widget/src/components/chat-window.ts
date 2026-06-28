@@ -21,8 +21,8 @@ import { ElevenLabsVoiceManager } from "../utils/elevenlabs-voice";
 import {
   checkHandoffAvailability,
   triggerHandoff,
-  getConversationStatus,
-  fetchNewMessages,
+  getConversationStatusResult,
+  fetchNewMessagesResult,
   sendTypingIndicator,
   submitOfflineMessage,
   PresenceManager,
@@ -30,6 +30,7 @@ import {
   ConversationStatus,
 } from "../utils/handoff";
 import { generateId } from "../utils/helpers";
+import { widgetHeaders } from "../utils/request";
 import {
   WidgetRealtimeManager,
   getRealtimeManager,
@@ -40,10 +41,13 @@ import {
   getVisitorId,
   getSessionId,
   setSessionId,
+  getSessionToken,
+  setSessionToken,
   getStoredMessages,
   setStoredMessages,
   getLeadCaptureState,
   setLeadCaptureState,
+  clearConversationSession,
   StoredMessage,
   LeadCaptureLocalState,
 } from "../utils/storage";
@@ -72,6 +76,8 @@ import { VoicePermissionPrompt } from "./voice-permission-prompt";
 export interface ChatWindowOptions {
   projectId: string;
   apiUrl: string;
+  /** Optional publishable client key (pk_…); sent as X-FrontFace-Key on widget requests. */
+  clientKey?: string;
   greeting: string;
   greetingIntro?: string;
   title: string;
@@ -103,6 +109,7 @@ export class ChatWindow {
   private messages: StoredMessage[] = [];
   private visitorId: string;
   private sessionId: string | null = null;
+  private sessionToken: string | null = null;
   private isVisible = false;
   private focusableElements: HTMLElement[] = [];
   private lastFocusedElement: HTMLElement | null = null;
@@ -144,6 +151,7 @@ export class ChatWindow {
   constructor(private options: ChatWindowOptions) {
     this.visitorId = getVisitorId();
     this.sessionId = getSessionId(options.projectId);
+    this.sessionToken = getSessionToken(options.projectId);
     this.messages = getStoredMessages(options.projectId);
 
     // Initialize presence manager
@@ -216,6 +224,31 @@ export class ChatWindow {
   }
 
   /**
+   * Persist a widget session token (issued at conversation create) so the public
+   * per-conversation read routes can authorize this conversation. No-op if absent.
+   */
+  private storeSessionToken(token: unknown): void {
+    if (typeof token === "string" && token) {
+      this.sessionToken = token;
+      setSessionToken(this.options.projectId, token);
+    }
+  }
+
+  private clearStaleSession(): void {
+    this.stopMessagePolling();
+    this.presenceManager.stop();
+    clearConversationSession(this.options.projectId);
+    this.sessionId = null;
+    this.sessionToken = null;
+    this.lastMessageTimestamp = null;
+    this.conversationStatus = "ai_active";
+    this.messages = [];
+    this.renderMessages();
+    this.updateVoiceButtonState();
+    this.checkAvailability();
+  }
+
+  /**
    * Enter handoff mode in a single place so both button-triggered and
    * keyword-triggered flows keep widget state in sync.
    */
@@ -227,8 +260,16 @@ export class ChatWindow {
 
     let status = options?.preferredStatus;
     if (status !== "waiting" && status !== "agent_active") {
-      const current = await getConversationStatus(this.options.apiUrl, this.sessionId);
-      status = current?.status;
+      const current = await getConversationStatusResult(
+        this.options.apiUrl,
+        this.sessionId,
+        this.sessionToken ?? undefined
+      );
+      if (!current.ok) {
+        if (current.staleSession) this.clearStaleSession();
+        return false;
+      }
+      status = current.data.status;
     }
 
     if (status !== "waiting" && status !== "agent_active") {
@@ -258,36 +299,46 @@ export class ChatWindow {
       await this.fetchAndSyncMessages();
 
       // Check conversation status
-      const status = await getConversationStatus(
+      const status = await getConversationStatusResult(
         this.options.apiUrl,
-        this.sessionId
+        this.sessionId,
+        this.sessionToken ?? undefined
       );
 
       if (process.env.NODE_ENV === "development") {
         console.log("[Widget] Conversation status:", status);
       }
 
-      if (status) {
-        this.conversationStatus = status.status;
+      if (!status.ok) {
+        if (status.staleSession) {
+          this.clearStaleSession();
+          return;
+        }
+        // If status check fails but we have session, still check handoff availability below.
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Widget] Status check failed, session exists:", this.sessionId);
+        }
+      } else {
+        this.conversationStatus = status.data.status;
         this.updateVoiceButtonState();
 
         // If in handoff state (waiting or agent_active), hide button and start polling
-        if (status.status === "waiting" || status.status === "agent_active") {
+        if (
+          status.data.status === "waiting" ||
+          status.data.status === "agent_active"
+        ) {
           this.humanButton?.hide();
 
           // Start realtime/polling for new messages
           this.startMessagePolling();
 
           if (process.env.NODE_ENV === "development") {
-            console.log("[Widget] Conversation in handoff state:", status.status);
+            console.log(
+              "[Widget] Conversation in handoff state:",
+              status.data.status
+            );
           }
           return;
-        }
-      } else {
-        // If status check fails but we have session, still check if we should poll
-        // This handles the case where conversation exists but status endpoint fails
-        if (process.env.NODE_ENV === "development") {
-          console.log("[Widget] Status check failed, session exists:", this.sessionId);
         }
       }
     }
@@ -305,11 +356,17 @@ export class ChatWindow {
 
     try {
       // Fetch ALL messages (not just new ones) to ensure we have complete history
-      const serverMessages = await fetchNewMessages(
+      const serverMessagesResult = await fetchNewMessagesResult(
         this.options.apiUrl,
         this.sessionId,
-        undefined // No timestamp = get all messages
+        undefined, // No timestamp = get all messages
+        this.sessionToken ?? undefined
       );
+      if (!serverMessagesResult.ok) {
+        if (serverMessagesResult.staleSession) this.clearStaleSession();
+        return;
+      }
+      const serverMessages = serverMessagesResult.data;
 
       if (serverMessages.length > 0) {
         // Convert server messages to stored format
@@ -352,7 +409,15 @@ export class ChatWindow {
 
     try {
       const response = await fetch(
-        `${this.options.apiUrl}/api/chat/feedback?conversationId=${this.sessionId}&visitorId=${this.visitorId}`
+        `${this.options.apiUrl}/api/chat/feedback?projectId=${encodeURIComponent(this.options.projectId)}&conversationId=${this.sessionId}&visitorId=${this.visitorId}`,
+        {
+          headers: widgetHeaders({
+            visitorId: this.visitorId,
+            clientKey: this.options.clientKey,
+            sessionToken: this.sessionToken,
+            json: false,
+          }),
+        }
       );
 
       if (!response.ok) {
@@ -673,9 +738,10 @@ export class ChatWindow {
     try {
       const response = await fetch(`${this.options.apiUrl}/api/chat/feedback`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: widgetHeaders({
+          visitorId: this.visitorId,
+          clientKey: this.options.clientKey,
+        }),
         body: JSON.stringify({
           messageId: messageId,
           conversationId: this.sessionId,
@@ -754,12 +820,15 @@ export class ChatWindow {
         visitorId: this.visitorId,
         sessionId: this.sessionId,
         conversationHistory,
+        clientKey: this.options.clientKey,
+        sessionToken: this.sessionToken,
       });
 
       // Update session ID
       if (response.sessionId) {
         this.sessionId = response.sessionId;
         setSessionId(this.options.projectId, response.sessionId);
+        this.storeSessionToken(response.sessionToken);
       }
 
       // Add assistant response only if there's content
@@ -803,6 +872,19 @@ export class ChatWindow {
       }
 
     } catch (error) {
+      if (
+        error instanceof ChatApiError &&
+        [
+          "SESSION_INVALID",
+          "SESSION_PROJECT_MISMATCH",
+          "SESSION_VISITOR_MISMATCH",
+          "SESSION_CONVERSATION_MISMATCH",
+        ].includes(error.code)
+      ) {
+        this.clearStaleSession();
+        return;
+      }
+
       console.error("Chat error:", error);
 
       // Create error message
@@ -857,7 +939,8 @@ export class ChatWindow {
       const status = await getLeadCaptureStatus(
         this.options.apiUrl,
         this.options.projectId,
-        this.visitorId
+        this.visitorId,
+        this.options.clientKey
       );
 
       if (status.hasCompletedForm) {
@@ -1032,7 +1115,8 @@ export class ChatWindow {
         this.visitorId,
         this.sessionId,
         formData,
-        this.firstUserMessage || ""
+        this.firstUserMessage || "",
+        this.options.clientKey
       );
 
       if (result.success) {
@@ -1044,6 +1128,7 @@ export class ChatWindow {
         if (result.sessionId && !this.sessionId) {
           this.sessionId = result.sessionId;
           setSessionId(this.options.projectId, result.sessionId);
+          this.storeSessionToken(result.sessionToken);
         }
 
         // Cache locally
@@ -1203,13 +1288,17 @@ export class ChatWindow {
       try {
         const resp = await fetch(`${this.options.apiUrl}/api/chat/ensure-conversation`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: widgetHeaders({
+            visitorId: this.visitorId,
+            clientKey: this.options.clientKey,
+          }),
           body: JSON.stringify({ projectId: this.options.projectId, visitorId: this.visitorId }),
         });
         const data = await resp.json();
         if (data.conversationId) {
           this.sessionId = data.conversationId;
           setSessionId(this.options.projectId, data.conversationId);
+          this.storeSessionToken(data.sessionToken);
         }
       } catch (error) {
         console.error("[Widget] Failed to ensure conversation before voice call:", error);
@@ -1247,6 +1336,7 @@ export class ChatWindow {
     this.voiceManager = new ElevenLabsVoiceManager({
       projectId: this.options.projectId,
       apiUrl: this.options.apiUrl,
+      clientKey: this.options.clientKey,
       visitorId: this.visitorId,
       sessionId: this.sessionId,
       onStateChange: (state) => {
@@ -1267,7 +1357,8 @@ export class ChatWindow {
               const status = await getLeadCaptureStatus(
                 this.options.apiUrl,
                 this.options.projectId,
-                this.visitorId
+                this.visitorId,
+                this.options.clientKey
               );
               if (status.hasCompletedQualifying) {
                 this.leadCaptureLocalState = { hasCompletedForm: true, hasCompletedQualifying: true };
@@ -1442,7 +1533,8 @@ export class ChatWindow {
     try {
       this.handoffAvailability = await checkHandoffAvailability(
         this.options.apiUrl,
-        this.options.projectId
+        this.options.projectId,
+        this.options.clientKey
       );
 
       // Gate: Only show button if form completed OR lead capture disabled
@@ -1514,11 +1606,14 @@ export class ChatWindow {
           visitorId: this.visitorId,
           sessionId: this.sessionId,
           conversationHistory: [],
+          clientKey: this.options.clientKey,
+          sessionToken: this.sessionToken,
         });
 
         if (response.sessionId) {
           this.sessionId = response.sessionId;
           setSessionId(this.options.projectId, response.sessionId);
+          this.storeSessionToken(response.sessionToken);
         }
 
         console.log("[Widget] Chat response for handoff request:", {
@@ -1558,8 +1653,14 @@ export class ChatWindow {
       const result = await triggerHandoff(
         this.options.apiUrl,
         this.sessionId,
-        { reason: "button_click" }
+        { reason: "button_click" },
+        this.sessionToken ?? undefined
       );
+
+      if (result.staleSession) {
+        this.clearStaleSession();
+        return;
+      }
 
       // Check if we should show the offline form
       if (result.showOfflineForm) {
@@ -1644,10 +1745,15 @@ export class ChatWindow {
     email: string;
     message: string;
   }): Promise<void> {
-    await submitOfflineMessage(this.options.apiUrl, this.options.projectId, {
-      ...data,
-      visitorId: this.visitorId,
-    });
+    await submitOfflineMessage(
+      this.options.apiUrl,
+      this.options.projectId,
+      {
+        ...data,
+        visitorId: this.visitorId,
+      },
+      this.options.clientKey
+    );
   }
 
   /**
@@ -1659,20 +1765,17 @@ export class ChatWindow {
     // Start presence tracking when entering handoff mode
     this.presenceManager.start(this.sessionId);
 
-    // Check if realtime config is available
+    // Check if token-based private realtime is available
     const config = window.__WIDGET_CONFIG__;
-    const hasRealtimeConfig = !!(config?.supabaseUrl && config?.supabaseAnonKey);
+    const hasRealtimeConfig = !!(
+      config?.tokenBased &&
+      config?.supabaseUrl &&
+      config?.apiKey
+    );
 
-    // Try realtime if enabled and config available
     if (this.useRealtime && hasRealtimeConfig) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[Widget] Starting realtime with config:", config?.supabaseUrl);
-      }
       this.startRealtime();
     } else {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[Widget] Starting polling (realtime config not available)");
-      }
       this.startPolling();
     }
   }
@@ -1684,7 +1787,13 @@ export class ChatWindow {
     if (!this.sessionId) return;
 
     try {
-      this.realtimeManager = getRealtimeManager(this.options.apiUrl);
+      const rtConfig = window.__WIDGET_CONFIG__;
+      this.realtimeManager = getRealtimeManager(
+        this.options.apiUrl,
+        rtConfig?.supabaseUrl || "",
+        rtConfig?.apiKey || ""
+      );
+      this.realtimeManager.setSessionToken(this.sessionToken ?? null);
 
       this.realtimeManager.subscribe(this.sessionId, {
         onMessage: (message: RealtimeMessage) => {
@@ -1817,11 +1926,17 @@ export class ChatWindow {
       if (!this.sessionId) return;
 
       try {
-        const newMessages = await fetchNewMessages(
+        const newMessagesResult = await fetchNewMessagesResult(
           this.options.apiUrl,
           this.sessionId,
-          this.lastMessageTimestamp || undefined
+          this.lastMessageTimestamp || undefined,
+          this.sessionToken ?? undefined
         );
+        if (!newMessagesResult.ok) {
+          if (newMessagesResult.staleSession) this.clearStaleSession();
+          return;
+        }
+        const newMessages = newMessagesResult.data;
 
         if (newMessages.length > 0) {
           for (const msg of newMessages) {
@@ -1860,10 +1975,16 @@ export class ChatWindow {
         }
 
         // Also check conversation status to see if we should stop polling
-        const status = await getConversationStatus(
+        const statusResult = await getConversationStatusResult(
           this.options.apiUrl,
-          this.sessionId
+          this.sessionId,
+          this.sessionToken ?? undefined
         );
+        if (!statusResult.ok) {
+          if (statusResult.staleSession) this.clearStaleSession();
+          return;
+        }
+        const status = statusResult.data;
 
         if (status) {
           this.conversationStatus = status.status;

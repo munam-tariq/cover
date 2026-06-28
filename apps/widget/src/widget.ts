@@ -23,6 +23,7 @@ import {
   type TriggerAction,
 } from "./utils/engagement-triggers";
 import { PulseManager } from "./utils/pulse-manager";
+import { widgetHeaders } from "./utils/request";
 import { getVisitorId, getLeadCaptureState, setLeadCaptureState } from "./utils/storage";
 import {
   getWidgetStrings,
@@ -51,6 +52,8 @@ declare global {
 export interface WidgetConfig {
   projectId: string;
   apiUrl?: string;
+  /** Optional publishable client key (pk_…) from data-client-key; sent as X-FrontFace-Key. */
+  clientKey?: string;
   position?: "bottom-right" | "bottom-left";
   primaryColor?: string;
   greeting?: string;
@@ -62,6 +65,7 @@ export interface WidgetConfig {
  */
 const DEFAULT_CONFIG: Omit<Required<WidgetConfig>, "projectId"> = {
   apiUrl: "https://api.frontface.app",
+  clientKey: "",
   position: "bottom-right",
   primaryColor: "#0a0a0a",
   greeting: "Hi! How can I help you today?",
@@ -179,6 +183,7 @@ class ChatbotWidget {
     this.chatWindow = new ChatWindow({
       projectId: this.config.projectId,
       apiUrl: this.config.apiUrl,
+      clientKey: this.config.clientKey || undefined,
       greeting: this.config.greeting,
       greetingIntro: this.greetingIntro || undefined,
       title: this.config.title,
@@ -233,7 +238,13 @@ class ChatbotWidget {
   private async fetchConfig(): Promise<boolean> {
     try {
       const response = await fetch(
-        `${this.config.apiUrl}/api/embed/config/${this.config.projectId}`
+        `${this.config.apiUrl}/api/embed/config/${this.config.projectId}`,
+        {
+          headers: widgetHeaders({
+            clientKey: this.config.clientKey,
+            json: false,
+          }),
+        }
       );
 
       if (!response.ok) {
@@ -499,7 +510,8 @@ class ChatbotWidget {
         visitorId,
         null,
         email,
-        "exit_overlay"
+        "exit_overlay",
+        this.config.clientKey || undefined
       );
 
       this.exitOverlay.showSuccess();
@@ -536,6 +548,7 @@ class ChatbotWidget {
     this.pulseManager = new PulseManager({
       projectId: this.config.projectId,
       apiUrl: this.config.apiUrl,
+      clientKey: this.config.clientKey || undefined,
       parentElement: wrapper,
       isChatOpen: () => this.isOpen,
     });
@@ -594,6 +607,7 @@ function autoInit(): void {
   const config: WidgetConfig = {
     projectId,
     apiUrl: script.getAttribute("data-api-url") || undefined,
+    clientKey: script.getAttribute("data-client-key") || undefined,
     position:
       (script.getAttribute("data-position") as WidgetConfig["position"]) ||
       undefined,

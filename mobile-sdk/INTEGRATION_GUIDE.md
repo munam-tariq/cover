@@ -99,16 +99,19 @@ your traffic in the dashboard's analytics and inbox.
 | `projectId` | The FrontFace project (agent) you're embedding. Provided to you with the key. |
 | `visitorId` | Stable per-install id (§2.2). |
 | `sessionId` | The **conversation id** (a UUID). `sessionId` and "conversation id" are the same value. |
+| `sessionToken` | An opaque token returned alongside `sessionId` that authorizes continued chat messages and per-conversation routes (`/status`, `/messages/public`, `/handoff`). Persist it with the `sessionId` and send it as `X-FrontFace-Session`. |
 | `source` | Always `"mobile"`. |
 
 **Session lifecycle**
 
 1. **First message:** call `POST /api/chat/message` with **no** `sessionId`. The response returns a
-   `sessionId` — persist it (per project). That is now the active conversation.
-2. **Subsequent messages:** send the stored `sessionId` so the thread continues.
+   `sessionId` **and a `sessionToken`** — persist both (per project). That is now the active conversation.
+2. **Subsequent messages:** send the stored `sessionId` so the thread continues, and include
+   `X-FrontFace-Session: <sessionToken>`. The response may return a refreshed `sessionToken` —
+   keep the latest.
 3. **Resume after app restart:** reload the stored `sessionId` and rehydrate the thread with
    `GET /api/widget/conversations/<sessionId>/messages/public` (full history when called without
-   `?after=`).
+   `?after=`), sending `X-FrontFace-Session: <sessionToken>`.
 4. **"New chat":** drop the stored `sessionId` (and optionally call the close endpoint, §8) so the
    next message starts a fresh conversation.
 
@@ -120,7 +123,7 @@ your traffic in the dashboard's analytics and inbox.
 ## 4. Bootstrap — fetch runtime config
 
 Call this once on launch (and cache it). It returns branding, lead-capture configuration, and the
-**Realtime credentials** you need for live handoff.
+**Realtime configuration** you need for live handoff.
 
 ```
 GET /api/embed/config/{projectId}
@@ -142,8 +145,9 @@ Headers: X-FrontFace-Key, X-Visitor-Id
     "placeholder": "Type a message..."
   },
   "realtime": {
+    "enabled": true,
     "supabaseUrl": "https://<ref>.supabase.co",
-    "supabaseAnonKey": "eyJ...   (public anon key — safe to use client-side)"
+    "tokenBased": true
   },
   "leadCapture": {
     "enabled": true,
@@ -160,7 +164,7 @@ Headers: X-FrontFace-Key, X-Visitor-Id
 ```
 
 Use `config.greeting` for the opening assistant bubble, `config.primaryColor`/`title` for theming,
-`leadCapture` to drive the form (§7), and `realtime.*` to connect the handoff socket (§6).
+`leadCapture` to drive the form (§7), and `realtime.supabaseUrl` + token endpoint (§6.4) for live handoff.
 
 > `proactiveEngagement` and `leadRecovery` blocks may also appear — ignore them for v1.
 
@@ -203,6 +207,7 @@ Headers: Content-Type, X-FrontFace-Key, X-Visitor-Id
 {
   "response": "To reset your password…",   // assistant reply (may be "" — see handoff note)
   "sessionId": "uuid",                       // persist this
+  "sessionToken": "…",                       // persist this; send as X-FrontFace-Session on continued messages and reads
   "sources": [ { "id": "…", "name": "…", "relevance": 0.8 } ],
   "toolCalls": [ { "name": "…", "success": true, "duration": 123 } ],
   "processingTime": 842,
@@ -258,7 +263,7 @@ You need a conversation id first. If the visitor hasn't sent a message yet, crea
 ```
 POST /api/chat/ensure-conversation
 Body: { "projectId", "visitorId", "source": "mobile" }
-→ 200 { "conversationId": "uuid" }    // persist as sessionId
+→ 200 { "conversationId": "uuid", "sessionToken": "…" }    // persist conversationId as sessionId; keep sessionToken for continued messages and reads
 ```
 
 Then check availability and trigger:
@@ -305,15 +310,25 @@ carries the current state.
 
 ### 6.4 Receiving agent messages — Realtime (primary)
 
-Connect to Supabase Realtime using the `realtime` creds from the bootstrap config (§4) and
-subscribe to a per-conversation **broadcast** channel.
+Realtime uses **private channels** with short-lived, conversation-bound JWTs. Before
+subscribing, fetch a Realtime token from the API:
+
+```
+POST /api/widget/conversations/{conversationId}/realtime-token
+Headers: X-FrontFace-Session: {sessionToken}
+→ 200 { "token": "eyJ...", "expiresAt": 1751234567 }
+```
+
+Then connect to Supabase Realtime with the returned token:
 
 - **Channel name:** `conversation:<conversationId>`
 - **Connection:** Supabase Realtime endpoint `wss://<ref>.supabase.co/realtime/v1` with
-  `apikey = realtime.supabaseAnonKey`. The Dart package `supabase_flutter` (or `realtime_client`)
-  handles this — see §12.
-- **Channel config:** `broadcast: { self: false }`.
+  `apikey = token` (the JWT from the token endpoint). Use `setAuth(token)` on the client.
+  The Dart package `supabase_flutter` (or `realtime_client`) handles this — see §12.
+- **Channel config:** `broadcast: { self: false }, private: true`.
 - **Subscribe only while in handoff** (`waiting`/`agent_active`); unsubscribe when you leave it.
+- **Token refresh:** schedule a refresh at `expiresAt - 60` seconds. Call the token endpoint
+  again, then `client.setAuth(newToken)`. If the refresh fails, fall back to polling (§6.5).
 
 **Events** (all are `broadcast`; the useful payload is nested at `payload['payload']['data']`):
 
@@ -336,16 +351,20 @@ If Realtime can't connect (or as a deliberate simpler v1), poll while in handoff
 
 ```
 GET /api/widget/conversations/{conversationId}/messages/public?after={lastCreatedAtISO}
+Headers: X-FrontFace-Session: {sessionToken}
 → 200 { "messages": [ { id, senderType, senderName?, content, createdAt } ] }
 ```
 
 - Poll every **2 s**. Track the newest `createdAt` you've seen and pass it as `?after=` so you only
   fetch new messages. Without `?after=` you get the full history (use that for rehydration on
   resume).
+- Send `X-FrontFace-Session: {sessionToken}` (the token returned with the `sessionId`). The token
+  binds the request to this conversation; without it the route fails closed once enforcement is on.
 - Every ~5th poll (~10 s), also call status to catch queue/agent/resolution changes:
 
 ```
 GET /api/widget/conversations/{conversationId}/status
+Headers: X-FrontFace-Session: {sessionToken}
 → 200 { "id", "status", "assignedAgent": { "id", "name" }?, "queuePosition"? }
 ```
 
@@ -404,14 +423,16 @@ Body: {
   "nextAction": "qualifying_question" | "none",
   "qualifyingQuestion": "What are you trying to build?",   // when nextAction == qualifying_question
   "assembledGreeting": "Hi there!\n…\nWhat are you trying to build?",  // render this as the next assistant bubble
-  "sessionId": "uuid-or-null"   // a fresh conversation id may be returned (email_first) — persist it
+  "sessionId": "uuid-or-null",  // a fresh conversation id may be returned (email_first) — persist it
+  "sessionToken": "…"           // persist with sessionId; send on continued messages and reads
 }
 ```
 
 - Validate email client-side; a bad email returns `400 INVALID_EMAIL`.
 - If `nextAction == "qualifying_question"`, show `assembledGreeting` as the assistant's next
   message and let the visitor answer in chat as normal.
-- If the response returns a `sessionId`, persist it (it may be newly created).
+- If the response returns a `sessionId`, persist it (it may be newly created). If it also returns a
+  `sessionToken`, persist that with the `sessionId`.
 
 **Quick inline email** (lighter variant, optional):
 
@@ -461,8 +482,9 @@ Successful responses also include `X-RateLimit-Remaining` and `X-RateLimit-Reset
 **Always honor `Retry-After`** — back off and surface a gentle "you're sending messages too
 quickly" state rather than hammering.
 
-**A 403 on `/api/chat/message`** almost always means the `X-FrontFace-Key` is missing, malformed,
-revoked, or doesn't match the `projectId` in the body. Verify the key/project pairing.
+**A 403 on `/api/chat/message`** usually means the `X-FrontFace-Key` is missing, malformed,
+revoked, or doesn't match the `projectId` in the body. If you are sending a stored `sessionId`,
+also verify you are sending the matching `X-FrontFace-Session` token.
 
 ---
 
@@ -475,9 +497,8 @@ The SDK must treat **all server-provided strings as untrusted display data**:
 - **Markdown:** if you render assistant Markdown, use a renderer with a **URL scheme allow-list**
   (`https`, `http`, `mailto` only). Never allow `javascript:` (or other) schemes in links.
 - **Never log the `X-FrontFace-Key`** to analytics/crash reporting.
-- **Don't query Supabase tables directly.** The `supabaseAnonKey` is for **Realtime broadcast
-  subscription only** — subscribe to `conversation:<id>` and nothing else. Don't attempt table
-  reads/writes with it.
+- **Don't query Supabase tables directly.** The Realtime token is scoped to a single conversation
+  channel and uses `role: anon` — it cannot access any table via the Data API.
 - Treat the conversation id as a capability: it's an unguessable UUID that grants access to that
   thread. Don't expose it in shareable links/logs.
 
@@ -500,16 +521,26 @@ A typed client + models can be generated from `openapi.yaml` (see README).
 ## 12. Realtime connection sketch (Dart)
 
 ```dart
-// creds from GET /api/embed/config/{projectId}
-final client = RealtimeClient(
-  '${supabaseUrl}/realtime/v1',
-  params: {'apikey': supabaseAnonKey},
+// 1. Fetch a short-lived Realtime JWT from the API
+final tokenRes = await dio.post(
+  '$apiUrl/api/widget/conversations/$conversationId/realtime-token',
+  options: Options(headers: {'X-FrontFace-Session': sessionToken}),
 );
+final realtimeToken = tokenRes.data['token'] as String;
+final expiresAt = tokenRes.data['expiresAt'] as int;
+
+// 2. Connect with the JWT (supabaseUrl from bootstrap config §4)
+final client = RealtimeClient(
+  '$supabaseUrl/realtime/v1',
+  params: {'apikey': realtimeToken},
+);
+client.setAuth(realtimeToken);
 client.connect();
 
+// 3. Subscribe to a private channel
 final channel = client.channel(
   'conversation:$conversationId',
-  RealtimeChannelConfig(self: false),
+  RealtimeChannelConfig(self: false, private: true),
 );
 
 channel.onBroadcast(event: 'message:new', callback: (payload) {
@@ -528,6 +559,12 @@ channel.subscribe((status, [err]) {
   if (status == 'SUBSCRIBED') stopPolling();
   if (status == 'CLOSED' || status == 'CHANNEL_ERROR') startPollingWithBackoff();
 });
+
+// 4. Refresh token before expiry
+Timer(Duration(seconds: expiresAt - 60 - DateTime.now().millisecondsSinceEpoch ~/ 1000), () async {
+  final refreshRes = await dio.post(/* same endpoint */);
+  client.setAuth(refreshRes.data['token']);
+});
 ```
 
 ---
@@ -536,11 +573,12 @@ channel.subscribe((status, [err]) {
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/embed/config/{projectId}` | Bootstrap: branding, lead-capture config, realtime creds |
+| GET | `/api/embed/config/{projectId}` | Bootstrap: branding, lead-capture config, realtime config |
 | POST | `/api/chat/message` | Send a message, get the AI reply |
 | POST | `/api/chat/ensure-conversation` | Create a conversation before the first message (for handoff) |
 | GET | `/api/projects/{projectId}/handoff-availability` | Can the visitor reach a human now? |
 | POST | `/api/conversations/{conversationId}/handoff` | Request a human |
+| POST | `/api/widget/conversations/{conversationId}/realtime-token` | Issue short-lived JWT for private Realtime |
 | GET | `/api/widget/conversations/{conversationId}/status` | Conversation status / queue / agent |
 | GET | `/api/widget/conversations/{conversationId}/messages/public` | Poll messages (`?after=ISO`) / rehydrate |
 | POST | `/api/widget/conversations/{conversationId}/typing` | Customer typing indicator |
@@ -550,7 +588,7 @@ channel.subscribe((status, [err]) {
 | POST | `/api/chat/lead-capture/submit-inline` | Inline email-only capture |
 | POST | `/api/customers/identify` | Link a known email/name to the visitor |
 
-All require `X-FrontFace-Key` + `X-Visitor-Id`. Realtime channel: `conversation:<conversationId>`.
+All require `X-FrontFace-Key` + `X-Visitor-Id`. Realtime uses private channel `conversation:<conversationId>` with a token from `/realtime-token`.
 
 ---
 

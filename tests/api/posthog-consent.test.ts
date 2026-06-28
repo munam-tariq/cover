@@ -49,6 +49,13 @@ test("widget CORS does not advertise PostHog headers", async () => {
   assert.doesNotMatch(widgetCors[0], /X-POSTHOG/i);
 });
 
+test("widget CORS allows the widget session token header", async () => {
+  const source = await readFile(apiIndexPath, "utf8");
+  const widgetCors = source.match(/const widgetCors = cors\(\{[\s\S]*?\}\);/);
+  assert.ok(widgetCors, "expected to find the widgetCors definition");
+  assert.match(widgetCors[0], /X-FrontFace-Session/);
+});
+
 // ─── api env example documents PostHog ──────────────────────────────────────
 
 test("api .env.example documents PostHog settings", async () => {

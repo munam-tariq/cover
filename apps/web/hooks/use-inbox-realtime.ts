@@ -76,9 +76,13 @@ export function useInboxRealtime(
 
       const channelName = `project:${projectId}:queue`;
 
+      const usePrivate =
+        process.env.NEXT_PUBLIC_REALTIME_PRIVATE_ENABLED === "true";
+
       const channel = supabase.channel(channelName, {
         config: {
           broadcast: { self: false },
+          ...(usePrivate && { private: true }),
         },
       });
 
@@ -215,9 +219,13 @@ export function useConversationRealtime(
 
       const channelName = `conversation:${conversationId}`;
 
+      const usePrivate =
+        process.env.NEXT_PUBLIC_REALTIME_PRIVATE_ENABLED === "true";
+
       const channel = supabase.channel(channelName, {
         config: {
           broadcast: { self: false },
+          ...(usePrivate && { private: true }),
         },
       });
 

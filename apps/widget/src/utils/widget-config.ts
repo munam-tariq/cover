@@ -42,7 +42,8 @@ export type {
 
 export interface WidgetRealtimeConfig {
   supabaseUrl: string;
-  supabaseAnonKey: string;
+  tokenBased: boolean;
+  apiKey: string;
 }
 
 export interface VoiceConfig {
@@ -120,15 +121,17 @@ function parseRealtimeConfig(value: unknown): WidgetRealtimeConfig | undefined {
     !isRecord(value) ||
     !isString(value.supabaseUrl) ||
     !value.supabaseUrl ||
-    !isString(value.supabaseAnonKey) ||
-    !value.supabaseAnonKey
+    !isString(value.apiKey) ||
+    !value.apiKey ||
+    value.tokenBased !== true
   ) {
     return undefined;
   }
 
   return {
     supabaseUrl: value.supabaseUrl,
-    supabaseAnonKey: value.supabaseAnonKey,
+    tokenBased: true,
+    apiKey: value.apiKey,
   };
 }
 

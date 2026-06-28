@@ -403,7 +403,7 @@ export default function EmbedPage() {
               srcDoc={previewHtml}
               className="w-full h-full border-0"
               title="Widget Preview"
-              sandbox="allow-scripts allow-same-origin"
+              sandbox="allow-scripts"
             />
           </div>
           <p className="text-sm text-muted-foreground mt-4 text-center">

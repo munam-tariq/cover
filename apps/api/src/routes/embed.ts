@@ -2,9 +2,13 @@ import { Router } from "express";
 
 import { logger } from "../lib/logger";
 import { supabaseAdmin } from "../lib/supabase";
-import { domainWhitelistMiddleware } from "../middleware/domain-whitelist";
+import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
+import { canIssueRealtimeTokens } from "../services/realtime-jwt";
 
 export const embedRouter = Router();
+
+const PROJECT_ID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function buildGreeting(
   agentName?: string | null,
@@ -164,6 +168,26 @@ export function buildWidgetAppearanceConfig(settings: Record<string, unknown>) {
   };
 }
 
+export function buildRealtimeClientConfig() {
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  const apiKey =
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    "";
+
+  if (
+    process.env.REALTIME_PRIVATE_ENABLED === "true" &&
+    canIssueRealtimeTokens() &&
+    supabaseUrl &&
+    apiKey
+  ) {
+    return { enabled: true, supabaseUrl, tokenBased: true, apiKey };
+  }
+
+  return { enabled: false };
+}
+
 // Get embed code for a project
 embedRouter.get("/code/:projectId", async (req, res) => {
   const { projectId } = req.params;
@@ -180,12 +204,22 @@ embedRouter.get("/code/:projectId", async (req, res) => {
 // Get widget configuration
 embedRouter.get(
   "/config/:projectId",
-  domainWhitelistMiddleware({
-    requireDomain: false,
+  requirePublicWidgetAccess({
+    action: "embed-config",
     projectIdSource: "params",
+    projectIdParam: "projectId",
   }),
   async (req, res) => {
     const { projectId } = req.params;
+
+    if (!PROJECT_ID_REGEX.test(projectId)) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_ID",
+          message: "Invalid project ID format",
+        },
+      });
+    }
 
     try {
       // Check if widget is enabled for this project
@@ -236,17 +270,7 @@ embedRouter.get(
           // Appearance (Part B) — honors stored position/placeholder instead of hardcoding.
           ...buildWidgetAppearanceConfig(settings),
         },
-        // Supabase credentials for realtime (public anon key is safe to expose)
-        realtime: {
-          supabaseUrl:
-            process.env.NEXT_PUBLIC_SUPABASE_URL ||
-            process.env.SUPABASE_URL ||
-            "",
-          supabaseAnonKey:
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-            process.env.SUPABASE_ANON_KEY ||
-            "",
-        },
+        realtime: buildRealtimeClientConfig(),
         // Lead capture V2 config
         leadCapture: leadCaptureConfig,
         // Proactive engagement config
@@ -277,16 +301,7 @@ embedRouter.get(
           // Appearance defaults (mirrors the success path).
           ...buildWidgetAppearanceConfig({}),
         },
-        realtime: {
-          supabaseUrl:
-            process.env.NEXT_PUBLIC_SUPABASE_URL ||
-            process.env.SUPABASE_URL ||
-            "",
-          supabaseAnonKey:
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-            process.env.SUPABASE_ANON_KEY ||
-            "",
-        },
+        realtime: buildRealtimeClientConfig(),
         leadCapture: { enabled: false },
       });
     }

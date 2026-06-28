@@ -8,6 +8,7 @@
  */
 
 import { getDeviceInfo } from "./device-info";
+import { widgetHeaders } from "./request";
 
 export interface SendMessageOptions {
   apiUrl: string;
@@ -16,6 +17,10 @@ export interface SendMessageOptions {
   visitorId: string;
   sessionId?: string | null;
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>;
+  /** Publishable client key (pk_…); sent as X-FrontFace-Key. */
+  clientKey?: string;
+  /** Session token (X-FrontFace-Session); required for message continuation. */
+  sessionToken?: string | null;
 }
 
 export interface ChatSource {
@@ -33,6 +38,8 @@ export interface ToolCall {
 export interface SendMessageResponse {
   response: string;
   sessionId: string;
+  /** Session token authorizing the public per-conversation read routes (may be absent). */
+  sessionToken?: string;
   sources: ChatSource[];
   toolCalls: ToolCall[];
   processingTime: number;
@@ -72,17 +79,15 @@ export class ChatApiError extends Error {
 export async function sendMessage(
   options: SendMessageOptions
 ): Promise<SendMessageResponse> {
-  const { apiUrl, projectId, message, visitorId, sessionId, conversationHistory } = options;
+  const { apiUrl, projectId, message, visitorId, sessionId, conversationHistory, clientKey, sessionToken } =
+    options;
 
   // Collect device and page context for analytics
   const deviceInfo = getDeviceInfo();
 
   const response = await fetch(`${apiUrl}/api/chat/message`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Visitor-Id": visitorId,
-    },
+    headers: widgetHeaders({ visitorId, clientKey, sessionToken }),
     body: JSON.stringify({
       projectId,
       message,
@@ -165,6 +170,7 @@ export interface LeadCaptureSubmitResponse {
   qualifyingQuestion?: string;
   assembledGreeting?: string;
   sessionId?: string;
+  sessionToken?: string;
 }
 
 export interface LeadCaptureStatusResponse {
@@ -182,14 +188,12 @@ export async function submitLeadCaptureForm(
   visitorId: string,
   sessionId: string | null,
   formData: LeadCaptureFormData,
-  firstMessage: string
+  firstMessage: string,
+  clientKey?: string
 ): Promise<LeadCaptureSubmitResponse> {
   const response = await fetch(`${apiUrl}/api/chat/lead-capture/submit-form`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Visitor-Id": visitorId,
-    },
+    headers: widgetHeaders({ visitorId, clientKey }),
     body: JSON.stringify({
       projectId,
       visitorId,
@@ -218,14 +222,12 @@ export async function skipLeadCaptureForm(
   apiUrl: string,
   projectId: string,
   visitorId: string,
-  skipType: "permanent" | "deferred" = "permanent"
+  skipType: "permanent" | "deferred" = "permanent",
+  clientKey?: string
 ): Promise<void> {
   await fetch(`${apiUrl}/api/chat/lead-capture/skip`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Visitor-Id": visitorId,
-    },
+    headers: widgetHeaders({ visitorId, clientKey }),
     body: JSON.stringify({ projectId, visitorId, skipType }),
   });
 }
@@ -239,14 +241,12 @@ export async function submitInlineEmail(
   visitorId: string,
   sessionId: string | null,
   email: string,
-  captureSource: string = "inline_email"
+  captureSource: string = "inline_email",
+  clientKey?: string
 ): Promise<LeadCaptureSubmitResponse> {
   const response = await fetch(`${apiUrl}/api/chat/lead-capture/submit-inline`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Visitor-Id": visitorId,
-    },
+    headers: widgetHeaders({ visitorId, clientKey }),
     body: JSON.stringify({
       projectId,
       visitorId,
@@ -273,11 +273,13 @@ export async function submitInlineEmail(
 export async function getLeadCaptureStatus(
   apiUrl: string,
   projectId: string,
-  visitorId: string
+  visitorId: string,
+  clientKey?: string
 ): Promise<LeadCaptureStatusResponse> {
   try {
     const response = await fetch(
-      `${apiUrl}/api/chat/lead-capture/status?projectId=${encodeURIComponent(projectId)}&visitorId=${encodeURIComponent(visitorId)}`
+      `${apiUrl}/api/chat/lead-capture/status?projectId=${encodeURIComponent(projectId)}&visitorId=${encodeURIComponent(visitorId)}`,
+      { headers: widgetHeaders({ visitorId, clientKey, json: false }) }
     );
 
     if (!response.ok) {

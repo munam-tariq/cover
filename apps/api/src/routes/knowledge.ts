@@ -18,6 +18,7 @@ import {
 
 // URL Scraping
 import { validateCrawlUrl, scrapePage } from "../services/firecrawl";
+import { resolveAndValidateUrl } from "../lib/url-guard";
 import { structurePageContent } from "../services/content-structurer";
 import {
   createScrapeJob,
@@ -744,6 +745,15 @@ knowledgeRouter.post("/scrape", async (req: AuthenticatedRequest, res: Response)
           code: "INVALID_URL",
           message: urlValidation.error || "Invalid URL",
         },
+      });
+    }
+
+    // DNS-rebinding defense: block before creating jobs if the domain
+    // resolves to a private/metadata IP.
+    const dnsCheck = await resolveAndValidateUrl(urlValidation.normalizedUrl!);
+    if (!dnsCheck.ok) {
+      return res.status(400).json({
+        error: { code: "INVALID_URL", message: dnsCheck.reason || "URL blocked" },
       });
     }
 

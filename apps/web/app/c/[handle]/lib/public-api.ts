@@ -6,7 +6,38 @@
  * thread; the visitorId is the bearer for the visitor's history.
  */
 
+import { storeSessionToken } from "./public-storage";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.frontface.app";
+
+const SESSION_DENY_CODES = new Set([
+  "SESSION_INVALID",
+  "SESSION_PROJECT_MISMATCH",
+  "SESSION_VISITOR_MISMATCH",
+  "SESSION_CONVERSATION_MISMATCH",
+]);
+
+/** Headers for a public per-conversation read, including the session token when present. */
+function readHeaders(sessionToken?: string): HeadersInit | undefined {
+  return sessionToken ? { "X-FrontFace-Session": sessionToken } : undefined;
+}
+
+export function isWidgetSessionDenied(
+  status: number,
+  body: unknown
+): boolean {
+  if (status !== 403) return false;
+  const code =
+    body &&
+    typeof body === "object" &&
+    "error" in body &&
+    body.error &&
+    typeof body.error === "object" &&
+    "code" in body.error
+      ? body.error.code
+      : null;
+  return typeof code === "string" && SESSION_DENY_CODES.has(code);
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,6 +65,21 @@ export interface HandoffResult {
   assignedAgent?: { id: string; name: string };
   message?: string;
   showOfflineForm?: boolean;
+}
+
+export type SessionAwareResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; staleSession: true }
+  | { ok: false; staleSession: false };
+
+export type HandoffTriggerResult =
+  | HandoffResult
+  | { staleSession: true; message?: string };
+
+export function isStaleSessionResult<T>(
+  result: SessionAwareResult<T> | HandoffTriggerResult
+): result is { ok: false; staleSession: true } | { staleSession: true } {
+  return "staleSession" in result && result.staleSession === true;
 }
 
 export interface PublicMessage {
@@ -84,6 +130,8 @@ export interface LeadFormSubmitResponse {
   assembledGreeting?: string;
   /** Conversation id; set when a qualifying question was persisted server-side. */
   sessionId?: string | null;
+  /** Authorizes resumed messages/reads for the returned sessionId. */
+  sessionToken?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,6 +150,8 @@ export async function ensureConversation(
     });
     if (!res.ok) return null;
     const data = await res.json();
+    if (data.conversationId && data.sessionToken)
+      storeSessionToken(data.conversationId, data.sessionToken);
     return data.conversationId || null;
   } catch {
     return null;
@@ -129,19 +179,26 @@ export async function checkHandoffAvailability(
 
 export async function triggerHandoff(
   conversationId: string,
-  options: { reason: "customer_request" | "button_click" }
-): Promise<HandoffResult> {
+  options: { reason: "customer_request" | "button_click" },
+  sessionToken?: string
+): Promise<HandoffTriggerResult> {
   try {
     const res = await fetch(
       `${API_URL}/api/conversations/${conversationId}/handoff`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(sessionToken ? { "X-FrontFace-Session": sessionToken } : {}),
+        },
         body: JSON.stringify(options),
       }
     );
     if (!res.ok) {
       const err = await res.json().catch(() => null);
+      if (isWidgetSessionDenied(res.status, err)) {
+        return { staleSession: true, message: err?.error?.message };
+      }
       throw new Error(err?.error?.message || "Failed to trigger handoff");
     }
     return await res.json();
@@ -154,38 +211,78 @@ export async function triggerHandoff(
   }
 }
 
-export async function getConversationStatus(conversationId: string): Promise<{
+type ConversationStatusPayload = {
   id: string;
   status: ConversationStatus;
   assignedAgent?: { id: string; name: string };
   queuePosition?: number;
-} | null> {
+};
+
+export async function getConversationStatusResult(
+  conversationId: string,
+  sessionToken?: string
+): Promise<SessionAwareResult<ConversationStatusPayload>> {
   try {
     const res = await fetch(
-      `${API_URL}/api/widget/conversations/${conversationId}/status`
+      `${API_URL}/api/widget/conversations/${conversationId}/status`,
+      { headers: readHeaders(sessionToken) }
     );
-    if (!res.ok) return null;
-    return await res.json();
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      if (isWidgetSessionDenied(res.status, err)) {
+        return { ok: false, staleSession: true };
+      }
+      return { ok: false, staleSession: false };
+    }
+    return { ok: true, data: await res.json() };
   } catch {
-    return null;
+    return { ok: false, staleSession: false };
+  }
+}
+
+export async function getConversationStatus(
+  conversationId: string,
+  sessionToken?: string
+): Promise<ConversationStatusPayload | null> {
+  const result = await getConversationStatusResult(conversationId, sessionToken);
+  return result.ok ? result.data : null;
+}
+
+export async function fetchMessagesResult(
+  conversationId: string,
+  afterTimestamp?: string,
+  sessionToken?: string
+): Promise<SessionAwareResult<PublicMessage[]>> {
+  try {
+    let url = `${API_URL}/api/widget/conversations/${conversationId}/messages/public`;
+    if (afterTimestamp) url += `?after=${encodeURIComponent(afterTimestamp)}`;
+    const res = await fetch(url, { headers: readHeaders(sessionToken) });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      if (isWidgetSessionDenied(res.status, err)) {
+        return { ok: false, staleSession: true };
+      }
+      return { ok: false, staleSession: false };
+    }
+    const data = await res.json();
+    return { ok: true, data: data.messages || [] };
+  } catch {
+    return { ok: false, staleSession: false };
   }
 }
 
 /** Without `after` the endpoint returns the full ascending history (thread rehydration). */
 export async function fetchMessages(
   conversationId: string,
-  afterTimestamp?: string
+  afterTimestamp?: string,
+  sessionToken?: string
 ): Promise<PublicMessage[]> {
-  try {
-    let url = `${API_URL}/api/widget/conversations/${conversationId}/messages/public`;
-    if (afterTimestamp) url += `?after=${encodeURIComponent(afterTimestamp)}`;
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.messages || [];
-  } catch {
-    return [];
-  }
+  const result = await fetchMessagesResult(
+    conversationId,
+    afterTimestamp,
+    sessionToken
+  );
+  return result.ok ? result.data : [];
 }
 
 export async function sendTypingIndicator(

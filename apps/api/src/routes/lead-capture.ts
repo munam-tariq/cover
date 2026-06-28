@@ -16,10 +16,12 @@ import { logger } from "../lib/logger";
 import { posthog } from "../lib/posthog";
 import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
+import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
 import { chatRateLimiter } from "../middleware/rate-limit";
 import type { ChatSource } from "../services/chat-engine";
 import { getOrCreateConversation } from "../services/conversation";
 import { isValidEmail } from "../services/lead-capture";
+import { issueWidgetSessionToken } from "../services/widget-session-token";
 import {
   submitLeadForm,
   submitInlineEmail,
@@ -51,6 +53,12 @@ const TRANSITION_MESSAGES = [
 
 export const leadCaptureRouter = Router();
 
+// Public widget gate (monitor mode by default; WIDGET_GATE_ENFORCE to fail closed).
+const bodyGate = (action: string) =>
+  requirePublicWidgetAccess({ action, projectIdSource: "body" });
+const queryGate = (action: string) =>
+  requirePublicWidgetAccess({ action, projectIdSource: "query" });
+
 // ─── Public Widget Routes ─────────────────────────────────────────────────────
 
 /**
@@ -60,6 +68,7 @@ export const leadCaptureRouter = Router();
  */
 leadCaptureRouter.post(
   "/lead-capture/submit-form",
+  bodyGate("lead-submit-form"),
   chatRateLimiter,
   async (req: Request, res: Response) => {
     try {
@@ -208,7 +217,20 @@ leadCaptureRouter.post(
         }
       }
 
-      res.json({ ...result, assembledGreeting, sessionId: resolvedSessionId });
+      res.json({
+        ...result,
+        assembledGreeting,
+        sessionId: resolvedSessionId,
+        // Authorize the conversation this lead form just created/continued (a lead-first
+        // conversation otherwise has no session token until the first chat message).
+        sessionToken: resolvedSessionId
+          ? issueWidgetSessionToken({
+              projectId,
+              visitorId,
+              conversationId: resolvedSessionId,
+            })
+          : undefined,
+      });
     } catch (error) {
       logger.error("Lead form submit error", error, {
         requestId: req.requestId,
@@ -230,6 +252,7 @@ leadCaptureRouter.post(
  */
 leadCaptureRouter.post(
   "/lead-capture/submit-inline",
+  bodyGate("lead-submit-inline"),
   chatRateLimiter,
   async (req: Request, res: Response) => {
     try {
@@ -262,7 +285,16 @@ leadCaptureRouter.post(
         captureSource || "inline_email"
       );
 
-      res.json(result);
+      res.json({
+        ...result,
+        sessionToken: sessionId
+          ? issueWidgetSessionToken({
+              projectId,
+              visitorId,
+              conversationId: sessionId,
+            })
+          : undefined,
+      });
     } catch (error) {
       logger.error("Inline email submit error", error, {
         requestId: req.requestId,
@@ -284,6 +316,7 @@ leadCaptureRouter.post(
  */
 leadCaptureRouter.post(
   "/lead-capture/skip",
+  bodyGate("lead-skip"),
   chatRateLimiter,
   async (req: Request, res: Response) => {
     try {
@@ -320,6 +353,7 @@ leadCaptureRouter.post(
  */
 leadCaptureRouter.get(
   "/lead-capture/status",
+  queryGate("lead-status"),
   async (req: Request, res: Response) => {
     try {
       const projectId = req.query.projectId as string;
@@ -360,6 +394,7 @@ leadCaptureRouter.get(
  */
 leadCaptureRouter.post(
   "/lead-capture/defer",
+  bodyGate("lead-defer"),
   chatRateLimiter,
   async (req: Request, res: Response) => {
     try {
@@ -395,6 +430,7 @@ leadCaptureRouter.post(
  */
 leadCaptureRouter.post(
   "/lead-capture/visit",
+  bodyGate("lead-visit"),
   chatRateLimiter,
   async (req: Request, res: Response) => {
     try {

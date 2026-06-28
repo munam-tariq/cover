@@ -8,6 +8,8 @@
  * - Handle conversation state changes
  */
 
+import { widgetHeaders } from "./request";
+
 export interface HandoffAvailability {
   available: boolean;
   showButton: boolean;
@@ -32,6 +34,7 @@ export interface HandoffResult {
   };
   message?: string;
   showOfflineForm?: boolean;
+  staleSession?: boolean;
 }
 
 export type ConversationStatus =
@@ -41,21 +44,59 @@ export type ConversationStatus =
   | "resolved"
   | "closed";
 
+const SESSION_DENY_CODES = new Set([
+  "SESSION_INVALID",
+  "SESSION_PROJECT_MISMATCH",
+  "SESSION_VISITOR_MISMATCH",
+  "SESSION_CONVERSATION_MISMATCH",
+]);
+
+export type SessionAwareResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; staleSession: true }
+  | { ok: false; staleSession: false };
+
+export function isWidgetSessionDenied(
+  status: number,
+  body: unknown
+): boolean {
+  if (status !== 403) return false;
+  const code =
+    body &&
+    typeof body === "object" &&
+    "error" in body &&
+    body.error &&
+    typeof body.error === "object" &&
+    "code" in body.error
+      ? body.error.code
+      : null;
+  return typeof code === "string" && SESSION_DENY_CODES.has(code);
+}
+
+/**
+ * Build headers for a widget conversation read, including the session token (issued at
+ * conversation create) so the request is authorized for this conversation.
+ */
+function widgetReadHeaders(sessionToken?: string): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (sessionToken) headers["X-FrontFace-Session"] = sessionToken;
+  return headers;
+}
+
 /**
  * Check if handoff is available for a project
  */
 export async function checkHandoffAvailability(
   apiUrl: string,
-  projectId: string
+  projectId: string,
+  clientKey?: string
 ): Promise<HandoffAvailability> {
   try {
     const response = await fetch(
       `${apiUrl}/api/projects/${projectId}/handoff-availability`,
       {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: widgetHeaders({ clientKey }),
       }
     );
 
@@ -87,23 +128,30 @@ export async function triggerHandoff(
     triggerKeyword?: string;
     customerEmail?: string;
     customerName?: string;
-  }
+  },
+  sessionToken?: string
 ): Promise<HandoffResult> {
   try {
     const response = await fetch(
       `${apiUrl}/api/conversations/${conversationId}/handoff`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: widgetHeaders({ sessionToken }),
         body: JSON.stringify(options),
       }
     );
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || "Failed to trigger handoff");
+      const error = await response.json().catch(() => null);
+      if (isWidgetSessionDenied(response.status, error)) {
+        return {
+          status: "offline",
+          staleSession: true,
+          showOfflineForm: false,
+          message: error?.error?.message,
+        };
+      }
+      throw new Error(error?.error?.message || "Failed to trigger handoff");
     }
 
     return await response.json();
@@ -128,16 +176,15 @@ export async function submitOfflineMessage(
     email: string;
     message: string;
     visitorId?: string;
-  }
+  },
+  clientKey?: string
 ): Promise<{ success: boolean; message: string; conversationId?: string }> {
   try {
     const response = await fetch(
       `${apiUrl}/api/projects/${projectId}/offline-messages`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: widgetHeaders({ visitorId: data.visitorId, clientKey }),
         body: JSON.stringify(data),
       }
     );
@@ -221,32 +268,55 @@ export function formatAgentJoinedMessage(agentName: string): string {
  */
 export async function getConversationStatus(
   apiUrl: string,
-  conversationId: string
+  conversationId: string,
+  sessionToken?: string
 ): Promise<{
   id: string;
   status: ConversationStatus;
   assignedAgent?: { id: string; name: string };
   queuePosition?: number;
 } | null> {
+  const result = await getConversationStatusResult(
+    apiUrl,
+    conversationId,
+    sessionToken
+  );
+  return result.ok ? result.data : null;
+}
+
+export async function getConversationStatusResult(
+  apiUrl: string,
+  conversationId: string,
+  sessionToken?: string
+): Promise<
+  SessionAwareResult<{
+    id: string;
+    status: ConversationStatus;
+    assignedAgent?: { id: string; name: string };
+    queuePosition?: number;
+  }>
+> {
   try {
     const response = await fetch(
       `${apiUrl}/api/widget/conversations/${conversationId}/status`,
       {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: widgetReadHeaders(sessionToken),
       }
     );
 
     if (!response.ok) {
-      return null;
+      const error = await response.json().catch(() => null);
+      if (isWidgetSessionDenied(response.status, error)) {
+        return { ok: false, staleSession: true };
+      }
+      return { ok: false, staleSession: false };
     }
 
-    return await response.json();
+    return { ok: true, data: await response.json() };
   } catch (error) {
     console.error("[Widget] Failed to get conversation status:", error);
-    return null;
+    return { ok: false, staleSession: false };
   }
 }
 
@@ -256,7 +326,8 @@ export async function getConversationStatus(
 export async function fetchNewMessages(
   apiUrl: string,
   conversationId: string,
-  afterTimestamp?: string
+  afterTimestamp?: string,
+  sessionToken?: string
 ): Promise<Array<{
   id: string;
   senderType: "customer" | "agent" | "ai" | "system";
@@ -264,6 +335,31 @@ export async function fetchNewMessages(
   content: string;
   createdAt: string;
 }>> {
+  const result = await fetchNewMessagesResult(
+    apiUrl,
+    conversationId,
+    afterTimestamp,
+    sessionToken
+  );
+  return result.ok ? result.data : [];
+}
+
+export async function fetchNewMessagesResult(
+  apiUrl: string,
+  conversationId: string,
+  afterTimestamp?: string,
+  sessionToken?: string
+): Promise<
+  SessionAwareResult<
+    Array<{
+      id: string;
+      senderType: "customer" | "agent" | "ai" | "system";
+      senderName?: string;
+      content: string;
+      createdAt: string;
+    }>
+  >
+> {
   try {
     let url = `${apiUrl}/api/widget/conversations/${conversationId}/messages/public`;
     if (afterTimestamp) {
@@ -272,20 +368,22 @@ export async function fetchNewMessages(
 
     const response = await fetch(url, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: widgetReadHeaders(sessionToken),
     });
 
     if (!response.ok) {
-      return [];
+      const error = await response.json().catch(() => null);
+      if (isWidgetSessionDenied(response.status, error)) {
+        return { ok: false, staleSession: true };
+      }
+      return { ok: false, staleSession: false };
     }
 
     const data = await response.json();
-    return data.messages || [];
+    return { ok: true, data: data.messages || [] };
   } catch (error) {
     console.error("[Widget] Failed to fetch messages:", error);
-    return [];
+    return { ok: false, staleSession: false };
   }
 }
 

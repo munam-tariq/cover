@@ -3,20 +3,17 @@
 /**
  * Live human-handoff state machine for the public hosted page.
  *
- * Mirrors the embeddable widget's behavior (apps/widget/src/components/chat-window.ts):
- * realtime broadcast subscription on `conversation:{id}` with a 2-second polling fallback,
- * queue position, agent join/typing, and status transitions back to the AI.
+ * Mirrors the embeddable widget's polling fallback without exposing browser Supabase Realtime
+ * access from an unauthenticated hosted page.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useConversationRealtime } from "@/hooks/use-inbox-realtime";
-
 import {
   checkHandoffAvailability,
   ensureConversation,
-  fetchMessages,
-  getConversationStatus,
+  fetchMessagesResult,
+  getConversationStatusResult,
   sendPresenceUpdate,
   sendTypingIndicator,
   triggerHandoff,
@@ -24,6 +21,7 @@ import {
   type HandoffAvailability,
   type PublicMessage,
 } from "./lib/public-api";
+import { getStoredSessionToken } from "./lib/public-storage";
 
 const POLL_INTERVAL_MS = 2000;
 const STATUS_CHECK_EVERY_N_POLLS = 5; // status re-check every ~10s while polling
@@ -50,6 +48,8 @@ interface UsePublicHandoffArgs {
   onServerMessages: (messages: PublicMessage[]) => void;
   /** A conversation was created on demand (e.g. "Talk to a human" before any message). */
   onSessionEstablished: (sessionId: string) => void;
+  /** The stored session token no longer authorizes this conversation. */
+  onStaleSession?: (sessionId: string) => void;
 }
 
 const IN_HANDOFF: ConversationStatus[] = ["waiting", "agent_active"];
@@ -61,6 +61,7 @@ export function usePublicHandoff({
   enabled,
   onServerMessages,
   onSessionEstablished,
+  onStaleSession,
 }: UsePublicHandoffArgs) {
   const [status, setStatus] = useState<ConversationStatus | null>(null);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
@@ -82,7 +83,6 @@ export function usePublicHandoff({
   const lastMessageTsRef = useRef<string | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollTickRef = useRef(0);
-  const realtimeConnectedRef = useRef(false);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -90,6 +90,8 @@ export function usePublicHandoff({
   onServerMessagesRef.current = onServerMessages;
   const onSessionEstablishedRef = useRef(onSessionEstablished);
   onSessionEstablishedRef.current = onSessionEstablished;
+  const onStaleSessionRef = useRef(onStaleSession);
+  onStaleSessionRef.current = onStaleSession;
 
   // ---- helpers -------------------------------------------------------------
 
@@ -125,6 +127,21 @@ export function usePublicHandoff({
     [refreshAvailability, stopPolling]
   );
 
+  const handleStaleSession = useCallback(
+    (id: string) => {
+      stopPolling();
+      lastMessageTsRef.current = null;
+      setStatus(null);
+      setQueuePosition(null);
+      setAgentName(null);
+      setAgentTyping(false);
+      setOfflineMessage(null);
+      onStaleSessionRef.current?.(id);
+      void refreshAvailability();
+    },
+    [refreshAvailability, stopPolling]
+  );
+
   const handleStatusChange = useCallback(
     (next: string) => {
       if (next === "waiting" || next === "agent_active") {
@@ -136,14 +153,22 @@ export function usePublicHandoff({
         // Pull any trailing system messages ("conversation resolved") before going quiet.
         const id = sessionIdRef.current;
         if (id) {
-          void fetchMessages(id, lastMessageTsRef.current || undefined).then(
-            ingestMessages
-          );
+          void fetchMessagesResult(
+            id,
+            lastMessageTsRef.current || undefined,
+            getStoredSessionToken(id) ?? undefined
+          ).then((result) => {
+            if (!result.ok) {
+              if (result.staleSession) handleStaleSession(id);
+              return;
+            }
+            ingestMessages(result.data);
+          });
         }
         exitHandoff(next as ConversationStatus);
       }
     },
-    [exitHandoff, ingestMessages]
+    [exitHandoff, handleStaleSession, ingestMessages]
   );
 
   const startPolling = useCallback(() => {
@@ -152,12 +177,27 @@ export function usePublicHandoff({
     pollTimerRef.current = setInterval(async () => {
       const id = sessionIdRef.current;
       if (!id) return;
-      ingestMessages(
-        await fetchMessages(id, lastMessageTsRef.current || undefined)
+      const messagesResult = await fetchMessagesResult(
+        id,
+        lastMessageTsRef.current || undefined,
+        getStoredSessionToken(id) ?? undefined
       );
+      if (!messagesResult.ok) {
+        if (messagesResult.staleSession) handleStaleSession(id);
+        return;
+      }
+      ingestMessages(messagesResult.data);
       pollTickRef.current += 1;
       if (pollTickRef.current % STATUS_CHECK_EVERY_N_POLLS === 0) {
-        const s = await getConversationStatus(id);
+        const statusResult = await getConversationStatusResult(
+          id,
+          getStoredSessionToken(id) ?? undefined
+        );
+        if (!statusResult.ok) {
+          if (statusResult.staleSession) handleStaleSession(id);
+          return;
+        }
+        const s = statusResult.data;
         if (s) {
           if (typeof s.queuePosition === "number")
             setQueuePosition(s.queuePosition);
@@ -166,7 +206,7 @@ export function usePublicHandoff({
         }
       }
     }, POLL_INTERVAL_MS);
-  }, [handleStatusChange, ingestMessages]);
+  }, [handleStaleSession, handleStatusChange, ingestMessages]);
 
   const enterHandoff = useCallback(
     (
@@ -187,53 +227,9 @@ export function usePublicHandoff({
         // agent/system messages should stream in from here on.
         lastMessageTsRef.current = new Date().toISOString();
       }
-      // Realtime may already be connected; if not, polling covers the gap.
-      if (!realtimeConnectedRef.current) startPolling();
+      startPolling();
     },
     [startPolling]
-  );
-
-  // ---- realtime (active only while in handoff with a known conversation) ----
-
-  useConversationRealtime(
-    enabled && isInHandoff && sessionId ? sessionId : null,
-    {
-      onNewMessage: (message) => {
-        ingestMessages([
-          {
-            id: message.id,
-            senderType: message.senderType as PublicMessage["senderType"],
-            senderName: message.senderName,
-            content: message.content,
-            createdAt: message.createdAt,
-          },
-        ]);
-      },
-      onStatusChanged: handleStatusChange,
-      onAgentJoined: ({ agentName: name }) => {
-        if (name) setAgentName(name);
-        setStatus("agent_active");
-        setQueuePosition(null);
-      },
-      onQueueUpdate: (position) => setQueuePosition(position),
-      onTyping: ({ participant, isTyping }) => {
-        if (participant.type === "agent") setAgentTyping(isTyping);
-      },
-      onConnectionChange: (connected) => {
-        realtimeConnectedRef.current = connected;
-        if (
-          !enabled ||
-          !statusRef.current ||
-          !IN_HANDOFF.includes(statusRef.current)
-        )
-          return;
-        if (connected) {
-          stopPolling();
-        } else {
-          startPolling();
-        }
-      },
-    }
   );
 
   // ---- presence heartbeat while in handoff ----------------------------------
@@ -265,19 +261,30 @@ export function usePublicHandoff({
 
     (async () => {
       if (sessionId) {
-        const s = await getConversationStatus(sessionId);
-        if (cancelled) return;
-        if (s && IN_HANDOFF.includes(s.status)) {
-          enterHandoff(s.status as "waiting" | "agent_active", {
-            queuePosition: s.queuePosition,
-            agentName: s.assignedAgent?.name,
-            // Resume after refresh: the thread is rehydrated separately from full history,
-            // which also advances lastMessageTsRef before polling starts.
-            syncFrom: "start",
-          });
-          return;
+        const sessionToken = getStoredSessionToken(sessionId);
+        if (sessionToken) {
+          const statusResult = await getConversationStatusResult(
+            sessionId,
+            sessionToken
+          );
+          if (cancelled) return;
+          if (!statusResult.ok) {
+            if (statusResult.staleSession) handleStaleSession(sessionId);
+            return;
+          }
+          const s = statusResult.data;
+          if (s && IN_HANDOFF.includes(s.status)) {
+            enterHandoff(s.status as "waiting" | "agent_active", {
+              queuePosition: s.queuePosition,
+              agentName: s.assignedAgent?.name,
+              // Resume after refresh: the thread is rehydrated separately from full history,
+              // which also advances lastMessageTsRef before polling starts.
+              syncFrom: "start",
+            });
+            return;
+          }
+          if (s) setStatus(s.status);
         }
-        if (s) setStatus(s.status);
       }
       void refreshAvailability();
     })();
@@ -287,7 +294,14 @@ export function usePublicHandoff({
       stopPolling();
     };
     // Intentionally keyed on sessionId: switching threads re-evaluates handoff state.
-  }, [enabled, sessionId, enterHandoff, refreshAvailability, stopPolling]);
+  }, [
+    enabled,
+    sessionId,
+    enterHandoff,
+    handleStaleSession,
+    refreshAvailability,
+    stopPolling,
+  ]);
 
   // ---- public API ------------------------------------------------------------
 
@@ -308,7 +322,15 @@ export function usePublicHandoff({
         onSessionEstablishedRef.current(id);
         sessionIdRef.current = id;
       }
-      const result = await triggerHandoff(id, { reason: "button_click" });
+      const result = await triggerHandoff(
+        id,
+        { reason: "button_click" },
+        getStoredSessionToken(id) ?? undefined
+      );
+      if ("staleSession" in result) {
+        handleStaleSession(id);
+        return;
+      }
       if (result.status === "offline" || result.showOfflineForm) {
         setOfflineMessage(
           result.message ||
@@ -333,7 +355,14 @@ export function usePublicHandoff({
     } finally {
       setRequestingHuman(false);
     }
-  }, [enabled, enterHandoff, projectId, requestingHuman, visitorId]);
+  }, [
+    enabled,
+    enterHandoff,
+    handleStaleSession,
+    projectId,
+    requestingHuman,
+    visitorId,
+  ]);
 
   /**
    * Inspect a /api/chat/message response for handoff signals (verbatim widget predicate:

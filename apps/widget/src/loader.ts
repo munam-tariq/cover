@@ -42,7 +42,7 @@ declare const __WIDGET_VERSION__: string;
   }
 
   // Also copy specific attributes that might be set directly
-  const attrsToCopy = ['data-project-id', 'data-api-url', 'data-position', 'data-primary-color', 'data-title', 'data-greeting'];
+  const attrsToCopy = ['data-project-id', 'data-api-url', 'data-client-key', 'data-position', 'data-primary-color', 'data-title', 'data-greeting'];
   attrsToCopy.forEach(attr => {
     const value = currentScript.getAttribute(attr);
     if (value) {

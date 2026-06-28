@@ -7,6 +7,8 @@
 
 import Firecrawl from '@mendable/firecrawl-js';
 
+import { isUrlSafeForFetch, resolveAndValidateUrl } from '../lib/url-guard';
+
 // Initialize Firecrawl client
 const firecrawl = new Firecrawl({
   apiKey: process.env.FIRECRAWL_API_KEY || ''
@@ -94,16 +96,9 @@ export async function crawlWebsite(
   options: CrawlOptions
 ): Promise<CrawlResult> {
   try {
-    // Validate URL
-    const urlObj = new URL(url);
-
-    // Ensure it's HTTP/HTTPS
-    if (!['http:', 'https:'].includes(urlObj.protocol)) {
-      return {
-        success: false,
-        pages: [],
-        error: 'Only HTTP and HTTPS URLs are supported'
-      };
+    const dnsCheck = await resolveAndValidateUrl(url);
+    if (!dnsCheck.ok) {
+      return { success: false, pages: [], error: dnsCheck.reason || 'URL blocked' };
     }
 
     console.log(`[Firecrawl] Starting crawl of ${url} (max ${options.maxPages} pages)`);
@@ -201,9 +196,9 @@ export async function crawlWebsiteLive(
   const timeoutMs = options.timeoutMs ?? 180000;
 
   try {
-    const urlObj = new URL(url);
-    if (!['http:', 'https:'].includes(urlObj.protocol)) {
-      return { success: false, pages: [], error: 'Only HTTP and HTTPS URLs are supported' };
+    const dnsCheck = await resolveAndValidateUrl(url);
+    if (!dnsCheck.ok) {
+      return { success: false, pages: [], error: dnsCheck.reason || 'URL blocked' };
     }
 
     let started: { id: string };
@@ -267,9 +262,9 @@ export async function crawlWebsiteLive(
  */
 export async function scrapePage(url: string): Promise<CrawlResult> {
   try {
-    const urlObj = new URL(url);
-    if (!['http:', 'https:'].includes(urlObj.protocol)) {
-      return { success: false, pages: [], error: 'Only HTTP and HTTPS URLs are supported' };
+    const dnsCheck = await resolveAndValidateUrl(url);
+    if (!dnsCheck.ok) {
+      return { success: false, pages: [], error: dnsCheck.reason || 'URL blocked' };
     }
 
     console.log(`[Firecrawl] Scraping single page ${url}`);
@@ -294,39 +289,23 @@ export async function scrapePage(url: string): Promise<CrawlResult> {
 }
 
 /**
- * Validate a URL for crawling
+ * Validate a URL for crawling.
+ *
+ * Normalises the input (adds https:// if missing) then delegates SSRF checking to the
+ * shared `isUrlSafeForFetch` guard which covers private IPv4/IPv6, cloud metadata hosts,
+ * reserved TLDs, and non-HTTP schemes.
  */
 export function validateCrawlUrl(url: string): { valid: boolean; normalizedUrl?: string; error?: string } {
   let normalizedUrl = url.trim();
 
-  // Add https:// if missing
   if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
     normalizedUrl = 'https://' + normalizedUrl;
   }
 
-  try {
-    const urlObj = new URL(normalizedUrl);
-
-    // Only allow HTTP/HTTPS
-    if (!['http:', 'https:'].includes(urlObj.protocol)) {
-      return { valid: false, error: 'Only HTTP and HTTPS URLs are supported' };
-    }
-
-    // Block localhost and private IPs (basic SSRF protection)
-    const hostname = urlObj.hostname.toLowerCase();
-    if (
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname.startsWith('192.168.') ||
-      hostname.startsWith('10.') ||
-      hostname.startsWith('172.16.') ||
-      hostname.endsWith('.local')
-    ) {
-      return { valid: false, error: 'Private/local URLs are not allowed' };
-    }
-
-    return { valid: true, normalizedUrl };
-  } catch {
-    return { valid: false, error: 'Invalid URL format' };
+  const safety = isUrlSafeForFetch(normalizedUrl);
+  if (!safety.ok) {
+    return { valid: false, error: safety.reason || 'URL is not allowed' };
   }
+
+  return { valid: true, normalizedUrl };
 }
