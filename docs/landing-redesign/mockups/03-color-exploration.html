@@ -1,0 +1,151 @@
+<style>
+  .subtitle { max-width: 720px; }
+  .swatchgrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 22px;
+    margin-top: 8px;
+  }
+  @media (max-width: 780px){ .swatchgrid { grid-template-columns: 1fr; } }
+  .colorcard {
+    border-radius: 20px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 3px solid transparent;
+    background: #fff;
+    box-shadow: 0 10px 30px -18px rgba(16,24,40,.35);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .colorcard:hover { transform: translateY(-4px); box-shadow: 0 26px 50px -24px rgba(16,24,40,.45); }
+  .colorcard.selected { border-color: #111; }
+  .hero {
+    position: relative;
+    padding: 30px 26px 26px;
+    min-height: 232px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-family: "Inter","Helvetica Neue",Arial,sans-serif;
+  }
+  .hero .kicker {
+    font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    opacity: .8; margin-bottom: 12px;
+  }
+  .hero h4 {
+    font-size: 33px; line-height: .98; font-weight: 850; letter-spacing: -.035em; margin: 0;
+  }
+  .hero .bubble {
+    align-self: flex-start;
+    margin-top: 16px;
+    background: #fff; color: #14181f;
+    border-radius: 14px 14px 14px 4px;
+    padding: 9px 13px; font-size: 12.5px; font-weight: 600;
+    box-shadow: 0 8px 20px -10px rgba(0,0,0,.4);
+    max-width: 82%;
+  }
+  .hero .bubble .cite { display:block; margin-top:5px; font-size:11px; font-weight:600; opacity:.6; }
+  .hero .pill {
+    align-self: flex-start; margin-top: 14px;
+    display: inline-flex; align-items: center; gap: 9px;
+    background: #14181f; color: #fff; font-weight: 700; font-size: 12.5px;
+    padding: 7px 8px 7px 15px; border-radius: 99px;
+  }
+  .hero .pill .chip { width: 22px; height: 22px; border-radius: 99px; display:grid; place-items:center; font-size: 12px; }
+  .meta { padding: 15px 20px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .meta .name { font-weight: 800; font-size: 15px; letter-spacing:-.01em; }
+  .meta .mood { font-size: 12.5px; color: #6b7280; }
+  .meta .hex { font-family: ui-monospace, monospace; font-size: 11px; color:#9aa1ab; }
+  .dots { display:flex; gap:6px; margin-top:6px; }
+  .dots span { width:14px; height:14px; border-radius:4px; }
+</style>
+
+<h2>Pick your signature color</h2>
+<p class="subtitle">In the MindMarket editorial-bold lane, this color runs <strong>full-bleed</strong> across hero + chapter panels — it becomes the brand. Each mock shows the same hero in that color with your product's floating answer bubble. Green is deliberately excluded (it's MindMarket's) and violet is Tines'. Click the one that feels most <em>ownable</em> for an AI support + lead-capture product. My pick: <strong>Cobalt</strong>.</p>
+
+<div class="swatchgrid">
+
+  <div class="colorcard" data-choice="cobalt" onclick="toggleSelect(this)">
+    <div class="hero" style="background:#2C5FF6; color:#fff;">
+      <div>
+        <div class="kicker">AI support agent</div>
+        <h4>Resolve customer<br>questions instantly.</h4>
+      </div>
+      <div>
+        <div class="bubble">Your Pro plan includes 5 seats.<span class="cite">↳ from /pricing</span></div>
+        <span class="pill">Build your agent <span class="chip" style="background:#2C5FF6;">→</span></span>
+      </div>
+    </div>
+    <div class="meta">
+      <div>
+        <div class="name">Cobalt <span style="font-weight:600;color:#6b7280;">(Recommended)</span></div>
+        <div class="mood">Trust + clarity, tech-credible, unowned by refs</div>
+        <div class="dots"><span style="background:#2C5FF6"></span><span style="background:#1B3FB0"></span><span style="background:#DCE6FF"></span></div>
+      </div>
+      <div class="hex">#2C5FF6</div>
+    </div>
+  </div>
+
+  <div class="colorcard" data-choice="coral" onclick="toggleSelect(this)">
+    <div class="hero" style="background:#FF5A3C; color:#1a1005;">
+      <div>
+        <div class="kicker">AI support agent</div>
+        <h4>Resolve customer<br>questions instantly.</h4>
+      </div>
+      <div>
+        <div class="bubble">Your Pro plan includes 5 seats.<span class="cite">↳ from /pricing</span></div>
+        <span class="pill">Build your agent <span class="chip" style="background:#FF5A3C;color:#1a1005;">→</span></span>
+      </div>
+    </div>
+    <div class="meta">
+      <div>
+        <div class="name">Coral</div>
+        <div class="mood">Warm, human, energetic — leans "growth/SDR"</div>
+        <div class="dots"><span style="background:#FF5A3C"></span><span style="background:#C7381F"></span><span style="background:#FFE0D6"></span></div>
+      </div>
+      <div class="hex">#FF5A3C</div>
+    </div>
+  </div>
+
+  <div class="colorcard" data-choice="grape" onclick="toggleSelect(this)">
+    <div class="hero" style="background:#5B3DF5; color:#fff;">
+      <div>
+        <div class="kicker">AI support agent</div>
+        <h4>Resolve customer<br>questions instantly.</h4>
+      </div>
+      <div>
+        <div class="bubble">Your Pro plan includes 5 seats.<span class="cite">↳ from /pricing</span></div>
+        <span class="pill">Build your agent <span class="chip" style="background:#5B3DF5;">→</span></span>
+      </div>
+    </div>
+    <div class="meta">
+      <div>
+        <div class="name">Electric grape</div>
+        <div class="mood">Modern AI — but close to Tines' violet</div>
+        <div class="dots"><span style="background:#5B3DF5"></span><span style="background:#3A22B8"></span><span style="background:#E4DEFF"></span></div>
+      </div>
+      <div class="hex">#5B3DF5</div>
+    </div>
+  </div>
+
+  <div class="colorcard" data-choice="lime" onclick="toggleSelect(this)">
+    <div class="hero" style="background:#C6F24E; color:#151a08;">
+      <div>
+        <div class="kicker">AI support agent</div>
+        <h4>Resolve customer<br>questions instantly.</h4>
+      </div>
+      <div>
+        <div class="bubble">Your Pro plan includes 5 seats.<span class="cite">↳ from /pricing</span></div>
+        <span class="pill">Build your agent <span class="chip" style="background:#C6F24E;color:#151a08;">→</span></span>
+      </div>
+    </div>
+    <div class="meta">
+      <div>
+        <div class="name">Acid lime</div>
+        <div class="mood">Loud, high-energy — pairs with near-black ink</div>
+        <div class="dots"><span style="background:#C6F24E"></span><span style="background:#151a08"></span><span style="background:#EEF9C9"></span></div>
+      </div>
+      <div class="hex">#C6F24E</div>
+    </div>
+  </div>
+
+</div>
