@@ -4,7 +4,7 @@ AI chatbot that installs in one line and works in 15 minutes.
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14+ (App Router), shadcn/ui, Tailwind CSS
+- **Frontend**: Next.js 15 (App Router), shadcn/ui, Tailwind CSS
 - **Backend**: Node.js (Express)
 - **Database**: Supabase PostgreSQL with pgvector
 - **Auth**: Supabase Auth (magic links)
@@ -19,8 +19,7 @@ AI chatbot that installs in one line and works in 15 minutes.
 ├── apps/
 │   ├── web/           # Next.js dashboard
 │   ├── api/           # Express API server
-│   ├── widget/        # Embeddable chat widget
-│   └── mcp-server/    # MCP server for AI platforms
+│   └── widget/        # Embeddable chat widget
 ├── packages/
 │   ├── ui/            # Shared UI components (shadcn)
 │   ├── db/            # Database client & types
@@ -34,19 +33,37 @@ AI chatbot that installs in one line and works in 15 minutes.
 
 ### Prerequisites
 
-- Node.js 18+
-- pnpm 8+
-- Supabase CLI (optional, for local development)
+- Node.js >= 22.13.0
+- Corepack enabled
+- pnpm 10.29.2 (declared in `package.json`)
+- Supabase CLI (optional, only if running Supabase locally)
+
+This repo is a pnpm workspace. Use pnpm, not npm or yarn.
+
+If your local pnpm version does not match `10.29.2`, reset it with Corepack:
+
+```bash
+corepack enable
+corepack prepare pnpm@10.29.2 --activate
+pnpm --version
+```
 
 ### Installation
 
 ```bash
 # Install dependencies
-pnpm install
+pnpm install --frozen-lockfile
 
-# Copy environment variables
-cp .env.example .env
-# Edit .env with your Supabase and OpenAI credentials
+# Copy environment variables for the apps you run
+cp apps/web/.env.example apps/web/.env
+cp apps/api/.env.example apps/api/.env
+```
+
+Edit `apps/web/.env` and `apps/api/.env` with your Supabase and OpenAI credentials.
+For `ENCRYPTION_KEY`, generate a local value with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 ### Development
@@ -58,8 +75,14 @@ pnpm dev
 # Start individual apps
 pnpm --filter @chatbot/web dev     # Dashboard on :3000
 pnpm --filter @chatbot/api dev     # API on :3001
-pnpm --filter @chatbot/widget dev  # Widget builder
+pnpm --filter @chatbot/widget dev  # Widget bundle on :7001/dist/widget.js
 ```
+
+Local URLs:
+
+- Dashboard: http://localhost:3000
+- API health check: http://localhost:3001/health
+- Widget bundle: http://localhost:7001/dist/widget.js
 
 ### Build
 
@@ -86,7 +109,7 @@ pnpm type-check
 
 ### Web Dashboard (`apps/web`)
 
-Next.js 14 application for managing chatbots:
+Next.js 15 application for managing chatbots:
 - Upload knowledge sources (PDFs, text files)
 - Configure API endpoints
 - Get embed code
@@ -99,6 +122,7 @@ Express server providing:
 - Chat endpoint with RAG
 - File upload processing
 - API tool execution
+- MCP endpoint for AI platforms
 
 ### Widget (`apps/widget`)
 
@@ -107,14 +131,6 @@ Embeddable chat widget:
 - Shadow DOM for style isolation
 - Customizable appearance
 - Works on any website
-
-### MCP Server (`apps/mcp-server`)
-
-MCP server for AI platforms:
-- Create/manage chatbot projects
-- Upload knowledge
-- Configure API endpoints
-- Works with Claude, Cursor, etc.
 
 ## Packages
 
@@ -140,13 +156,18 @@ Shared utilities and constants:
 
 ## Environment Variables
 
-See `.env.example` for required environment variables:
+Use the app-specific env templates for required environment variables:
+
+- `apps/web/.env.example` - browser-safe dashboard variables
+- `apps/api/.env.example` - server-only API variables and secrets
+
+Minimum local values:
 
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
 - `SUPABASE_SERVICE_KEY` - Supabase service role key
 - `OPENAI_API_KEY` - OpenAI API key
-- `ENCRYPTION_KEY` - Key for encrypting stored credentials
+- `ENCRYPTION_KEY` - 64-character hex key for encrypting stored credentials
 
 ## Documentation
 
