@@ -58,8 +58,13 @@ function LoginForm() {
         email_domain: email.split("@")[1],
       });
 
-      // Redirect to check-email page
-      router.push(`/login/check-email?email=${encodeURIComponent(email)}`);
+      // Redirect to check-email page, preserving returnUrl for the
+      // verification-code path
+      router.push(
+        returnUrl
+          ? `/login/check-email?email=${encodeURIComponent(email)}&returnUrl=${encodeURIComponent(returnUrl)}`
+          : `/login/check-email?email=${encodeURIComponent(email)}`
+      );
     } catch (err) {
       setError("Something went wrong. Please try again.");
     } finally {

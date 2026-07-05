@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import posthog from "posthog-js";
 import { Suspense, useEffect, useState } from "react";
 
+import { resolvePostAuthRedirect } from "@/lib/auth/post-auth";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -13,7 +13,13 @@ import { createClient } from "@/lib/supabase/client";
  * 1. User requests magic link (signInWithOtp) - browser stores PKCE code verifier
  * 2. User clicks email link -> Supabase verifies -> redirects here with ?code=...
  * 3. This page exchanges the code for a session using the stored code verifier
- * 4. On success, creates default project for new users and redirects to home
+ * 4. On success, resolvePostAuthRedirect decides where the user lands
+ *
+ * Cross-browser case: if the link was opened in a browser that never initiated
+ * the sign-in (e.g. Gmail's in-app browser), there is no code verifier and the
+ * exchange cannot succeed here. Instead of a dead-end error, we stash the auth
+ * code with the API in exchange for a 6-digit display code the user types back
+ * in the original browser (which holds the verifier) on /login/check-email.
  *
  * Note: createBrowserClient has detectSessionInUrl: true by default, which means
  * it may automatically exchange the code. We handle both cases gracefully.
@@ -22,103 +28,45 @@ function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  const [displayCode, setDisplayCode] = useState<string | null>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
       const supabase = createClient();
       const next = searchParams?.get("next") ?? "/dashboard";
 
-      // Check if user is coming from invitation flow - don't create default project for invited users
-      // More precise detection - must be exactly /invite/{64-char-hex-token}
-      const isInvitationFlow = /^\/invite\/[a-f0-9]{64}$/i.test(next);
-
-      // Helper function to check if user has pending invitations via API
-      const checkPendingInvitations = async (email: string): Promise<boolean> => {
-        try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-          const response = await fetch(
-            `${apiUrl}/api/invitations/pending?email=${encodeURIComponent(email)}`
-          );
-
-          if (!response.ok) {
-            console.warn("Failed to check pending invitations:", response.status);
-            return false;
-          }
-
-          const data = await response.json();
-          return data.hasPendingInvitations === true;
-        } catch (err) {
-          console.warn("Error checking pending invitations:", err);
-          return false;
-        }
+      const finishSignIn = async (user: { id: string; email?: string }) => {
+        router.push(await resolvePostAuthRedirect(supabase, user, next));
       };
 
-      // Helper function to set up new user - redirects to onboarding if no projects
-      // Skip for invited users since they're joining someone else's project
-      // Returns the redirect path (may be onboarding for new users)
-      const setupNewUser = async (userId: string, userEmail?: string): Promise<string | null> => {
-        // Link this browser session to the authenticated user for all analytics,
-        // then record the sign-in. Brand-new users additionally emit `signed_up`.
-        posthog.identify(userId, userEmail ? { email: userEmail } : undefined);
-        posthog.capture("logged_in");
-
-        // Method 1: URL-based detection (existing, more precise now)
-        if (isInvitationFlow) {
-          console.log("Invitation flow detected via URL, skipping onboarding");
+      // Trade the unusable auth code for a display code the user can type in
+      // the browser where they started sign-in. Returns null on any failure so
+      // the caller can fall back to the normal error screen.
+      const stashForRelay = async (code: string): Promise<string | null> => {
+        try {
+          const apiUrl =
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+          const response = await fetch(`${apiUrl}/api/auth/link-code`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ authCode: code }),
+          });
+          if (!response.ok) return null;
+          const data = await response.json();
+          return typeof data.displayCode === "string" ? data.displayCode : null;
+        } catch {
           return null;
         }
-
-        // Method 2: Check database for pending invitations
-        // This catches the case where returnUrl was lost but user has a pending invite
-        if (userEmail) {
-          const hasPendingInvites = await checkPendingInvitations(userEmail);
-          if (hasPendingInvites) {
-            console.log("User has pending invitations, skipping onboarding");
-            return null;
-          }
-        }
-
-        // Use .limit(1) instead of .single() to avoid errors when multiple projects exist
-        const { data: existingProjects, error: fetchError } = await supabase
-          .from("projects")
-          .select("id, settings")
-          .eq("user_id", userId)
-          .is("deleted_at", null)
-          .limit(1);
-
-        if (fetchError) {
-          console.error("Failed to check for existing projects:", fetchError);
-          return null;
-        }
-
-        // New user with no projects -> redirect to onboarding
-        if (!existingProjects || existingProjects.length === 0) {
-          console.log("New user detected, redirecting to onboarding");
-          posthog.capture("signed_up");
-          return "/onboarding";
-        }
-
-        // Check if user has an incomplete onboarding
-        const firstProject = existingProjects[0];
-        const settings = firstProject.settings as Record<string, unknown> | null;
-        const onboarding = settings?.onboarding as Record<string, unknown> | null;
-
-        if (onboarding && !onboarding.completed_at && !onboarding.skipped) {
-          console.log("Incomplete onboarding detected, redirecting to onboarding");
-          return "/onboarding";
-        }
-
-        return null; // Normal user, proceed to dashboard
       };
 
       // First, check if we already have a session
       // (createBrowserClient with detectSessionInUrl: true may have already handled the code)
-      const { data: { session: existingSession } } = await supabase.auth.getSession();
+      const {
+        data: { session: existingSession },
+      } = await supabase.auth.getSession();
 
       if (existingSession?.user) {
-        console.log("Session already exists, skipping code exchange");
-        const redirectPath = await setupNewUser(existingSession.user.id, existingSession.user.email);
-        router.push(redirectPath || next);
+        await finishSignIn(existingSession.user);
         return;
       }
 
@@ -131,42 +79,53 @@ function AuthCallbackContent() {
       }
 
       try {
-        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        const { data, error: exchangeError } =
+          await supabase.auth.exchangeCodeForSession(code);
 
         if (exchangeError) {
           console.error("Code exchange error:", exchangeError);
 
           // Even if exchange fails, check if session was established through another mechanism
-          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          const {
+            data: { session: retrySession },
+          } = await supabase.auth.getSession();
 
           if (retrySession?.user) {
-            console.log("Session found after exchange error, proceeding...");
-            const redirectPath = await setupNewUser(retrySession.user.id, retrySession.user.email);
-            router.push(redirectPath || next);
+            await finishSignIn(retrySession.user);
             return;
           }
 
-          // No session at all - show error
-          setError(exchangeError.message || "Failed to sign in. Please try again.");
+          // Missing or mismatched verifier = this browser didn't start the
+          // sign-in. Offer the cross-browser verification code instead.
+          if (exchangeError.message.toLowerCase().includes("verifier")) {
+            const relayCode = await stashForRelay(code);
+            if (relayCode) {
+              setDisplayCode(relayCode);
+              return;
+            }
+          }
+
+          setError(
+            exchangeError.message || "Failed to sign in. Please try again."
+          );
           return;
         }
 
-        let redirectPath: string | null = null;
         if (data.user) {
-          redirectPath = await setupNewUser(data.user.id, data.user.email);
+          await finishSignIn(data.user);
+          return;
         }
-
-        router.push(redirectPath || next);
+        router.push(next);
       } catch (err) {
         console.error("Unexpected error during auth callback:", err);
 
         // Last resort: check for session one more time
-        const { data: { session: lastCheckSession } } = await supabase.auth.getSession();
+        const {
+          data: { session: lastCheckSession },
+        } = await supabase.auth.getSession();
 
         if (lastCheckSession?.user) {
-          console.log("Session found in catch block, proceeding...");
-          const redirectPath = await setupNewUser(lastCheckSession.user.id, lastCheckSession.user.email);
-          router.push(redirectPath || next);
+          await finishSignIn(lastCheckSession.user);
           return;
         }
 
@@ -176,6 +135,27 @@ function AuthCallbackContent() {
 
     handleCallback();
   }, [searchParams, router]);
+
+  if (displayCode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-full max-w-sm p-8 space-y-6 text-center">
+          <h1 className="text-xl font-semibold">
+            Use verification code to continue
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Enter this code where you first tried to sign in.
+          </p>
+          <div className="text-4xl font-semibold tracking-[0.3em] tabular-nums py-4">
+            {displayCode}
+          </div>
+          <p className="text-muted-foreground text-xs">
+            This code expires in 5 minutes and can only be used once.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -234,7 +214,9 @@ function AuthCallbackContent() {
           </svg>
         </div>
         <h1 className="text-xl font-semibold">Signing you in...</h1>
-        <p className="text-muted-foreground text-sm">Please wait while we complete your sign in.</p>
+        <p className="text-muted-foreground text-sm">
+          Please wait while we complete your sign in.
+        </p>
       </div>
     </div>
   );

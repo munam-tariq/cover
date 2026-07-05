@@ -1,17 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
 
+import { resolvePostAuthRedirect } from "@/lib/auth/post-auth";
 import { createClient } from "@/lib/supabase/client";
 
 function CheckEmailContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams?.get("email") || "";
+  const returnUrl = searchParams?.get("returnUrl");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  const [showCodeEntry, setShowCodeEntry] = useState(false);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -30,10 +37,15 @@ function CheckEmailContent() {
     setResendSuccess(false);
 
     try {
+      // Preserve returnUrl the same way the login page does
+      const callbackUrl = returnUrl
+        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnUrl)}`
+        : `${window.location.origin}/auth/callback`;
+
       await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: callbackUrl,
         },
       });
 
@@ -46,6 +58,51 @@ function CheckEmailContent() {
       // Silently fail - user can try again
     } finally {
       setIsResending(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isVerifying || verifyCode.trim().length !== 6) return;
+
+    setIsVerifying(true);
+    setVerifyError(null);
+
+    try {
+      // Redeem the display code shown by the other browser for the PKCE auth
+      // code, then exchange it here - where the code verifier lives.
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const response = await fetch(`${apiUrl}/api/auth/link-code/claim`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayCode: verifyCode.trim() }),
+      });
+
+      if (!response.ok) {
+        setVerifyError(
+          "Invalid or expired code. Check the code, or resend the email to start over."
+        );
+        return;
+      }
+
+      const { authCode } = await response.json();
+      const { data, error } = await supabase.auth.exchangeCodeForSession(
+        authCode
+      );
+
+      if (error || !data.user) {
+        setVerifyError(
+          "Could not complete sign in. Please resend the email and try again."
+        );
+        return;
+      }
+
+      const next = returnUrl || "/dashboard";
+      router.push(await resolvePostAuthRedirect(supabase, data.user, next));
+    } catch (err) {
+      setVerifyError("Something went wrong. Please try again.");
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -101,6 +158,50 @@ function CheckEmailContent() {
             Email sent successfully!
           </div>
         )}
+
+        {/* Verification code entry - for links opened in a different browser */}
+        <div className="border-t pt-6">
+          {!showCodeEntry ? (
+            <button
+              onClick={() => setShowCodeEntry(true)}
+              className="text-sm text-primary hover:underline"
+            >
+              Enter verification code
+            </button>
+          ) : (
+            <form onSubmit={handleVerifyCode} className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Opened the link on another device or browser? Enter the code it
+                shows you:
+              </p>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="\d{6}"
+                maxLength={6}
+                value={verifyCode}
+                onChange={(e) =>
+                  setVerifyCode(e.target.value.replace(/\D/g, ""))
+                }
+                placeholder="6-digit code"
+                disabled={isVerifying}
+                className="block w-full px-3 py-2.5 text-center text-lg tracking-[0.3em] tabular-nums border border-input rounded-md shadow-sm placeholder-muted-foreground placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-background"
+                aria-label="Verification code"
+              />
+              {verifyError && (
+                <p className="text-sm text-destructive">{verifyError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={isVerifying || verifyCode.length !== 6}
+                className="w-full py-2.5 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+              >
+                {isVerifying ? "Verifying..." : "Verify code"}
+              </button>
+            </form>
+          )}
+        </div>
 
         {/* Resend Section */}
         <div className="border-t pt-6">

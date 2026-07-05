@@ -13,6 +13,7 @@ import { accountRouter } from "./routes/account";
 import { agentRouter } from "./routes/agent";
 import { analyticsRouter } from "./routes/analytics";
 import { authRouter } from "./routes/auth";
+import { authLinkCodeRouter } from "./routes/auth-link-code";
 import { chatRouter } from "./routes/chat";
 import { conversationsRouter } from "./routes/conversations";
 import { cronRouter } from "./routes/cron";
@@ -104,6 +105,7 @@ app.get("/health", (_req, res) => {
 // These use restricted CORS and may need PUT/DELETE methods
 app.use("/api/account", dashboardCors, accountRouter);
 app.use("/api/analytics", dashboardCors, analyticsRouter);
+app.use("/api/auth/link-code", dashboardCors, authLinkCodeRouter);
 app.use("/api/auth", dashboardCors, authRouter);
 app.use("/api/agent", dashboardCors, agentRouter); // Agent routes: /api/agent/*
 app.use("/api/conversations", dashboardCors, conversationsRouter); // Dashboard conversation routes
