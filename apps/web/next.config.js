@@ -1,5 +1,7 @@
 const { withSentryConfig } = require("@sentry/nextjs");
 
+const isProduction = process.env.NODE_ENV === "production";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -19,24 +21,32 @@ const nextConfig = {
     ];
   },
   async headers() {
+    const staticCacheControl = isProduction
+      ? "public, max-age=31536000, immutable"
+      : "no-store";
+    const pageCacheControl = isProduction
+      ? "public, s-maxage=3600, must-revalidate"
+      : "no-store";
+
     return [
       {
-        // Versioned static assets — cache forever (content-hashed filenames)
+        // Versioned static assets are cacheable in production. In dev, route chunk
+        // filenames are stable, so immutable caching can keep stale client code alive.
         source: "/_next/static/:path*",
         headers: [
           {
             key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
+            value: staticCacheControl,
           },
         ],
       },
       {
-        // All HTML pages — 1-hour shared cache, must revalidate after
+        // All HTML pages — 1-hour shared cache in production, no-store in dev.
         source: "/((?!_next/static).*)",
         headers: [
           {
             key: "Cache-Control",
-            value: "public, s-maxage=3600, must-revalidate",
+            value: pageCacheControl,
           },
         ],
       },

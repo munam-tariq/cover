@@ -30,13 +30,13 @@ import {
   ConversationStatus,
 } from "../utils/handoff";
 import { generateId } from "../utils/helpers";
-import { widgetHeaders } from "../utils/request";
 import {
   WidgetRealtimeManager,
   getRealtimeManager,
   RealtimeMessage,
   RealtimeStatusChange,
 } from "../utils/realtime";
+import { widgetHeaders } from "../utils/request";
 import {
   getVisitorId,
   getSessionId,
@@ -72,6 +72,8 @@ import { OfflineForm } from "./offline-form";
 import { TypingIndicator } from "./typing-indicator";
 import { VoiceCallOverlay, type VoiceCallState } from "./voice-call-overlay";
 import { VoicePermissionPrompt } from "./voice-permission-prompt";
+
+const FRONTFACE_BACKLINK_URL = "https://frontface.app";
 
 export interface ChatWindowOptions {
   projectId: string;
@@ -579,7 +581,7 @@ export class ChatWindow {
       : "";
     const branding = this.options.hideBranding
       ? ""
-      : `<a href="https://frontface.app" target="_blank" rel="noopener noreferrer">${this.escapeHtml(this.options.strings.poweredBy)}</a>`;
+      : `<a href="${FRONTFACE_BACKLINK_URL}" target="_blank" rel="noopener">${this.escapeHtml(this.options.strings.poweredBy)}</a>`;
 
     if (!customFooter && !branding) return "";
 

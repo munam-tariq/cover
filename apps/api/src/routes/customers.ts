@@ -50,6 +50,7 @@ function serializeCustomer(c: {
   visitor_id: string;
   email: string | null;
   name: string | null;
+  phone: string | null;
   first_seen_at: string;
   last_seen_at: string;
   total_conversations?: number | null;
@@ -59,6 +60,7 @@ function serializeCustomer(c: {
     visitorId: c.visitor_id,
     email: c.email,
     name: c.name,
+    phone: c.phone,
     firstSeenAt: c.first_seen_at,
     lastSeenAt: c.last_seen_at,
     conversationCount: c.total_conversations ?? 0,

@@ -108,3 +108,34 @@ test("dashboard widget preview iframe does not combine scripts with same-origin 
   assert.match(iframeSource, /sandbox="allow-scripts"/);
   assert.doesNotMatch(iframeSource, /allow-same-origin/);
 });
+
+test("dashboard widget preview passes a scoped client key without adding it to public embed code", () => {
+  const source = readFileSync("apps/web/app/(dashboard)/embed/page.tsx", "utf8");
+
+  assert.match(source, /previewClientKey/);
+  assert.match(source, /\/api\/projects\/\$\{projectId\}\/widget-preview-key/);
+
+  const publicEmbedStart = source.indexOf("const embedCode = currentProject");
+  const publicEmbedEnd = source.indexOf("const handleCopy", publicEmbedStart);
+  assert.notEqual(publicEmbedStart, -1, "expected public embed code block");
+  assert.notEqual(publicEmbedEnd, -1, "expected public embed code block boundary");
+  const publicEmbedSource = source.slice(publicEmbedStart, publicEmbedEnd);
+  assert.doesNotMatch(publicEmbedSource, /clientKey:/);
+
+  const previewStart = source.indexOf("const previewHtml = currentProject");
+  const previewEnd = source.indexOf("</html>`", previewStart);
+  assert.notEqual(previewStart, -1, "expected preview html block");
+  assert.notEqual(previewEnd, -1, "expected preview html block boundary");
+  const previewSource = source.slice(previewStart, previewEnd);
+  assert.match(previewSource, /clientKey:\s*previewClientKey/);
+
+  assert.match(source, /previewKeyWarning/);
+  assert.match(source, /A project owner must create the widget preview key\./);
+
+  const iframeStart = source.indexOf("<iframe");
+  const iframeEnd = source.indexOf("/>", iframeStart);
+  assert.notEqual(iframeStart, -1, "expected preview iframe");
+  assert.notEqual(iframeEnd, -1, "expected preview iframe boundary");
+  const iframeSource = source.slice(iframeStart, iframeEnd);
+  assert.match(iframeSource, /key=\{`\$\{previewKey\}-\$\{previewClientKey \?\? "no-key"\}`\}/);
+});

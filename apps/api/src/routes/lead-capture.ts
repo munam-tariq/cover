@@ -21,7 +21,6 @@ import { chatRateLimiter } from "../middleware/rate-limit";
 import type { ChatSource } from "../services/chat-engine";
 import { getOrCreateConversation } from "../services/conversation";
 import { isValidEmail } from "../services/lead-capture";
-import { issueWidgetSessionToken } from "../services/widget-session-token";
 import {
   submitLeadForm,
   submitInlineEmail,
@@ -30,6 +29,7 @@ import {
   deferLeadCapture,
   updateVisitCount,
 } from "../services/lead-capture-v2";
+import { issueWidgetSessionToken } from "../services/widget-session-token";
 
 import { buildGreeting } from "./embed";
 
@@ -555,10 +555,30 @@ leadsRouter.get(
         }
       }
 
+      const phoneByCustomer: Record<string, string> = {};
+      const allCustomerIds = (leads || [])
+        .map((l) => l.customer_id)
+        .filter(Boolean);
+
+      if (allCustomerIds.length > 0) {
+        const { data: customers } = await supabaseAdmin
+          .from("customers")
+          .select("id, phone")
+          .in("id", allCustomerIds)
+          .not("phone", "is", null);
+
+        if (customers) {
+          for (const c of customers) {
+            if (c.phone) phoneByCustomer[c.id] = c.phone;
+          }
+        }
+      }
+
       res.json({
         leads: (leads || []).map((lead) => ({
           id: lead.id,
           email: lead.email,
+          phone: lead.customer_id ? (phoneByCustomer[lead.customer_id] ?? null) : null,
           formData: lead.form_data,
           qualifyingAnswers: lead.qualifying_answers,
           lateQualifyingAnswers: lead.late_qualifying_answers || [],

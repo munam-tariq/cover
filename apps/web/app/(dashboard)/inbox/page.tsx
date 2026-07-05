@@ -3,24 +3,32 @@
 import { Button, Card, CardContent, Skeleton, Badge } from "@chatbot/ui";
 import {
   AlertCircle,
+  Code,
+  Globe,
   Inbox,
   Clock,
+  MessageCircle,
   MessageSquare,
-  User,
+  Phone,
+  Play,
   RefreshCw,
   CheckCircle2,
+  Smartphone,
+  Terminal,
+  User,
   Wifi,
   WifiOff,
-  Phone,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { type ComponentType, type CSSProperties, useState, useEffect, useCallback, useMemo } from "react";
 
 import { useAgent } from "@/contexts/agent-context";
 import { useInboxPolling } from "@/contexts/inbox-polling-context";
 import { useProject } from "@/contexts/project-context";
 import { useInboxRealtime, QueueUpdate, ConversationUpdate } from "@/hooks/use-inbox-realtime";
 import { apiClient } from "@/lib/api-client";
+import { getChannelMeta } from "@/lib/channels";
+import { getConversationDisplayName } from "@/lib/conversation-identity";
 
 
 // ============================================================================
@@ -32,6 +40,7 @@ interface Conversation {
   visitorId: string;
   customerEmail: string | null;
   customerName: string | null;
+  customerPhone: string | null;
   status: "ai_active" | "waiting" | "agent_active" | "resolved" | "closed";
   assignedAgent: { id: string; name: string } | null;
   messageCount: number;
@@ -40,6 +49,7 @@ interface Conversation {
   lastMessageAt: string | null;
   queueEnteredAt: string | null;
   resolvedAt: string | null;
+  source?: string;
   isVoiceCall?: boolean;
   voiceDurationSeconds?: number;
   lastMessage?: {
@@ -81,6 +91,27 @@ function isToday(dateStr: string | null | undefined): boolean {
 }
 
 // ============================================================================
+// Channel Icon Helper
+// ============================================================================
+
+const CHANNEL_ICONS: Record<string, ComponentType<{ className?: string; style?: CSSProperties }>> = {
+  MessageCircle,
+  MessageSquare,
+  Globe,
+  Phone,
+  Smartphone,
+  Play,
+  Code,
+  Terminal,
+};
+
+function ChannelIcon({ source, className }: { source: string; className?: string }) {
+  const meta = getChannelMeta(source);
+  const IconComponent = CHANNEL_ICONS[meta.icon] || MessageSquare;
+  return <IconComponent className={className} style={{ color: meta.color }} />;
+}
+
+// ============================================================================
 // Conversation List Item
 // ============================================================================
 
@@ -94,7 +125,7 @@ function ConversationListItem({ conversation, showAgent }: { conversation: Conve
   };
 
   const config = statusConfig[conversation.status];
-  const displayName = conversation.customerName || conversation.customerEmail || `Visitor ${conversation.visitorId.slice(0, 8)}`;
+  const displayName = getConversationDisplayName(conversation);
   const agentName = conversation.assignedAgent?.name;
 
   return (
@@ -112,6 +143,9 @@ function ConversationListItem({ conversation, showAgent }: { conversation: Conve
               <span className="font-medium truncate">{displayName}</span>
               {conversation.isVoiceCall && (
                 <Phone className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+              )}
+              {!conversation.isVoiceCall && conversation.source && conversation.source !== "widget" && (
+                <ChannelIcon source={conversation.source} className="h-3.5 w-3.5 shrink-0" />
               )}
               <span className={`w-2 h-2 rounded-full ${config.color}`} />
             </div>
@@ -195,6 +229,7 @@ export default function InboxPage() {
   const [error, setError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
   const [filter, setFilter] = useState<"active" | "waiting" | "mine" | "all">("mine");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [isOwner, setIsOwner] = useState(false);
   const [lastPolled, setLastPolled] = useState<Date | null>(null);
 
@@ -356,6 +391,7 @@ export default function InboxPage() {
           return true;
       }
     })
+    .filter((conv) => sourceFilter === "all" || conv.source === sourceFilter)
     .sort((a, b) => {
       const dateA = new Date(a.lastMessageAt || a.updatedAt || a.createdAt).getTime() || 0;
       const dateB = new Date(b.lastMessageAt || b.updatedAt || b.createdAt).getTime() || 0;
@@ -557,6 +593,19 @@ export default function InboxPage() {
                 {tab.label}
               </button>
             ))}
+            {/* Source filter */}
+            <select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
+              className="ml-auto px-2 py-1.5 text-sm border rounded-md bg-background"
+            >
+              <option value="all">All channels</option>
+              <option value="widget">Widget</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="public">Public Page</option>
+              <option value="voice">Voice</option>
+              <option value="mobile">Mobile</option>
+            </select>
           </div>
 
           {/* Conversation List */}

@@ -33,6 +33,7 @@ import {
 import { pulseRouter, pulseWidgetRouter } from "./routes/pulse";
 import { teamRouter } from "./routes/team";
 import { voiceRouter } from "./routes/voice";
+import { whatsappWebhookRouter } from "./routes/channels/whatsapp";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -80,7 +81,14 @@ const widgetCors = cors({
 });
 
 // Body parsing
-app.use(express.json({ limit: "10mb" }));
+app.use(
+  express.json({
+    limit: "10mb",
+    verify: (req, _res, buf) => {
+      (req as any).rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 
 // Resolve the publishable client key (X-FrontFace-Key) onto req.clientKey for native SDKs.
@@ -149,6 +157,9 @@ app.use("/mcp", mcpCors, mcpRouter);
 // Cron endpoints (no CORS - server-to-server only)
 // Protected by CRON_SECRET bearer token
 app.use("/api/cron", cronRouter);
+
+// WhatsApp webhook (called by Meta servers, no auth middleware)
+app.use("/api/channels/whatsapp", widgetCors, whatsappWebhookRouter);
 
 // Sentry error handler — captures errors that propagate to Express.
 // Must come after all routes and before our own error handler.

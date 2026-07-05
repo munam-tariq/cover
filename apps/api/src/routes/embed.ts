@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { logger } from "../lib/logger";
 import { supabaseAdmin } from "../lib/supabase";
+import { isSafeChannelUrl, isSafeIconUrl, VALID_CHANNEL_TYPES } from "../lib/url-validation";
 import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
 import { canIssueRealtimeTokens } from "../services/realtime-jwt";
 
@@ -150,6 +151,18 @@ export function buildWidgetAppearanceConfig(settings: Record<string, unknown>) {
   const footer =
     wa.footer && typeof wa.footer === "object" ? wa.footer : null;
 
+  const channels = Array.isArray(wa.channels)
+    ? wa.channels.filter(
+        (ch: unknown): ch is { type: string; url: string; label?: string; iconUrl?: string } =>
+          typeof ch === "object" &&
+          ch !== null &&
+          typeof (ch as Record<string, unknown>).type === "string" &&
+          VALID_CHANNEL_TYPES.includes((ch as Record<string, unknown>).type as string) &&
+          isSafeChannelUrl((ch as Record<string, unknown>).url) &&
+          ((ch as Record<string, unknown>).iconUrl === undefined || isSafeIconUrl((ch as Record<string, unknown>).iconUrl))
+      )
+    : [];
+
   return {
     theme,
     position,
@@ -165,6 +178,7 @@ export function buildWidgetAppearanceConfig(settings: Record<string, unknown>) {
     notice,
     footer,
     localeDefault: str(wa.locale_default, "en") as string,
+    ...(channels.length > 0 ? { channels } : {}),
   };
 }
 

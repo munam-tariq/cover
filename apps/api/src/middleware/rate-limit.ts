@@ -155,7 +155,7 @@ export function setStore(s: RateLimitStore): RateLimitStore {
 // Config
 // ---------------------------------------------------------------------------
 
-interface RateLimitConfig {
+export interface RateLimitConfig {
   windowMs: number;
   maxRequests: number;
   keyPrefix: string;
@@ -187,7 +187,13 @@ const IP_CEILING_MULTIPLIER = parseInt(process.env.RATE_LIMIT_IP_MULTIPLIER || "
 // Core check helpers
 // ---------------------------------------------------------------------------
 
-async function checkSingleLimit(
+/**
+ * Reusable single-limit check against the shared pluggable store (memory or
+ * Redis, per REDIS_URL). Callers outside the chat/API-key rate limiters
+ * (e.g. the WhatsApp per-sender limiter) should use this instead of
+ * rolling their own store, so limits stay distributed-safe together.
+ */
+export async function checkSingleLimit(
   key: string,
   config: RateLimitConfig
 ): Promise<{

@@ -12,10 +12,6 @@ import { supabaseAdmin } from "../lib/supabase";
 import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
 import { chatRateLimiter, getRateLimitStatus } from "../middleware/rate-limit";
 import {
-  authorizeWidgetMessageContinuation,
-  issueWidgetSessionToken,
-} from "../services/widget-session-token";
-import {
   processChat,
   validateChatInput,
   ChatError,
@@ -23,6 +19,10 @@ import {
 } from "../services/chat-engine";
 import { getOrCreateConversation } from "../services/conversation";
 import { getGeoFromIP } from "../services/ip-geo";
+import {
+  authorizeWidgetMessageContinuation,
+  issueWidgetSessionToken,
+} from "../services/widget-session-token";
 
 export const chatRouter = Router();
 
@@ -54,6 +54,14 @@ chatRouter.post(
     try {
       // Validate input
       const input = validateChatInput(req.body);
+      if (input.source === "whatsapp") {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_SOURCE",
+            message: "WhatsApp messages must enter through the WhatsApp webhook.",
+          },
+        });
+      }
 
       // If the supplied id already exists, require a token binding this caller
       // to that conversation. A caller-generated id that does not exist yet is
@@ -456,6 +464,15 @@ chatRouter.post(
       "public",
       "mobile",
     ];
+    if (source === "whatsapp") {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_SOURCE",
+          message: "WhatsApp conversations are created by the WhatsApp webhook.",
+        },
+      });
+    }
+
     const conversationSource: ChatSource = validSources.includes(
       source as ChatSource
     )

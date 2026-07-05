@@ -3389,3 +3389,73 @@
     animation: none;
   }
 }
+
+/* ---- Channel Launcher (CHAN-005) ---- */
+.channel-launcher {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  position: absolute;
+  bottom: 72px;
+  right: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.chatbot-widget.bottom-left .channel-launcher {
+  right: auto;
+  left: 0;
+}
+.channel-launcher--expanded {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.channel-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 22px;
+  background: var(--channel-color, #374151);
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.channel-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.channel-btn:focus-visible {
+  outline: 2px solid var(--widget-primary, #0a0a0a);
+  outline-offset: 2px;
+}
+
+.channel-btn__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+img.channel-btn__icon {
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.channel-btn__label {
+  font-weight: 500;
+}
+
+.channel-btn:not(:has(.channel-btn__label)) {
+  padding: 10px;
+  border-radius: 50%;
+  justify-content: center;
+}

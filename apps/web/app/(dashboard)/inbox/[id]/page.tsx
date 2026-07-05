@@ -4,25 +4,35 @@ import { Button, Card, CardContent, Skeleton, Badge } from "@chatbot/ui";
 import {
   AlertCircle,
   ArrowLeft,
+  Code,
+  Globe,
   Send,
   User,
   Bot,
   Mail,
+  MessageCircle,
+  MessageSquare,
   MoreHorizontal,
   CheckCircle,
   ArrowRightLeft,
   Loader2,
+  Phone,
+  Play,
+  Smartphone,
+  Terminal,
   Wifi,
   WifiOff,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { type ComponentType, type CSSProperties, useState, useEffect, useCallback, useRef, useMemo } from "react";
 
 import { useAgent } from "@/contexts/agent-context";
 import { useConversationRealtime } from "@/hooks/use-inbox-realtime";
 import { useMessagePolling, Message as PollingMessage } from "@/hooks/use-message-polling";
 import { apiClient } from "@/lib/api-client";
+import { getChannelMeta } from "@/lib/channels";
+import { getConversationDisplayName } from "@/lib/conversation-identity";
 
 
 // ============================================================================
@@ -43,6 +53,7 @@ interface Conversation {
   visitorId: string;
   customerEmail: string | null;
   customerName: string | null;
+  customerPhone: string | null;
   status: "ai_active" | "waiting" | "agent_active" | "resolved" | "closed";
   assignedAgentId: string | null;
   messageCount: number;
@@ -50,12 +61,15 @@ interface Conversation {
   updatedAt: string;
   handoffReason?: string;
   handoffTriggeredAt?: string;
+  source?: string;
+  metadata?: Record<string, unknown>;
 }
 
 interface Customer {
   id: string;
   email: string | null;
   name: string | null;
+  phone: string | null;
   conversationCount: number;
   totalMessageCount: number;
   firstSeenAt: string;
@@ -182,12 +196,14 @@ function CustomerContextPanel({
   leadData: LeadData | null;
   configuredQuestions: ConfiguredQuestions;
 }) {
-  const displayName =
-    conversation.customerName ||
-    conversation.customerEmail ||
-    customer?.name ||
-    customer?.email ||
-    `Visitor ${conversation.visitorId.slice(0, 8)}`;
+  const displayName = getConversationDisplayName({
+    visitorId: conversation.visitorId,
+    source: conversation.source,
+    customerName: conversation.customerName || customer?.name,
+    customerEmail: conversation.customerEmail || customer?.email,
+    customerPhone: conversation.customerPhone || customer?.phone,
+  });
+  const phone = conversation.customerPhone || customer?.phone;
 
   return (
     <Card>
@@ -205,6 +221,12 @@ function CustomerContextPanel({
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Mail className="h-3 w-3" />
                   {conversation.customerEmail || customer?.email}
+                </p>
+              )}
+              {phone && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  {phone}
                 </p>
               )}
             </div>
@@ -379,6 +401,37 @@ function CustomerContextPanel({
       </CardContent>
     </Card>
   );
+}
+
+// ============================================================================
+// Channel Icon Helper
+// ============================================================================
+
+const CHANNEL_ICONS: Record<string, ComponentType<{ className?: string; style?: CSSProperties }>> = {
+  MessageCircle,
+  MessageSquare,
+  Globe,
+  Phone,
+  Smartphone,
+  Play,
+  Code,
+  Terminal,
+};
+
+function ChannelIcon({ source, className }: { source: string; className?: string }) {
+  const meta = getChannelMeta(source);
+  const IconComponent = CHANNEL_ICONS[meta.icon] || MessageSquare;
+  return <IconComponent className={className} style={{ color: meta.color }} />;
+}
+
+const WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function isWhatsAppWindowOpen(metadata?: Record<string, unknown>): boolean {
+  const raw = metadata?.last_inbound_at;
+  if (typeof raw !== "string") return false;
+  const lastInbound = new Date(raw);
+  if (Number.isNaN(lastInbound.getTime())) return false;
+  return Date.now() - lastInbound.getTime() < WINDOW_MS;
 }
 
 // ============================================================================
@@ -684,11 +737,17 @@ export default function ConversationPage() {
       // Don't call fetchConversation() - rely on realtime for other updates
     } catch (err) {
       console.error("Failed to send message:", err);
-      // Remove the optimistic message on error
       setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
-      // Restore the message in input so user can retry
       setNewMessage(messageContent);
-      setError("Failed to send message");
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const isWindowClosed =
+        errMsg.includes("24-hour service window") ||
+        errMsg.includes("24h window");
+      setError(
+        isWindowClosed
+          ? "24h window closed — cannot send free-form messages."
+          : "Failed to send message"
+      );
     } finally {
       setSending(false);
     }
@@ -782,11 +841,10 @@ export default function ConversationPage() {
     );
   }
 
-  const displayName =
-    conversation.customerName ||
-    conversation.customerEmail ||
-    `Visitor ${conversation.visitorId.slice(0, 8)}`;
-  const canSendMessage = conversation.status === "agent_active";
+  const displayName = getConversationDisplayName(conversation);
+  const isWhatsApp = conversation.source === "whatsapp";
+  const windowOpen = isWhatsApp ? isWhatsAppWindowOpen(conversation.metadata) : true;
+  const canSendMessage = conversation.status === "agent_active" && windowOpen;
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
@@ -815,7 +873,18 @@ export default function ConversationPage() {
               />
             </div>
             <div>
-              <h1 className="font-semibold">{displayName}</h1>
+              <h1 className="font-semibold flex items-center gap-2">
+                {displayName}
+                {conversation.source && conversation.source !== "widget" && (
+                  <span
+                    className="inline-flex items-center gap-1 text-xs font-normal px-1.5 py-0.5 rounded-full bg-muted"
+                    title={getChannelMeta(conversation.source).label}
+                  >
+                    <ChannelIcon source={conversation.source} className="h-3 w-3" />
+                    {getChannelMeta(conversation.source).label}
+                  </span>
+                )}
+              </h1>
               <div className="flex items-center gap-2">
                 <Badge
                   variant={
@@ -976,12 +1045,13 @@ export default function ConversationPage() {
           ) : (
             <div className="p-4 border-t bg-muted/50 text-center">
               <p className="text-sm text-muted-foreground">
-                This conversation is{" "}
-                {conversation.status === "waiting"
-                  ? "waiting for an agent"
+                {isWhatsApp && conversation.status === "agent_active" && !windowOpen
+                  ? "24h window closed — re-engagement templates coming soon."
+                  : conversation.status === "waiting"
+                  ? "This conversation is waiting for an agent"
                   : conversation.status === "resolved"
-                  ? "resolved"
-                  : "closed"}
+                  ? "This conversation is resolved"
+                  : "This conversation is closed"}
               </p>
             </div>
           )}

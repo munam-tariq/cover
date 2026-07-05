@@ -153,7 +153,7 @@ export async function getOrCreateConversation(
 /**
  * Get or create a customer record and update device/location context
  */
-async function getOrCreateCustomer(
+export async function getOrCreateCustomer(
   projectId: string,
   visitorId: string,
   context?: MessageContext

@@ -15,6 +15,9 @@ import { z } from "zod";
 
 import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
+import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
+import { requireWidgetSession } from "../middleware/require-widget-session";
+import { dispatchToChannel } from "../services/channels/outbound-dispatcher";
 import { getCustomerPresenceStatus } from "../services/presence";
 import {
   broadcastNewMessage,
@@ -22,15 +25,13 @@ import {
   broadcastPresenceUpdate,
 } from "../services/realtime";
 import {
-  issueWidgetSessionToken,
-  verifyWidgetSessionToken,
-} from "../services/widget-session-token";
-import {
   isRealtimePrivateEnabled,
   buildRealtimeTokenResponse,
 } from "../services/realtime-jwt";
-import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
-import { requireWidgetSession } from "../middleware/require-widget-session";
+import {
+  issueWidgetSessionToken,
+  verifyWidgetSessionToken,
+} from "../services/widget-session-token";
 
 const router = Router();
 
@@ -225,7 +226,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
     // Build query
     let query = supabaseAdmin
       .from("conversations")
-      .select("*, customers(id, email, name, is_flagged)", { count: "exact" })
+      .select("*, customers(id, email, name, phone, is_flagged)", { count: "exact" })
       .eq("project_id", projectId)
       .order("last_message_at", { ascending: false });
 
@@ -274,11 +275,15 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
     const conversationsResponse = (conversations || []).map((conv) => ({
       id: conv.id,
       visitorId: conv.visitor_id,
+      customerEmail: conv.customers?.email ?? conv.customer_email ?? null,
+      customerName: conv.customers?.name ?? conv.customer_name ?? null,
+      customerPhone: conv.customers?.phone ?? null,
       customer: conv.customers
         ? {
             id: conv.customers.id,
             email: conv.customers.email,
             name: conv.customers.name,
+            phone: conv.customers.phone,
             isFlagged: conv.customers.is_flagged,
           }
         : conv.customer_email || conv.customer_name
@@ -403,11 +408,15 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
         id: conversation.id,
         projectId: conversation.project_id,
         visitorId: conversation.visitor_id,
+        customerEmail: conversation.customers?.email ?? null,
+        customerName: conversation.customers?.name ?? null,
+        customerPhone: conversation.customers?.phone ?? null,
         customer: conversation.customers
           ? {
               id: conversation.customers.id,
               email: conversation.customers.email,
               name: conversation.customers.name,
+              phone: conversation.customers.phone,
               isFlagged: conversation.customers.is_flagged,
               firstSeenAt: conversation.customers.first_seen_at,
               totalConversations: conversation.customers.total_conversations,
@@ -747,7 +756,7 @@ router.post(
       // Get conversation
       const { data: conversation, error: convError } = await supabaseAdmin
         .from("conversations")
-        .select("id, project_id, status, assigned_agent_id, first_response_at")
+        .select("id, project_id, status, assigned_agent_id, first_response_at, source, visitor_id")
         .eq("id", id)
         .single();
 
@@ -798,6 +807,27 @@ router.post(
             error: {
               code: "NOT_ASSIGNED",
               message: "You are not assigned to this conversation",
+            },
+          });
+        }
+      }
+
+      // WhatsApp: validate 24h service window before insert/broadcast.
+      // dispatchToChannel re-derives the window itself, so a single call
+      // covers both the "reject before send" check and the actual send —
+      // no separate canSendFreeForm pre-check/DB round-trip needed.
+      if (conversation.source === "whatsapp" && senderType === "agent") {
+        const dispatchResult = await dispatchToChannel(id, content);
+        if (!dispatchResult.ok) {
+          const status =
+            dispatchResult.reason === "WINDOW_CLOSED" ? 409 : 502;
+          return res.status(status).json({
+            error: {
+              code: dispatchResult.reason,
+              message:
+                dispatchResult.reason === "WINDOW_CLOSED"
+                  ? "The WhatsApp 24-hour service window is closed. Re-engagement templates are not available in v1."
+                  : "Failed to deliver the WhatsApp message.",
             },
           });
         }

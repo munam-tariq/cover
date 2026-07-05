@@ -14,6 +14,7 @@
  */
 
 import { RealtimeChannel, RealtimeClient } from "@supabase/realtime-js";
+
 import { widgetHeaders } from "./request";
 import "./widget-config";
 

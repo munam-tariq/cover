@@ -38,6 +38,7 @@ export interface LateQualifyingAnswer {
 export interface Lead {
   id: string;
   email: string;
+  phone: string | null;
   formData: Record<string, { label: string; value: string }>;
   qualifyingAnswers: Array<{
     question: string;

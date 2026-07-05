@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@chatbot/ui";
+import { Phone } from "lucide-react";
 
 import { Lead, STATUS_LABELS, STATUS_VARIANTS, getLeadDisplayName } from "../constants";
 
@@ -26,6 +27,12 @@ export function LeadListItem({ lead, selected, onClick }: LeadListItemProps) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium truncate">{displayName}</p>
           <p className="text-xs text-muted-foreground truncate">{lead.email}</p>
+          {lead.phone && (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+              <Phone className="h-3 w-3 shrink-0" />
+              <span className="truncate">{lead.phone}</span>
+            </p>
+          )}
           <p className="text-xs text-muted-foreground mt-1">
             {new Date(lead.createdAt).toLocaleDateString("en-US", {
               month: "short",

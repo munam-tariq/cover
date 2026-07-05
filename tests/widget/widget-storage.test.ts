@@ -65,3 +65,19 @@ test("chat window clears stale stored session state on denied resume or polling"
   assert.match(source, /getConversationStatusResult/);
   assert.match(source, /fetchNewMessagesResult/);
 });
+
+test("chat window branding renders a FrontFace backlink", async () => {
+  const source = await readFile(chatWindowPath, "utf8");
+  const brandingStart = source.indexOf("const branding =");
+  const brandingEnd = source.indexOf("if (!customFooter && !branding)", brandingStart);
+  assert.notEqual(brandingStart, -1, "expected branding footer source");
+  assert.notEqual(brandingEnd, -1, "expected branding footer source boundary");
+  const brandingSource = source.slice(brandingStart, brandingEnd);
+
+  assert.match(source, /FRONTFACE_BACKLINK_URL\s*=\s*"https:\/\/frontface\.app"/);
+  assert.match(brandingSource, /href="\$\{FRONTFACE_BACKLINK_URL\}"/);
+  assert.match(brandingSource, /target="_blank"/);
+  assert.match(brandingSource, /rel="noopener"/);
+  assert.doesNotMatch(brandingSource, /rel="[^"]*noreferrer[^"]*"/);
+  assert.doesNotMatch(source, /Chatbase/i);
+});

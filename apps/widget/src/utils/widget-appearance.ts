@@ -12,6 +12,70 @@ const isBoolean = (v: unknown): v is boolean => typeof v === "boolean";
 const isStringArray = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every(isString);
 
+export type ChannelButtonType =
+  | "whatsapp"
+  | "instagram"
+  | "facebook"
+  | "email"
+  | "phone"
+  | "custom";
+
+const CHANNEL_BUTTON_TYPES: string[] = [
+  "whatsapp",
+  "instagram",
+  "facebook",
+  "email",
+  "phone",
+  "custom",
+];
+
+export interface ChannelButton {
+  type: ChannelButtonType;
+  url: string;
+  label?: string;
+  iconUrl?: string;
+}
+
+const ALLOWED_CHANNEL_SCHEMES = ["https:", "http:", "mailto:", "tel:"];
+const ALLOWED_ICON_SCHEMES = ["https:", "http:"];
+
+export function isAllowedUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_CHANNEL_SCHEMES.includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
+export function isAllowedIconUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_ICON_SCHEMES.includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
+function parseChannelButtons(value: unknown): ChannelButton[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const buttons: ChannelButton[] = [];
+  for (const item of value) {
+    if (
+      !isRecord(item) ||
+      !isString(item.type) ||
+      !CHANNEL_BUTTON_TYPES.includes(item.type) ||
+      !isString(item.url) ||
+      !isAllowedUrl(item.url)
+    ) continue;
+    const btn: ChannelButton = { type: item.type as ChannelButtonType, url: item.url };
+    if (isString(item.label)) btn.label = item.label;
+    if (isString(item.iconUrl) && isAllowedIconUrl(item.iconUrl)) btn.iconUrl = item.iconUrl;
+    buttons.push(btn);
+  }
+  return buttons.length > 0 ? buttons : undefined;
+}
+
 export interface WidgetNotice {
   enabled: boolean;
   text: string;
@@ -42,6 +106,7 @@ export interface WidgetDisplayConfig {
   feedbackEnabled?: boolean;
   copyEnabled?: boolean;
   localeDefault?: string;
+  channels?: ChannelButton[];
 }
 
 /** Fully-resolved appearance the widget runtime can rely on (no optionals). */
@@ -60,6 +125,7 @@ export interface ResolvedWidgetAppearance {
   notice: WidgetNotice;
   footer: WidgetFooter | null;
   localeDefault: string;
+  channels: ChannelButton[];
 }
 
 export interface WidgetStrings {
@@ -151,6 +217,8 @@ export function parseDisplayConfig(
   if (isBoolean(value.feedbackEnabled)) config.feedbackEnabled = value.feedbackEnabled;
   if (isBoolean(value.copyEnabled)) config.copyEnabled = value.copyEnabled;
   if (isString(value.localeDefault)) config.localeDefault = value.localeDefault;
+  const channels = parseChannelButtons(value.channels);
+  if (channels) config.channels = channels;
 
   return config;
 }
@@ -174,6 +242,7 @@ export function resolveWidgetAppearanceDefaults(
     notice: config?.notice ?? { enabled: false, text: "" },
     footer: config?.footer ?? null,
     localeDefault: config?.localeDefault ?? "en",
+    channels: config?.channels ?? [],
   };
 }
 

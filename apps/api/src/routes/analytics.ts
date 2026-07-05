@@ -100,6 +100,7 @@ const ANALYTICS_SOURCES = [
   "voice",
   "public",
   "mobile",
+  "whatsapp",
 ];
 
 /** Optional ?source= filter — slices metrics by chat source; invalid values are ignored. */

@@ -13,6 +13,7 @@
  */
 
 import { Bubble } from "./components/bubble";
+import { ChannelLauncher } from "./components/channel-launcher";
 import { ChatWindow } from "./components/chat-window";
 import { ExitOverlay } from "./components/exit-overlay";
 import { TeaserMessage } from "./components/teaser-message";
@@ -81,6 +82,7 @@ class ChatbotWidget {
   private container: HTMLElement | null = null;
   private shadowRoot: ShadowRoot | null = null;
   private bubble: Bubble | null = null;
+  private channelLauncher: ChannelLauncher | null = null;
   private chatWindow: ChatWindow | null = null;
   private isOpen = false;
   private leadCaptureConfig: LeadCaptureConfig | null = null;
@@ -169,6 +171,15 @@ class ChatbotWidget {
       iconUrl: this.appearance.launcherIconUrl,
     });
     wrapper.appendChild(this.bubble.element);
+
+    if (this.appearance.channels.length > 0) {
+      this.channelLauncher = new ChannelLauncher({
+        channels: this.appearance.channels,
+        position: this.config.position as "bottom-right" | "bottom-left",
+      });
+      this.channelLauncher.setExpanded(true);
+      wrapper.appendChild(this.channelLauncher.element);
+    }
 
     // Create chat window
     const strings = getWidgetStrings(
@@ -345,6 +356,7 @@ class ChatbotWidget {
     this.isOpen = true;
     this.chatWindow?.show();
     this.bubble?.setActive(true);
+    this.channelLauncher?.setExpanded(false);
 
     // Proactive engagement: chat opened, dismiss triggers
     this.teaserMessage?.hide();
@@ -362,6 +374,7 @@ class ChatbotWidget {
     this.isOpen = false;
     this.chatWindow?.hide();
     this.bubble?.setActive(false);
+    this.channelLauncher?.setExpanded(true);
 
     // Focus bubble after closing for accessibility
     this.bubble?.focus();

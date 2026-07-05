@@ -16,15 +16,27 @@ import { createClient } from "@supabase/supabase-js";
 import { Router, Request, Response } from "express";
 
 import { firstRelatedRecord } from "../lib/supabase-relations";
+import { isSafeChannelUrl, isSafeIconUrl } from "../lib/url-validation";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import { clearClientKeyCache } from "../middleware/client-key";
 import { clearDomainCache } from "../middleware/domain-whitelist";
+import { ChannelOwnershipError } from "../services/channels/connection-ownership";
+import {
+  decryptCredentials,
+  getActiveConnection,
+  getProjectConnection,
+  setProjectConnectionStatus,
+  upsertConnection,
+} from "../services/channels/connections";
+import { getGraphApiVersion } from "../services/channels/whatsapp/adapter";
 import {
   createClientKey,
   listClientKeys,
   revokeClientKey,
   type ClientKeyPlatform,
 } from "../services/client-key";
+import { selectReusableWidgetPreviewKey } from "../services/widget-preview-key";
+import type { WhatsAppCredentials } from "../types/channels";
 
 const router = Router();
 
@@ -375,6 +387,32 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
       return res.status(400).json({
         error: { code: "INVALID_INPUT", message: "Settings must be an object" }
       });
+    }
+
+    if (newSettings?.widget_appearance?.channels) {
+      const channels = newSettings.widget_appearance.channels;
+      if (Array.isArray(channels)) {
+        for (const ch of channels) {
+          if (typeof ch !== "object" || ch === null) continue;
+          const { url, iconUrl } = ch as { url?: string; iconUrl?: string };
+          if (url !== undefined && !isSafeChannelUrl(url)) {
+            return res.status(400).json({
+              error: {
+                code: "INVALID_CHANNEL_URL",
+                message: `Channel url uses a disallowed scheme or is not a valid URL. Allowed: https, http, mailto, tel`,
+              },
+            });
+          }
+          if (iconUrl !== undefined && !isSafeIconUrl(iconUrl)) {
+            return res.status(400).json({
+              error: {
+                code: "INVALID_CHANNEL_URL",
+                message: `Channel iconUrl must use https or http`,
+              },
+            });
+          }
+        }
+      }
     }
 
     // Get current project
@@ -773,6 +811,67 @@ async function getAccessibleProject(
 }
 
 /**
+ * GET /api/projects/:id/widget-preview-key
+ * Return a publishable key used only by the sandboxed dashboard widget preview. The public web
+ * embed snippet remains origin-gated and does not include this key.
+ */
+router.get(
+  "/:id/widget-preview-key",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { id } = req.params;
+
+      if (!CLIENT_KEY_UUID_RE.test(id)) {
+        return res.status(400).json({
+          error: { code: "INVALID_ID", message: "Invalid project ID format" },
+        });
+      }
+
+      const project = await getAccessibleProject(id, userId, true);
+      if (!project) {
+        return res
+          .status(404)
+          .json({ error: { code: "NOT_FOUND", message: "Project not found" } });
+      }
+
+      const keys = await listClientKeys(id);
+      const existing = selectReusableWidgetPreviewKey(keys);
+      if (existing) {
+        return res.json({ key: existing.key });
+      }
+
+      if (project.user_id !== userId) {
+        return res.status(409).json({
+          error: {
+            code: "PREVIEW_KEY_REQUIRED",
+            message: "A project owner must create the widget preview key.",
+          },
+        });
+      }
+
+      const created = await createClientKey(id, "web", "Dashboard preview");
+      if (!created) {
+        return res.status(500).json({
+          error: {
+            code: "INTERNAL_ERROR",
+            message: "Failed to create widget preview key",
+          },
+        });
+      }
+
+      return res.status(201).json({ key: created.key });
+    } catch (error) {
+      console.error("Error in GET /projects/:id/widget-preview-key:", error);
+      return res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+      });
+    }
+  }
+);
+
+/**
  * GET /api/projects/:id/client-keys
  * List the project's publishable client keys (owner or member). Keys are publishable, so the full
  * value is returned for display/copy.
@@ -909,6 +1008,190 @@ router.delete(
       res
         .status(500)
         .json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
+    }
+  }
+);
+
+/**
+ * GET /api/projects/:id/channels
+ * List channel connections for this project (owner only). No credential material returned.
+ */
+router.get(
+  "/:id/channels",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { id } = req.params;
+
+      const project = await getAccessibleProject(id, userId, false);
+      if (!project) {
+        return res.status(404).json({
+          error: { code: "NOT_FOUND", message: "Project not found" },
+        });
+      }
+
+      const whatsapp = await getProjectConnection(id, "whatsapp");
+      const connections = whatsapp ? [whatsapp] : [];
+
+      res.json({ connections });
+    } catch (error) {
+      console.error("Error in GET /projects/:id/channels:", error);
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/projects/:id/channels/whatsapp
+ * Create or update WhatsApp connection (owner only). Encrypts credentials immediately.
+ */
+router.post(
+  "/:id/channels/whatsapp",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { id } = req.params;
+
+      const project = await getAccessibleProject(id, userId, false);
+      if (!project) {
+        return res.status(404).json({
+          error: { code: "NOT_FOUND", message: "Project not found" },
+        });
+      }
+
+      const { phoneNumberId, wabaId, accessToken, appSecret, displayName } =
+        req.body ?? {};
+
+      if (!phoneNumberId || !accessToken || !appSecret) {
+        return res.status(400).json({
+          error: {
+            code: "MISSING_FIELDS",
+            message:
+              "phoneNumberId, accessToken, and appSecret are required",
+          },
+        });
+      }
+
+      const connection = await upsertConnection(id, "whatsapp", {
+        externalId: phoneNumberId,
+        displayName: displayName ?? null,
+        credentials: {
+          accessToken,
+          appSecret,
+          ...(wabaId ? { wabaId } : {}),
+        },
+        config: wabaId ? { wabaId } : {},
+      });
+
+      res.status(200).json({ connection });
+    } catch (error) {
+      if (error instanceof ChannelOwnershipError) {
+        return res.status(409).json({
+          error: { code: "CHANNEL_ALREADY_CONNECTED", message: error.message },
+        });
+      }
+      console.error("Error in POST /projects/:id/channels/whatsapp:", error);
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/projects/:id/channels/whatsapp/test
+ * Test WhatsApp connection by calling the Graph API (owner only).
+ */
+router.post(
+  "/:id/channels/whatsapp/test",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { id } = req.params;
+
+      const project = await getAccessibleProject(id, userId, false);
+      if (!project) {
+        return res.status(404).json({
+          error: { code: "NOT_FOUND", message: "Project not found" },
+        });
+      }
+
+      const conn = await getActiveConnection(id, "whatsapp");
+      if (!conn) {
+        return res.json({ ok: false, error: "No active WhatsApp connection" });
+      }
+
+      const creds = decryptCredentials<WhatsAppCredentials>(
+        conn.encryptedCredentials
+      );
+
+      const url = `https://graph.facebook.com/${getGraphApiVersion()}/${conn.externalId}`;
+
+      const resp = await fetch(url, {
+        headers: { Authorization: `Bearer ${creds.accessToken}` },
+      });
+
+      if (resp.ok) {
+        return res.json({ ok: true });
+      }
+      const body = await resp.json().catch(() => ({}));
+      const graphError = body as { error?: { message?: string } };
+      return res.json({
+        ok: false,
+        error: graphError.error?.message || `HTTP ${resp.status}`,
+      });
+    } catch (error) {
+      console.error("Error in POST /projects/:id/channels/whatsapp/test:", error);
+      res.json({
+        ok: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+);
+
+/**
+ * DELETE /api/projects/:id/channels/whatsapp/:connectionId
+ * Disconnect a WhatsApp channel (owner only). Soft-delete via status='disabled'.
+ */
+router.delete(
+  "/:id/channels/whatsapp/:connectionId",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { id, connectionId } = req.params;
+
+      const project = await getAccessibleProject(id, userId, false);
+      if (!project) {
+        return res.status(404).json({
+          error: { code: "NOT_FOUND", message: "Project not found" },
+        });
+      }
+
+      const disabled = await setProjectConnectionStatus(
+        id,
+        "whatsapp",
+        connectionId,
+        "disabled"
+      );
+      if (!disabled) {
+        return res.status(404).json({
+          error: { code: "NOT_FOUND", message: "Connection not found" },
+        });
+      }
+
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error in DELETE /projects/:id/channels/whatsapp:", error);
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+      });
     }
   }
 );

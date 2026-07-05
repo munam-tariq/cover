@@ -23,6 +23,8 @@ import {
   ExternalLink,
   Loader2,
   Monitor,
+  ChevronDown,
+  ChevronUp,
   Plus,
   RefreshCw,
   Smartphone,
@@ -62,6 +64,7 @@ interface WidgetSettings {
   feedbackEnabled: boolean;
   copyEnabled: boolean;
   localeDefault: string;
+  channels: Array<{ type: string; url: string; label: string; iconUrl: string }>;
 }
 
 const DEFAULTS: WidgetSettings = {
@@ -82,6 +85,7 @@ const DEFAULTS: WidgetSettings = {
   feedbackEnabled: false,
   copyEnabled: true,
   localeDefault: "en",
+  channels: [],
 };
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
@@ -105,7 +109,12 @@ interface EmbedConfigResponse {
     feedbackEnabled?: boolean;
     copyEnabled?: boolean;
     localeDefault?: string;
+    channels?: Array<{ type: string; url: string; label?: string; iconUrl?: string }>;
   };
+}
+
+interface WidgetPreviewKeyResponse {
+  key: string;
 }
 
 /** Map the resolved /config response (camelCase) into editor state. */
@@ -129,6 +138,12 @@ function fromConfig(cfg: EmbedConfigResponse["config"]): WidgetSettings {
     feedbackEnabled: cfg.feedbackEnabled ?? DEFAULTS.feedbackEnabled,
     copyEnabled: cfg.copyEnabled ?? DEFAULTS.copyEnabled,
     localeDefault: cfg.localeDefault ?? DEFAULTS.localeDefault,
+    channels: (cfg.channels ?? []).map((ch) => ({
+      type: ch.type,
+      url: ch.url,
+      label: ch.label ?? "",
+      iconUrl: ch.iconUrl ?? "",
+    })),
   };
 }
 
@@ -153,6 +168,14 @@ function toSettingsPayload(s: WidgetSettings) {
         ? { text: s.footerText, ...(s.footerUrl ? { url: s.footerUrl } : {}) }
         : null,
       locale_default: s.localeDefault,
+      channels: s.channels
+        .filter((ch) => ch.url.trim())
+        .map((ch) => ({
+          type: ch.type,
+          url: ch.url.trim(),
+          ...(ch.label.trim() ? { label: ch.label.trim() } : {}),
+          ...(ch.iconUrl.trim() ? { iconUrl: ch.iconUrl.trim() } : {}),
+        })),
     },
   };
 }
@@ -168,6 +191,8 @@ export default function EmbedPage() {
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
   const [previewKey, setPreviewKey] = useState(0);
+  const [previewClientKey, setPreviewClientKey] = useState<string | null>(null);
+  const [previewKeyWarning, setPreviewKeyWarning] = useState<string | null>(null);
   const [newStarter, setNewStarter] = useState("");
 
   const projectId = currentProject?.id;
@@ -177,14 +202,29 @@ export default function EmbedPage() {
     if (!projectId) return;
     setLoading(true);
     setError(null);
+    setPreviewKeyWarning(null);
     try {
-      const res = await apiClient<EmbedConfigResponse>(
-        `/api/embed/config/${projectId}`
-      );
+      const [res, previewKeyRes] = await Promise.all([
+        apiClient<EmbedConfigResponse>(`/api/embed/config/${projectId}`),
+        apiClient<WidgetPreviewKeyResponse>(
+          `/api/projects/${projectId}/widget-preview-key`
+        ).catch((err) => {
+          console.warn("Failed to load widget preview key:", err);
+          setPreviewKeyWarning(
+            err instanceof Error
+              ? err.message
+              : "A project owner must create the widget preview key."
+          );
+          return null;
+        }),
+      ]);
       setSettings(fromConfig(res.config));
+      setPreviewClientKey(previewKeyRes?.key ?? null);
     } catch (err) {
       console.error("Failed to load widget settings:", err);
       setSettings(DEFAULTS);
+      setPreviewClientKey(null);
+      setPreviewKeyWarning(null);
     } finally {
       setLoading(false);
     }
@@ -294,6 +334,7 @@ export default function EmbedPage() {
     projectId: currentProject.id,
     apiUrl: WIDGET_API_URL,
     scriptUrl: WIDGET_PREVIEW_SCRIPT_URL,
+    clientKey: previewClientKey,
   })}
 </body>
 </html>`
@@ -399,7 +440,7 @@ export default function EmbedPage() {
             )}
           >
             <iframe
-              key={previewKey}
+              key={`${previewKey}-${previewClientKey ?? "no-key"}`}
               srcDoc={previewHtml}
               className="w-full h-full border-0"
               title="Widget Preview"
@@ -409,6 +450,11 @@ export default function EmbedPage() {
           <p className="text-sm text-muted-foreground mt-4 text-center">
             Saved appearance changes are loaded from your agent&apos;s widget configuration.
           </p>
+          {previewKeyWarning && (
+            <p className="text-xs text-amber-700 mt-2 text-center dark:text-amber-300">
+              {previewKeyWarning}
+            </p>
+          )}
         </Card>
 
         {/* Customization (Content / Style) */}
@@ -660,6 +706,138 @@ export default function EmbedPage() {
               </div>
             </TabsContent>
           </Tabs>
+
+          {/* ---- Channels ---- */}
+          <div className="space-y-4 mt-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium">Channels on the widget</h3>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                onClick={() =>
+                  update("channels", [
+                    ...settings.channels,
+                    { type: "whatsapp", url: "", label: "", iconUrl: "" },
+                  ])
+                }
+              >
+                <Plus className="h-3 w-3" /> Add channel
+              </button>
+            </div>
+            {settings.channels.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No channels configured. Add one to show contact buttons on the widget.
+              </p>
+            )}
+            {settings.channels.map((ch, idx) => (
+              <div
+                key={idx}
+                className="flex items-start gap-2 rounded-md border border-input p-3"
+              >
+                <div className="flex-1 space-y-2">
+                  <div className="flex gap-2">
+                    <select
+                      value={ch.type}
+                      onChange={(e) => {
+                        const next = [...settings.channels];
+                        next[idx] = { ...ch, type: e.target.value };
+                        update("channels", next);
+                      }}
+                      className="w-32 px-2 py-1.5 border border-input rounded-md bg-background text-sm"
+                    >
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="email">Email</option>
+                      <option value="phone">Phone</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                    <Input
+                      value={ch.url}
+                      placeholder={
+                        ch.type === "whatsapp"
+                          ? "https://wa.me/15550100042"
+                          : ch.type === "email"
+                            ? "mailto:hi@acme.com"
+                            : ch.type === "phone"
+                              ? "tel:+15550100042"
+                              : "https://..."
+                      }
+                      onChange={(e) => {
+                        const next = [...settings.channels];
+                        next[idx] = { ...ch, url: e.target.value };
+                        update("channels", next);
+                      }}
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={ch.label}
+                      placeholder="Label (optional)"
+                      onChange={(e) => {
+                        const next = [...settings.channels];
+                        next[idx] = { ...ch, label: e.target.value };
+                        update("channels", next);
+                      }}
+                      className="flex-1"
+                    />
+                    {ch.type === "custom" && (
+                      <Input
+                        value={ch.iconUrl}
+                        placeholder="Icon URL (optional)"
+                        onChange={(e) => {
+                          const next = [...settings.channels];
+                          next[idx] = { ...ch, iconUrl: e.target.value };
+                          update("channels", next);
+                        }}
+                        className="flex-1"
+                      />
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <button
+                    type="button"
+                    disabled={idx === 0}
+                    onClick={() => {
+                      const next = [...settings.channels];
+                      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                      update("channels", next);
+                    }}
+                    className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                    aria-label="Move channel up"
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={idx === settings.channels.length - 1}
+                    onClick={() => {
+                      const next = [...settings.channels];
+                      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                      update("channels", next);
+                    }}
+                    className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                    aria-label="Move channel down"
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = settings.channels.filter((_, i) => i !== idx);
+                    update("channels", next);
+                  }}
+                  className="p-1.5 text-muted-foreground hover:text-destructive"
+                  aria-label="Remove channel"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
 
           {/* Save bar */}
           <div className="mt-6 flex items-center justify-between gap-3 border-t pt-4">

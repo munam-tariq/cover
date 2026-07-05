@@ -83,7 +83,7 @@ export function decrypt(encryptedText: string): string {
  * @param config - Object to encrypt
  * @returns Encrypted string
  */
-export function encryptAuthConfig(config: Record<string, unknown>): string {
+export function encryptAuthConfig(config: object): string {
   return encrypt(JSON.stringify(config));
 }
 

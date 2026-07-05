@@ -62,11 +62,13 @@ export default function LeadsPage() {
     setSelectedId(null);
   }, [statusFilter]);
 
-  const filteredLeads = searchQuery
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredLeads = normalizedSearchQuery
     ? leads.filter(
         (lead) =>
-          lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          lead.firstMessage?.toLowerCase().includes(searchQuery.toLowerCase())
+          lead.email.toLowerCase().includes(normalizedSearchQuery) ||
+          lead.phone?.toLowerCase().includes(normalizedSearchQuery) ||
+          lead.firstMessage?.toLowerCase().includes(normalizedSearchQuery)
       )
     : leads;
 

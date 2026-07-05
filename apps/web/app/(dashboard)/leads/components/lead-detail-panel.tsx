@@ -57,8 +57,8 @@ export function LeadDetailPanel({ lead }: LeadDetailPanelProps) {
           <ContactRow
             icon={Phone}
             label="Phone"
-            value={phoneField?.value || "Not provided"}
-            muted={!phoneField?.value}
+            value={lead.phone || phoneField?.value || "Not provided"}
+            muted={!lead.phone && !phoneField?.value}
           />
           <ContactRow
             icon={Building2}

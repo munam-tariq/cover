@@ -68,11 +68,12 @@ interface QuestionCluster {
 }
 
 type Period = "24h" | "7d" | "30d";
-type SourceFilter = "all" | "widget" | "public" | "mobile" | "playground";
+type SourceFilter = "all" | "widget" | "public" | "mobile" | "playground" | "whatsapp";
 
 const SOURCE_OPTIONS: { value: SourceFilter; label: string }[] = [
   { value: "all", label: "All sources" },
   { value: "widget", label: "Widget" },
+  { value: "whatsapp", label: "WhatsApp" },
   { value: "public", label: "Public page" },
   { value: "mobile", label: "Mobile" },
   { value: "playground", label: "Playground" },

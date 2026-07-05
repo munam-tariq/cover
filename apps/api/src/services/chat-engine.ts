@@ -23,6 +23,7 @@ import { supabaseAdmin } from "../lib/supabase";
 // RAG v2 - Hybrid Search with Contextual Embeddings
 import {
   getOrCreateConversation,
+  getConversationHistory,
   logConversationMessages,
 } from "./conversation";
 import {
@@ -73,7 +74,8 @@ export type ChatSource =
   | "api"
   | "voice"
   | "public"
-  | "mobile";
+  | "mobile"
+  | "whatsapp";
 
 /**
  * Context metadata from the widget/client for analytics
@@ -109,6 +111,7 @@ export interface ChatInput {
   source?: ChatSource;
   context?: MessageContext;
   requestId?: string; // For request tracing
+  skipMessageWrites?: boolean;
 }
 
 /**
@@ -212,8 +215,9 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     if (input.sessionId && input.source !== "voice") {
       const handoffState = await checkConversationHandoffState(input.sessionId, input.projectId, input.visitorId);
       if (handoffState.isInHandoff) {
-        // Store the customer message in the messages table
-        await storeCustomerMessageOnly(input.sessionId, sanitizedMessage);
+        if (!input.skipMessageWrites) {
+          await storeCustomerMessageOnly(input.sessionId, sanitizedMessage);
+        }
 
         return {
           response: "", // No AI response - agent will respond
@@ -250,8 +254,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
         input.context
       );
 
-      // Skip DB writes for voice — transcripts are batch-saved at session end
-      if (input.source !== "voice") {
+      if (!input.skipMessageWrites && input.source !== "voice") {
         logConversation(
           input.projectId,
           sessionId,
@@ -326,19 +329,20 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
         );
       }
 
-      // Log the user message that triggered handoff
-      logConversation(
-        input.projectId,
-        sessionId,
-        sanitizedMessage,
-        handoffResult.message,
-        0,
-        0,
-        input.context,
-        requestId
-      ).catch((err) =>
-        logger.error("Failed to log handoff conversation", err, logCtx)
-      );
+      if (!input.skipMessageWrites) {
+        logConversation(
+          input.projectId,
+          sessionId,
+          sanitizedMessage,
+          handoffResult.message,
+          0,
+          0,
+          input.context,
+          requestId
+        ).catch((err) =>
+          logger.error("Failed to log handoff conversation", err, logCtx)
+        );
+      }
 
       return {
         response: handoffResult.message,
@@ -416,19 +420,20 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
         );
       }
 
-      // Log the user message that triggered low confidence handoff
-      logConversation(
-        input.projectId,
-        sessionId,
-        sanitizedMessage,
-        lowConfidenceResult.message,
-        retrievedChunks.length,
-        0,
-        input.context,
-        requestId
-      ).catch((err) =>
-        logger.error("Failed to log low confidence conversation", err, logCtx)
-      );
+      if (!input.skipMessageWrites) {
+        logConversation(
+          input.projectId,
+          sessionId,
+          sanitizedMessage,
+          lowConfidenceResult.message,
+          retrievedChunks.length,
+          0,
+          input.context,
+          requestId
+        ).catch((err) =>
+          logger.error("Failed to log low confidence conversation", err, logCtx)
+        );
+      }
 
       return {
         response: lowConfidenceResult.message,
@@ -459,10 +464,14 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       hasTools: tools.length > 0,
     });
 
-    // 7. Truncate history if needed to fit context window
+    // 7. Load + truncate history to fit context window
+    let dbHistory = input.conversationHistory || [];
+    if (!dbHistory.length && input.sessionId && !input.skipMessageWrites) {
+      dbHistory = await getConversationHistory(input.sessionId);
+    }
     const truncatedHistory = truncateHistoryToFit(
       systemPrompt,
-      input.conversationHistory || [],
+      dbHistory,
       sanitizedMessage,
       6000
     );
@@ -687,7 +696,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       } // end if (input.source !== "voice")
 
     // 12. Log conversation asynchronously (skip for voice — transcripts are batch-saved at session end)
-    if (input.source !== "voice") {
+    if (!input.skipMessageWrites && input.source !== "voice") {
       logConversation(
         input.projectId,
         sessionId,
@@ -1191,6 +1200,7 @@ export function validateChatInput(input: unknown): ChatInput {
     "voice",
     "public",
     "mobile",
+    "whatsapp",
   ];
   const source = validSources.includes(data.source as ChatSource)
     ? (data.source as ChatSource)
