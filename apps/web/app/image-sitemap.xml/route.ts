@@ -1,8 +1,8 @@
-import { blogPosts } from "../(marketing)/blog/blog-data";
-import { integrations } from "../(marketing)/integrations/integrations-data";
-import { tools } from "../(marketing)/tools/tools-data";
-import { useCases } from "../(marketing)/use-cases/use-cases-data";
-import { vsPages } from "../(marketing)/vs/vs-data";
+import { blogPosts } from "../[locale]/(marketing)/blog/blog-data";
+import { integrations } from "../[locale]/(marketing)/integrations/integrations-data";
+import { tools } from "../[locale]/(marketing)/tools/tools-data";
+import { useCases } from "../[locale]/(marketing)/use-cases/use-cases-data";
+import { vsPages } from "../[locale]/(marketing)/vs/vs-data";
 
 const BASE_URL = "https://frontface.app";
 

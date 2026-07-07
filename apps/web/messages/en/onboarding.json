@@ -1,0 +1,226 @@
+{
+  "nav": {
+    "back": "Back",
+    "continue": "Continue",
+    "getStarted": "Get started",
+    "starting": "Starting…",
+    "trainMyAgent": "Train my agent"
+  },
+  "trainError": {
+    "generic": "Something went wrong. Please try again."
+  },
+  "goalInstr": {
+    "answer": "answers customer questions accurately from your knowledge base.",
+    "leads": "captures and qualifies leads before handing them to your team.",
+    "handoff": "routes customers to your team the moment a human is needed.",
+    "all": "answers questions, captures leads, and routes to your team."
+  },
+  "instructionPrefix": "Trained on {company} — ",
+  "stepDefs": {
+    "scan": "Scanning website",
+    "read": "Processing content",
+    "build": "Building knowledge base",
+    "test": "Testing your agent"
+  },
+  "stepSub": {
+    "findingPages": "Finding pages",
+    "pagesFound": "{count, plural, one {# page found} other {# pages found}}",
+    "readingPages": "Reading pages",
+    "pagesProgress": "{completed}/{total} pages",
+    "indexingAnswers": "Indexing answers",
+    "chunksCount": "{count, plural, one {# chunk} other {# chunks}}",
+    "runningSampleChat": "Running a sample chat"
+  },
+  "pill": {
+    "connecting": "Connecting…",
+    "scanning": "Scanning website…",
+    "reading": "Reading pages…",
+    "building": "Building knowledge base…",
+    "testing": "Testing your agent…",
+    "allSet": "All set",
+    "failed": "Failed"
+  },
+  "importedLine": {
+    "pages": "{count, plural, one {# page} other {# pages}} from your website",
+    "addedSources": " · {count, plural, one {# added source} other {# added sources}}"
+  },
+  "ui": {
+    "trustedBy": "TRUSTED BY SUPPORT TEAMS",
+    "whatAgentDoes": "WHAT YOUR AGENT DOES"
+  },
+  "extract": {
+    "hitSnag": "We hit a snag",
+    "warmingUp": "Warming up…",
+    "analyzingSite": "Analyzing your site…",
+    "buildingAgentFor": "FrontFace is building your agent for",
+    "settingUp": "Setting up your agent…",
+    "online": "Online · instant replies",
+    "preview": "PREVIEW",
+    "sourcesLabel": "SOURCES",
+    "cited": "CITED",
+    "sourcesEmpty": "Finding pages…",
+    "modelInstructions": "MODEL & INSTRUCTIONS",
+    "live": "live",
+    "chatSources": "Sources"
+  },
+  "success": {
+    "title": "Your agent is live",
+    "subtitle": "<b>{agentName}</b> is trained and ready to answer customers, capture leads, and hand off to your team.",
+    "trained": "Trained",
+    "whatsNext": "What's next",
+    "nextItems": {
+      "playground": "Test it in the playground",
+      "widget": "Add the chat widget to your site",
+      "handoff": "Configure lead capture & human handoff"
+    },
+    "testAgent": "Test your agent",
+    "goDashboard": "Go to dashboard"
+  },
+  "steps": {
+    "welcome": {
+      "title": "Welcome to FrontFace",
+      "sub": "Your AI support agent learns your product and answers customers in seconds — capturing leads and handing off to your team when it counts.",
+      "intro": "In about 2 minutes, we'll:",
+      "checklist": {
+        "team": "Tell us a little about your team",
+        "train": "Train your agent on your website & docs",
+        "watch": "Watch it answer a real question — live"
+      }
+    },
+    "hear": {
+      "title": "How did you hear about us?",
+      "sub": "Helps us know what's working — pick whatever fits best."
+    },
+    "size": {
+      "title": "What's your company size?",
+      "sub": "We'll tune defaults — volume, seats, and lead routing — to match.",
+      "peopleUnit": "people"
+    },
+    "goal": {
+      "title": "What should your agent do first?",
+      "sub": "You can turn on every capability later — this just sets the focus."
+    },
+    "name": {
+      "title": "Name your agent",
+      "sub": "This is who your customers will be chatting with. You can rename it anytime.",
+      "preview": "PREVIEW",
+      "agentNameLabel": "Agent name",
+      "agentNamePlaceholder": "Support Assistant",
+      "toneLabel": "Tone of voice"
+    },
+    "train": {
+      "title": "Train your agent",
+      "sub": "Point us at your site and we'll read every page. Add files, text, or Q&A to fill any gaps.",
+      "websiteLabel": "Your website",
+      "recommended": "RECOMMENDED",
+      "websitePlaceholder": "www.yourcompany.com",
+      "crawlHint": "We'll crawl pages on this domain to train your agent.",
+      "otherSourcesLabel": "Other sources",
+      "optional": "optional"
+    }
+  },
+  "options": {
+    "hear": {
+      "search": "Google search",
+      "community": "Online community",
+      "linkedin": "LinkedIn",
+      "x": "X (Twitter)",
+      "youtube": "YouTube",
+      "friend": "A friend or colleague",
+      "ai": "AI recommendation",
+      "other": "Other"
+    },
+    "size": {
+      "startup": "Startup",
+      "small": "Small business",
+      "mid": "Mid-market",
+      "enterprise": "Enterprise"
+    },
+    "goal": {
+      "answer": {
+        "title": "Answer customer questions",
+        "desc": "Deflect FAQs and support tickets 24/7."
+      },
+      "leads": {
+        "title": "Capture & qualify leads",
+        "desc": "Collect details and screen intent before handoff."
+      },
+      "handoff": {
+        "title": "Route to my team",
+        "desc": "Hand warm conversations to a human, seamlessly."
+      },
+      "all": {
+        "title": "All of the above",
+        "desc": "One agent that answers, captures, and routes."
+      }
+    },
+    "tones": {
+      "friendly": "Friendly",
+      "professional": "Professional",
+      "playful": "Playful"
+    }
+  },
+  "tonePreview": {
+    "friendly": "Hi there! I'm here to help with anything {company}.",
+    "professional": "Hello — I'm the {company} assistant. How can I help you today?",
+    "playful": "Hey! Ask me anything about {company} — I've read every page."
+  },
+  "train": {
+    "tiles": {
+      "file": { "label": "File", "hint": "PDF or TXT" },
+      "text": { "label": "Paste text", "hint": "Notes, policies, FAQs" },
+      "qa": { "label": "Q&A pair", "hint": "Question + answer" }
+    },
+    "drawerTitle": {
+      "file": "Add file",
+      "text": "Add text",
+      "qa": "Add Q&A pair"
+    },
+    "drawerSub": {
+      "file": "Upload a document to train your agent.",
+      "text": "Add plain text — notes, policies, FAQs.",
+      "qa": "Craft a question and the answer to give."
+    },
+    "close": "Close",
+    "remove": "Remove",
+    "dropFile": "Drop a file or",
+    "browse": "browse",
+    "fileHint": "PDF or TXT · up to 10 MB",
+    "titleLabel": "Title",
+    "titlePlaceholder": "e.g. Refund policy",
+    "contentLabel": "Content",
+    "contentPlaceholder": "Paste any text your agent should know…",
+    "questionLabel": "Question",
+    "questionPlaceholder": "e.g. Do you offer a free trial?",
+    "answerLabel": "Answer",
+    "answerPlaceholder": "The answer your agent should give",
+    "addSnippet": "Add snippet",
+    "addQaPair": "Add Q&A pair",
+    "textSnippetDefaultName": "Text snippet",
+    "charsUnit": "chars"
+  },
+  "testimonials": {
+    "hofmigration": {
+      "quote": "Setup took an afternoon. It reads our immigration guides and just knows the answers — and quietly captures leads while it's at it.",
+      "role": "Head of CX"
+    }
+  },
+  "features": {
+    "sources": {
+      "title": "Answers from your knowledge base",
+      "desc": "Trained on your site, docs and FAQs — accurate replies, every time."
+    },
+    "users": {
+      "title": "Captures & qualifies leads",
+      "desc": "Collects details and intent, then routes the warm ones to you."
+    },
+    "handoff": {
+      "title": "Human handoff, built in",
+      "desc": "Escalates to your team the moment a person is needed."
+    },
+    "bolt": {
+      "title": "Live in minutes",
+      "desc": "Point it at your website and it's ready to answer."
+    }
+  }
+}

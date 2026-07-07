@@ -1,0 +1,405 @@
+{
+  "terms": {
+    "meta": {
+      "title": "Terms of Service",
+      "description": "Read the Terms of Service for FrontFace. These terms govern your use of our AI-powered customer support platform.",
+      "ogTitle": "Terms of Service | FrontFace",
+      "ogDescription": "Terms and conditions for using FrontFace.",
+      "ogImageAlt": "FrontFace — AI support agent that resolves customer questions instantly"
+    },
+    "eyebrow": "Legal",
+    "title": "Terms of Service",
+    "sub": "The terms that govern your use of FrontFace.",
+    "lastUpdated": "Last updated: January 2026",
+    "sections": [
+      {
+        "heading": "1. Acceptance of Terms",
+        "blocks": [
+          { "type": "p", "text": "By accessing or using FrontFace (\"the Service\"), you agree to be bound by these Terms of Service (\"Terms\"). If you do not agree to these Terms, you may not access or use the Service." },
+          { "type": "p", "text": "These Terms apply to all users of the Service, including users who are also contributors of content, information, and other materials or services. By using the Service, you represent that you are at least 16 years of age and have the legal capacity to enter into these Terms." }
+        ]
+      },
+      {
+        "heading": "2. Description of Service",
+        "blocks": [
+          { "type": "p", "text": "FrontFace is an AI-powered customer support platform that enables businesses to create intelligent chatbots trained on their own content. The Service includes:" },
+          { "type": "ul", "items": [
+            "AI chatbot creation and management",
+            "Knowledge base upload and processing",
+            "Lead capture functionality",
+            "Conversation analytics and insights",
+            "Human handoff capabilities",
+            "Website embedding tools"
+          ] },
+          { "type": "p", "text": "We reserve the right to modify, suspend, or discontinue any aspect of the Service at any time without prior notice." }
+        ]
+      },
+      {
+        "heading": "3. Beta Service Notice",
+        "blocks": [
+          { "type": "p", "text": "The Service is currently provided as a beta release. By using the Service, you acknowledge and agree that:" },
+          { "type": "ul", "items": [
+            "The Service may contain bugs, errors, or other issues that could cause system failures or data loss",
+            "Features may be added, modified, or removed without advance notice",
+            "We do not guarantee any specific uptime or availability during the beta period",
+            "Pricing and features may change when the Service moves out of beta"
+          ] },
+          { "type": "p", "text": "We appreciate your feedback during this beta period. Please report any issues to hello@frontface.app." }
+        ]
+      },
+      {
+        "heading": "4. Account Registration",
+        "blocks": [
+          { "type": "p", "text": "To use certain features of the Service, you must create an account. When creating an account, you agree to:" },
+          { "type": "ul", "items": [
+            "Provide accurate and complete information",
+            "Keep your account credentials secure and confidential",
+            "Notify us immediately of any unauthorized access or use of your account",
+            "Be responsible for all activities that occur under your account"
+          ] },
+          { "type": "p", "text": "We reserve the right to suspend or terminate accounts that violate these Terms or that we believe are being used fraudulently." }
+        ]
+      },
+      {
+        "heading": "5. Acceptable Use Policy",
+        "blocks": [
+          { "type": "p", "text": "You agree not to use the Service to:" },
+          { "type": "ul", "items": [
+            "Upload, post, or transmit any content that is illegal, harmful, threatening, abusive, harassing, defamatory, or otherwise objectionable",
+            "Impersonate any person or entity or falsely state your affiliation with a person or entity",
+            "Upload content that infringes on any patent, trademark, trade secret, copyright, or other proprietary rights",
+            "Transmit spam, chain letters, or other unsolicited communications",
+            "Interfere with or disrupt the Service or servers or networks connected to the Service",
+            "Attempt to gain unauthorized access to any portion of the Service or any systems or networks connected to the Service",
+            "Use the Service for any illegal purpose or in violation of any applicable laws or regulations",
+            "Reverse engineer, decompile, or disassemble any portion of the Service",
+            "Use automated systems or software to extract data from the Service (scraping)"
+          ] }
+        ]
+      },
+      {
+        "heading": "6. Your Content",
+        "blocks": [
+          { "type": "p", "text": "\"Your Content\" refers to any content you upload, submit, or transmit through the Service, including knowledge base documents, FAQs, and other materials used to train your chatbot." },
+          { "type": "h3", "text": "6.1 Ownership" },
+          { "type": "p", "text": "You retain all ownership rights in Your Content. We do not claim ownership of any content you submit to the Service." },
+          { "type": "h3", "text": "6.2 License Grant" },
+          { "type": "p", "text": "By uploading Your Content to the Service, you grant us a non-exclusive, worldwide, royalty-free license to use, copy, process, and display Your Content solely for the purpose of providing and improving the Service to you." },
+          { "type": "h3", "text": "6.3 Responsibility" },
+          { "type": "p", "text": "You are solely responsible for Your Content and the consequences of uploading it. You represent and warrant that you have all necessary rights to upload Your Content and that Your Content does not violate any third-party rights." }
+        ]
+      },
+      {
+        "heading": "7. Intellectual Property",
+        "blocks": [
+          { "type": "p", "text": "The Service and its original content, features, and functionality are and will remain the exclusive property of FrontFace and its licensors. The Service is protected by copyright, trademark, and other laws." },
+          { "type": "p", "text": "Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of FrontFace." }
+        ]
+      },
+      {
+        "heading": "8. AI-Generated Content Disclaimer",
+        "blocks": [
+          { "type": "p", "text": "The Service uses artificial intelligence to generate responses based on the content you provide. You acknowledge and agree that:" },
+          { "type": "ul", "items": [
+            "AI-generated responses may not always be accurate, complete, or appropriate",
+            "You are responsible for reviewing and verifying AI-generated content before relying on it",
+            "We do not guarantee the accuracy, reliability, or suitability of AI-generated responses for any particular purpose",
+            "AI responses should not be considered professional advice (legal, medical, financial, etc.)"
+          ] },
+          { "type": "p", "text": "We recommend reviewing your chatbot's responses regularly to ensure they meet your quality standards." }
+        ]
+      },
+      {
+        "heading": "9. Third-Party Services",
+        "blocks": [
+          { "type": "p", "text": "The Service may integrate with or contain links to third-party websites, services, or applications. We are not responsible for the content, privacy policies, or practices of any third-party services. Your use of third-party services is at your own risk and subject to the terms and conditions of those services." }
+        ]
+      },
+      {
+        "heading": "10. Payment Terms",
+        "blocks": [
+          { "type": "p", "text": "During the beta period, the Service is provided free of charge. When paid plans are introduced:" },
+          { "type": "ul", "items": [
+            "Subscription fees will be billed in advance on a monthly or annual basis",
+            "All fees are non-refundable except as required by applicable law or as explicitly stated in our refund policy",
+            "We may change our pricing with at least 30 days' notice",
+            "Failure to pay may result in suspension or termination of your account"
+          ] }
+        ]
+      },
+      {
+        "heading": "11. Limitation of Liability",
+        "blocks": [
+          { "type": "p", "text": "To the maximum extent permitted by applicable law:" },
+          { "type": "ul", "items": [
+            "In no event shall FrontFace be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses",
+            "Our total liability shall not exceed the amount you paid us, if any, in the twelve (12) months prior to the claim",
+            "We shall not be liable for any damages arising from your use of or inability to use the Service"
+          ] },
+          { "type": "p", "text": "Some jurisdictions do not allow the exclusion of certain warranties or limitation of liability for certain damages. In such jurisdictions, our liability shall be limited to the maximum extent permitted by law." }
+        ]
+      },
+      {
+        "heading": "12. Disclaimer of Warranties",
+        "blocks": [
+          { "type": "p", "text": "The Service is provided on an \"as is\" and \"as available\" basis. FrontFace expressly disclaims all warranties of any kind, whether express or implied, including but not limited to:" },
+          { "type": "ul", "items": [
+            "Implied warranties of merchantability",
+            "Fitness for a particular purpose",
+            "Non-infringement",
+            "Any warranty that the Service will be uninterrupted, secure, or error-free"
+          ] },
+          { "type": "p", "text": "You use the Service at your own risk. We do not warrant that the Service will meet your specific requirements." }
+        ]
+      },
+      {
+        "heading": "13. Indemnification",
+        "blocks": [
+          { "type": "p", "text": "You agree to defend, indemnify, and hold harmless FrontFace and its officers, directors, employees, and agents from and against any claims, damages, obligations, losses, liabilities, costs, or expenses (including attorney's fees) arising from: (a) your use of the Service; (b) Your Content; (c) your violation of these Terms; or (d) your violation of any third-party right, including any intellectual property or privacy right." }
+        ]
+      },
+      {
+        "heading": "14. Termination",
+        "blocks": [
+          { "type": "p", "text": "You may terminate your account at any time by contacting us at hello@frontface.app or through your account settings." },
+          { "type": "p", "text": "We may terminate or suspend your account immediately, without prior notice or liability, for any reason, including without limitation if you breach these Terms." },
+          { "type": "p", "text": "Upon termination, your right to use the Service will immediately cease. All provisions of these Terms which by their nature should survive termination shall survive, including ownership provisions, warranty disclaimers, indemnity, and limitations of liability." }
+        ]
+      },
+      {
+        "heading": "15. Governing Law",
+        "blocks": [
+          { "type": "p", "text": "These Terms shall be governed by and construed in accordance with applicable laws, without regard to conflict of law principles. Any disputes arising under these Terms shall be resolved through good faith negotiation between the parties." }
+        ]
+      },
+      {
+        "heading": "16. Dispute Resolution",
+        "blocks": [
+          { "type": "p", "text": "If you have any concerns or disputes about the Service, you agree to first try to resolve the dispute informally by contacting us at hello@frontface.app." },
+          { "type": "p", "text": "We will attempt to resolve any disputes through informal negotiation within sixty (60) days. If the dispute cannot be resolved informally, you and FrontFace agree to resolve any claim through binding arbitration, except that either party may bring claims in small claims court if they qualify." }
+        ]
+      },
+      {
+        "heading": "17. Changes to Terms",
+        "blocks": [
+          { "type": "p", "text": "We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect. What constitutes a material change will be determined at our sole discretion. By continuing to access or use the Service after those revisions become effective, you agree to be bound by the revised terms." }
+        ]
+      },
+      {
+        "heading": "18. Severability",
+        "blocks": [
+          { "type": "p", "text": "If any provision of these Terms is held to be invalid or unenforceable, the remaining provisions will remain in full force and effect. The invalid or unenforceable provision will be modified to the minimum extent necessary to make it valid and enforceable." }
+        ]
+      },
+      {
+        "heading": "19. Entire Agreement",
+        "blocks": [
+          { "type": "p", "text": "These Terms, together with our Privacy Policy, constitute the entire agreement between you and FrontFace regarding the Service and supersede all prior agreements and understandings, whether written or oral." }
+        ]
+      },
+      {
+        "heading": "20. Contact Us",
+        "blocks": [
+          { "type": "p", "text": "If you have any questions about these Terms, please contact us at:" },
+          { "type": "p", "text": "**Email:** hello@frontface.app" }
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "meta": {
+      "title": "Privacy Policy",
+      "description": "Learn how FrontFace collects, uses, and protects your personal information. Our privacy policy covers data collection, usage, and your rights under GDPR and CCPA.",
+      "ogTitle": "Privacy Policy | FrontFace",
+      "ogDescription": "How FrontFace handles your data and protects your privacy.",
+      "ogImageAlt": "FrontFace — AI support agent that resolves customer questions instantly"
+    },
+    "eyebrow": "Legal",
+    "title": "Privacy Policy",
+    "sub": "How FrontFace collects, uses, and protects your information.",
+    "lastUpdated": "Last updated: January 2026",
+    "sections": [
+      {
+        "heading": "1. Introduction",
+        "blocks": [
+          { "type": "p", "text": "FrontFace (\"we,\" \"us,\" or \"our\") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our AI-powered customer support platform and related services (collectively, the \"Service\")." },
+          { "type": "p", "text": "By using our Service, you agree to the collection and use of information in accordance with this policy. If you do not agree with the terms of this policy, please do not access or use the Service." }
+        ]
+      },
+      {
+        "heading": "2. Information We Collect",
+        "blocks": [
+          { "type": "h3", "text": "2.1 Account Information" },
+          { "type": "p", "text": "When you create an account, we may collect:" },
+          { "type": "ul", "items": [
+            "Name and email address",
+            "Password (stored in encrypted form)",
+            "Company or organization name",
+            "Billing information (for paid plans)"
+          ] },
+          { "type": "h3", "text": "2.2 Content You Provide" },
+          { "type": "p", "text": "When using the Service, you may upload or provide:" },
+          { "type": "ul", "items": [
+            "Knowledge base content (FAQs, documents, website content)",
+            "Chatbot configuration and customization settings",
+            "Team member information if you invite others"
+          ] },
+          { "type": "h3", "text": "2.3 Customer Conversation Data" },
+          { "type": "p", "text": "Our Service processes conversations between your chatbot and your customers. This may include:" },
+          { "type": "ul", "items": [
+            "Chat messages and queries",
+            "Email addresses (when provided by customers for lead capture)",
+            "Any information customers choose to share in conversations"
+          ] },
+          { "type": "h3", "text": "2.4 Usage Data" },
+          { "type": "p", "text": "We automatically collect certain information when you use the Service:" },
+          { "type": "ul", "items": [
+            "Device information (browser type, operating system)",
+            "IP address and approximate location",
+            "Pages visited and features used",
+            "Time and date of access",
+            "Referring website addresses"
+          ] },
+          { "type": "h3", "text": "2.5 Cookies and Tracking Technologies" },
+          { "type": "p", "text": "We use cookies and similar technologies to maintain your session, remember your preferences, and analyze how our Service is used. See Section 9 for more details on cookies." }
+        ]
+      },
+      {
+        "heading": "3. How We Use Your Information",
+        "blocks": [
+          { "type": "p", "text": "We may use the information we collect for the following purposes:" },
+          { "type": "ul", "items": [
+            "To provide, maintain, and improve our Service",
+            "To process your chatbot's responses using AI technology",
+            "To communicate with you about your account and the Service",
+            "To send you technical notices and security alerts",
+            "To respond to your comments, questions, and support requests",
+            "To analyze usage patterns and improve user experience",
+            "To detect, prevent, and address technical issues or fraud",
+            "To comply with legal obligations"
+          ] }
+        ]
+      },
+      {
+        "heading": "4. How We Share Your Information",
+        "blocks": [
+          { "type": "p", "text": "We do not sell your personal information. We may share your information in the following circumstances:" },
+          { "type": "h3", "text": "4.1 Service Providers" },
+          { "type": "p", "text": "We may share information with third-party vendors who perform services on our behalf, including:" },
+          { "type": "ul", "items": [
+            "Cloud hosting providers",
+            "AI and natural language processing providers",
+            "Analytics providers",
+            "Payment processors"
+          ] },
+          { "type": "h3", "text": "4.2 Legal Requirements" },
+          { "type": "p", "text": "We may disclose your information if required to do so by law or in response to valid requests by public authorities (e.g., court order, government agency)." },
+          { "type": "h3", "text": "4.3 Business Transfers" },
+          { "type": "p", "text": "If we are involved in a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction. We will provide notice before your information becomes subject to a different privacy policy." }
+        ]
+      },
+      {
+        "heading": "5. Data Retention",
+        "blocks": [
+          { "type": "p", "text": "We retain your information for as long as your account is active or as needed to provide you with the Service. We may also retain and use your information as necessary to:" },
+          { "type": "ul", "items": [
+            "Comply with our legal obligations",
+            "Resolve disputes",
+            "Enforce our agreements"
+          ] },
+          { "type": "p", "text": "When you delete your account, we will delete or anonymize your personal information within 30 days, unless we are required to retain it for legal purposes." }
+        ]
+      },
+      {
+        "heading": "6. Your Rights",
+        "blocks": [
+          { "type": "p", "text": "Depending on your location, you may have certain rights regarding your personal information:" },
+          { "type": "ul", "items": [
+            "**Access:** Request a copy of the personal information we hold about you",
+            "**Correction:** Request that we correct inaccurate or incomplete information",
+            "**Deletion:** Request that we delete your personal information",
+            "**Portability:** Request a copy of your data in a machine-readable format",
+            "**Opt-out:** Unsubscribe from marketing communications at any time"
+          ] },
+          { "type": "p", "text": "To exercise any of these rights, please contact us at hello@frontface.app." }
+        ]
+      },
+      {
+        "heading": "7. Additional Rights for EU Users (GDPR)",
+        "blocks": [
+          { "type": "p", "text": "If you are located in the European Economic Area (EEA), you have additional rights under the General Data Protection Regulation (GDPR):" },
+          { "type": "ul", "items": [
+            "Right to restrict processing of your personal data",
+            "Right to object to processing based on legitimate interests",
+            "Right to withdraw consent at any time",
+            "Right to lodge a complaint with a supervisory authority"
+          ] },
+          { "type": "p", "text": "We process your data based on your consent, contractual necessity, or our legitimate business interests (such as improving our Service), always balanced against your rights." }
+        ]
+      },
+      {
+        "heading": "8. Additional Rights for California Residents (CCPA)",
+        "blocks": [
+          { "type": "p", "text": "If you are a California resident, you have the following rights under the California Consumer Privacy Act (CCPA):" },
+          { "type": "ul", "items": [
+            "Right to know what personal information is collected and how it is used",
+            "Right to request deletion of your personal information",
+            "Right to opt-out of the sale of personal information",
+            "Right to non-discrimination for exercising your privacy rights"
+          ] },
+          { "type": "p", "text": "**We do not sell your personal information.** To exercise your CCPA rights, contact us at hello@frontface.app." }
+        ]
+      },
+      {
+        "heading": "9. Cookies",
+        "blocks": [
+          { "type": "p", "text": "We use the following types of cookies:" },
+          { "type": "h3", "text": "9.1 Essential Cookies" },
+          { "type": "p", "text": "These cookies are necessary for the Service to function and cannot be switched off. They include session cookies for authentication and security." },
+          { "type": "h3", "text": "9.2 Analytics Cookies" },
+          { "type": "p", "text": "These cookies help us understand how visitors interact with our Service by collecting information anonymously. This helps us improve the Service." },
+          { "type": "h3", "text": "9.3 Managing Cookies" },
+          { "type": "p", "text": "Most web browsers allow you to control cookies through their settings. You can set your browser to refuse cookies or delete certain cookies. However, if you block essential cookies, some parts of the Service may not function properly." }
+        ]
+      },
+      {
+        "heading": "10. Security",
+        "blocks": [
+          { "type": "p", "text": "We take reasonable measures to protect your information from unauthorized access, alteration, disclosure, or destruction. These measures include:" },
+          { "type": "ul", "items": [
+            "Encryption of data in transit and at rest",
+            "Secure authentication mechanisms",
+            "Regular security assessments",
+            "Access controls and monitoring"
+          ] },
+          { "type": "p", "text": "However, no method of transmission over the Internet or electronic storage is 100% secure. While we strive to protect your information, we cannot guarantee absolute security." }
+        ]
+      },
+      {
+        "heading": "11. Children's Privacy",
+        "blocks": [
+          { "type": "p", "text": "Our Service is not intended for individuals under the age of 16. We do not knowingly collect personal information from children under 16. If we become aware that we have collected personal information from a child under 16, we will take steps to delete that information promptly. If you believe we have collected information from a child under 16, please contact us at hello@frontface.app." }
+        ]
+      },
+      {
+        "heading": "12. International Data Transfers",
+        "blocks": [
+          { "type": "p", "text": "Your information may be transferred to and processed in countries other than your country of residence. These countries may have data protection laws that are different from the laws of your country. We take appropriate safeguards to ensure that your personal information remains protected in accordance with this Privacy Policy." }
+        ]
+      },
+      {
+        "heading": "13. Changes to This Privacy Policy",
+        "blocks": [
+          { "type": "p", "text": "We may update this Privacy Policy from time to time. We will notify you of any material changes by posting the new Privacy Policy on this page and updating the \"Last Updated\" date. We encourage you to review this Privacy Policy periodically for any changes. Your continued use of the Service after any changes constitutes your acceptance of the updated Privacy Policy." }
+        ]
+      },
+      {
+        "heading": "14. Contact Us",
+        "blocks": [
+          { "type": "p", "text": "If you have any questions about this Privacy Policy or our privacy practices, please contact us at:" },
+          { "type": "p", "text": "**Email:** hello@frontface.app" }
+        ]
+      }
+    ]
+  }
+}

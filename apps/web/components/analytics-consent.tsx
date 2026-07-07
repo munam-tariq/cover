@@ -1,6 +1,7 @@
 "use client";
 
 import Script from "next/script";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { CONSENT_KEY, initAnalytics } from "@/lib/analytics";
@@ -21,6 +22,7 @@ const hasAnyAnalytics = Boolean(
 );
 
 export function AnalyticsConsent() {
+  const t = useTranslations("common.analyticsConsent");
   const [choice, setChoice] = useState<"granted" | "denied" | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -81,13 +83,14 @@ export function AnalyticsConsent() {
       {hasAnyAnalytics && choice === null && (
         <div
           role="dialog"
-          aria-label="Analytics consent"
+          aria-label={t("label")}
           style={{
             position: "fixed",
-            right: 18,
+            insetInlineEnd: 18,
             bottom: 18,
             zIndex: 70,
             width: "min(420px, calc(100vw - 36px))",
+            maxWidth: "calc(100vw - 36px)",
             border: "1px solid #e0e3e8",
             borderRadius: 14,
             background: "#fff",
@@ -97,7 +100,7 @@ export function AnalyticsConsent() {
           }}
         >
           <div style={{ fontSize: 14.5, fontWeight: 800, marginBottom: 6 }}>
-            Help us improve FrontFace
+            {t("title")}
           </div>
           <p
             style={{
@@ -107,12 +110,12 @@ export function AnalyticsConsent() {
               lineHeight: 1.55,
             }}
           >
-            We use privacy-conscious analytics to see where visitors get stuck.
-            These tools only load if you allow analytics.
+            {t("description")}
           </p>
           <div
             style={{
               display: "flex",
+              flexWrap: "wrap",
               justifyContent: "flex-end",
               gap: 10,
               marginTop: 14,
@@ -133,7 +136,7 @@ export function AnalyticsConsent() {
                 cursor: "pointer",
               }}
             >
-              No thanks
+              {t("deny")}
             </button>
             <button
               type="button"
@@ -150,7 +153,7 @@ export function AnalyticsConsent() {
                 cursor: "pointer",
               }}
             >
-              Allow analytics
+              {t("allow")}
             </button>
           </div>
         </div>

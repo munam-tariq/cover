@@ -2,6 +2,7 @@
 
 import { Card, CardContent } from "@chatbot/ui";
 import { type LucideIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface LeadStatsCardProps {
   title: string;
@@ -12,6 +13,8 @@ interface LeadStatsCardProps {
 }
 
 export function LeadStatsCard({ title, value, icon: Icon, trend, loading }: LeadStatsCardProps) {
+  const t = useTranslations("dashboard.states");
+
   if (loading) {
     return (
       <Card>
@@ -38,11 +41,10 @@ export function LeadStatsCard({ title, value, icon: Icon, trend, loading }: Lead
         <p className="text-xs text-muted-foreground">
           {trend != null && trend !== 0 ? (
             <span className={trend > 0 ? "text-green-600" : "text-red-500"}>
-              {trend > 0 ? "+" : ""}
-              {trend}% from previous period
+              {t("previousPeriodChange", { percent: `${trend > 0 ? "+" : ""}${trend}` })}
             </span>
           ) : (
-            "No previous data to compare"
+            t("noPreviousData")
           )}
         </p>
       </CardContent>

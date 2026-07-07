@@ -1,10 +1,11 @@
 "use client";
 
 import { Skeleton } from "@chatbot/ui";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 import { useProject } from "@/contexts/project-context";
+import { useRouter } from "@/i18n/navigation";
 
 
 interface ProjectGuardProps {
@@ -20,6 +21,7 @@ interface ProjectGuardProps {
  * Renders inside the layout shell (sidebar/header are always visible).
  */
 export function ProjectGuard({ children }: ProjectGuardProps) {
+  const t = useTranslations("dashboard.shell.projectGuard");
   const router = useRouter();
   const { projects, isLoading } = useProject();
 
@@ -49,7 +51,7 @@ export function ProjectGuard({ children }: ProjectGuardProps) {
   if (projects.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Redirecting to setup...</p>
+        <p className="text-muted-foreground">{t("redirecting")}</p>
       </div>
     );
   }

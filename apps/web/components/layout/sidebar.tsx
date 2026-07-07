@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { WindowMark } from "@/components/window-mark";
 import { useAgent } from "@/contexts/agent-context";
 import { useInboxPollingOptional } from "@/contexts/inbox-polling-context";
 import { useProject } from "@/contexts/project-context";
+import { Link, usePathname } from "@/i18n/navigation";
 
 import {
   getSelectedPathname,
@@ -17,19 +17,19 @@ import {
 // Navigation items with role requirements
 // roles: undefined = all, "owner" = owner only, "owner_admin" = owner or admin, "agent_only" = agents (not owners viewing their own project)
 const allNavItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "home", roles: undefined },
-  { href: "/inbox", label: "Inbox", icon: "inbox", roles: undefined },
-  { href: "/team", label: "Team", icon: "users", roles: undefined },
-  { href: "/projects", label: "Agents", icon: "folder", roles: "owner" as const },
-  { href: "/leads", label: "Leads", icon: "user-plus", roles: "owner" as const },
-  { href: "/analytics", label: "Analytics", icon: "bar-chart", roles: "owner" as const },
-  { href: "/feedback", label: "Feedback", icon: "thumbs-up", roles: "owner" as const },
-  { href: "/pulse", label: "Pulse", icon: "activity", roles: "owner" as const },
-  { href: "/playground", label: "Playground", icon: "sparkles", roles: "owner_admin" as const },
-  { href: "/knowledge", label: "Knowledge Base", icon: "book", roles: "owner_admin" as const },
-  { href: "/api-endpoints", label: "API Endpoints", icon: "code", roles: "owner" as const },
-  { href: "/embed", label: "Embed", icon: "code-2", roles: "owner" as const },
-  { href: "/settings", label: "Settings", icon: "settings", roles: "owner_admin" as const },
+  { href: "/dashboard", labelKey: "dashboard", icon: "home", roles: undefined },
+  { href: "/inbox", labelKey: "inbox", icon: "inbox", roles: undefined },
+  { href: "/team", labelKey: "team", icon: "users", roles: undefined },
+  { href: "/projects", labelKey: "projects", icon: "folder", roles: "owner" as const },
+  { href: "/leads", labelKey: "leads", icon: "user-plus", roles: "owner" as const },
+  { href: "/analytics", labelKey: "analytics", icon: "bar-chart", roles: "owner" as const },
+  { href: "/feedback", labelKey: "feedback", icon: "thumbs-up", roles: "owner" as const },
+  { href: "/pulse", labelKey: "pulse", icon: "activity", roles: "owner" as const },
+  { href: "/playground", labelKey: "playground", icon: "sparkles", roles: "owner_admin" as const },
+  { href: "/knowledge", labelKey: "knowledge", icon: "book", roles: "owner_admin" as const },
+  { href: "/api-endpoints", labelKey: "apiEndpoints", icon: "code", roles: "owner" as const },
+  { href: "/embed", labelKey: "embed", icon: "code-2", roles: "owner" as const },
+  { href: "/settings", labelKey: "settings", icon: "settings", roles: "owner_admin" as const },
 ];
 
 const icons: Record<string, React.FC<{ className?: string }>> = {
@@ -104,6 +104,17 @@ const icons: Record<string, React.FC<{ className?: string }>> = {
 };
 
 export function Sidebar() {
+  return (
+    <aside className="hidden md:block w-64 bg-card border-e min-h-screen p-4">
+      <SidebarContent />
+    </aside>
+  );
+}
+
+// Shared between the desktop rail (Sidebar, above) and the mobile drawer (MobileNav).
+export function SidebarContent() {
+  const t = useTranslations("dashboard.shell.sidebar");
+  const statusT = useTranslations("dashboard.status");
   const pathname = usePathname() ?? "";
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const { role, availability, isLoading } = useAgent();
@@ -146,7 +157,7 @@ export function Sidebar() {
   const showInboxBadge = inboxCount > 0;
 
   return (
-    <aside className="w-64 bg-card border-r min-h-screen p-4">
+    <>
       <div className="mb-8">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-[#11151b] text-white rounded-lg flex items-center justify-center">
@@ -179,7 +190,7 @@ export function Sidebar() {
               }`}
             >
               <Icon className="w-5 h-5" />
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1">{t(`nav.${item.labelKey}`)}</span>
               {/* Badge for Inbox - shows queue + assigned count */}
               {item.href === "/inbox" && showInboxBadge && (
                 <span
@@ -201,7 +212,7 @@ export function Sidebar() {
       {!isLoading && (
         <div className="mt-auto pt-4 border-t">
           <div className="px-3 py-2 text-xs text-muted-foreground">
-            <p>Agent Status</p>
+            <p>{t("agentStatus")}</p>
             <div className="flex items-center gap-2 mt-1">
               <span
                 className={`w-2 h-2 rounded-full ${
@@ -212,7 +223,7 @@ export function Sidebar() {
                     : "bg-gray-400"
                 }`}
               />
-              <span className="capitalize">{availability?.status || "offline"}</span>
+              <span>{statusT(availability?.status || "offline")}</span>
               {availability?.status === "online" && (
                 <span className="text-muted-foreground">
                   ({availability?.currentChatCount || 0}/{availability?.maxConcurrentChats || 5})
@@ -222,6 +233,6 @@ export function Sidebar() {
           </div>
         </div>
       )}
-    </aside>
+    </>
   );
 }

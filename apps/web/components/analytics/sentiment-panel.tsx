@@ -12,6 +12,7 @@ import {
   type ChartConfig,
 } from "@chatbot/ui";
 import { SmilePlus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
@@ -37,21 +38,28 @@ interface SentimentPanelProps {
   days: number;
 }
 
-const chartConfig: ChartConfig = {
-  positive: { label: "Positive", color: "hsl(142 71% 45%)" },
-  neutral: { label: "Neutral", color: "hsl(var(--muted-foreground))" },
-  negative: { label: "Negative", color: "hsl(0 72% 51%)" },
-};
-
-const SENTIMENTS = [
-  { key: "positive" as const, label: "Positive", dot: "bg-emerald-500" },
-  { key: "neutral" as const, label: "Neutral", dot: "bg-muted-foreground" },
-  { key: "negative" as const, label: "Negative", dot: "bg-red-500" },
-];
+const SENTIMENT_DOTS = {
+  positive: "bg-emerald-500",
+  neutral: "bg-muted-foreground",
+  negative: "bg-red-500",
+} as const;
 
 export function SentimentPanel({ projectId, days }: SentimentPanelProps) {
+  const t = useTranslations("dashboard.pages.analytics.sentiment");
   const [data, setData] = useState<SentimentResponse | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const chartConfig: ChartConfig = {
+    positive: { label: t("positive"), color: "hsl(142 71% 45%)" },
+    neutral: { label: t("neutral"), color: "hsl(var(--muted-foreground))" },
+    negative: { label: t("negative"), color: "hsl(0 72% 51%)" },
+  };
+
+  const SENTIMENTS = [
+    { key: "positive" as const, label: t("positive"), dot: SENTIMENT_DOTS.positive },
+    { key: "neutral" as const, label: t("neutral"), dot: SENTIMENT_DOTS.neutral },
+    { key: "negative" as const, label: t("negative"), dot: SENTIMENT_DOTS.negative },
+  ];
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,8 +84,8 @@ export function SentimentPanel({ projectId, days }: SentimentPanelProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Sentiment</CardTitle>
-          <CardDescription>Loading sentiment...</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("loadingDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] w-full bg-muted animate-pulse rounded" />
@@ -93,15 +101,15 @@ export function SentimentPanel({ projectId, days }: SentimentPanelProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Sentiment</CardTitle>
-          <CardDescription>How visitors feel in conversations</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center text-muted-foreground">
             <SmilePlus className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p className="text-lg font-medium">No sentiment yet</p>
+            <p className="text-lg font-medium">{t("emptyTitle")}</p>
             <p className="text-sm">
-              Sentiment is detected nightly once conversations are classified
+              {t("emptyDescription")}
             </p>
           </div>
         </CardContent>
@@ -114,9 +122,9 @@ export function SentimentPanel({ projectId, days }: SentimentPanelProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sentiment</CardTitle>
+        <CardTitle>{t("title")}</CardTitle>
         <CardDescription>
-          {grandTotal} classified conversations
+          {t("classifiedCount", { count: grandTotal })}
         </CardDescription>
       </CardHeader>
       <CardContent>

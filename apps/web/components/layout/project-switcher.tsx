@@ -11,10 +11,11 @@ import {
   Skeleton,
 } from "@chatbot/ui";
 import { ChevronDown, Check, Plus, FolderOpen } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { useProject } from "@/contexts/project-context";
+import { useRouter } from "@/i18n/navigation";
 
 /**
  * ProjectSwitcher - Dropdown component for switching between projects
@@ -26,6 +27,7 @@ import { useProject } from "@/contexts/project-context";
  * - "View all projects" link
  */
 export function ProjectSwitcher() {
+  const t = useTranslations("dashboard.shell.projectSwitcher");
   const router = useRouter();
   const { currentProject, projects, isLoading, switchProject } = useProject();
   const [isOpen, setIsOpen] = useState(false);
@@ -83,7 +85,7 @@ export function ProjectSwitcher() {
         className="gap-2"
       >
         <Plus className="h-4 w-4" />
-        Create Agent
+        {t("createAgent")}
       </Button>
     );
   }
@@ -104,7 +106,7 @@ export function ProjectSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-          Switch agent
+          {t("switchAgent")}
         </DropdownMenuLabel>
 
         {/* Projects list */}
@@ -128,15 +130,15 @@ export function ProjectSwitcher() {
           onClick={handleNewProject}
           className="cursor-pointer"
         >
-          <Plus className="h-4 w-4 mr-2" />
-          New Agent
+          <Plus className="h-4 w-4 me-2" />
+          {t("newAgent")}
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={handleViewAllProjects}
           className="cursor-pointer"
         >
-          <FolderOpen className="h-4 w-4 mr-2" />
-          View all agents
+          <FolderOpen className="h-4 w-4 me-2" />
+          {t("viewAllAgents")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

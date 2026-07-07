@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@chatbot/ui";
 import { AlertCircle, Loader2, Play, CheckCircle, XCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
 
 import { apiClient } from "@/lib/api-client";
@@ -60,6 +61,8 @@ export function AddEndpointModal({
   editEndpoint,
   onSuccess,
 }: AddEndpointModalProps) {
+  const t = useTranslations("dashboard.pages.apiEndpoints");
+  const modalT = useTranslations("dashboard.pages.apiEndpoints.modal");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [url, setUrl] = useState("");
@@ -121,7 +124,7 @@ export function AddEndpointModal({
   const handleTest = async () => {
     // First, save/create the endpoint if we don't have an ID yet
     if (!editEndpoint?.id) {
-      setError("Please save the endpoint first before testing");
+      setError(modalT("saveBeforeTesting"));
       return;
     }
 
@@ -139,7 +142,7 @@ export function AddEndpointModal({
       setTestResult({
         success: false,
         responseTime: 0,
-        error: err instanceof Error ? err.message : "Test failed",
+        error: err instanceof Error ? err.message : t("testFailed"),
       });
     } finally {
       setTesting(false);
@@ -152,17 +155,17 @@ export function AddEndpointModal({
 
     // Validation
     if (!name.trim()) {
-      setError("Name is required");
+      setError(modalT("nameRequired"));
       return;
     }
 
     if (!description.trim()) {
-      setError("Description is required");
+      setError(modalT("descriptionRequired"));
       return;
     }
 
     if (!url.trim()) {
-      setError("URL is required");
+      setError(modalT("urlRequired"));
       return;
     }
 
@@ -170,18 +173,18 @@ export function AddEndpointModal({
     try {
       new URL(url);
     } catch {
-      setError("Please enter a valid URL");
+      setError(modalT("urlInvalid"));
       return;
     }
 
     // Validate auth credentials
     if (authType === "api_key" && !apiKey.trim() && !isEditing) {
-      setError("API key is required");
+      setError(modalT("apiKeyRequired"));
       return;
     }
 
     if (authType === "bearer" && !bearerToken.trim() && !isEditing) {
-      setError("Bearer token is required");
+      setError(modalT("bearerRequired"));
       return;
     }
 
@@ -224,7 +227,7 @@ export function AddEndpointModal({
       onSuccess();
     } catch (err) {
       console.error("Submit error:", err);
-      setError(err instanceof Error ? err.message : "Failed to save endpoint");
+      setError(err instanceof Error ? err.message : modalT("saveError"));
     } finally {
       setLoading(false);
     }
@@ -235,23 +238,23 @@ export function AddEndpointModal({
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Edit API Endpoint" : "Add API Endpoint"}
+            {isEditing ? modalT("editTitle") : modalT("addTitle")}
           </DialogTitle>
           <DialogDescription>
-            Configure an external API that your chatbot can call to fetch real-time data.
+            {modalT("description")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
           <div className="space-y-2">
             <Label htmlFor="name">
-              Name <span className="text-destructive">*</span>
+              {modalT("name")} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Order Status"
+              placeholder={modalT("namePlaceholder")}
               disabled={loading}
               maxLength={MAX_NAME_LENGTH}
             />
@@ -259,25 +262,25 @@ export function AddEndpointModal({
 
           <div className="space-y-2">
             <Label htmlFor="description">
-              Description <span className="text-destructive">*</span>
+              {modalT("endpointDescription")} <span className="text-destructive">*</span>
             </Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Get order status and tracking information. Use when customer asks about their order, shipping, or delivery. Requires order_id parameter."
+              placeholder={modalT("descriptionPlaceholder")}
               disabled={loading}
               className="min-h-[80px] resize-none"
               maxLength={MAX_DESCRIPTION_LENGTH}
             />
             <p className="text-xs text-muted-foreground">
-              Describe when the AI should call this API. Be specific about what parameters are needed.
+              {modalT("descriptionHelp")}
             </p>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="url">
-              URL <span className="text-destructive">*</span>
+              {modalT("url")} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="url"
@@ -287,13 +290,13 @@ export function AddEndpointModal({
               disabled={loading}
             />
             <p className="text-xs text-muted-foreground">
-              Use {"{param}"} for values the AI will extract from the conversation.
+              {modalT("urlHelp")}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="method">Method</Label>
+              <Label htmlFor="method">{modalT("method")}</Label>
               <Select
                 value={method}
                 onValueChange={(v) => setMethod(v as "GET" | "POST")}
@@ -310,7 +313,7 @@ export function AddEndpointModal({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="authType">Authentication</Label>
+              <Label htmlFor="authType">{modalT("authentication")}</Label>
               <Select
                 value={authType}
                 onValueChange={handleAuthTypeChange}
@@ -320,9 +323,9 @@ export function AddEndpointModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="api_key">API Key</SelectItem>
-                  <SelectItem value="bearer">Bearer Token</SelectItem>
+                  <SelectItem value="none">{modalT("none")}</SelectItem>
+                  <SelectItem value="api_key">{modalT("apiKey")}</SelectItem>
+                  <SelectItem value="bearer">{modalT("bearerToken")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -339,17 +342,17 @@ export function AddEndpointModal({
                   type="password"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={isEditing ? "Enter new key to update" : "Your API key"}
+                    placeholder={isEditing ? modalT("newKeyPlaceholder") : modalT("apiKeyPlaceholder")}
                   disabled={loading}
                 />
                 {isEditing && (
                   <p className="text-xs text-muted-foreground">
-                    Leave blank to keep existing key
+                    {modalT("keepExistingKey")}
                   </p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="apiKeyHeader">Header Name</Label>
+                <Label htmlFor="apiKeyHeader">{modalT("headerName")}</Label>
                 <Input
                   id="apiKeyHeader"
                   value={apiKeyHeader}
@@ -358,7 +361,7 @@ export function AddEndpointModal({
                   disabled={loading}
                 />
                 <p className="text-xs text-muted-foreground">
-                  The header name to send the API key in (default: X-API-Key)
+                  {modalT("headerHelp")}
                 </p>
               </div>
             </div>
@@ -367,19 +370,19 @@ export function AddEndpointModal({
           {authType === "bearer" && (
             <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
               <Label htmlFor="bearerToken">
-                Bearer Token {!isEditing && <span className="text-destructive">*</span>}
+                {modalT("bearerToken")} {!isEditing && <span className="text-destructive">*</span>}
               </Label>
               <Input
                 id="bearerToken"
                 type="password"
                 value={bearerToken}
                 onChange={(e) => setBearerToken(e.target.value)}
-                placeholder={isEditing ? "Enter new token to update" : "Your bearer token"}
+                placeholder={isEditing ? modalT("newTokenPlaceholder") : modalT("bearerPlaceholder")}
                 disabled={loading}
               />
               {isEditing && (
                 <p className="text-xs text-muted-foreground">
-                  Leave blank to keep existing token
+                  {modalT("keepExistingToken")}
                 </p>
               )}
             </div>
@@ -396,13 +399,13 @@ export function AddEndpointModal({
               >
                 {testing ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Testing...
+                    <Loader2 className="h-4 w-4 me-2 animate-spin" />
+                    {modalT("testing")}
                   </>
                 ) : (
                   <>
-                    <Play className="h-4 w-4 mr-2" />
-                    Test Endpoint
+                    <Play className="h-4 w-4 me-2" />
+                    {t("testEndpoint")}
                   </>
                 )}
               </Button>
@@ -436,18 +439,18 @@ export function AddEndpointModal({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={loading || testing}>
-            Cancel
+            {modalT("cancel")}
           </Button>
           <Button onClick={handleSubmit} disabled={loading || testing}>
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {isEditing ? "Saving..." : "Adding..."}
+                <Loader2 className="h-4 w-4 me-2 animate-spin" />
+                {isEditing ? modalT("saving") : modalT("adding")}
               </>
             ) : isEditing ? (
-              "Save Changes"
+              modalT("saveChanges")
             ) : (
-              "Add Endpoint"
+              t("addEndpoint")
             )}
           </Button>
         </DialogFooter>

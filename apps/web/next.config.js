@@ -1,4 +1,7 @@
 const { withSentryConfig } = require("@sentry/nextjs");
+const createNextIntlPlugin = require("next-intl/plugin");
+
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -54,7 +57,7 @@ const nextConfig = {
   },
 };
 
-module.exports = withSentryConfig(nextConfig, {
+module.exports = withSentryConfig(withNextIntl(nextConfig), {
   // Source-map upload runs at build time only when these are set; the build
   // succeeds without them (upload is simply skipped).
   org: process.env.SENTRY_ORG,

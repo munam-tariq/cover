@@ -19,6 +19,7 @@ import {
   Textarea,
 } from "@chatbot/ui";
 import { Check, HelpCircle, Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { apiClient } from "@/lib/api-client";
@@ -35,6 +36,7 @@ interface GapsPanelProps {
 }
 
 export function GapsPanel({ projectId, days }: GapsPanelProps) {
+  const t = useTranslations("dashboard.pages.analytics.gaps");
   const [gaps, setGaps] = useState<Gap[]>([]);
   const [loading, setLoading] = useState(true);
   const [added, setAdded] = useState<Set<string>>(new Set());
@@ -92,7 +94,7 @@ export function GapsPanel({ projectId, days }: GapsPanelProps) {
       setAdded((prev) => new Set(prev).add(activeGap.question));
       closeDialog();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to add to knowledge base");
+      setSaveError(err instanceof Error ? err.message : t("saveError"));
       setSaving(false);
     }
   };
@@ -101,8 +103,8 @@ export function GapsPanel({ projectId, days }: GapsPanelProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Answer Gaps</CardTitle>
-          <CardDescription>Loading gaps...</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("loadingDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -119,15 +121,15 @@ export function GapsPanel({ projectId, days }: GapsPanelProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Answer Gaps</CardTitle>
-          <CardDescription>Questions your agent couldn&apos;t answer</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center text-muted-foreground">
             <HelpCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p className="text-lg font-medium">No gaps found</p>
+            <p className="text-lg font-medium">{t("emptyTitle")}</p>
             <p className="text-sm">
-              Unanswered questions appear here after nightly classification
+              {t("emptyDescription")}
             </p>
           </div>
         </CardContent>
@@ -139,9 +141,9 @@ export function GapsPanel({ projectId, days }: GapsPanelProps) {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Answer Gaps</CardTitle>
+          <CardTitle>{t("title")}</CardTitle>
           <CardDescription>
-            Questions the agent couldn&apos;t answer — add an answer to close the gap
+            {t("descriptionAction")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -156,7 +158,7 @@ export function GapsPanel({ projectId, days }: GapsPanelProps) {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{gap.question}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Asked {gap.count} {gap.count === 1 ? "time" : "times"}
+                      {t("askedCount", { count: gap.count })}
                     </p>
                   </div>
                   <div className="flex flex-shrink-0 items-center gap-2">
@@ -165,13 +167,13 @@ export function GapsPanel({ projectId, days }: GapsPanelProps) {
                     </Badge>
                     {isAdded ? (
                       <Button variant="ghost" size="sm" disabled>
-                        <Check className="mr-1 h-4 w-4 text-emerald-500" />
-                        Added
+                        <Check className="me-1 h-4 w-4 text-emerald-500" />
+                        {t("added")}
                       </Button>
                     ) : (
                       <Button variant="outline" size="sm" onClick={() => openDialog(gap)}>
-                        <Plus className="mr-1 h-4 w-4" />
-                        Add to KB
+                        <Plus className="me-1 h-4 w-4" />
+                        {t("addToKb")}
                       </Button>
                     )}
                   </div>
@@ -185,29 +187,28 @@ export function GapsPanel({ projectId, days }: GapsPanelProps) {
       <Dialog open={activeGap !== null} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add to knowledge base</DialogTitle>
+            <DialogTitle>{t("dialogTitle")}</DialogTitle>
             <DialogDescription>
-              Answer this question and save it as a knowledge source so the agent can
-              answer it next time.
+              {t("dialogDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="kb-name">Title</Label>
+              <Label htmlFor="kb-name">{t("titleLabel")}</Label>
               <Input
                 id="kb-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Short title for this entry"
+                placeholder={t("titlePlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="kb-answer">Answer</Label>
+              <Label htmlFor="kb-answer">{t("answerLabel")}</Label>
               <Textarea
                 id="kb-answer"
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
-                placeholder="Write the answer the agent should give..."
+                placeholder={t("answerPlaceholder")}
                 rows={5}
               />
             </div>
@@ -215,10 +216,10 @@ export function GapsPanel({ projectId, days }: GapsPanelProps) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog} disabled={saving}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button onClick={submit} disabled={saving || !name.trim() || !answer.trim()}>
-              {saving ? "Adding..." : "Add to knowledge base"}
+              {saving ? t("adding") : t("addToKnowledgeBase")}
             </Button>
           </DialogFooter>
         </DialogContent>

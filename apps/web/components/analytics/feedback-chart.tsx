@@ -11,6 +11,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@chatbot/ui";
+import { useTranslations } from "next-intl";
 import { CartesianGrid, XAxis, YAxis, Bar, BarChart } from "recharts";
 
 interface FeedbackTimelineEntry {
@@ -25,18 +26,22 @@ interface FeedbackChartProps {
   period: "24h" | "7d" | "30d";
 }
 
-const chartConfig: ChartConfig = {
-  helpful: {
-    label: "Helpful",
-    color: "hsl(142, 76%, 36%)", // Green
-  },
-  unhelpful: {
-    label: "Not Helpful",
-    color: "hsl(0, 84%, 60%)", // Red
-  },
-};
-
 export function FeedbackChart({ data, loading, period }: FeedbackChartProps) {
+  const t = useTranslations("dashboard.pages.feedback.chart");
+  const tStats = useTranslations("dashboard.pages.feedback.stats");
+  const tPeriods = useTranslations("dashboard.pages.feedback.periods");
+
+  const chartConfig: ChartConfig = {
+    helpful: {
+      label: tStats("helpful"),
+      color: "hsl(142, 76%, 36%)", // Green
+    },
+    unhelpful: {
+      label: tStats("notHelpful"),
+      color: "hsl(0, 84%, 60%)", // Red
+    },
+  };
+
   // Format date for display based on period
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -52,18 +57,12 @@ export function FeedbackChart({ data, loading, period }: FeedbackChartProps) {
   const total = totalHelpful + totalUnhelpful;
   const satisfactionRate = total > 0 ? ((totalHelpful / total) * 100).toFixed(1) : "0";
 
-  const periodDescriptions = {
-    "24h": "Last 24 hours",
-    "7d": "Last 7 days",
-    "30d": "Last 30 days",
-  };
-
   if (loading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Feedback Over Time</CardTitle>
-          <CardDescription>Loading chart data...</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("loadingDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] w-full bg-muted animate-pulse rounded" />
@@ -79,15 +78,15 @@ export function FeedbackChart({ data, loading, period }: FeedbackChartProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Feedback Over Time</CardTitle>
-          <CardDescription>{periodDescriptions[period]}</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{tPeriods(period)}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] w-full flex items-center justify-center text-muted-foreground">
             <div className="text-center">
-              <p className="text-lg font-medium">No feedback yet</p>
+              <p className="text-lg font-medium">{t("emptyTitle")}</p>
               <p className="text-sm">
-                Feedback will appear here once visitors rate responses
+                {t("emptyDescription")}
               </p>
             </div>
           </div>
@@ -99,9 +98,9 @@ export function FeedbackChart({ data, loading, period }: FeedbackChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Feedback Over Time</CardTitle>
+        <CardTitle>{t("title")}</CardTitle>
         <CardDescription>
-          {periodDescriptions[period]} - {total} ratings ({satisfactionRate}% satisfaction)
+          {tPeriods(period)} - {t("summary", { count: total, rate: satisfactionRate })}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -158,11 +157,11 @@ export function FeedbackChart({ data, loading, period }: FeedbackChartProps) {
         <div className="flex items-center justify-center gap-6 mt-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-green-600" />
-            <span className="text-muted-foreground">Helpful ({totalHelpful})</span>
+            <span className="text-muted-foreground">{tStats("helpful")} ({totalHelpful})</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-red-500" />
-            <span className="text-muted-foreground">Not Helpful ({totalUnhelpful})</span>
+            <span className="text-muted-foreground">{tStats("notHelpful")} ({totalUnhelpful})</span>
           </div>
         </div>
       </CardContent>

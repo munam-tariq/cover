@@ -1,0 +1,525 @@
+{
+  "header": {
+    "resources": "Resources",
+    "quickLinks": "Quick links",
+    "recentUpdate": "Recent update",
+    "buildYourAgent": "Build your agent",
+    "openMenu": "Open menu",
+    "homeAriaLabel": "FrontFace home"
+  },
+  "footer": {
+    "tagline": "FrontFace resolves customer questions instantly from your knowledge base — capturing leads and handing off to your team, 24/7.",
+    "copyright": "© {year} FrontFace. All rights reserved.",
+    "builtFor": "Built for support teams that move fast."
+  },
+  "hero": {
+    "pillLabel": "AI customer support agent",
+    "pillBadge": "Knows your knowledge base",
+    "titleLine1": "Resolve customer questions",
+    "titleLine2": "instantly.",
+    "subtitle": "Answers from your docs, captures qualified leads, and hands off complex chats to your team.",
+    "ctaPrimary": "Build your agent",
+    "ctaSecondary": "See it answer",
+    "badges": ["FREE DURING BETA", "5-MIN SETUP", "NO CREDIT CARD"]
+  },
+  "howItWorks": {
+    "eyebrow": "How it works",
+    "title": "From your docs to live answers, in minutes.",
+    "subtitle": "No flows to build, no scripts to write. Point FrontFace at what you already have and it does the rest."
+  },
+  "capabilities": {
+    "eyebrow": "Capabilities",
+    "title": "One agent. Everything support needs.",
+    "subtitle": "It starts with accurate answers from your knowledge — then captures, routes, and reaches customers wherever they are.",
+    "theCore": "THE CORE",
+    "cited": "CITED"
+  },
+  "deploy": {
+    "eyebrow": "Deploy anywhere",
+    "title": "Live in one line — or with no website at all.",
+    "subtitle": "Embed it, host it, or connect it to the channels your customers already use. Same agent, same knowledge, everywhere.",
+    "widgetTitle": "Website widget",
+    "widgetDesc": "One script tag. Works with React, Next.js, Shopify, WordPress or plain HTML. Shadow-DOM isolation, zero conflicts.",
+    "publicTitle": "Public agent page",
+    "publicDesc": "No website? Get a hosted page — a shareable link that works as your online front desk.",
+    "assistantName": "Acme Assistant",
+    "assistantGreeting": "Hi! Ask me anything — I'm here 24/7.",
+    "assistantQuestion": "What are your hours?",
+    "multiTitle": "Multi-channel",
+    "multiDesc": "Meet customers on the web, WhatsApp, Slack and Messenger — one brain across every channel.",
+    "channelWebsiteChat": "Website chat",
+    "channelEmail": "Email",
+    "statusConnected": "Connected",
+    "statusConnect": "Connect"
+  },
+  "pricing": {
+    "eyebrow": "Pricing",
+    "title": "Free while we build.",
+    "subtitle": "Full access, no credit card. Help us shape the product and lock in early-adopter pricing for good.",
+    "betaAccess": "BETA ACCESS",
+    "perMonth": "/mo",
+    "wasPrice": "$49/mo",
+    "freeBeta": "Free during beta",
+    "features": [
+      "Unlimited AI conversations",
+      "Knowledge base (site, docs, files)",
+      "Lead capture & qualification",
+      "Human handoff & queues",
+      "Website widget + public page",
+      "Handoff alerts & workflows",
+      "Campaigns & analytics",
+      "API & MCP access"
+    ],
+    "cta": "Build your agent",
+    "grandfathered": "Early adopters get grandfathered pricing at launch."
+  },
+  "finalCta": {
+    "title": "Stop making customers",
+    "titleAccent": "wait.",
+    "subtitle": "Give every visitor an instant, accurate answer — and your team a head start on every lead.",
+    "ctaPrimary": "Build your agent",
+    "ctaSecondary": "See it answer",
+    "badges": ["5-MIN SETUP", "WORKS ON ANY SITE", "HUMAN HANDOFF INCLUDED"]
+  },
+  "liveDemo": {
+    "searching": "Searching knowledge base",
+    "composerPlaceholder": "Ask a question…",
+    "liveDemoLabel": "Live demo",
+    "knowledgeBase": "Knowledge base",
+    "pagesIndexed": "{count, plural, one {# page} other {# pages}} indexed",
+    "retrieving": "Retrieving relevant pages…",
+    "groundedIn": "Answer grounded in {count, plural, one {# source} other {# sources}}",
+    "ragReady": "RAG retrieval ready",
+    "leadCapture": "LEAD CAPTURE",
+    "shareContinue": "Share & continue",
+    "talkToHuman": "Talk to a human",
+    "leadCaptured": "Lead captured · routed to your team",
+    "sources": "Sources"
+  },
+  "widgetLauncher": {
+    "greeting": "Hi! Have questions about FrontFace? I'm here to help."
+  },
+  "about": {
+    "meta": {
+      "title": "About FrontFace — Built for Lean Support Teams",
+      "description": "FrontFace AI resolves customer questions instantly from your knowledge base — so small teams support more customers without hiring. Built for lean teams.",
+      "ogTitle": "About FrontFace",
+      "ogDescription": "Resolve customer questions instantly from your knowledge base — with cited sources, lead capture, and human handoff. Built for lean teams.",
+      "ogImageAlt": "About FrontFace — AI support agent that resolves customer questions instantly"
+    },
+    "hero": {
+      "eyebrow": "About us",
+      "title": "Great support shouldn't need a big team.",
+      "sub": "FrontFace exists because every business deserves great customer support — without hiring a team or spending thousands on enterprise software."
+    },
+    "storyTitle": "How did FrontFace start?",
+    "story": [
+      "FrontFace started with a simple observation: teams spend hours every week answering the same questions over and over. “What are your hours?” “What's your return policy?” “Do you support SSO?”",
+      "Every hour spent on basic questions is an hour not spent on real work. Slow responses mean lost customers and missed leads. The problem was clear — but the solutions weren't.",
+      "Enterprise chatbots cost thousands per month. Static FAQ pages don't actually answer questions. And generic AI confidently makes things up about your product.",
+      "We built FrontFace to change that: an AI support agent that's trained on YOUR content, answers from it with cited sources, captures leads, and hands off cleanly to a human — live in 5 minutes, no technical skills required."
+    ],
+    "stats": [
+      { "value": "5 min", "label": "Setup time" },
+      { "value": "89%", "label": "Questions answered by AI" },
+      { "value": "24/7", "label": "Always-on availability" },
+      { "value": "Free", "label": "During beta" }
+    ],
+    "valuesTitle": "What principles guide us?",
+    "valuesSub": "These principles guide every decision we make — from product features to customer conversations.",
+    "values": [
+      { "title": "Speed Over Everything", "description": "Your time is valuable. That's why FrontFace takes 5 minutes to set up — not days or weeks. No consultants, no complicated setup." },
+      { "title": "Simple By Design", "description": "You shouldn't need to be technical to use AI. Point it at your site or upload your docs, paste one line of code, and you're live." },
+      { "title": "Built for Lean Teams", "description": "We know support and growth teams are stretched thin. FrontFace handles the repetitive questions so you can focus on what matters." },
+      { "title": "Customer Obsession", "description": "Every feature we build starts with a customer problem. We talk to users constantly and iterate based on real feedback." }
+    ],
+    "visionTitle": "What is FrontFace's vision?",
+    "visionBody": "Every business should give customers the same instant, accurate support as the biggest companies — without the big-company budget. AI should handle the routine so you can focus on what actually matters. We're just getting started.",
+    "startFree": "Start free",
+    "ctaTitle": "Ready to give every customer an answer?",
+    "ctaSub": "5-minute setup. 89% of questions answered automatically. Free during beta.",
+    "ctaSecondary": "See features"
+  },
+  "features": {
+    "meta": {
+      "title": "Features | Knowledge-Base Answers, Lead Capture & Handoff",
+      "description": "Resolve customer questions instantly — RAG-grounded answers, lead capture, multi-channel, and analytics. 5-minute setup on any website. Free during beta.",
+      "ogTitle": "FrontFace Features — Grounded Answers, Lead Capture & Handoff",
+      "ogDescription": "Resolve questions instantly with RAG-grounded answers from your knowledge base — cited sources, lead capture, and analytics. 5-minute setup on any website.",
+      "twitterTitle": "FrontFace Features",
+      "twitterDescription": "Grounded answers from your knowledge base, lead capture, and human handoff.",
+      "ogImageAlt": "FrontFace Features — Grounded answers, lead capture, and human handoff"
+    },
+    "hero": {
+      "eyebrow": "Features",
+      "title": "Everything support needs. One agent.",
+      "sub": "FrontFace resolves customer questions instantly from your own content — answering with cited sources, capturing leads, and handing off cleanly when a human's needed."
+    },
+    "coreEyebrow": "Core capabilities",
+    "core": [
+      { "title": "Answers From Your Knowledge", "description": "Point it at your site or upload your docs, FAQs and policies. RAG-grounded retrieval means accurate answers with sources — never made up.", "highlight": "Cited sources" },
+      { "title": "Human Handoff", "description": "When a chat gets complex, customers reach a real person instantly — with the full conversation and context. AI handles routine, you handle what matters.", "highlight": "Seamless" },
+      { "title": "Feed It Your Content", "description": "Add documents, paste text, or point to your website. Your agent learns from your content and stays current — no retraining required.", "highlight": "Any format" },
+      { "title": "Lead Capture & Qualification", "description": "No pop-ups. The agent earns trust through conversation, then collects contact details and qualifies intent. Turn every conversation into an opportunity.", "highlight": "No forms" }
+    ],
+    "additionalTitle": "What else does FrontFace include?",
+    "additionalSub": "Every feature designed to make your team's life easier and your customers happier.",
+    "additional": [
+      { "title": "Works on Any Website", "description": "Shopify, WordPress, Wix, Squarespace, or custom — one line of code and you're live." },
+      { "title": "24/7 Availability", "description": "Your agent never sleeps. Customers get instant answers any time of day or night." },
+      { "title": "Analytics That Matter", "description": "See what customers ask, where the agent struggles, and which conversations convert." },
+      { "title": "Custom Branding", "description": "Match your brand with customizable colors, logo, and welcome messages." },
+      { "title": "Secure & Private", "description": "Your data stays safe with encrypted storage and secure infrastructure." },
+      { "title": "Conversation History", "description": "Review every conversation. See what's working and where customers need more help." },
+      { "title": "Multi-Channel", "description": "One agent across web, WhatsApp, Slack and email — same brain, same knowledge, everywhere." },
+      { "title": "Developer API & MCP", "description": "Full REST API plus native Model Context Protocol. Build exactly what you need." }
+    ],
+    "stepsTitle": "How quickly can you get started?",
+    "stepsSub": "Three simple steps. No technical skills required.",
+    "steps": [
+      { "title": "Feed it your knowledge", "description": "Point FrontFace at your website or upload docs, PDFs and FAQs. It reads everything and builds a grounded knowledge base in minutes." },
+      { "title": "Make it yours", "description": "Add your logo, pick your colors, write a welcome message. Test it against real questions before it goes live." },
+      { "title": "Go live in 5 minutes", "description": "Drop one line of code on any site — Shopify, WordPress, Wix or custom — or share a hosted public agent page." }
+    ],
+    "ctaTitle": "Ready to put it to work?",
+    "ctaSub": "Start free during beta. No credit card required.",
+    "ctaSecondary": "See use cases"
+  },
+  "integrationsIndex": {
+    "meta": {
+      "title": "Integrations | Works on Any Website",
+      "description": "Add FrontFace to Shopify, WordPress, Wix, Squarespace, or any website with one line of code. Connect Slack, HubSpot, Zapier, and more. 5-minute setup.",
+      "ogTitle": "FrontFace Integrations",
+      "ogDescription": "Works on any website. Shopify, WordPress, Wix, and more — one line of code.",
+      "twitterDescription": "Works on any website. Shopify, WordPress, Wix, and more.",
+      "ogImageAlt": "FrontFace Integrations — works on Shopify, WordPress, Wix, and more"
+    },
+    "hero": {
+      "eyebrow": "Integrations",
+      "title": "Works on any website.",
+      "sub": "Shopify, WordPress, Wix, Squarespace or a custom site — FrontFace works everywhere. Paste one line of code and you're live."
+    },
+    "featuredEyebrow": "Featured",
+    "statusAvailable": "Available",
+    "statusComingSoon": "Coming Soon",
+    "featured": [
+      { "description": "Add AI support to your Shopify store. Answer product questions, order status and returns automatically from your own policies." },
+      { "description": "Works with any WordPress site. Install via plugin or paste one line of code. Fully compatible with WooCommerce." },
+      { "description": "Add to your Wix site in minutes. No coding required — just paste the embed code in your site settings." }
+    ],
+    "allTitle": "All integrations",
+    "allSub": "A growing ecosystem to connect FrontFace with your entire stack.",
+    "categories": {
+      "All": "All",
+      "Website": "Website",
+      "Ecommerce": "Ecommerce",
+      "Communication": "Communication",
+      "CRM": "CRM",
+      "Automation": "Automation",
+      "Analytics": "Analytics",
+      "Developer": "Developer"
+    },
+    "items": [
+      { "description": "Add to any Squarespace site via the code injection settings." },
+      { "description": "Works on any website — paste one line of code before the closing body tag." },
+      { "description": "Full support for WooCommerce stores. Answer product and order questions." },
+      { "description": "Get notified of new leads and escalations in Slack. Reply from threads." },
+      { "description": "Receive daily summaries and instant alerts for conversations that need you." },
+      { "description": "Sync leads directly to HubSpot CRM and track them through your pipeline." },
+      { "description": "Connect FrontFace to 5,000+ apps. Automate lead capture and notifications." },
+      { "description": "Track agent engagement in GA4 and its impact on your conversion funnel." },
+      { "description": "Full-featured REST API for custom integrations across agents and conversations." },
+      { "description": "Real-time notifications for new conversations, leads and escalations." },
+      { "description": "Native Model Context Protocol support. Works with Cursor, Claude and more." },
+      { "description": "Advanced embed customization with React, Vue and vanilla JS support." }
+    ],
+    "customName": "Custom Website",
+    "setupEyebrow": "Simple setup",
+    "setupTitle": "One line of code.",
+    "setupBody": "Adding FrontFace is as simple as pasting one line. No technical skills, no build step — works with any website builder or custom site.",
+    "getStartedFree": "Get started free",
+    "ctaTitle": "Add AI support to your site in 5 minutes.",
+    "ctaSub": "Works with any website. Free during beta.",
+    "ctaSecondary": "Request an integration"
+  },
+  "toolsIndex": {
+    "meta": {
+      "title": "Free AI Support Tools",
+      "description": "Free calculators, checklists, and planning tools for small teams using AI to resolve customer questions, reduce tickets, and improve support coverage.",
+      "ogTitle": "Free AI Support Tools | FrontFace",
+      "ogDescription": "Calculators and checklists for reducing support tickets and planning AI customer support.",
+      "ogImageAlt": "FrontFace free AI support tools"
+    },
+    "hero": {
+      "eyebrow": "Free tools",
+      "title": "Practical calculators for AI customer support.",
+      "sub": "Use these tools to estimate support load, prioritize your knowledge base, and decide where an AI support agent will actually help."
+    },
+    "startHere": "Start here",
+    "openCalculator": "Open calculator",
+    "ctaTitle": "Use the estimate, then test it on your real docs.",
+    "ctaSub": "FrontFace is free during beta. Train an agent on your site and compare the estimate against real customer questions.",
+    "categoryLabels": {
+      "Calculator": "Calculator",
+      "Scorer": "Scorer"
+    }
+  },
+  "calculators": {
+    "deflection": {
+      "eyebrow": "Free support tool",
+      "explanationTitle": "Deflection only works when the answer already exists.",
+      "explanationBody": [
+        "A realistic AI support estimate starts with your repetitive, documentable questions. Shipping policies, plan limits, setup steps, pricing details, refund rules, and product specs are good candidates because an agent can answer from source material.",
+        "Account-specific, emotional, billing-exception, or legal-risk conversations should route to a person. FrontFace is strongest when it handles the repeatable queue and gives your team clean handoff context for everything else."
+      ],
+      "faqs": [
+        { "q": "What is a realistic ticket deflection rate?", "a": "For small teams with a useful knowledge base, 40-70% of repetitive questions is a reasonable planning range. The real number depends on how much of your support queue is answered by existing docs, product pages, policies, and FAQs." },
+        { "q": "Should I include all customer messages in the calculator?", "a": "No. Count only support questions that can be answered from written source material. Exclude refunds that need judgment, angry customers, legal or medical advice, custom account work, and anything where a wrong answer creates real risk." },
+        { "q": "How do I improve deflection after launch?", "a": "Review unanswered questions every week, add missing answers to your knowledge base, and connect related pages with internal links. The agent improves when the source material becomes clearer and more complete." }
+      ],
+      "citationNotes": [
+        "Source for the AI deflection rate benchmark range of 40–70% used as the default slider bounds.",
+        "Industry-average handle time of 6–9 minutes per email ticket used to calibrate the 7-minute default.",
+        "Loaded hourly cost includes employer-paid benefits averaging 30–40% on top of base wages for service roles."
+      ],
+      "ctaTitle": "Turn the estimate into live answers.",
+      "ctaSub": "Point FrontFace at your docs and let the agent answer real customer questions with cited sources.",
+      "ctaSecondaryLabel": "Read the ticket deflection guide",
+      "ui": {
+        "aria": "Support ticket deflection calculator",
+        "panelTitle": "Estimate your support drag",
+        "panelSub": "Adjust the assumptions to match your team.",
+        "fields": [
+          { "label": "Monthly support tickets", "suffix": "tickets" },
+          { "label": "Repetitive / documentable tickets", "suffix": "%" },
+          { "label": "Expected AI deflection rate", "suffix": "%" },
+          { "label": "Minutes spent per routine ticket", "suffix": "min" },
+          { "label": "Loaded support cost per hour", "suffix": "/hr" }
+        ],
+        "resultKicker": "Estimated monthly impact",
+        "resultUnit": "tickets deflected per month",
+        "metricHours": "Hours returned",
+        "metricMonthly": "Monthly savings",
+        "metricAnnual": "Annualized savings",
+        "metricQueue": "Routine queue",
+        "formulaNote": "Formula: monthly tickets x repetitive share x expected AI deflection rate x minutes per ticket. Treat this as a planning estimate, then validate it against real conversation analytics after launch."
+      }
+    },
+    "cost": {
+      "eyebrow": "Free support tool",
+      "explanationTitle": "Your real support cost is 30–50% higher than the salary line.",
+      "explanationBody": [
+        "Most support budgets are built around base salaries, but the fully-loaded cost includes payroll taxes, health and retirement benefits, and the monthly software stack every agent relies on. Those hidden layers add 25–50% to the headline number.",
+        "The cost per ticket is where this becomes actionable. If your cost per ticket is above $30, even modest AI deflection — handling the 40–60% of questions that repeat every week — brings that number down sharply without reducing team size or quality."
+      ],
+      "faqs": [
+        { "q": "What is a 'fully-loaded' support cost?", "a": "Fully-loaded cost includes base salary plus employer-paid payroll taxes, health insurance, retirement contributions, and other benefits — typically 25–40% on top of base pay — plus the monthly cost of tools your agents use (helpdesk software, chat tools, knowledge base platforms). This is the true cost of a support seat." },
+        { "q": "What should I set the benefits multiplier to?", "a": "For US employers, 1.25–1.35 is typical for most roles. The BLS reports benefits averaging 30% of total compensation for office and service workers. If your team is in a higher-cost country or you offer generous benefits (equity, generous PTO, fully-paid health), use 1.4–1.5." },
+        { "q": "How do I lower my cost per ticket?", "a": "The two levers are: deflecting repetitive tickets with AI (so the same team handles more total volume) and reducing average handle time with better tooling and a stronger knowledge base. A 50% deflection rate on your current volume effectively doubles your team's capacity without a new hire." }
+      ],
+      "citationNotes": [
+        "Benefits multiplier default of 1.30× reflects BLS findings that benefits average 30% of total compensation for office and service roles.",
+        "Per-agent software tooling benchmark of $100–$300/month used to calibrate the default of $150/agent (helpdesk, chat, knowledge base, reporting).",
+        "Industry-average cost per ticket of $22–$45 cited as a sanity check for calculator output. Lower values indicate high deflection or short handle times."
+      ],
+      "ctaTitle": "Reduce your cost per ticket without reducing your team.",
+      "ctaSub": "FrontFace handles the repetitive queue so your agents focus on conversations that actually need a human.",
+      "ctaSecondaryLabel": "See how teams cut support costs",
+      "ui": {
+        "aria": "Customer support cost calculator",
+        "panelTitle": "Your support team cost",
+        "panelSub": "Adjust inputs to match your team.",
+        "fieldAgents": "Support agents",
+        "fieldSalary": "Avg annual salary per agent",
+        "fieldMultiplier": "Benefits & overhead multiplier",
+        "fieldTools": "Tools spend per agent / month",
+        "fieldVolume": "Monthly ticket volume",
+        "agentCount": "{count, plural, one {# agent} other {# agents}}",
+        "perMonthShort": "{amount}/mo",
+        "ticketCount": "{count} tickets",
+        "resultKicker": "Fully-loaded annual cost",
+        "resultUnit": "per year for {count, plural, one {# agent} other {# agents}}",
+        "metricPerTicket": "Cost per ticket",
+        "metricPerAgent": "Cost per agent / year",
+        "metricTools": "Tools spend / year",
+        "metricMonthly": "Monthly spend",
+        "formulaNote": "Formula: (agents × salary × benefits multiplier) + (agents × tools/mo × 12). Cost per ticket uses your monthly volume input."
+      }
+    },
+    "sizing": {
+      "eyebrow": "Free support tool",
+      "explanationTitle": "80% utilization is the planning target, not the ceiling.",
+      "explanationBody": [
+        "The formula divides your total monthly handle hours by the available agent hours at 80% utilization. That 20% slack is not wasted — it is where training, coaching, process improvements, and unexpected spikes get absorbed without SLA breaches.",
+        "The spike buffer result shows the headcount you need to handle a 20% surge in volume. For fast-growing teams or seasonal businesses, that is the number to hire toward — not the 80% utilization baseline."
+      ],
+      "faqs": [
+        { "q": "Why use 80% utilization and not 100%?", "a": "At 100% utilization there is no slack for meetings, training, sick days, or unexpected volume spikes. A team running at full capacity burns out quickly and response times collapse the moment volume increases. 80% is the ICMI standard for sustainable operations — the remaining 20% is where coaching, onboarding, and process improvement happen." },
+        { "q": "What counts as 'handle time'?", "a": "Handle time is the total time a ticket occupies an agent — reading, responding, internal notes, follow-up, and any post-resolution wrap-up. For email support, 6–10 minutes is common. For chat, 4–8 minutes. If you track this in your helpdesk, use your actual P50 (median) handle time for a more accurate result." },
+        { "q": "How does AI change this calculation?", "a": "If an AI agent deflects 50% of your tickets before they reach the queue, your effective monthly volume for this calculator drops by half. A team currently needing 8 agents could get by with 4 — or maintain the same headcount and absorb 2× the growth. The deflection calculator above shows the deflection estimate; this tool shows what that means for headcount." }
+      ],
+      "citationNotes": [
+        "80% target utilization is the ICMI industry standard; the remaining 20% covers training, meetings, coaching, and ticket spikes without burning out agents.",
+        "4.33 working weeks per month used as the baseline multiplier for monthly capacity calculations (52 weeks ÷ 12 months).",
+        "Average handle time benchmarks: email support 6–10 minutes, live chat 4–8 minutes. The 8-minute default reflects a mixed-channel small-team average."
+      ],
+      "ctaTitle": "Skip the next hire with AI-handled routine questions.",
+      "ctaSub": "FrontFace deflects 40–70% of repetitive tickets so your team can grow without headcount scaling linearly.",
+      "ctaSecondaryLabel": "How to scale support without more hires",
+      "ui": {
+        "aria": "Support team sizing calculator",
+        "panelTitle": "Team size estimate",
+        "panelSub": "Uses 80% utilization — the ICMI industry standard.",
+        "fieldVolume": "Monthly ticket volume",
+        "fieldHandle": "Avg handle time per ticket",
+        "fieldHours": "Support hours covered per day",
+        "fieldDays": "Days covered per week",
+        "ticketCount": "{count} tickets",
+        "minShort": "{count} min",
+        "hourShort": "{count} hr",
+        "dayCount": "{count, plural, one {# day} other {# days}}",
+        "resultKicker": "Agents needed (80% utilization)",
+        "resultUnit": "agents at target utilization",
+        "metricBuffer": "With 20% spike buffer",
+        "metricBufferValue": "{count} agents",
+        "metricPerDay": "Tickets / agent / day",
+        "metricCapacity": "Monthly capacity (80%)",
+        "metricHandleHours": "Handle hrs / month",
+        "formulaNote": "Formula: ⌈(monthly tickets × handle time / 60) ÷ (working hrs/month × 0.80)⌉. Spike buffer adds 20% headroom."
+      }
+    },
+    "aiVsHuman": {
+      "eyebrow": "Free ROI calculator",
+      "explanationTitle": "The crossover point is lower than most teams expect.",
+      "explanationBody": [
+        "Human support costs scale with every ticket added to the queue — more volume means more agent hours, and eventually a new hire. AI costs are flat: the same monthly subscription handles 200 conversations or 2,000. That asymmetry is where the savings emerge.",
+        "The breakeven volume is the ticket count where AI monthly cost equals what you would spend on one agent at your volume. Below that point the difference is small. Above it, the gap widens with every additional ticket because AI cost does not move."
+      ],
+      "faqs": [
+        { "q": "Does AI fully replace human support agents?", "a": "No — and this calculator does not model that. AI handles the repetitive, document-answerable questions (40–70% of most support queues). Human agents handle account-specific, emotional, or high-stakes conversations. The comparison shows cost savings on the deflected portion, not a headcount elimination scenario." },
+        { "q": "What does 'breakeven volume' mean?", "a": "Breakeven volume is the monthly ticket count at which the AI monthly cost equals what you would spend on a single human agent handling those tickets. Below that threshold, the difference is small. Above it, AI savings compound with every additional ticket because the AI cost stays flat while the human cost grows with volume." },
+        { "q": "Why does the AI cost stay flat while human cost grows?", "a": "Human support costs scale with volume — more tickets mean more agent hours, and at some point a new hire. AI tools typically charge a flat monthly subscription or per-seat fee regardless of conversation volume, so the per-ticket cost drops continuously as volume grows." }
+      ],
+      "citationNotes": [
+        "IBM research cites $15–$20 fully-loaded cost per human-handled support ticket; AI-assisted handling at $0.10–$0.25 per conversation used to frame the breakeven model.",
+        "61% of service teams report cost reduction as the primary AI adoption driver; average 28% reduction in cost per ticket after AI deployment.",
+        "80% utilization model used to calculate agents needed from ticket volume and handle time — same standard used across all FrontFace staffing tools."
+      ],
+      "ctaTitle": "Start free and let the numbers speak.",
+      "ctaSub": "FrontFace's free plan handles real customer conversations. No card required — see actual deflection before you commit.",
+      "ctaSecondaryLabel": "FrontFace vs Chatbase vs Intercom Fin",
+      "ui": {
+        "aria": "AI vs human support cost comparison calculator",
+        "panelTitle": "Compare your options",
+        "panelSub": "Enter your numbers to see the monthly cost difference.",
+        "fieldVolume": "Monthly support tickets",
+        "fieldHandle": "Avg handle time per ticket",
+        "fieldSalary": "Agent loaded annual salary",
+        "fieldAiCost": "Monthly AI tool cost",
+        "ticketCount": "{count} tickets",
+        "minShort": "{count} min",
+        "perMonthShort": "{amount}/mo",
+        "humanTeam": "Human team",
+        "aiAgent": "AI agent",
+        "perMonth": "per month",
+        "humanBreakdown": "{count, plural, one {# agent} other {# agents}} × {salary}/yr salary",
+        "aiBreakdown": "Flat monthly cost · unlimited conversations",
+        "lowerCost": "Lower cost",
+        "monthlySavings": "Monthly savings",
+        "savedWithAi": "saved with AI vs. human team",
+        "aiCostsMore": "AI costs more at this volume",
+        "breakevenVolume": "Breakeven volume",
+        "breakevenUnit": "tickets/month where AI pays off"
+      }
+    },
+    "kbScorer": {
+      "eyebrow": "Free support tool",
+      "explanationEyebrow": "How your score is calculated",
+      "explanationTitle": "Coverage and freshness drive 80% of deflection quality.",
+      "explanationBody": [
+        "A knowledge base scores well when it covers the main question categories, stays current, and gives customers a way to find answers. Coverage and freshness together determine whether the AI has accurate source material. A large library of outdated articles scores worse than a small, accurate one.",
+        "Findability and feedback loop are multipliers. Good content that is hard to search or navigate gets retrieved less reliably by an AI agent. And without a weekly review of unanswered questions, coverage gaps compound silently until they show up as escalations."
+      ],
+      "faqs": [
+        { "q": "What is a good KB health score?", "a": "70 or above (B grade) means your knowledge base is functioning well and can support meaningful AI deflection. Below 50 means the coverage, freshness, or findability gaps will limit how much an AI agent can help — those gaps produce unanswered questions, not deflected tickets." },
+        { "q": "Which dimension has the biggest impact on AI deflection?", "a": "Coverage first, then freshness. An AI agent can only answer what exists in your knowledge base. A well-maintained library of 50+ articles covering your core question categories typically unlocks 40–60% deflection. Findability amplifies coverage — good content that isn't structured well gets retrieved less reliably." },
+        { "q": "How often should I audit my knowledge base?", "a": "A lightweight weekly review of unanswered questions (what did the AI fail to answer this week?) is more effective than a big monthly audit. The weekly signal tells you exactly what to write next. A full audit of existing content freshness makes sense quarterly, or whenever your product ships a significant update." }
+      ],
+      "citationNotes": [
+        "KB coverage is positively correlated with self-service deflection rate. Organizations with 50+ articles see significantly higher first-contact resolution versus those with fewer than 20.",
+        "Content older than 12 months shows a measurably higher error rate; the freshness scoring tiers in this tool reflect Gartner's content decay curve research.",
+        "Teams that review unanswered questions weekly see 2× faster knowledge base improvement than those on a monthly review cycle, used to weight the feedback loop dimension."
+      ],
+      "ctaTitle": "Turn your knowledge base into an AI support agent.",
+      "ctaSub": "FrontFace reads your docs, policies, and FAQs and answers customer questions with cited sources.",
+      "ctaSecondaryLabel": "AI customer support guide for small teams",
+      "ui": {
+        "aria": "Knowledge base health scorer",
+        "panelTitle": "Score your knowledge base",
+        "panelSub": "Answer 6 questions about your support docs.",
+        "dimCoverage": "Coverage",
+        "dimFreshness": "Freshness",
+        "dimFindability": "Findability",
+        "dimFeedback": "Feedback loop",
+        "articleCountQuestion": "How many articles / answers does your KB have?",
+        "articleOptions": ["Fewer than 10", "10 – 30", "31 – 100", "More than 150"],
+        "ageQuestion": "Average age of articles (months since last update)?",
+        "ageOptions": ["Less than 3 months", "3 – 12 months", "12 – 24 months", "Older than 24 months"],
+        "checkSearch": "Has a search function",
+        "checkCategories": "Has categories or topic structure",
+        "checkRatings": "Has helpfulness ratings on articles",
+        "checkWeekly": "Team reviews unanswered questions weekly",
+        "scoreKicker": "KB health score",
+        "outOf100": "out of 100",
+        "topPriority": "Top priority: ",
+        "recCoverageLow": "Grow your article count — more documented answers directly increases deflection rate.",
+        "recFreshnessLow": "Update stale articles — outdated content causes wrong answers and erodes trust.",
+        "recFindabilityLow": "Add search and category structure — good content that can't be found won't deflect tickets.",
+        "recFeedbackLow": "Set up a feedback loop — review unanswered questions weekly to close coverage gaps.",
+        "coverageHigh": "Good article count. Focus on topic coverage depth, not just volume.",
+        "coverageMid": "Add more articles. Target your most-repeated support questions first.",
+        "coverageLow": "Start by documenting your top 20 most common questions.",
+        "freshnessHigh": "Content is current. Set a quarterly review calendar to maintain it.",
+        "freshnessMid": "Some articles may be stale. Audit content older than 12 months.",
+        "freshnessLow": "Stale content creates wrong answers. Schedule a content audit now.",
+        "findabilityHigh": "Good structure. Add internal links between related articles.",
+        "findabilityMid": "Add the missing element (search or categories) to improve reach.",
+        "findabilityLow": "Neither search nor structure — customers can't find answers even if they exist.",
+        "feedbackHigh": "Strong loop. Act on unanswered question data within the same week.",
+        "feedbackMid": "Add the missing feedback element to close the gap-detection loop.",
+        "feedbackLow": "No signal on what's missing. Add ratings and weekly unanswered-question review."
+      }
+    }
+  },
+  "toolLayout": {
+    "freeTool": "Free tool",
+    "howToRead": "How to read the result",
+    "learnMore": "Where can you learn more?",
+    "sourcesMethodology": "Sources & methodology",
+    "sourceCount": "{count, plural, one {# source} other {# sources}}",
+    "faqEyebrow": "FAQ",
+    "faqTitle": "Got questions about this tool?"
+  },
+  "toolCopy": {
+    "support-ticket-deflection-calculator": {
+      "title": "Support Ticket Deflection Calculator",
+      "description": "Estimate how many repetitive support tickets an AI support agent can deflect, how many hours your team gets back, and what that means for monthly support cost."
+    },
+    "customer-support-cost-calculator": {
+      "title": "Customer Support Cost Calculator",
+      "description": "Calculate your true fully-loaded support team cost — salary, benefits, tools, and overhead — and find your real cost per ticket."
+    },
+    "support-team-sizing-calculator": {
+      "title": "Support Team Sizing Calculator",
+      "description": "Find out how many support agents you need for your ticket volume and coverage hours, using the industry-standard 80% utilization model."
+    },
+    "ai-vs-human-support-calculator": {
+      "title": "AI vs Human Support Cost Comparison",
+      "description": "Compare the monthly cost of an AI support agent versus a human support team and find the ticket volume where AI starts paying off."
+    },
+    "knowledge-base-health-scorer": {
+      "title": "Knowledge Base Health Scorer",
+      "description": "Score your support knowledge base across coverage, freshness, findability, and feedback loop — and get a prioritized improvement recommendation."
+    }
+  }
+}

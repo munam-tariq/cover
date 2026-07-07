@@ -1,13 +1,38 @@
 import { MetadataRoute } from "next";
 
-import { blogPosts } from "./(marketing)/blog/blog-data";
-import { integrations as integrationPages } from "./(marketing)/integrations/integrations-data";
-import { tools as toolPages } from "./(marketing)/tools/tools-data";
-import { useCases as useCasePages } from "./(marketing)/use-cases/use-cases-data";
-import { vsPages } from "./(marketing)/vs/vs-data";
+import { blogPosts } from "./[locale]/(marketing)/blog/blog-data";
+import { integrations as integrationPages } from "./[locale]/(marketing)/integrations/integrations-data";
+import { tools as toolPages } from "./[locale]/(marketing)/tools/tools-data";
+import { useCases as useCasePages } from "./[locale]/(marketing)/use-cases/use-cases-data";
+import { vsPages } from "./[locale]/(marketing)/vs/vs-data";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://frontface.app";
+  // Routes with an Arabic variant (Phase 1). Blog//vs//use-cases and
+  // integration sub-pages are English-only — no hreflang alternates.
+  const translatedRoutes = new Set([
+    "/",
+    "/features",
+    "/integrations",
+    "/tools",
+    "/about",
+    "/privacy",
+    "/terms",
+    ...toolPages.map((tool: { slug: string }) => `/tools/${tool.slug}`),
+  ]);
+  const withAlternates = (entry: MetadataRoute.Sitemap[number]) => {
+    const path = entry.url.slice(baseUrl.length) || "/";
+    if (!translatedRoutes.has(path)) return entry;
+    return {
+      ...entry,
+      alternates: {
+        languages: {
+          en: entry.url,
+          ar: `${baseUrl}/ar${path === "/" ? "" : path}`,
+        },
+      },
+    };
+  };
   // Use a fixed date so the sitemap is stable across static builds.
   // Update these when content actually changes — "new Date()" on every
   // build tells Google every page changed on every deploy, which burns
@@ -61,5 +86,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }));
 
-  return [...staticPages, ...integrationSubPages, ...useCaseSubPages, ...vsSubPages, ...tools, ...blogPages];
+  return [...staticPages, ...integrationSubPages, ...useCaseSubPages, ...vsSubPages, ...tools, ...blogPages].map(withAlternates);
 }

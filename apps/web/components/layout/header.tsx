@@ -1,12 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useRef } from "react";
 
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 import { AgentStatusDropdown } from "./agent-status-dropdown";
+import { MobileNav } from "./mobile-nav";
+// import { NotificationsButton } from "./notifications-button"; // not wired up yet
 import { ProjectSwitcher } from "./project-switcher";
 
 interface User {
@@ -15,6 +18,7 @@ interface User {
 }
 
 export function Header() {
+  const t = useTranslations("dashboard.shell.header");
   const [user, setUser] = useState<User | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -70,30 +74,22 @@ export function Header() {
   return (
     <header className="h-16 border-b bg-card px-6 flex items-center justify-between">
       <div className="flex items-center gap-4">
-        {/* Project Switcher */}
-        <ProjectSwitcher />
+        {/* Mobile nav trigger (hamburger + drawer) */}
+        <MobileNav />
+
+        {/* Project Switcher - desktop only, mirrored inside MobileNav's drawer on mobile */}
+        <div className="hidden md:block">
+          <ProjectSwitcher />
+        </div>
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Agent Status Dropdown */}
-        <AgentStatusDropdown />
-
-        {/* Notifications */}
-        <button className="p-2 rounded-md hover:bg-muted transition-colors">
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-            />
-          </svg>
-        </button>
+        {/* Desktop-only controls - mirrored inside MobileNav's drawer on mobile */}
+        <div className="hidden md:flex items-center gap-4">
+          <AgentStatusDropdown />
+          <LocaleSwitcher className="flex items-center gap-2 text-sm text-muted-foreground" />
+          {/* <NotificationsButton /> — not wired up yet */}
+        </div>
 
         {/* User Menu */}
         <div className="relative" ref={dropdownRef}>
@@ -106,18 +102,18 @@ export function Header() {
 
           {/* Dropdown */}
           {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-card border rounded-md shadow-lg py-1 z-50">
+            <div className="absolute end-0 mt-2 w-56 bg-card border rounded-md shadow-lg py-1 z-50">
               {/* User Info */}
               <div className="px-4 py-2 border-b">
-                <p className="text-sm font-medium truncate">{user?.email || "User"}</p>
-                <p className="text-xs text-muted-foreground">Signed in</p>
+                <p className="text-sm font-medium truncate">{user?.email || t("userFallback")}</p>
+                <p className="text-xs text-muted-foreground">{t("signedIn")}</p>
               </div>
 
               {/* Profile Link */}
               <Link
                 href="/profile"
                 onClick={() => setIsDropdownOpen(false)}
-                className="w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors flex items-center gap-2"
+                className="w-full px-4 py-2 text-sm text-start hover:bg-muted transition-colors flex items-center gap-2"
               >
                 <svg
                   className="w-4 h-4"
@@ -132,14 +128,14 @@ export function Header() {
                     d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                   />
                 </svg>
-                Profile
+                {t("profile")}
               </Link>
 
               {/* Logout */}
               <button
                 onClick={handleLogout}
                 disabled={isLoggingOut}
-                className="w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="w-full px-4 py-2 text-sm text-start hover:bg-muted transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 {isLoggingOut ? (
                   <>
@@ -162,12 +158,12 @@ export function Header() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    Signing out...
+                    {t("signingOut")}
                   </>
                 ) : (
                   <>
                     <svg
-                      className="w-4 h-4"
+                      className="w-4 h-4 rtl:-scale-x-100"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -179,7 +175,7 @@ export function Header() {
                         d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                       />
                     </svg>
-                    Sign out
+                    {t("signOut")}
                   </>
                 )}
               </button>

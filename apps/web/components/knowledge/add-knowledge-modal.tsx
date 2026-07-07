@@ -17,6 +17,7 @@ import {
   Label,
 } from "@chatbot/ui";
 import { Upload, FileText, File, AlertCircle, Loader2, Globe } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useRef } from "react";
 
 import { apiClient, apiClientFormData } from "@/lib/api-client";
@@ -41,6 +42,8 @@ export function AddKnowledgeModal({
   projectId,
   onSuccess,
 }: AddKnowledgeModalProps) {
+  const t = useTranslations("dashboard.pages.knowledge.modal");
+  const locale = useLocale();
   const [activeTab, setActiveTab] = useState<InputType>("text");
   const [name, setName] = useState("");
   const [content, setContent] = useState("");
@@ -82,14 +85,14 @@ export function AddKnowledgeModal({
       type === "pdf" ? ["application/pdf"] : ["text/plain"];
     if (!allowedTypes.includes(file.type)) {
       setError(
-        `Invalid file type. Please select a ${type === "pdf" ? "PDF" : "TXT"} file.`
+        t("invalidFileType", { type: type === "pdf" ? "PDF" : "TXT" })
       );
       return;
     }
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      setError("File size exceeds 10MB limit.");
+      setError(t("fileSize"));
       return;
     }
 
@@ -121,28 +124,28 @@ export function AddKnowledgeModal({
     // Q&A pairs are stored as a text source (no name field).
     if (activeTab === "qa") {
       if (!qaQuestion.trim() || !qaAnswer.trim()) {
-        setError("Both a question and an answer are required");
+        setError(t("qaRequired"));
         return;
       }
     } else {
       // Validate name
       if (!name.trim()) {
-        setError("Name is required");
+        setError(t("nameRequired"));
         return;
       }
 
       // Validate based on type
       if (activeTab === "text") {
         if (!content.trim()) {
-          setError("Content is required");
+          setError(t("contentRequired"));
           return;
         }
         if (content.length > MAX_TEXT_LENGTH) {
-          setError(`Content exceeds ${MAX_TEXT_LENGTH.toLocaleString()} character limit`);
+          setError(t("contentLimit", { limit: MAX_TEXT_LENGTH.toLocaleString(locale === "ar" ? "ar-u-nu-latn" : undefined) }));
           return;
         }
       } else if (!selectedFile) {
-        setError(`Please select a ${activeTab === "pdf" ? "PDF" : "text"} file`);
+        setError(t("selectFile", { type: activeTab === "pdf" ? "PDF" : "text" }));
         return;
       }
     }
@@ -180,7 +183,7 @@ export function AddKnowledgeModal({
       onSuccess();
     } catch (err) {
       console.error("Submit error:", err);
-      setError(err instanceof Error ? err.message : "Failed to add knowledge");
+      setError(err instanceof Error ? err.message : t("addError"));
     } finally {
       setLoading(false);
     }
@@ -227,17 +230,17 @@ export function AddKnowledgeModal({
                 setSelectedFile(null);
               }}
             >
-              Remove
+              {t("remove")}
             </Button>
           </div>
         ) : (
           <div className="space-y-2">
             <Upload className="h-10 w-10 mx-auto text-muted-foreground" />
             <p className="font-medium">
-              Drag and drop your {type === "pdf" ? "PDF" : ".txt"} file
+              {t("dropFile", { type: type === "pdf" ? "PDF" : ".txt" })}
             </p>
-            <p className="text-sm text-muted-foreground">or click to browse</p>
-            <p className="text-xs text-muted-foreground">Maximum size: 10MB</p>
+            <p className="text-sm text-muted-foreground">{t("browse")}</p>
+            <p className="text-xs text-muted-foreground">{t("maxSize")}</p>
           </div>
         )}
       </div>
@@ -248,9 +251,9 @@ export function AddKnowledgeModal({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add Knowledge</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>
-            Add content that your chatbot will use to answer questions.
+            {t("description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -263,15 +266,15 @@ export function AddKnowledgeModal({
               setError(null);
             }}
           >
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5">
               <TabsTrigger value="url">
-                <Globe className="h-3.5 w-3.5 mr-1.5" />
-                URL
+                <Globe className="h-3.5 w-3.5 me-1.5" />
+                {t("tabs.url")}
               </TabsTrigger>
-              <TabsTrigger value="text">Paste Text</TabsTrigger>
-              <TabsTrigger value="qa">Q&amp;A</TabsTrigger>
-              <TabsTrigger value="file">Upload TXT</TabsTrigger>
-              <TabsTrigger value="pdf">Upload PDF</TabsTrigger>
+              <TabsTrigger value="text">{t("tabs.text")}</TabsTrigger>
+              <TabsTrigger value="qa">{t("tabs.qa")}</TabsTrigger>
+              <TabsTrigger value="file">{t("tabs.file")}</TabsTrigger>
+              <TabsTrigger value="pdf">{t("tabs.pdf")}</TabsTrigger>
             </TabsList>
 
             <div className="mt-4 space-y-4">
@@ -288,13 +291,13 @@ export function AddKnowledgeModal({
               {activeTab !== "url" && activeTab !== "qa" && (
                 <div className="space-y-2">
                   <Label htmlFor="name">
-                    Source Name <span className="text-destructive">*</span>
+                    {t("sourceName")} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g., FAQ Document, Product Info"
+                    placeholder={t("sourceNamePlaceholder")}
                     disabled={loading}
                     maxLength={100}
                   />
@@ -304,18 +307,21 @@ export function AddKnowledgeModal({
               <TabsContent value="text" className="mt-0">
                 <div className="space-y-2">
                   <Label htmlFor="content">
-                    Content <span className="text-destructive">*</span>
+                    {t("content")} <span className="text-destructive">*</span>
                   </Label>
                   <Textarea
                     id="content"
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    placeholder="Paste your text content here..."
+                    placeholder={t("contentPlaceholder")}
                     disabled={loading}
                     className="min-h-[200px] resize-none"
                   />
-                  <p className="text-xs text-muted-foreground text-right">
-                    {content.length.toLocaleString()} / {MAX_TEXT_LENGTH.toLocaleString()} characters
+                  <p className="text-xs text-muted-foreground text-end">
+                    {t("characterCount", {
+                      count: content.length.toLocaleString(locale === "ar" ? "ar-u-nu-latn" : undefined),
+                      max: MAX_TEXT_LENGTH.toLocaleString(locale === "ar" ? "ar-u-nu-latn" : undefined),
+                    })}
                   </p>
                 </div>
               </TabsContent>
@@ -324,26 +330,26 @@ export function AddKnowledgeModal({
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="qa-question">
-                      Question <span className="text-destructive">*</span>
+                      {t("question")} <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="qa-question"
                       value={qaQuestion}
                       onChange={(e) => setQaQuestion(e.target.value)}
-                      placeholder="e.g., Do you offer a free trial?"
+                      placeholder={t("questionPlaceholder")}
                       disabled={loading}
                       maxLength={300}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="qa-answer">
-                      Answer <span className="text-destructive">*</span>
+                      {t("answer")} <span className="text-destructive">*</span>
                     </Label>
                     <Textarea
                       id="qa-answer"
                       value={qaAnswer}
                       onChange={(e) => setQaAnswer(e.target.value)}
-                      placeholder="The answer your agent should give"
+                      placeholder={t("answerPlaceholder")}
                       disabled={loading}
                       className="min-h-[140px] resize-none"
                     />
@@ -359,7 +365,7 @@ export function AddKnowledgeModal({
                 {renderDropZone("pdf")}
                 <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
-                  Note: Scanned PDFs (images) are not supported. The PDF must contain actual text.
+                  {t("pdfNote")}
                 </p>
               </TabsContent>
             </div>
@@ -378,16 +384,16 @@ export function AddKnowledgeModal({
         {activeTab !== "url" && (
           <DialogFooter>
             <Button variant="outline" onClick={handleClose} disabled={loading}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button onClick={handleSubmit} disabled={loading}>
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Adding...
+                  <Loader2 className="h-4 w-4 me-2 animate-spin" />
+                  {t("adding")}
                 </>
               ) : (
-                "Add Knowledge"
+                t("title")
               )}
             </Button>
           </DialogFooter>

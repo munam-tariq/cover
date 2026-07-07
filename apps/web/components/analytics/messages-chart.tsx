@@ -11,6 +11,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@chatbot/ui";
+import { useTranslations } from "next-intl";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 interface TimelineEntry {
@@ -25,18 +26,21 @@ interface MessagesChartProps {
   period: "24h" | "7d" | "30d";
 }
 
-const chartConfig: ChartConfig = {
-  messages: {
-    label: "Messages",
-    color: "hsl(var(--primary))",
-  },
-  conversations: {
-    label: "Conversations",
-    color: "hsl(var(--muted-foreground))",
-  },
-};
-
 export function MessagesChart({ data, loading, period }: MessagesChartProps) {
+  const t = useTranslations("dashboard.pages.analytics.messagesChart");
+  const tPeriods = useTranslations("dashboard.pages.analytics.periods");
+
+  const chartConfig: ChartConfig = {
+    messages: {
+      label: t("legendMessages"),
+      color: "hsl(var(--primary))",
+    },
+    conversations: {
+      label: t("legendConversations"),
+      color: "hsl(var(--muted-foreground))",
+    },
+  };
+
   // Format date for display based on period
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -50,18 +54,12 @@ export function MessagesChart({ data, loading, period }: MessagesChartProps) {
   const totalMessages = data.reduce((sum, d) => sum + d.messages, 0);
   const totalConversations = data.reduce((sum, d) => sum + d.conversations, 0);
 
-  const periodDescriptions = {
-    "24h": "Last 24 hours",
-    "7d": "Last 7 days",
-    "30d": "Last 30 days",
-  };
-
   if (loading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Messages Over Time</CardTitle>
-          <CardDescription>Loading chart data...</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("loadingDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] w-full bg-muted animate-pulse rounded" />
@@ -77,15 +75,15 @@ export function MessagesChart({ data, loading, period }: MessagesChartProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Messages Over Time</CardTitle>
-          <CardDescription>{periodDescriptions[period]}</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{tPeriods(period)}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] w-full flex items-center justify-center text-muted-foreground">
             <div className="text-center">
-              <p className="text-lg font-medium">No data yet</p>
+              <p className="text-lg font-medium">{t("emptyTitle")}</p>
               <p className="text-sm">
-                Messages will appear here once visitors start chatting
+                {t("emptyDescription")}
               </p>
             </div>
           </div>
@@ -97,9 +95,9 @@ export function MessagesChart({ data, loading, period }: MessagesChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Messages Over Time</CardTitle>
+        <CardTitle>{t("title")}</CardTitle>
         <CardDescription>
-          {periodDescriptions[period]} - {totalMessages} messages, {totalConversations} conversations
+          {tPeriods(period)} - {t("summary", { count: totalMessages, conversations: totalConversations })}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -161,11 +159,11 @@ export function MessagesChart({ data, loading, period }: MessagesChartProps) {
         <div className="flex items-center justify-center gap-6 mt-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-primary" />
-            <span className="text-muted-foreground">Messages</span>
+            <span className="text-muted-foreground">{t("legendMessages")}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-muted-foreground" />
-            <span className="text-muted-foreground">Conversations</span>
+            <span className="text-muted-foreground">{t("legendConversations")}</span>
           </div>
         </div>
       </CardContent>

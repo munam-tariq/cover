@@ -1,0 +1,213 @@
+"use client";
+
+import { Card, CardContent, Button, Skeleton } from "@chatbot/ui";
+import { Plus, FolderOpen, Calendar, Bot } from "lucide-react";
+import Image from "next/image";
+import { useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+
+import { CreateProjectModal } from "@/components/projects/create-project-modal";
+import { useProject, type Project } from "@/contexts/project-context";
+import { useRouter } from "@/i18n/navigation";
+
+
+/**
+ * Get company logo URL from project settings
+ */
+function getProjectLogoUrl(project: Project): string | null {
+  const settings = project.settings as Record<string, unknown> | null;
+  const onboarding = settings?.onboarding as Record<string, unknown> | null;
+  return (onboarding?.company_logo_url as string) || null;
+}
+
+/**
+ * ProjectsPage - Page showing all user's projects/agents
+ *
+ * Features:
+ * - List of all projects with name and created date
+ * - Click project to open Agent Studio (/projects/[projectId])
+ * - Create new project button
+ * - Empty state for users with no projects
+ * - Opens create modal if ?create=true in URL
+ */
+export default function ProjectsPage() {
+  const t = useTranslations("dashboard.pages.projects");
+  const locale = useLocale();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { projects, currentProject, isLoading } = useProject();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Open create modal if ?create=true in URL
+  useEffect(() => {
+    if (searchParams?.get("create") === "true") {
+      setIsCreateModalOpen(true);
+      // Clean up URL
+      router.replace("/projects");
+    }
+  }, [searchParams, router]);
+
+  /**
+   * Handle project click - navigate to the Agent Studio
+   */
+  const handleProjectClick = (projectId: string) => {
+    router.push(`/projects/${projectId}`);
+  };
+
+  /**
+   * Format date for display
+   */
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString(locale === "ar" ? "ar-u-nu-latn" : "en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground">
+            {t("subtitle")}
+          </p>
+        </div>
+        <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          {t("createNew")}
+        </Button>
+      </div>
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <Skeleton className="h-6 w-32 mb-2" />
+                <Skeleton className="h-4 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!isLoading && projects.length === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <FolderOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <h3 className="text-lg font-medium mb-2">{t("emptyTitle")}</h3>
+            <p className="text-muted-foreground text-sm mb-4 text-center max-w-sm">
+              {t("emptyDescription")}
+            </p>
+            <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              {t("createFirst")}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Projects list */}
+      {!isLoading && projects.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {projects.map((project) => {
+            const isActive = currentProject?.id === project.id;
+            const logoUrl = getProjectLogoUrl(project);
+
+            return (
+              <Card
+                key={project.id}
+                className={`cursor-pointer transition-all hover:border-primary/50 hover:shadow-md ${
+                  isActive ? "border-primary ring-1 ring-primary" : ""
+                }`}
+                onClick={() => handleProjectClick(project.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    {/* Logo or fallback icon */}
+                    <ProjectLogo logoUrl={logoUrl} name={project.name} />
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between">
+                        <h3 className="font-medium truncate">{project.name}</h3>
+                        {(() => {
+                          const settings = project.settings as Record<string, unknown> | null;
+                          const widgetEnabled = settings?.widget_enabled !== false;
+                          return widgetEnabled ? (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full shrink-0 ms-2">
+                              {t("live")}
+                            </span>
+                          ) : (
+                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full shrink-0 ms-2">
+                              {t("off")}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <Calendar className="h-3 w-3" />
+                        {t("created", { date: formatDate(project.createdAt) })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Optional: Show quick stats if available */}
+                  {(project.knowledgeCount !== undefined || project.endpointCount !== undefined) && (
+                    <div className="flex gap-4 mt-3 pt-3 border-t text-xs text-muted-foreground">
+                      {project.knowledgeCount !== undefined && (
+                        <span>{t("sources", { count: project.knowledgeCount })}</span>
+                      )}
+                      {project.endpointCount !== undefined && (
+                        <span>{t("endpoints", { count: project.endpointCount })}</span>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+      />
+    </div>
+  );
+}
+
+/**
+ * ProjectLogo - Shows company logo or fallback Bot icon
+ */
+function ProjectLogo({ logoUrl, name }: { logoUrl: string | null; name: string }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (logoUrl && !hasError) {
+    return (
+      <Image
+        src={logoUrl}
+        alt={`${name} logo`}
+        width={40}
+        height={40}
+        className="rounded-lg shrink-0"
+        onError={() => setHasError(true)}
+        unoptimized
+      />
+    );
+  }
+
+  return (
+    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+      <Bot className="h-5 w-5 text-primary" />
+    </div>
+  );
+}

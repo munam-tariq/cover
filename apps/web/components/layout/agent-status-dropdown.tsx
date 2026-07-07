@@ -1,34 +1,31 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useRef, useEffect } from "react";
 
 import { useAgent, type AgentStatus } from "@/contexts/agent-context";
 
-const statusConfig: Record<
+// Exported so MobileNav's compact status picker can share the same colors/labels.
+export const statusConfig: Record<
   AgentStatus,
-  { label: string; color: string; bgColor: string; description: string }
+  { color: string; bgColor: string }
 > = {
   online: {
-    label: "Online",
     color: "bg-green-500",
     bgColor: "bg-green-500/10",
-    description: "Accepting new conversations",
   },
   away: {
-    label: "Away",
     color: "bg-yellow-500",
     bgColor: "bg-yellow-500/10",
-    description: "Not accepting new conversations",
   },
   offline: {
-    label: "Offline",
     color: "bg-gray-400",
     bgColor: "bg-gray-500/10",
-    description: "Not available for chat",
   },
 };
 
 export function AgentStatusDropdown() {
+  const t = useTranslations("dashboard.status");
   const { availability, updateStatus, isLoading, role } = useAgent();
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -72,7 +69,7 @@ export function AgentStatusDropdown() {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted animate-pulse">
         <div className="w-2 h-2 rounded-full bg-gray-400" />
-        <span className="text-sm text-muted-foreground">Loading...</span>
+        <span className="text-sm text-muted-foreground">{t("loading")}</span>
       </div>
     );
   }
@@ -86,7 +83,7 @@ export function AgentStatusDropdown() {
         className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${config.bgColor} hover:opacity-80 disabled:opacity-50`}
       >
         <span className={`w-2 h-2 rounded-full ${config.color}`} />
-        <span className="text-sm font-medium">{config.label}</span>
+        <span className="text-sm font-medium">{t(currentStatus)}</span>
         <svg
           className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
           fill="none"
@@ -99,13 +96,15 @@ export function AgentStatusDropdown() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-64 bg-card border rounded-lg shadow-lg py-1 z-50">
+        <div className="absolute top-full end-0 mt-2 w-64 bg-card border rounded-lg shadow-lg py-1 z-50">
           {/* Header */}
           <div className="px-4 py-2 border-b">
-            <p className="text-sm font-medium">Agent Status</p>
+            <p className="text-sm font-medium">{t("title")}</p>
             <p className="text-xs text-muted-foreground">
-              {availability?.currentChatCount || 0} / {availability?.maxConcurrentChats || 5} active
-              chats
+              {t("activeChats", {
+                current: availability?.currentChatCount || 0,
+                max: availability?.maxConcurrentChats || 5,
+              })}
             </p>
           </div>
 
@@ -117,14 +116,16 @@ export function AgentStatusDropdown() {
                   key={status}
                   onClick={() => handleStatusChange(status)}
                   disabled={isUpdating}
-                  className={`w-full px-4 py-2 text-left hover:bg-muted transition-colors flex items-center gap-3 ${
+                  className={`w-full px-4 py-2 text-start hover:bg-muted transition-colors flex items-center gap-3 ${
                     status === currentStatus ? "bg-muted" : ""
                   }`}
                 >
                   <span className={`w-3 h-3 rounded-full ${statusInfo.color}`} />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{statusInfo.label}</p>
-                    <p className="text-xs text-muted-foreground">{statusInfo.description}</p>
+                    <p className="text-sm font-medium">{t(status)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t(`${status}Description`)}
+                    </p>
                   </div>
                   {status === currentStatus && (
                     <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
@@ -144,8 +145,7 @@ export function AgentStatusDropdown() {
           {currentStatus === "online" && (availability?.currentChatCount || 0) > 0 && (
             <div className="px-4 py-2 border-t">
               <p className="text-xs text-muted-foreground">
-                Tip: Set to &quot;Away&quot; to stop receiving new conversations while finishing
-                current chats.
+                {t("awayTip")}
               </p>
             </div>
           )}

@@ -1,19 +1,36 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-/**
- * Updates the session and handles route protection
- * Returns redirect response if auth required but user not authenticated
- */
-export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({
-    request,
-  });
+type SetCookie = { name: string; value: string; options: CookieOptions };
 
-  // Skip auth checks for callback route - it handles auth flow client-side
-  // Just pass through the response with cookies intact
-  if (request.nextUrl.pathname.startsWith("/auth/callback")) {
-    return response;
+export type SessionResult = {
+  /** Non-null when auth rules demand a redirect (login wall / away from login). */
+  redirect: NextResponse | null;
+  /** Refreshed auth cookies the caller must copy onto whatever response it returns. */
+  cookiesToSet: SetCookie[];
+};
+
+/** Strip the locale prefix so route rules match both /dashboard and /ar/dashboard. */
+function splitLocale(pathname: string): { prefix: "" | "/ar"; path: string } {
+  if (pathname === "/ar" || pathname.startsWith("/ar/")) {
+    return { prefix: "/ar", path: pathname.slice(3) || "/" };
+  }
+  return { prefix: "", path: pathname };
+}
+
+/**
+ * Refreshes the Supabase session and evaluates route protection.
+ * Mutates request.cookies with refreshed values so downstream middleware
+ * (next-intl) and server components see the fresh session; returns the
+ * Set-Cookie list for the final response instead of building one itself.
+ */
+export async function updateSession(request: NextRequest): Promise<SessionResult> {
+  const cookiesToSet: SetCookie[] = [];
+  const { prefix, path } = splitLocale(request.nextUrl.pathname);
+
+  // Callback route handles the auth flow client-side — pass through untouched.
+  if (path.startsWith("/auth/callback")) {
+    return { redirect: null, cookiesToSet };
   }
 
   const supabase = createServerClient(
@@ -24,18 +41,9 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(
-          cookiesToSet: { name: string; value: string; options: CookieOptions }[]
-        ) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          response = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
+        setAll(cookies: SetCookie[]) {
+          cookies.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.push(...cookies);
         },
       },
     }
@@ -49,30 +57,21 @@ export async function updateSession(request: NextRequest) {
   // Protected routes that require authentication (dashboard routes)
   const protectedPaths = ["/dashboard", "/knowledge", "/api-endpoints", "/embed", "/settings", "/playground", "/analytics", "/projects"];
   const isProtectedPath = protectedPaths.some(
-    (path) =>
-      request.nextUrl.pathname === path ||
-      request.nextUrl.pathname.startsWith(`${path}/`)
+    (p) => path === p || path.startsWith(`${p}/`)
   );
 
   // Auth paths where logged-in users should be redirected to dashboard
   const authPaths = ["/login"];
   const isAuthPath = authPaths.some(
-    (path) =>
-      request.nextUrl.pathname === path ||
-      request.nextUrl.pathname.startsWith(`${path}/`)
+    (p) => path === p || path.startsWith(`${p}/`)
   );
 
-  // Redirect unauthenticated users to login for protected routes
+  let redirect: NextResponse | null = null;
   if (isProtectedPath && !user) {
-    const redirectUrl = new URL("/login", request.url);
-    return NextResponse.redirect(redirectUrl);
+    redirect = NextResponse.redirect(new URL(`${prefix}/login`, request.url));
+  } else if (isAuthPath && user) {
+    redirect = NextResponse.redirect(new URL(`${prefix}/dashboard`, request.url));
   }
 
-  // Redirect authenticated users away from auth pages to dashboard
-  if (isAuthPath && user) {
-    const redirectUrl = new URL("/dashboard", request.url);
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  return response;
+  return { redirect, cookiesToSet };
 }

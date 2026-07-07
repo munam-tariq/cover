@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "title": "FrontFace — AI Support Agent That Resolves Questions Instantly",
+    "titleTemplate": "%s | FrontFace",
+    "description": "FrontFace AI resolves customer questions instantly from your knowledge base — support more customers without hiring. Free during beta.",
+    "ogImageAlt": "FrontFace — AI support agent that resolves customer questions instantly"
+  },
+  "localeSwitcher": {
+    "label": "Language",
+    "en": "English",
+    "ar": "العربية"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you are looking for doesn't exist or has moved.",
+    "backHome": "Back to home"
+  },
+  "analyticsConsent": {
+    "label": "Analytics consent",
+    "title": "Help us improve FrontFace",
+    "description": "We use privacy-conscious analytics to see where visitors get stuck. These tools only load if you allow analytics.",
+    "deny": "No thanks",
+    "allow": "Allow analytics"
+  },
+  "legalNotice": "This translation is provided for reference; the English version is the legal reference."
+}

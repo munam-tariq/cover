@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@chatbot/ui";
 import { AlertTriangle, ThumbsDown, Clock } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface FeedbackIssue {
   questionText: string;
@@ -23,15 +24,17 @@ interface FeedbackIssuesListProps {
 }
 
 export function FeedbackIssuesList({ issues, loading }: FeedbackIssuesListProps) {
+  const t = useTranslations("dashboard.pages.feedback.issues");
+
   if (loading) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
-            Responses Needing Attention
+            {t("title")}
           </CardTitle>
-          <CardDescription>Loading issues...</CardDescription>
+          <CardDescription>{t("loadingDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -50,17 +53,17 @@ export function FeedbackIssuesList({ issues, loading }: FeedbackIssuesListProps)
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
-            Responses Needing Attention
+            {t("title")}
           </CardTitle>
           <CardDescription>
-            Questions with the most negative feedback
+            {t("description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center text-muted-foreground">
-            <p className="text-lg font-medium">No issues found</p>
+            <p className="text-lg font-medium">{t("emptyTitle")}</p>
             <p className="text-sm mt-1">
-              Great job! No responses have received negative feedback yet.
+              {t("emptyDescription")}
             </p>
           </div>
         </CardContent>
@@ -78,11 +81,11 @@ export function FeedbackIssuesList({ issues, loading }: FeedbackIssuesListProps)
     const diffDays = Math.floor(diffMs / 86400000);
 
     if (diffMins < 60) {
-      return `${diffMins}m ago`;
+      return t("minutesAgo", { count: diffMins });
     } else if (diffHours < 24) {
-      return `${diffHours}h ago`;
+      return t("hoursAgo", { count: diffHours });
     } else {
-      return `${diffDays}d ago`;
+      return t("daysAgo", { count: diffDays });
     }
   };
 
@@ -97,10 +100,10 @@ export function FeedbackIssuesList({ issues, loading }: FeedbackIssuesListProps)
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-amber-500" />
-          Responses Needing Attention
+          {t("title")}
         </CardTitle>
         <CardDescription>
-          Questions with the most negative feedback - consider improving your knowledge base
+          {t("descriptionAction")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -119,7 +122,7 @@ export function FeedbackIssuesList({ issues, loading }: FeedbackIssuesListProps)
 
                   {/* Sample answer */}
                   <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                    AI Response: {truncate(issue.sampleAnswer, 150)}
+                    {t("aiResponse")} {truncate(issue.sampleAnswer, 150)}
                   </p>
                 </div>
 
@@ -139,7 +142,7 @@ export function FeedbackIssuesList({ issues, loading }: FeedbackIssuesListProps)
               {/* Action hint */}
               <div className="mt-3 flex items-center gap-2 text-xs text-amber-600">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-600" />
-                Tip: Review your knowledge base for related content
+                {t("tip")}
               </div>
             </div>
           ))}

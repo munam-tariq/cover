@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@chatbot/ui";
 import { HelpCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface QuestionCluster {
   representative: string;
@@ -15,12 +16,14 @@ interface TopQuestionsListProps {
 }
 
 export function TopQuestionsList({ questions, loading }: TopQuestionsListProps) {
+  const t = useTranslations("dashboard.pages.analytics.topQuestions");
+
   if (loading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Top Questions</CardTitle>
-          <CardDescription>Loading questions...</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("loadingDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -40,15 +43,15 @@ export function TopQuestionsList({ questions, loading }: TopQuestionsListProps) 
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Top Questions</CardTitle>
-          <CardDescription>Most frequently asked questions</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center text-muted-foreground">
             <HelpCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p className="text-lg font-medium">No questions yet</p>
+            <p className="text-lg font-medium">{t("emptyTitle")}</p>
             <p className="text-sm">
-              Common questions will appear here once visitors start chatting
+              {t("emptyDescription")}
             </p>
           </div>
         </CardContent>
@@ -62,9 +65,9 @@ export function TopQuestionsList({ questions, loading }: TopQuestionsListProps) 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Top Questions</CardTitle>
+        <CardTitle>{t("title")}</CardTitle>
         <CardDescription>
-          Most frequently asked questions (grouped by similarity)
+          {t("descriptionGrouped")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -83,8 +86,8 @@ export function TopQuestionsList({ questions, loading }: TopQuestionsListProps) 
                   </div>
                   {/* Show similar variations if there are multiple */}
                   {question.count > 1 && question.examples.length > 1 && (
-                    <div className="mt-1 ml-8 text-xs text-muted-foreground">
-                      <span className="font-medium">Similar:</span>{" "}
+                    <div className="mt-1 ms-8 text-xs text-muted-foreground">
+                      <span className="font-medium">{t("similar")}</span>{" "}
                       {question.examples
                         .slice(1, 3)
                         .map((ex, i) => (
@@ -101,7 +104,7 @@ export function TopQuestionsList({ questions, loading }: TopQuestionsListProps) 
                 </span>
               </div>
               {/* Progress bar showing relative frequency */}
-              <div className="ml-8 h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="ms-8 h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary rounded-full transition-all duration-300"
                   style={{ width: `${(question.count / maxCount) * 100}%` }}

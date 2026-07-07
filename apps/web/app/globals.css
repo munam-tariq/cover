@@ -93,7 +93,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
   }
 }
 
@@ -146,6 +146,10 @@
   from { opacity: 0; transform: translateX(24px); }
   to { opacity: 1; transform: none; }
 }
+@keyframes ff-in-left {
+  from { opacity: 0; transform: translateX(-24px); }
+  to { opacity: 1; transform: none; }
+}
 @keyframes ff-pop {
   0% { opacity: 0; transform: scale(0.92); }
   60% { transform: scale(1.015); }
@@ -187,6 +191,28 @@
 }
 @keyframes ff-dash {
   to { stroke-dashoffset: 0; }
+}
+
+/* LocaleSwitcher — base reset, colored via `color: inherit` so each context
+   (marketing header, footer, dashboard header bar) only needs to set text color. */
+.ff-locale-btn {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.ff-locale-btn:hover { opacity: 0.75; }
+.ff-locale-btn[aria-current="true"] {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ff-locale-btn + .ff-locale-btn {
+  border-inline-start: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  padding-inline-start: 8px;
 }
 
 .shimmer-text {
@@ -231,8 +257,7 @@
   .ff-how-line { display: none !important; }
   .ff-cap-grid { grid-template-columns: 1fr 1fr !important; }
   .ff-cap-feature { grid-column: span 2 !important; grid-row: span 1 !important; }
-  .ff-deploy-grid { grid-template-columns: 1fr !important; }
-  .ff-testi-grid { grid-template-columns: 1fr !important; }
+  .ff-deploy-grid { grid-template-columns: minmax(0,1fr) !important; }
 }
 @media (max-width: 620px) {
   .ff-how-grid { grid-template-columns: 1fr !important; }
@@ -431,4 +456,10 @@
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* Arabic pages: IBM Plex Sans Arabic first (it includes Latin glyphs),
+   generic fallbacks after. LTR pages keep Inter via body className. */
+[dir="rtl"] body {
+  font-family: var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
 }

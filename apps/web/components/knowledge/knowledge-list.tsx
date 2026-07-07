@@ -8,6 +8,7 @@ import {
   Skeleton,
 } from "@chatbot/ui";
 import { Trash2, Plus, FileText, File, AlertCircle, RefreshCw, Eye, Globe } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useEffect, useCallback } from "react";
 
 import { useProject } from "@/contexts/project-context";
@@ -46,6 +47,8 @@ function formatSourceUrl(url: string): string {
 }
 
 export function KnowledgeList() {
+  const t = useTranslations("dashboard.pages.knowledge");
+  const locale = useLocale();
   const { currentProject, isLoading: projectLoading } = useProject();
   const [sources, setSources] = useState<KnowledgeSource[]>([]);
   const [capacity, setCapacity] = useState<CrawlCapacity | null>(null);
@@ -75,11 +78,11 @@ export function KnowledgeList() {
       setCapacity(data.capacity ?? null);
     } catch (err) {
       console.error("Fetch error:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch sources");
+      setError(err instanceof Error ? err.message : t("loadError"));
     } finally {
       setLoading(false);
     }
-  }, [currentProject?.id]);
+  }, [currentProject?.id, t]);
 
   // Fetch sources when project changes
   useEffect(() => {
@@ -126,7 +129,7 @@ export function KnowledgeList() {
   const handleDelete = async (id: string) => {
     if (!currentProject?.id) return;
 
-    if (!confirm("Are you sure you want to delete this knowledge source? This action cannot be undone.")) {
+    if (!confirm(t("deleteConfirm"))) {
       return;
     }
 
@@ -140,7 +143,7 @@ export function KnowledgeList() {
       );
     } catch (err) {
       console.error("Delete error:", err);
-      alert(err instanceof Error ? err.message : "Failed to delete source");
+      alert(err instanceof Error ? err.message : t("deleteError"));
     } finally {
       setDeleting(null);
     }
@@ -160,7 +163,7 @@ export function KnowledgeList() {
       });
     } catch (err) {
       console.error("Recrawl error:", err);
-      alert(err instanceof Error ? err.message : "Failed to recrawl source");
+      alert(err instanceof Error ? err.message : t("recrawlError"));
       fetchSources();
     } finally {
       setRecrawling(null);
@@ -170,11 +173,11 @@ export function KnowledgeList() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "ready":
-        return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Ready</Badge>;
+        return <Badge variant="default" className="bg-green-500 hover:bg-green-600">{t("status.ready")}</Badge>;
       case "processing":
-        return <Badge variant="secondary" className="animate-pulse">Processing...</Badge>;
+        return <Badge variant="secondary" className="animate-pulse">{t("status.processing")}</Badge>;
       case "failed":
-        return <Badge variant="destructive">Failed</Badge>;
+        return <Badge variant="destructive">{t("status.failed")}</Badge>;
       default:
         return null;
     }
@@ -194,13 +197,13 @@ export function KnowledgeList() {
   const getTypeLabel = (type: string) => {
     switch (type) {
       case "pdf":
-        return "PDF";
+        return t("types.pdf");
       case "file":
-        return "Text File";
+        return t("types.file");
       case "text":
-        return "Text";
+        return t("types.text");
       case "url":
-        return "Web Page";
+        return t("types.url");
       default:
         return type.toUpperCase();
     }
@@ -209,7 +212,7 @@ export function KnowledgeList() {
   if (projectLoading || loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-4 w-72 mt-2" />
@@ -246,8 +249,8 @@ export function KnowledgeList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Knowledge Base</h1>
-            <p className="text-muted-foreground">No project selected</p>
+            <h1 className="text-2xl font-bold">{t("title")}</h1>
+            <p className="text-muted-foreground">{t("noProjectSelected")}</p>
           </div>
         </div>
       </div>
@@ -259,9 +262,9 @@ export function KnowledgeList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Knowledge Base</h1>
+            <h1 className="text-2xl font-bold">{t("title")}</h1>
             <p className="text-muted-foreground">
-              Upload and manage your chatbot&apos;s knowledge sources
+              {t("subtitleManage")}
             </p>
           </div>
         </div>
@@ -279,8 +282,8 @@ export function KnowledgeList() {
                 fetchSources();
               }}
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
+              <RefreshCw className="h-4 w-4 me-2" />
+              {t("retry")}
             </Button>
           </CardContent>
         </Card>
@@ -290,22 +293,22 @@ export function KnowledgeList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Knowledge Base</h1>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
           <p className="text-muted-foreground">
-            Your chatbot uses this content to answer questions from your customers.
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-3">
           {capacity && (
             <span className="text-sm text-muted-foreground whitespace-nowrap">
-              {capacity.used} / {capacity.max} pages scanned
+              {t("pagesScanned", { used: capacity.used, max: capacity.max })}
             </span>
           )}
           <Button onClick={() => setModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Knowledge
+            <Plus className="h-4 w-4 me-2" />
+            {t("addKnowledge")}
           </Button>
         </div>
       </div>
@@ -316,13 +319,13 @@ export function KnowledgeList() {
             <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
               <FileText className="w-6 h-6 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-medium">No knowledge sources yet</h3>
+            <h3 className="text-lg font-medium">{t("emptyTitle")}</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-              Add your FAQs, product info, or documentation to help your chatbot answer customer questions accurately.
+              {t("emptyDescription")}
             </p>
             <Button className="mt-4" onClick={() => setModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Knowledge
+              <Plus className="h-4 w-4 me-2" />
+              {t("addKnowledge")}
             </Button>
           </CardContent>
         </Card>
@@ -331,8 +334,8 @@ export function KnowledgeList() {
           {sources.map((source) => (
             <Card key={source.id}>
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
                     {getTypeIcon(source.type)}
                     <div className="min-w-0">
                       <h3 className="font-medium truncate">{source.name}</h3>
@@ -350,10 +353,13 @@ export function KnowledgeList() {
                       <p className="text-sm text-muted-foreground">
                         {getTypeLabel(source.type)}
                         {source.status === "ready" && source.chunkCount > 0 && (
-                          <> &bull; {source.chunkCount} chunks</>
+                          <> &bull; {t("chunks", { count: source.chunkCount })}</>
                         )}
-                        {" "}&bull; Added{" "}
-                        {new Date(source.createdAt).toLocaleDateString()}
+                        {" "}&bull; {t("added", {
+                          date: new Date(source.createdAt).toLocaleDateString(
+                            locale === "ar" ? "ar-u-nu-latn" : undefined
+                          ),
+                        })}
                       </p>
                       {source.error && (
                         <p className="text-sm text-destructive mt-1 flex items-center gap-1">
@@ -363,14 +369,14 @@ export function KnowledgeList() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     {getStatusBadge(source.status)}
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleView(source.id)}
                       className="text-muted-foreground hover:text-foreground"
-                      title="View content"
+                      title={t("viewContent")}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -381,7 +387,7 @@ export function KnowledgeList() {
                         onClick={() => handleRecrawl(source.id)}
                         disabled={recrawling === source.id || source.status === "processing"}
                         className="text-muted-foreground hover:text-foreground"
-                        title="Recrawl this page"
+                        title={t("recrawl")}
                       >
                         <RefreshCw
                           className={`h-4 w-4 ${recrawling === source.id ? "animate-spin" : ""}`}
@@ -394,7 +400,7 @@ export function KnowledgeList() {
                       onClick={() => handleDelete(source.id)}
                       disabled={deleting === source.id}
                       className="text-muted-foreground hover:text-destructive"
-                      title="Delete"
+                      title={t("delete")}
                     >
                       {deleting === source.id ? (
                         <RefreshCw className="h-4 w-4 animate-spin" />

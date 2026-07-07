@@ -62,12 +62,12 @@ export function ChatInput({
           placeholder={placeholder}
           disabled={disabled || isLoading}
           className={cn(
-            "min-h-[44px] max-h-[200px] resize-none pr-12",
+            "min-h-[44px] max-h-[200px] resize-none pe-12",
             "focus-visible:ring-1 focus-visible:ring-ring"
           )}
           rows={1}
         />
-        <div className="absolute bottom-1 right-1 text-xs text-muted-foreground p-1">
+        <div className="absolute bottom-1 end-1 text-xs text-muted-foreground p-1">
           {message.length}/2000
         </div>
       </div>
@@ -83,7 +83,7 @@ export function ChatInput({
         {isLoading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          <Send className="h-4 w-4" />
+          <Send className="h-4 w-4 rtl:-scale-x-100" />
         )}
       </Button>
     </div>

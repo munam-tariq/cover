@@ -19,6 +19,7 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback } from "react";
 
 import { useProject } from "@/contexts/project-context";
@@ -49,6 +50,7 @@ interface TestResult {
 }
 
 export function EndpointsList() {
+  const t = useTranslations("dashboard.pages.apiEndpoints");
   const { currentProject, isLoading: projectLoading } = useProject();
   const [endpoints, setEndpoints] = useState<ApiEndpoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,11 +72,11 @@ export function EndpointsList() {
       setEndpoints(data.endpoints);
     } catch (err) {
       console.error("Fetch error:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch endpoints");
+      setError(err instanceof Error ? err.message : t("loadError"));
     } finally {
       setLoading(false);
     }
-  }, [currentProject?.id]);
+  }, [currentProject?.id, t]);
 
   // Fetch endpoints when project changes
   useEffect(() => {
@@ -89,7 +91,7 @@ export function EndpointsList() {
   const handleDelete = async (id: string) => {
     if (!currentProject?.id) return;
 
-    if (!confirm("Are you sure you want to delete this API endpoint? This action cannot be undone.")) {
+    if (!confirm(t("deleteConfirm"))) {
       return;
     }
 
@@ -105,7 +107,7 @@ export function EndpointsList() {
       });
     } catch (err) {
       console.error("Delete error:", err);
-      alert(err instanceof Error ? err.message : "Failed to delete endpoint");
+      alert(err instanceof Error ? err.message : t("deleteError"));
     } finally {
       setDeleting(null);
     }
@@ -135,7 +137,7 @@ export function EndpointsList() {
         [id]: {
           success: false,
           responseTime: 0,
-          error: err instanceof Error ? err.message : "Test failed",
+          error: err instanceof Error ? err.message : t("testFailed"),
         },
       }));
     } finally {
@@ -156,11 +158,11 @@ export function EndpointsList() {
   const getAuthBadge = (authType: string) => {
     switch (authType) {
       case "none":
-        return <Badge variant="secondary">No Auth</Badge>;
+        return <Badge variant="secondary">{t("auth.none")}</Badge>;
       case "api_key":
-        return <Badge variant="default">API Key</Badge>;
+        return <Badge variant="default">{t("auth.apiKey")}</Badge>;
       case "bearer":
-        return <Badge variant="default">Bearer Token</Badge>;
+        return <Badge variant="default">{t("auth.bearer")}</Badge>;
       default:
         return null;
     }
@@ -194,7 +196,7 @@ export function EndpointsList() {
       return (
         <div className="flex items-center gap-2 text-sm text-destructive mt-2">
           <XCircle className="h-4 w-4" />
-          <span>{result.error || "Test failed"}</span>
+          <span>{result.error || t("testFailed")}</span>
           {result.responseTime > 0 && (
             <span className="text-muted-foreground">({result.responseTime}ms)</span>
           )}
@@ -243,8 +245,8 @@ export function EndpointsList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">API Endpoints</h1>
-            <p className="text-muted-foreground">No project selected</p>
+            <h1 className="text-2xl font-bold">{t("title")}</h1>
+            <p className="text-muted-foreground">{t("noProjectSelected")}</p>
           </div>
         </div>
       </div>
@@ -256,9 +258,9 @@ export function EndpointsList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">API Endpoints</h1>
+            <h1 className="text-2xl font-bold">{t("title")}</h1>
             <p className="text-muted-foreground">
-              Connect APIs so your chatbot can fetch real-time data
+              {t("subtitleShort")}
             </p>
           </div>
         </div>
@@ -276,8 +278,8 @@ export function EndpointsList() {
                 fetchEndpoints();
               }}
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
+              <RefreshCw className="h-4 w-4 me-2" />
+              {t("retry")}
             </Button>
           </CardContent>
         </Card>
@@ -287,16 +289,16 @@ export function EndpointsList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">API Endpoints</h1>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
           <p className="text-muted-foreground">
-            Connect APIs so your chatbot can fetch real-time data like order status or inventory.
+            {t("subtitle")}
           </p>
         </div>
         <Button onClick={() => setModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Endpoint
+          <Plus className="h-4 w-4 me-2" />
+          {t("addEndpoint")}
         </Button>
       </div>
 
@@ -306,13 +308,13 @@ export function EndpointsList() {
             <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
               <Code className="w-6 h-6 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-medium">No API endpoints configured</h3>
+            <h3 className="text-lg font-medium">{t("emptyTitle")}</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-              Add your external APIs so the chatbot can fetch real-time data like order status, inventory, or pricing.
+              {t("emptyDescription")}
             </p>
             <Button className="mt-4" onClick={() => setModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Endpoint
+              <Plus className="h-4 w-4 me-2" />
+              {t("addEndpoint")}
             </Button>
           </CardContent>
         </Card>
@@ -341,14 +343,14 @@ export function EndpointsList() {
                       {renderTestResult(endpoint.id)}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 ml-4">
+                  <div className="flex shrink-0 items-center gap-1 ms-4">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleTest(endpoint.id)}
                       disabled={testing === endpoint.id}
                       className="text-muted-foreground hover:text-foreground"
-                      title="Test endpoint"
+                      title={t("testEndpoint")}
                     >
                       {testing === endpoint.id ? (
                         <Clock className="h-4 w-4 animate-pulse" />
@@ -361,7 +363,7 @@ export function EndpointsList() {
                       size="icon"
                       onClick={() => handleEdit(endpoint)}
                       className="text-muted-foreground hover:text-foreground"
-                      title="Edit"
+                      title={t("edit")}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -371,7 +373,7 @@ export function EndpointsList() {
                       onClick={() => handleDelete(endpoint.id)}
                       disabled={deleting === endpoint.id}
                       className="text-muted-foreground hover:text-destructive"
-                      title="Delete"
+                      title={t("delete")}
                     >
                       {deleting === endpoint.id ? (
                         <RefreshCw className="h-4 w-4 animate-spin" />

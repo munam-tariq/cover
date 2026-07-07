@@ -1,6 +1,9 @@
 // Utility functions
 export { cn } from "./lib/utils";
 
+// Sets dir="rtl"|"ltr" context that Tabs/Select/DropdownMenu read via useDirection().
+export { DirectionProvider } from "@radix-ui/react-direction";
+
 // Components
 export { Button, buttonVariants, type ButtonProps } from "./components/button";
 export { Input, type InputProps } from "./components/input";

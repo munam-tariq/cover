@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@chatbot/ui";
 import { Tags } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { apiClient } from "@/lib/api-client";
@@ -23,6 +24,7 @@ interface TopicsPanelProps {
 }
 
 export function TopicsPanel({ projectId, days }: TopicsPanelProps) {
+  const t = useTranslations("dashboard.pages.analytics.topics");
   const [topics, setTopics] = useState<TopicCount[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -49,8 +51,8 @@ export function TopicsPanel({ projectId, days }: TopicsPanelProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Topics</CardTitle>
-          <CardDescription>Loading topics...</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("loadingDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -67,15 +69,15 @@ export function TopicsPanel({ projectId, days }: TopicsPanelProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Topics</CardTitle>
-          <CardDescription>What your conversations are about</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center text-muted-foreground">
             <Tags className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p className="text-lg font-medium">No topics yet</p>
+            <p className="text-lg font-medium">{t("emptyTitle")}</p>
             <p className="text-sm">
-              Topics are detected nightly once conversations are classified
+              {t("emptyDescription")}
             </p>
           </div>
         </CardContent>
@@ -83,14 +85,14 @@ export function TopicsPanel({ projectId, days }: TopicsPanelProps) {
     );
   }
 
-  const maxCount = Math.max(...topics.map((t) => t.count));
+  const maxCount = Math.max(...topics.map((topic) => topic.count));
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Topics</CardTitle>
+        <CardTitle>{t("title")}</CardTitle>
         <CardDescription>
-          Auto-detected conversation topics, ranked by frequency
+          {t("descriptionRanked")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -108,7 +110,7 @@ export function TopicsPanel({ projectId, days }: TopicsPanelProps) {
                   {topic.count}
                 </span>
               </div>
-              <div className="ml-8 h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="ms-8 h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary rounded-full transition-all duration-300"
                   style={{ width: `${(topic.count / maxCount) * 100}%` }}
