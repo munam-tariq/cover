@@ -3,19 +3,19 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const publicApiPath = new URL(
-  "../../apps/web/app/c/[handle]/lib/public-api.ts",
+  "../../apps/web/app/[locale]/c/[handle]/lib/public-api.ts",
   import.meta.url
 );
 const publicStoragePath = new URL(
-  "../../apps/web/app/c/[handle]/lib/public-storage.ts",
+  "../../apps/web/app/[locale]/c/[handle]/lib/public-storage.ts",
   import.meta.url
 );
 const publicChatPath = new URL(
-  "../../apps/web/app/c/[handle]/public-chat.tsx",
+  "../../apps/web/app/[locale]/c/[handle]/public-chat.tsx",
   import.meta.url
 );
 const publicHandoffPath = new URL(
-  "../../apps/web/app/c/[handle]/use-public-handoff.ts",
+  "../../apps/web/app/[locale]/c/[handle]/use-public-handoff.ts",
   import.meta.url
 );
 

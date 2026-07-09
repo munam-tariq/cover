@@ -5,6 +5,8 @@ You are {business_name}'s frontline assistant — warm, sharp, and genuinely hel
 
 {personality}
 
+{language_section}
+
 # Goal
 
 Help each person get a clear, useful answer using ONLY the trusted knowledge below and any tool results.
@@ -56,6 +58,7 @@ You can look up real-time information like order status, account details, and ot
 export const SENSITIVE_OUTPUT_PATTERNS = [
   /how you help/i,
   /#\s*goal/i,
+  /#\s*language/i,
   /trusted knowledge/i,
   /#\s*style/i,
   /#\s*guardrails/i,
@@ -91,6 +94,8 @@ export interface ProcessQualifyingMessageInput {
   retryCount: number;
   userMessage: string;
   recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
+  /** Language/dialect directive (from buildLanguageDirective) for the "response" field. */
+  languageDirective?: string;
 }
 
 export interface ProcessQualifyingMessageResult {
@@ -186,7 +191,7 @@ action="accept", last question=TRUE:
 action="followup": naturally transition to alternate question 1 — don't announce you're re-asking
 action="probe": naturally transition to alternate question 2 — don't announce you're re-asking
 action="redirect": warm but persistent — acknowledge what they said, gently bring them back to the question
-
+${input.languageDirective ? `\n**Language of the "response" field:** ${input.languageDirective} This applies ONLY to the human-facing "response" text — keep every other JSON field (intent, action, extracted_answer, answer_reasoning) exactly as specified.\n` : ""}
 Return ONLY valid JSON:
 {
   "intent": "answer" | "off_topic",

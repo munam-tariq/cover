@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   getNextOnboardingPoll,
   getOnboardingProgressSignature,
-} from "../../apps/web/app/(onboarding)/components/onboarding-polling.ts";
+} from "../../apps/web/app/[locale]/(onboarding)/components/onboarding-polling.ts";
 
 test("backs off while onboarding progress is unchanged and resets when it changes", () => {
   const crawling = getOnboardingProgressSignature({

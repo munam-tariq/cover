@@ -1,5 +1,6 @@
 "use client";
 
+import { type UIStrings } from "@chatbot/shared/i18n";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
@@ -17,11 +18,13 @@ export function LeadCaptureCard({
   accentColor,
   submitting,
   onSubmit,
+  strings,
 }: {
   config: LeadCaptureClientConfig;
   accentColor: string;
   submitting: boolean;
   onSubmit: (data: LeadFormData) => void;
+  strings: UIStrings;
 }) {
   const [email, setEmail] = useState("");
   const [field2, setField2] = useState("");
@@ -33,15 +36,15 @@ export function LeadCaptureCard({
 
   const handleSubmit = () => {
     if (!EMAIL_RE.test(email.trim())) {
-      setError("Please enter a valid email address.");
+      setError(strings.invalidEmail);
       return;
     }
     if (f2?.enabled && f2.required && !field2.trim()) {
-      setError(`${f2.label || "This field"} is required.`);
+      setError(strings.fieldRequired.replace("{field}", f2.label || strings.thisField));
       return;
     }
     if (f3?.enabled && f3.required && !field3.trim()) {
-      setError(`${f3.label || "This field"} is required.`);
+      setError(strings.fieldRequired.replace("{field}", f3.label || strings.thisField));
       return;
     }
     setError(null);
@@ -58,16 +61,16 @@ export function LeadCaptureCard({
 
   return (
     <div className="bg-muted/20 mx-auto my-4 w-full max-w-md rounded-xl border p-4">
-      <div className="text-sm font-medium">Before we start</div>
+      <div className="text-sm font-medium">{strings.beforeWeStart}</div>
       <p className="text-muted-foreground mt-1 text-xs">
-        Leave your details so we can follow up if needed.
+        {strings.leaveDetails}
       </p>
       <div className="mt-3 space-y-2">
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email address *"
+          placeholder={strings.emailAddressLabel}
           disabled={submitting}
           className={inputClass}
         />
@@ -101,7 +104,7 @@ export function LeadCaptureCard({
           style={{ backgroundColor: accentColor }}
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          Start chatting
+          {strings.startChatting}
         </button>
       </div>
     </div>

@@ -171,7 +171,7 @@ export class ChatWindow {
     // Create human button (will be shown/hidden based on availability)
     this.humanButton = new HumanButton({
       onClick: () => this.handleHumanButtonClick(),
-      text: "Talk to a human",
+      text: this.options.strings.talkToHuman,
     });
     // Insert human button before input container
     const inputContainer = this.element.querySelector(".chatbot-input-container")!;
@@ -183,6 +183,7 @@ export class ChatWindow {
       primaryColor: options.primaryColor,
       placeholder: options.placeholder,
       sendLabel: options.strings.sendMessage,
+      inputLabel: options.strings.messageInput,
       onInput: () => this.handleUserTyping(),
     });
     inputContainer.appendChild(this.input.element);
@@ -468,7 +469,7 @@ export class ChatWindow {
     const window = document.createElement("div");
     window.className = "chatbot-window";
     window.setAttribute("role", "dialog");
-    window.setAttribute("aria-label", "Chat window");
+    window.setAttribute("aria-label", this.options.strings.chatWindow);
     window.setAttribute("aria-modal", "true");
     window.setAttribute("tabindex", "-1");
 
@@ -484,19 +485,19 @@ export class ChatWindow {
             <span class="chatbot-title">${this.escapeHtml(this.options.title)}</span>
             <span class="chatbot-status">
               <span class="chatbot-status-dot"></span>
-              Online
+              ${this.escapeHtml(this.options.strings.online)}
             </span>
           </div>
         </div>
         <div class="chatbot-header-actions">
           ${this.options.voiceConfig?.enabled ? `
-          <button class="cb-voice-header-btn" aria-label="Start voice call" type="button" title="Voice call">
+          <button class="cb-voice-header-btn" aria-label="${this.escapeHtml(this.options.strings.startVoiceCall)}" type="button" title="${this.escapeHtml(this.options.strings.voiceCall)}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
             </svg>
           </button>
           ` : ""}
-          <button class="cb-expand-btn" aria-label="Expand chat" type="button" title="Expand">
+          <button class="cb-expand-btn" aria-label="${this.escapeHtml(this.options.strings.expandChat)}" type="button" title="${this.escapeHtml(this.options.strings.expandChat)}">
             <svg class="cb-expand-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <polyline points="15 3 21 3 21 9"></polyline>
               <polyline points="9 21 3 21 3 15"></polyline>
@@ -510,7 +511,7 @@ export class ChatWindow {
               <line x1="3" y1="21" x2="10" y2="14"></line>
             </svg>
           </button>
-          <button class="chatbot-close" aria-label="Close chat" type="button">
+          <button class="chatbot-close" aria-label="${this.escapeHtml(this.options.strings.closeChat)}" type="button">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -519,8 +520,8 @@ export class ChatWindow {
         </div>
       </div>
       ${this.buildNoticeHtml()}
-      <div class="chatbot-messages" role="log" aria-live="polite" aria-label="Chat messages"></div>
-      <div class="chatbot-starters" aria-label="Conversation starters" hidden></div>
+      <div class="chatbot-messages" role="log" aria-live="polite" aria-label="${this.escapeHtml(this.options.strings.chatMessages)}"></div>
+      <div class="chatbot-starters" aria-label="${this.escapeHtml(this.options.strings.conversationStarters)}" hidden></div>
       <div class="chatbot-input-container"></div>
       ${this.buildFooterHtml()}
     `;
@@ -686,6 +687,8 @@ export class ChatWindow {
       copyEnabled: this.options.copyEnabled,
       copyLabel: this.options.strings.copyMessage,
       copiedLabel: this.options.strings.copied,
+      helpfulLabel: this.options.strings.helpful,
+      notHelpfulLabel: this.options.strings.notHelpful,
       onFeedback:
         this.options.feedbackEnabled &&
         messageData.role === "assistant" &&
@@ -890,12 +893,19 @@ export class ChatWindow {
       console.error("Chat error:", error);
 
       // Create error message
-      let errorContent = "Sorry, something went wrong. Please try again.";
+      let errorContent = this.options.strings.genericError;
 
       if (error instanceof ChatApiError) {
+        // Map known error codes to localized copy; api.ts has no locale context,
+        // so its English message is only a last-resort fallback.
         if (error.isRateLimited) {
-          errorContent =
-            "You've sent too many messages. Please wait a moment and try again.";
+          errorContent = this.options.strings.rateLimited;
+        } else if (error.isDomainBlocked) {
+          errorContent = this.options.strings.notAuthorized;
+        } else if (error.code === "FORBIDDEN") {
+          errorContent = this.options.strings.accessDenied;
+        } else if (error.code === "UNKNOWN_ERROR") {
+          errorContent = this.options.strings.genericError;
         } else {
           errorContent = error.message;
         }
@@ -1002,7 +1012,7 @@ export class ChatWindow {
    */
   private showSummaryHook(): void {
     const rc = this.options.leadRecoveryConfig;
-    const prompt = rc?.conversation_summary_hook?.prompt || "Want me to email you a summary of this conversation?";
+    const prompt = rc?.conversation_summary_hook?.prompt || this.options.strings.emailSummaryPrompt;
 
     this.summaryHookShown = true;
 
@@ -1039,7 +1049,7 @@ export class ChatWindow {
    */
   private showReturnVisitMessage(): void {
     const rc = this.options.leadRecoveryConfig;
-    const message = rc?.return_visit?.welcome_back_message || "Welcome back! Want me to email you a summary?";
+    const message = rc?.return_visit?.welcome_back_message || this.options.strings.welcomeBackSummary;
 
     const welcomeMsg: StoredMessage = {
       id: generateId(),
@@ -1087,6 +1097,7 @@ export class ChatWindow {
       config: formConfig,
       primaryColor: this.options.primaryColor,
       onSubmit: (data) => this.handleLeadCaptureSubmit(data),
+      strings: this.options.strings,
     });
 
     // Insert form into messages container (before typing indicator)
@@ -1096,7 +1107,7 @@ export class ChatWindow {
     );
 
     // Disable input while form is active
-    this.input.setDisabled(true, "Please complete the form above");
+    this.input.setDisabled(true, this.options.strings.completeFormAbove);
 
     this.scrollToBottom();
 
@@ -1224,10 +1235,10 @@ export class ChatWindow {
     const disabled = (leadCaptureEnabled && !formCompleted) || isInHandoff;
 
     const tooltip = isInHandoff
-      ? "Voice calls unavailable during agent conversation"
+      ? this.options.strings.voiceUnavailableDuringAgent
       : (leadCaptureEnabled && !formCompleted)
-        ? "Complete the form above to start a voice call"
-        : "Voice call";
+        ? this.options.strings.completeFormForVoice
+        : this.options.strings.voiceCall;
 
     // Header voice button
     const headerBtn = this.element.querySelector(".cb-voice-header-btn") as HTMLButtonElement | null;
@@ -1313,6 +1324,7 @@ export class ChatWindow {
     this.voiceOverlay?.destroy();
     this.voiceOverlay = new VoiceCallOverlay({
       primaryColor: this.options.primaryColor,
+      strings: this.options.strings,
       onEndCall: () => this.endVoiceCall(),
       onMuteToggle: () => this.toggleVoiceMute(),
       onBackToChat: () => this.dismissVoiceOverlay(),
@@ -1321,7 +1333,7 @@ export class ChatWindow {
     this.voiceOverlay.show();
 
     // Disable text input during voice call
-    this.input.setDisabled(true, "Voice call in progress");
+    this.input.setDisabled(true, this.options.strings.voiceInProgress);
 
     // State map: ElevenLabs → overlay
     // ElevenLabs Mode only emits "speaking" | "listening" — no separate "thinking" state
@@ -1421,7 +1433,7 @@ export class ChatWindow {
     const secs = (duration % 60).toString().padStart(2, "0");
     const summaryMsg: StoredMessage = {
       id: generateId(),
-      content: `Voice call ended (${mins}:${secs}). You can continue chatting below.`,
+      content: `${this.options.strings.voiceEnded} (${mins}:${secs}).`,
       role: "assistant",
       timestamp: Date.now(),
     };
@@ -1548,7 +1560,7 @@ export class ChatWindow {
 
       // Update human button visibility
       if (shouldShowButton && this.humanButton) {
-        this.humanButton.setText(this.handoffAvailability.buttonText || "Talk to a human");
+        this.humanButton.setText(this.handoffAvailability.buttonText || this.options.strings.talkToHuman);
         this.humanButton.show();
       } else if (this.humanButton) {
         this.humanButton.hide();
@@ -1591,7 +1603,7 @@ export class ChatWindow {
         // Create a system message indicating user requested human
         const userMessage: StoredMessage = {
           id: generateId(),
-          content: "I would like to speak with a human agent.",
+          content: this.options.strings.talkToHumanMessage,
           role: "user",
           timestamp: Date.now(),
         };
@@ -1683,7 +1695,7 @@ export class ChatWindow {
       // Show error message
       const errorMessage: StoredMessage = {
         id: generateId(),
-        content: "Sorry, we couldn't connect you with an agent right now. Please try again.",
+        content: this.options.strings.connectAgentFailed,
         role: "assistant",
         timestamp: Date.now(),
         isError: true,
@@ -2113,8 +2125,8 @@ export class ChatWindow {
     if (expandIcon && collapseIcon && expandBtn) {
       expandIcon.style.display = this.isExpanded ? "none" : "block";
       collapseIcon.style.display = this.isExpanded ? "block" : "none";
-      expandBtn.setAttribute("aria-label", this.isExpanded ? "Collapse chat" : "Expand chat");
-      expandBtn.title = this.isExpanded ? "Collapse" : "Expand";
+      expandBtn.setAttribute("aria-label", this.isExpanded ? this.options.strings.collapseChat : this.options.strings.expandChat);
+      expandBtn.title = this.isExpanded ? this.options.strings.collapseChat : this.options.strings.expandChat;
     }
   }
 

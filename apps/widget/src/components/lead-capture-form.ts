@@ -29,10 +29,25 @@ export interface LeadCaptureFormData {
   field_3?: { label: string; value: string };
 }
 
+import type { UIStrings } from "@chatbot/shared/i18n";
+
 export interface LeadCaptureFormOptions {
   config: LeadCaptureFormConfig;
   onSubmit: (data: LeadCaptureFormData) => void;
   primaryColor: string;
+  /** Localized UI strings (falls back to English when omitted). */
+  strings?: Pick<
+    UIStrings,
+    | "leadIntro"
+    | "leadIntroProfiling"
+    | "emailFieldLabel"
+    | "continueLabel"
+    | "submittingLabel"
+    | "enterYourEmail"
+    | "invalidEmail"
+    | "enterField"
+    | "niceToMeet"
+  >;
 }
 
 export class LeadCaptureForm {
@@ -61,10 +76,12 @@ export class LeadCaptureForm {
     const field3 = config.formFields.field_3;
     const hideEmail = !!config.hideEmail;
 
+    const s = this.options.strings;
     // V3: Adjust intro text when in progressive profiling mode
     const introText = hideEmail
-      ? "Just a couple quick things to help me help you better!"
-      : "Hey! Quick intro so I know who I'm talking to 😊";
+      ? s?.leadIntroProfiling ||
+        "Just a couple quick things to help me help you better!"
+      : s?.leadIntro || "Hey! Quick intro so I know who I'm talking to 😊";
 
     const formHtml = `
       <div style="
@@ -92,7 +109,7 @@ export class LeadCaptureForm {
             color: #6b7280;
             margin-bottom: 4px;
             font-weight: 500;
-          ">Email <span style="color: #ef4444;">*</span></label>
+          ">${this.escapeHtml(s?.emailFieldLabel || "Email")} <span style="color: #ef4444;">*</span></label>
           <input
             type="email"
             placeholder="you@example.com"
@@ -194,7 +211,7 @@ export class LeadCaptureForm {
             font-weight: 500;
             cursor: pointer;
             transition: opacity 0.15s;
-          ">Continue</button>
+          ">${this.escapeHtml(s?.continueLabel || "Continue")}</button>
         </div>
       </div>
     `;
@@ -248,14 +265,20 @@ export class LeadCaptureForm {
 
       // Validate email
       if (!email) {
-        this.showError("Please enter your email address.");
+        this.showError(
+          this.options.strings?.enterYourEmail ||
+            "Please enter your email address."
+        );
         this.emailInput.focus();
         return;
       }
 
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(email)) {
-        this.showError("Please enter a valid email address.");
+        this.showError(
+          this.options.strings?.invalidEmail ||
+            "Please enter a valid email address."
+        );
         this.emailInput.focus();
         return;
       }
@@ -265,9 +288,15 @@ export class LeadCaptureForm {
     const field2 = config.formFields.field_2;
     const field3 = config.formFields.field_3;
 
+    const fieldRequiredMsg = (label: string): string =>
+      (this.options.strings?.enterField || "Please enter your {field}.").replace(
+        "{field}",
+        label.toLowerCase()
+      );
+
     if (field2?.enabled && field2.required && this.field2Input) {
       if (!this.field2Input.value.trim()) {
-        this.showError(`Please enter your ${field2.label.toLowerCase()}.`);
+        this.showError(fieldRequiredMsg(field2.label));
         this.field2Input.focus();
         return;
       }
@@ -275,7 +304,7 @@ export class LeadCaptureForm {
 
     if (field3?.enabled && field3.required && this.field3Input) {
       if (!this.field3Input.value.trim()) {
-        this.showError(`Please enter your ${field3.label.toLowerCase()}.`);
+        this.showError(fieldRequiredMsg(field3.label));
         this.field3Input.focus();
         return;
       }
@@ -310,7 +339,9 @@ export class LeadCaptureForm {
   setLoading(loading: boolean): void {
     if (this.submitBtn) {
       this.submitBtn.disabled = loading;
-      this.submitBtn.textContent = loading ? "Submitting..." : "Continue";
+      this.submitBtn.textContent = loading
+        ? this.options.strings?.submittingLabel || "Submitting..."
+        : this.options.strings?.continueLabel || "Continue";
       this.submitBtn.style.opacity = loading ? "0.7" : "1";
     }
 
@@ -350,7 +381,7 @@ export class LeadCaptureForm {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-          <span>Awesome, great to meet you ${this.escapeHtml(email.split('@')[0])}!</span>
+          <span>${this.escapeHtml((this.options.strings?.niceToMeet || "Awesome, great to meet you {name}!").replace("{name}", email.split('@')[0]))}</span>
         </div>
       `;
     }

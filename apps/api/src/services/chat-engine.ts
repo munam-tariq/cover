@@ -25,7 +25,17 @@ import {
   getOrCreateConversation,
   getConversationHistory,
   logConversationMessages,
+  getConversationLanguage,
+  setConversationLanguage,
 } from "./conversation";
+import {
+  resolveConversationLanguage,
+  buildLanguageDirective,
+  projectLanguageDefault,
+  detectBaseLanguage,
+  detectDominantLanguage,
+} from "./language";
+import { translateQueryForKb } from "./rag/query-preprocess";
 import {
   checkHandoffTrigger,
   checkLowConfidenceHandoff,
@@ -184,6 +194,14 @@ const projectConfigCache = new Map<
 >();
 const CACHE_TTL = 60000; // 1 minute cache
 
+// Cache for a project's detected knowledge-base language (for cross-lingual
+// retrieval). Detected lazily from a sample of chunks — no ingest changes.
+const kbLanguageCache = new Map<
+  string,
+  { data: string | null; timestamp: number }
+>();
+const KB_LANGUAGE_CACHE_TTL = 600000; // 10 minutes — KB language rarely changes
+
 /**
  * Main entry point: Process a chat message and return a response
  */
@@ -234,6 +252,25 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       }
     }
 
+    // 2. Get project configuration (early — its language default feeds every
+    // downstream response, including the qualifying-question flow below).
+    const project = await getProjectConfig(input.projectId);
+    if (!project) {
+      throw new ChatError("PROJECT_NOT_FOUND", "Chatbot not found");
+    }
+
+    // 2.1 Resolve the conversation language — pinned once, reused every turn —
+    // and build the dialect directive injected into every user-facing LLM call.
+    const storedLanguage = input.sessionId
+      ? await getConversationLanguage(input.sessionId)
+      : null;
+    const resolvedLanguage = resolveConversationLanguage({
+      storedLang: storedLanguage,
+      messageText: sanitizedMessage,
+      projectDefault: project.languageDefault,
+    });
+    const languageDirective = buildLanguageDirective(resolvedLanguage);
+
     // 1.5 Lead Capture V2 Interceptor
     // Only runs if NOT in handoff state - qualifying questions continue normally
     const lcV2Result = await leadCaptureV2Interceptor(
@@ -241,7 +278,8 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       input.visitorId,
       input.sessionId,
       sanitizedMessage,
-      input.conversationHistory
+      input.conversationHistory,
+      languageDirective
     );
     if (lcV2Result) {
       // IMPORTANT: Create/get session even for qualifying question flow
@@ -277,12 +315,6 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
         processingTime: Date.now() - metrics.startTime,
         requestId,
       };
-    }
-
-    // 2. Get project configuration
-    const project = await getProjectConfig(input.projectId);
-    if (!project) {
-      throw new ChatError("PROJECT_NOT_FOUND", "Chatbot not found");
     }
 
     // 2.5. Check for handoff trigger BEFORE processing with AI
@@ -360,12 +392,23 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       };
     }
 
-    // 3. RAG v2: Hybrid search with contextual embeddings
+    // 3. RAG v2: Hybrid search with contextual embeddings.
+    // Cross-lingual: if the KB is in a different language than the query,
+    // embed a translated query on the vector leg (full-text leg keeps the
+    // original). Skipped — no extra LLM call — when they already match.
+    const kbLanguage = await getProjectKbLanguage(input.projectId);
+    const vectorQuery = await translateQueryForKb({
+      query: sanitizedMessage,
+      kbLanguage,
+      queryLanguage: detectBaseLanguage(sanitizedMessage),
+    });
+
     const ragStart = Date.now();
     const ragResult = await retrieve(input.projectId, sanitizedMessage, {
       topK: 5,
       threshold: 0.15, // Lower threshold with hybrid search for better recall
       useHybridSearch: true,
+      ...(vectorQuery ? { vectorQuery } : {}),
     });
     retrievedChunks = ragResult.chunks;
     metrics.ragTime = Date.now() - ragStart;
@@ -462,6 +505,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       project,
       knowledgeContext,
       hasTools: tools.length > 0,
+      languageDirective,
     });
 
     // 7. Load + truncate history to fit context window
@@ -501,6 +545,14 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       input.source || "widget",
       input.context
     );
+
+    // Pin the resolved language on the conversation the first time it's seen so
+    // every later turn stays consistent (no-op if already stored/unchanged).
+    if (!storedLanguage) {
+      setConversationLanguage(sessionId, resolvedLanguage.bcp47).catch((err) =>
+        logger.error("Failed to persist conversation language", err, logCtx)
+      );
+    }
 
     // 11. Lead Capture Flow
     // Email appending is skipped for voice calls — no forms or email prompts in voice
@@ -919,6 +971,8 @@ async function getProjectConfig(
 
   const settings = (project.settings as Record<string, unknown>) || {};
 
+  const languageDefault = projectLanguageDefault(settings);
+
   const config: ProjectConfig = {
     name: project.name,
     systemPrompt:
@@ -933,12 +987,38 @@ async function getProjectConfig(
       (settings.supportUrl as string) ||
       (settings.support_url as string) ||
       undefined,
+    languageDefault,
   };
 
   // Cache the result
   projectConfigCache.set(projectId, { data: config, timestamp: Date.now() });
 
   return config;
+}
+
+/**
+ * Detect a project's knowledge-base language from a sample of its chunks.
+ * Cached; returns null when the KB is empty or the language is undetermined,
+ * in which case cross-lingual translation is skipped (no behavior change).
+ */
+async function getProjectKbLanguage(projectId: string): Promise<string | null> {
+  const cached = kbLanguageCache.get(projectId);
+  if (cached && Date.now() - cached.timestamp < KB_LANGUAGE_CACHE_TTL) {
+    return cached.data;
+  }
+
+  // knowledge_chunks has no project_id — filter through the source FK.
+  const { data: chunks } = await supabaseAdmin
+    .from("knowledge_chunks")
+    .select("content, knowledge_sources!inner(project_id)")
+    .eq("knowledge_sources.project_id", projectId)
+    .limit(20);
+
+  const sample = (chunks || []).map((c) => c.content as string).join("\n");
+  const language = detectDominantLanguage(sample);
+
+  kbLanguageCache.set(projectId, { data: language, timestamp: Date.now() });
+  return language;
 }
 
 /**

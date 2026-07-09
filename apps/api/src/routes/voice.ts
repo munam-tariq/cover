@@ -17,6 +17,10 @@ import { supabaseAdmin } from "../lib/supabase";
 import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
 import { processChat, type ChatOutput } from "../services/chat-engine";
 import {
+  projectLanguageDefault,
+  resolveGreetingLanguage,
+} from "../services/language";
+import {
   issueVoiceSessionToken,
   verifyVoiceSessionToken,
 } from "../services/voice-session-token";
@@ -35,10 +39,37 @@ const router = Router();
  */
 const silenceCounters = new Map<string, number>();
 
-const SILENCE_PROBE =
-  "Hey, are you still there? Take your time, I'm here whenever you're ready.";
-const SILENCE_FAREWELL =
-  "It was great chatting with you! Feel free to come back anytime. Goodbye!";
+/**
+ * Spoken system lines, per base language. Kept local to voice — these are
+ * TTS-only (greeting fallback, silence prompts, error), not rendered UI chrome
+ * (which lives in @chatbot/shared/i18n). Falls back to English for any other
+ * language. Arabic uses a warm Saudi/Gulf register to match the AI's dialect.
+ */
+const VOICE_STRINGS: Record<
+  string,
+  { greeting: string; silenceProbe: string; silenceFarewell: string; error: string }
+> = {
+  en: {
+    greeting: "Hi! How can I help you today?",
+    silenceProbe:
+      "Hey, are you still there? Take your time, I'm here whenever you're ready.",
+    silenceFarewell:
+      "It was great chatting with you! Feel free to come back anytime. Goodbye!",
+    error: "I'm sorry, I ran into a problem. Please try again.",
+  },
+  ar: {
+    greeting: "هلا والله! كيف أقدر أساعدك اليوم؟",
+    silenceProbe: "هلا، لا زلت معنا؟ خذ وقتك، أنا موجود وقت ما تجهز.",
+    silenceFarewell: "سعدت بالحديث معك! ترجع لنا وقت ما تحب. مع السلامة!",
+    error: "عذرًا، واجهتني مشكلة. حاول مرة أخرى من فضلك.",
+  },
+};
+
+/** Voice system lines for a language tag, falling back to English. */
+function voiceStrings(lang: string | null | undefined) {
+  const base = (lang || "en").toLowerCase().split("-")[0];
+  return VOICE_STRINGS[base] ?? VOICE_STRINGS.en;
+}
 
 /** Check if a message is a silence indicator (only dots/ellipsis/whitespace) */
 function isSilenceMessage(message: string): boolean {
@@ -234,8 +265,14 @@ router.get(
       });
     }
 
+    // Project default drives the spoken language (STT/TTS + greeting), same
+    // rule as the widget/public-page greeting: a Saudi client speaks Arabic
+    // even to an English browser.
+    const greetingLang = resolveGreetingLanguage(
+      projectLanguageDefault(settings)
+    );
     const voiceGreeting =
-      project.voice_greeting || "Hi! How can I help you today?";
+      project.voice_greeting || voiceStrings(greetingLang.base).greeting;
 
     // Get a signed URL for the ElevenLabs WebSocket connection
     const signedUrl = await getElevenLabsSignedUrl(
@@ -253,6 +290,9 @@ router.get(
       voiceEnabled: true,
       signedUrl,
       greeting: voiceGreeting,
+      // Base language for the ElevenLabs agent override (STT/TTS) + the spoken
+      // system lines the widget echoes back via extra_body.
+      language: greetingLang.base,
       // The widget passes this back via ElevenLabs extra_body; the LLM callback verifies it.
       voiceSessionToken: issueVoiceSessionToken({
         projectId,
@@ -298,6 +338,7 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
         visitorId?: string;
         sessionId?: string;
         voiceSessionToken?: string;
+        language?: string;
       }
     | undefined;
   const projectId =
@@ -380,7 +421,8 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
     const count = (silenceCounters.get(sessionId) || 0) + 1;
     silenceCounters.set(sessionId, count);
 
-    const response = count === 1 ? SILENCE_PROBE : SILENCE_FAREWELL;
+    const vs = voiceStrings(extraBody?.language);
+    const response = count === 1 ? vs.silenceProbe : vs.silenceFarewell;
 
     logger.info("[Voice LLM] Silence intercepted", {
       projectId,
@@ -434,10 +476,7 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
     });
 
     // Return a graceful error response in SSE format
-    streamSSEResponse(
-      res,
-      "I'm sorry, I ran into a problem. Please try again."
-    );
+    streamSSEResponse(res, voiceStrings(extraBody?.language).error);
   }
 });
 

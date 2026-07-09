@@ -21,11 +21,15 @@ export type VoiceCallState =
   | "ended"
   | "error";
 
+import type { UIStrings } from "@chatbot/shared/i18n";
+
 export interface VoiceCallOverlayOptions {
   primaryColor: string;
   onEndCall: () => void;
   onMuteToggle: () => void;
   onBackToChat: () => void;
+  /** Localized UI strings (falls back to English when omitted). */
+  strings?: UIStrings;
 }
 
 export class VoiceCallOverlay {
@@ -60,20 +64,32 @@ export class VoiceCallOverlay {
     this.attachEvents();
   }
 
+  /** Localized string with English fallback. */
+  private t(key: keyof UIStrings, fallback: string): string {
+    const v = this.options.strings?.[key];
+    return typeof v === "string" && v ? v : fallback;
+  }
+
+  private esc(str: string): string {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
   private createElement(): HTMLElement {
     const overlay = document.createElement("div");
     overlay.className = "cb-voice-overlay";
     overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-label", "Voice call");
+    overlay.setAttribute("aria-label", this.t("voiceCall", "Voice call"));
 
     overlay.innerHTML = `
       <div class="cb-voice-header">
-        <button class="cb-voice-back-btn" aria-label="Back to chat" type="button">
+        <button class="cb-voice-back-btn" aria-label="${this.esc(this.t("backToChat", "Back to chat"))}" type="button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
-        <span class="cb-voice-header-title">Voice Call</span>
+        <span class="cb-voice-header-title">${this.esc(this.t("voiceCall", "Voice Call"))}</span>
         <span class="cb-voice-timer" aria-live="polite">00:00</span>
       </div>
 
@@ -83,12 +99,12 @@ export class VoiceCallOverlay {
             <div class="cb-voice-orb-inner"></div>
           </div>
         </div>
-        <p class="cb-voice-status-text" aria-live="polite">Connecting...</p>
-        <div class="cb-voice-transcript" aria-label="Call transcript"></div>
+        <p class="cb-voice-status-text" aria-live="polite">${this.esc(this.t("voiceConnecting", "Connecting..."))}</p>
+        <div class="cb-voice-transcript" aria-label="${this.esc(this.t("callTranscript", "Call transcript"))}"></div>
       </div>
 
       <div class="cb-voice-controls">
-        <button class="cb-voice-btn cb-voice-btn-mute" aria-label="Mute microphone" type="button">
+        <button class="cb-voice-btn cb-voice-btn-mute" aria-label="${this.esc(this.t("muteMic", "Mute microphone"))}" type="button">
           <svg class="cb-voice-icon-mic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
             <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
@@ -103,7 +119,7 @@ export class VoiceCallOverlay {
             <line x1="8" y1="23" x2="16" y2="23"></line>
           </svg>
         </button>
-        <button class="cb-voice-btn cb-voice-btn-end" aria-label="End call" type="button">
+        <button class="cb-voice-btn cb-voice-btn-end" aria-label="${this.esc(this.t("endCall", "End call"))}" type="button">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path>
             <line x1="23" y1="1" x2="1" y2="23"></line>
@@ -117,10 +133,10 @@ export class VoiceCallOverlay {
             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
           </svg>
         </div>
-        <p class="cb-voice-ended-title">Call ended</p>
+        <p class="cb-voice-ended-title">${this.esc(this.t("voiceCallEnded", "Call ended"))}</p>
         <p class="cb-voice-ended-duration"></p>
         <button class="cb-voice-continue-btn" type="button">
-          Continue chatting
+          ${this.esc(this.t("continueChatting", "Continue chatting"))}
         </button>
       </div>
     `;
@@ -165,14 +181,14 @@ export class VoiceCallOverlay {
     switch (newState) {
       case "connecting":
         this.orbElement.classList.add("cb-voice-orb--connecting");
-        this.statusText.textContent = "Connecting...";
+        this.statusText.textContent = this.t("voiceConnecting", "Connecting...");
         this.showControls(true);
         this.showEnded(false);
         break;
 
       case "active-listening":
         this.orbElement.classList.add("cb-voice-orb--listening");
-        this.statusText.textContent = "Listening...";
+        this.statusText.textContent = this.t("voiceListening", "Listening...");
         this.startTimer();
         this.showControls(true);
         this.showEnded(false);
@@ -180,12 +196,12 @@ export class VoiceCallOverlay {
 
       case "active-thinking":
         this.orbElement.classList.add("cb-voice-orb--thinking");
-        this.statusText.textContent = "Processing...";
+        this.statusText.textContent = this.t("voiceProcessing", "Processing...");
         break;
 
       case "active-speaking":
         this.orbElement.classList.add("cb-voice-orb--speaking");
-        this.statusText.textContent = "Agent is speaking...";
+        this.statusText.textContent = this.t("voiceSpeaking", "Agent is speaking...");
         break;
 
       case "ended":
@@ -199,7 +215,10 @@ export class VoiceCallOverlay {
       case "error":
         this.orbElement.classList.add("cb-voice-orb--ended");
         this.stopTimer();
-        this.statusText.textContent = "Call failed. Please try again.";
+        this.statusText.textContent = this.t(
+          "voiceCallFailedRetry",
+          "Call failed. Please try again."
+        );
         this.showControls(false);
         this.showEnded(true, true);
         break;
@@ -257,9 +276,15 @@ export class VoiceCallOverlay {
       const duration = this.endedContainer.querySelector(".cb-voice-ended-duration") as HTMLElement;
       const continueBtn = this.endedContainer.querySelector(".cb-voice-continue-btn") as HTMLElement;
 
-      title.textContent = isError ? "Call failed" : "Call ended";
-      duration.textContent = isError ? "Please try again" : this.formatDuration(this.callDuration);
-      continueBtn.textContent = isError ? "Back to chat" : "Continue chatting";
+      title.textContent = isError
+        ? this.t("voiceCallFailed", "Call failed")
+        : this.t("voiceCallEnded", "Call ended");
+      duration.textContent = isError
+        ? this.t("voiceTryAgain", "Please try again")
+        : this.formatDuration(this.callDuration);
+      continueBtn.textContent = isError
+        ? this.t("backToChat", "Back to chat")
+        : this.t("continueChatting", "Continue chatting");
     }
   }
 
@@ -271,12 +296,12 @@ export class VoiceCallOverlay {
       micIcon.style.display = "none";
       micOffIcon.style.display = "block";
       this.muteButton.classList.add("cb-voice-btn-muted");
-      this.muteButton.setAttribute("aria-label", "Unmute microphone");
+      this.muteButton.setAttribute("aria-label", this.t("unmuteMic", "Unmute microphone"));
     } else {
       micIcon.style.display = "block";
       micOffIcon.style.display = "none";
       this.muteButton.classList.remove("cb-voice-btn-muted");
-      this.muteButton.setAttribute("aria-label", "Mute microphone");
+      this.muteButton.setAttribute("aria-label", this.t("muteMic", "Mute microphone"));
     }
   }
 

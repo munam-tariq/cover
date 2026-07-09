@@ -18,6 +18,8 @@ export interface InputOptions {
   primaryColor: string;
   placeholder?: string;
   sendLabel?: string;
+  /** Localized aria-label for the message textarea. */
+  inputLabel?: string;
   onInput?: () => void; // Called when user types (for typing indicators)
 }
 
@@ -47,7 +49,7 @@ export class Input {
     const textarea = document.createElement("textarea");
     textarea.placeholder = this.options.placeholder || "Type a message...";
     textarea.rows = 1;
-    textarea.setAttribute("aria-label", "Message input");
+    textarea.setAttribute("aria-label", this.options.inputLabel || "Message input");
     textarea.setAttribute("maxlength", MAX_MESSAGE_LENGTH.toString());
 
     textareaWrapper.appendChild(textarea);

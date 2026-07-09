@@ -18,7 +18,7 @@
  */
 
 import { Conversation } from "@elevenlabs/client";
-import type { Mode } from "@elevenlabs/client";
+import type { Language, Mode } from "@elevenlabs/client";
 
 export type ElevenLabsVoiceState =
   | "idle"
@@ -43,6 +43,8 @@ interface ElevenLabsVoiceConfig {
   voiceEnabled: boolean;
   signedUrl: string;
   greeting: string;
+  /** Base language for the agent (STT/TTS) + spoken system lines, e.g. "ar". */
+  language?: Language;
   /** Verified on the LLM callback (passed back via ElevenLabs extra_body). */
   voiceSessionToken?: string;
 }
@@ -82,6 +84,13 @@ export class ElevenLabsVoiceManager {
         overrides: {
           agent: {
             firstMessage: config.greeting,
+            // Run the agent (STT/TTS) in the project's language for non-English
+            // projects. Sending this override requires the agent's Language
+            // override toggle to be on (Security > Overrides); we skip it for
+            // English so the default English voice path needs no toggle change.
+            ...(config.language && config.language !== "en"
+              ? { language: config.language }
+              : {}),
           },
         },
         customLlmExtraBody: {
@@ -89,6 +98,8 @@ export class ElevenLabsVoiceManager {
           visitorId: this.options.visitorId,
           sessionId: this.options.sessionId,
           voiceSessionToken: config.voiceSessionToken,
+          // Lets the LLM route localize its spoken silence/error lines.
+          language: config.language,
         },
         onConnect: () => {
           this.setState("listening");

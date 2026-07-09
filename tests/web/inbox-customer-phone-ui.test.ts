@@ -3,11 +3,11 @@ import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
 
 const inboxDetailPath = new URL(
-  "../../apps/web/app/(dashboard)/inbox/[id]/page.tsx",
+  "../../apps/web/app/[locale]/(dashboard)/inbox/[id]/page.tsx",
   import.meta.url
 );
 const inboxListPath = new URL(
-  "../../apps/web/app/(dashboard)/inbox/page.tsx",
+  "../../apps/web/app/[locale]/(dashboard)/inbox/page.tsx",
   import.meta.url
 );
 

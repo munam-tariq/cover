@@ -7,6 +7,7 @@ import {
   stripArabicPrefixForEnglishOnly,
 } from "./i18n/english-only-routes";
 import { routing } from "./i18n/routing";
+import { regionLocaleForHost } from "@/lib/region-hosts";
 import { updateSession } from "@/lib/supabase/middleware";
 
 const intlMiddleware = createIntlMiddleware(routing);
@@ -35,6 +36,16 @@ export async function middleware(request: NextRequest) {
       response.cookies.set(name, value, options)
     );
     return response;
+  }
+
+  // Region subdomains (e.g. ksa.frontface.app) default the UI to their locale.
+  // Only when the visitor hasn't chosen one, so the LocaleSwitcher still wins —
+  // Arabic is the default here, not a lock. next-intl reads this request cookie
+  // below (Prio 2, above accept-language); it's never emitted as a Set-Cookie,
+  // so NEXT_LOCALE stays host-only.
+  const regionLocale = regionLocaleForHost(request.headers.get("host"));
+  if (regionLocale && !request.cookies.has("NEXT_LOCALE")) {
+    request.cookies.set("NEXT_LOCALE", regionLocale);
   }
 
   // Session refresh + route protection first (mutates request cookies so

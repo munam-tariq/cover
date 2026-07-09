@@ -1,5 +1,6 @@
 "use client";
 
+import { getUIStrings, type UIStrings } from "@chatbot/shared/i18n";
 import { cn } from "@chatbot/ui";
 import {
   Headphones,
@@ -71,6 +72,8 @@ export interface PublicConfig {
   promptCards: { title: string; description: string }[];
   poweredBy: boolean;
   slug?: string;
+  /** BCP-47 language for page UI + AI (e.g. "ar-SA"); drives strings + RTL. */
+  locale?: string;
 }
 
 export interface PublicVoiceConfig {
@@ -98,6 +101,7 @@ const FALLBACK_CONFIG: PublicConfig = {
   cardsEnabled: true,
   promptCards: [],
   poweredBy: true,
+  locale: "en",
 };
 
 function monogram(name: string): string {
@@ -142,6 +146,7 @@ interface SidebarPanelProps {
   onDismiss: () => void;
   dismissIcon: ReactNode;
   dismissLabel: string;
+  strings: UIStrings;
 }
 
 /** Shared sidebar body used by both the desktop rail and the mobile drawer. */
@@ -159,6 +164,7 @@ function SidebarPanel({
   onDismiss,
   dismissIcon,
   dismissLabel,
+  strings,
 }: SidebarPanelProps) {
   return (
     <>
@@ -187,24 +193,25 @@ function SidebarPanel({
           className="hover:bg-muted flex w-full items-center gap-2 rounded-md border px-3 py-2 text-sm disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
-          New chat
+          {strings.newChat}
         </button>
       </div>
       <div className="text-muted-foreground mt-4 px-4 text-xs font-medium uppercase tracking-wide">
-        Recent
+        {strings.recent}
       </div>
       <RecentConversations
         conversations={conversations}
         activeId={activeId}
         onSelect={onSelect}
+        strings={strings}
       />
       <div className="mt-auto flex items-center justify-between p-4">
         <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <span className="h-2 w-2 rounded-full bg-green-500" />
-          Online
+          {strings.online}
         </span>
         <button
-          aria-label="Toggle theme"
+          aria-label={strings.toggleTheme}
           onClick={onToggleTheme}
           className="text-muted-foreground hover:bg-muted rounded-md p-1.5"
         >
@@ -260,6 +267,10 @@ export function PublicChat({
   const seenIdsRef = useRef<Set<string>>(new Set());
   // Sessions whose thread is already on screen (skip server rehydration for them).
   const hydratedSessionRef = useRef<string | null>(null);
+
+  // Localized UI strings + text direction, driven by the project's language.
+  const strings = getUIStrings(config.locale);
+  const dir: "rtl" | "ltr" = strings.rtl ? "rtl" : "ltr";
 
   const accent = config.accentColor || "#0d9488";
   // theme: "system" follows the visitor's OS preference (resolved client-side after mount).
@@ -548,8 +559,7 @@ export function PublicChat({
           {
             id: `e_${Date.now()}`,
             role: "assistant",
-            content:
-              "Sorry, I ran into a problem sending that. Please try again.",
+            content: strings.sendError,
           },
         ]);
       } finally {
@@ -694,6 +704,8 @@ export function PublicChat({
     <div
       className={cn(isDark && "dark")}
       style={{ ["--pp-accent" as string]: accent }}
+      dir={dir}
+      lang={strings.locale}
     >
       <div className="bg-background text-foreground flex h-screen w-full">
         {/* Desktop sidebar */}
@@ -716,20 +728,21 @@ export function PublicChat({
               onSelect={selectConversation}
               onToggleTheme={() => setThemeOverride(isDark ? "light" : "dark")}
               onDismiss={() => setSidebarOpen(false)}
-              dismissIcon={<PanelLeftClose className="h-4 w-4" />}
-              dismissLabel="Collapse sidebar"
+              dismissIcon={<PanelLeftClose className="h-4 w-4 rtl:-scale-x-100" />}
+              dismissLabel={strings.collapseSidebar}
+              strings={strings}
             />
           ) : (
             <div className="flex flex-col items-center gap-2 py-4">
               <button
-                aria-label="Expand sidebar"
+                aria-label={strings.expandSidebar}
                 onClick={() => setSidebarOpen(true)}
                 className="text-muted-foreground hover:bg-muted rounded-md p-1.5"
               >
-                <PanelLeftOpen className="h-4 w-4" />
+                <PanelLeftOpen className="h-4 w-4 rtl:-scale-x-100" />
               </button>
               <button
-                aria-label="New chat"
+                aria-label={strings.newChat}
                 onClick={newChat}
                 disabled={previewMode}
                 className="text-muted-foreground hover:bg-muted rounded-md p-1.5 disabled:opacity-50"
@@ -769,7 +782,8 @@ export function PublicChat({
                 }
                 onDismiss={() => setMobileSidebarOpen(false)}
                 dismissIcon={<X className="h-4 w-4" />}
-                dismissLabel="Close menu"
+                dismissLabel={strings.closeMenu}
+                strings={strings}
               />
             </aside>
           </div>
@@ -780,7 +794,7 @@ export function PublicChat({
           {/* Mobile header */}
           <header className="flex items-center gap-2 border-b p-3 md:hidden">
             <button
-              aria-label="Open menu"
+              aria-label={strings.openMenu}
               onClick={() => setMobileSidebarOpen(true)}
               className="text-muted-foreground hover:bg-muted rounded-md p-1.5"
             >
@@ -824,6 +838,7 @@ export function PublicChat({
                     accentColor={accent}
                     submitting={leadSubmitting}
                     onSubmit={submitLead}
+                    strings={strings}
                   />
                 )}
                 <div ref={endRef} />
@@ -851,6 +866,7 @@ export function PublicChat({
                     accentColor={accent}
                     submitting={leadSubmitting}
                     onSubmit={submitLead}
+                    strings={strings}
                   />
                 )}
 
@@ -895,7 +911,7 @@ export function PublicChat({
           {/* Input */}
           <div className="border-t p-3">
             <div className="mx-auto max-w-3xl">
-              <HandoffBanner state={handoff} accentColor={accent} />
+              <HandoffBanner state={handoff} accentColor={accent} strings={strings} />
               {handoff.offlineMessage && (
                 <div className="bg-muted/40 text-muted-foreground mx-auto mb-2 max-w-3xl rounded-lg border px-3 py-2 text-xs">
                   {handoff.offlineMessage}
@@ -909,7 +925,7 @@ export function PublicChat({
                     className="hover:bg-muted flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition disabled:opacity-50"
                   >
                     <Headphones className="h-3.5 w-3.5" />
-                    {handoff.availability?.buttonText || "Talk to a human"}
+                    {handoff.availability?.buttonText || strings.talkToHuman}
                   </button>
                 </div>
               )}
@@ -933,8 +949,8 @@ export function PublicChat({
                   }}
                   placeholder={
                     leadBlocking
-                      ? "Please complete the form above…"
-                      : "Ask me anything…"
+                      ? strings.completeFormAbove
+                      : strings.askPlaceholder
                   }
                   disabled={composerDisabled}
                   className="placeholder:text-muted-foreground max-h-40 flex-1 resize-none bg-transparent py-1.5 text-sm outline-none disabled:cursor-default"
@@ -943,7 +959,7 @@ export function PublicChat({
                   <button
                     onClick={() => setMicPromptOpen(true)}
                     disabled={voiceCall.isCallActive || isSending}
-                    aria-label="Start voice call"
+                    aria-label={strings.startVoiceCall}
                     className="text-muted-foreground hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition disabled:opacity-40"
                   >
                     <Mic className="h-4 w-4" />
@@ -952,16 +968,16 @@ export function PublicChat({
                 <button
                   onClick={handleSubmit}
                   disabled={composerDisabled || isSending || !input.trim()}
-                  aria-label="Send"
+                  aria-label={strings.sendMessage}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white transition disabled:opacity-40"
                   style={{ backgroundColor: accent }}
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-4 w-4 rtl:-scale-x-100" />
                 </button>
               </div>
               {config.poweredBy && (
                 <div className="text-muted-foreground pt-2 text-center text-xs">
-                  Powered by{" "}
+                  {strings.poweredBy.replace("FrontFace", "").trim()}{" "}
                   <a
                     href="https://frontface.app"
                     target="_blank"
@@ -985,17 +1001,16 @@ export function PublicChat({
                 >
                   <Mic className="h-5 w-5" />
                 </div>
-                <h2 className="text-sm font-semibold">Start a voice call?</h2>
+                <h2 className="text-sm font-semibold">{strings.startVoiceCallQuestion}</h2>
                 <p className="text-muted-foreground mt-1 text-xs">
-                  Your browser will ask to use your microphone so you can talk
-                  with the assistant. You can end the call anytime.
+                  {strings.micPromptBody}
                 </p>
                 <div className="mt-4 flex gap-2">
                   <button
                     onClick={() => setMicPromptOpen(false)}
                     className="hover:bg-muted flex-1 rounded-lg border px-3 py-2 text-sm"
                   >
-                    Cancel
+                    {strings.cancel}
                   </button>
                   <button
                     onClick={() => {
@@ -1005,7 +1020,7 @@ export function PublicChat({
                     className="flex-1 rounded-lg px-3 py-2 text-sm font-medium text-white"
                     style={{ backgroundColor: accent }}
                   >
-                    Start call
+                    {strings.startCall}
                   </button>
                 </div>
               </div>
@@ -1023,6 +1038,7 @@ export function PublicChat({
               onEnd={voiceCall.endCall}
               onToggleMute={voiceCall.toggleMute}
               onDismiss={voiceCall.dismissCall}
+              strings={strings}
             />
           )}
         </main>

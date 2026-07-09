@@ -1,5 +1,6 @@
 "use client";
 
+import { type UIStrings } from "@chatbot/shared/i18n";
 import { cn } from "@chatbot/ui";
 import { Mic, MicOff, PhoneOff, X } from "lucide-react";
 import { useEffect, useRef } from "react";
@@ -13,14 +14,22 @@ function formatDuration(totalSeconds: number): string {
   return `${mins}:${secs}`;
 }
 
-const STATE_LABEL: Record<ElevenLabsVoiceState, string> = {
-  idle: "",
-  connecting: "Connecting…",
-  listening: "Listening…",
-  speaking: "Speaking…",
-  ended: "Call ended",
-  error: "Something went wrong",
-};
+function stateLabel(state: ElevenLabsVoiceState, s: UIStrings): string {
+  switch (state) {
+    case "connecting":
+      return s.voiceConnecting;
+    case "listening":
+      return s.voiceListening;
+    case "speaking":
+      return s.voiceSpeaking;
+    case "ended":
+      return s.voiceCallEnded;
+    case "error":
+      return s.voiceSomethingWrong;
+    default:
+      return "";
+  }
+}
 
 /**
  * Full-screen voice-call overlay — React port of the widget's VoiceCallOverlay
@@ -37,6 +46,7 @@ export function VoiceCallOverlay({
   onEnd,
   onToggleMute,
   onDismiss,
+  strings,
 }: {
   state: ElevenLabsVoiceState;
   transcript: VoiceTranscriptEntry[];
@@ -47,6 +57,7 @@ export function VoiceCallOverlay({
   onEnd: () => void;
   onToggleMute: () => void;
   onDismiss: () => void;
+  strings: UIStrings;
 }) {
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const isActive =
@@ -59,10 +70,12 @@ export function VoiceCallOverlay({
   return (
     <div className="bg-background/95 absolute inset-0 z-20 flex flex-col items-center backdrop-blur-sm">
       <div className="flex w-full items-center justify-between p-4">
-        <span className="text-sm font-medium">{businessName} — voice</span>
+        <span className="text-sm font-medium">
+          {businessName} — {strings.voiceSuffix}
+        </span>
         {!isActive && (
           <button
-            aria-label="Back to chat"
+            aria-label={strings.backToChat}
             onClick={onDismiss}
             className="text-muted-foreground hover:bg-muted rounded-md p-1.5"
           >
@@ -84,7 +97,7 @@ export function VoiceCallOverlay({
           <Mic className="h-8 w-8" />
         </div>
 
-        <div className="text-sm font-medium">{STATE_LABEL[state]}</div>
+        <div className="text-sm font-medium">{stateLabel(state, strings)}</div>
         <div className="text-muted-foreground text-xs tabular-nums">
           {formatDuration(durationSeconds)}
         </div>
@@ -95,7 +108,7 @@ export function VoiceCallOverlay({
             {transcript.map((t, i) => (
               <div key={i}>
                 <span className="font-medium">
-                  {t.role === "user" ? "You" : "Assistant"}:{" "}
+                  {t.role === "user" ? strings.youLabel : strings.assistantFallbackName}:{" "}
                 </span>
                 <span className="text-muted-foreground">{t.content}</span>
               </div>
@@ -110,7 +123,7 @@ export function VoiceCallOverlay({
         {isActive ? (
           <>
             <button
-              aria-label={muted ? "Unmute" : "Mute"}
+              aria-label={muted ? strings.unmuteMic : strings.muteMic}
               onClick={onToggleMute}
               className={cn(
                 "flex h-12 w-12 items-center justify-center rounded-full border transition",
@@ -124,7 +137,7 @@ export function VoiceCallOverlay({
               )}
             </button>
             <button
-              aria-label="End call"
+              aria-label={strings.endCall}
               onClick={onEnd}
               className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-white transition hover:bg-red-700"
             >
@@ -137,7 +150,7 @@ export function VoiceCallOverlay({
             className="rounded-lg px-4 py-2 text-sm font-medium text-white"
             style={{ backgroundColor: accentColor }}
           >
-            Continue chatting
+            {strings.continueChatting}
           </button>
         )}
       </div>

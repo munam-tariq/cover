@@ -26,10 +26,30 @@ export interface PulseCampaignData {
   };
 }
 
+import type { UIStrings } from "@chatbot/shared/i18n";
+
+type PulseStrings = Pick<
+  UIStrings,
+  | "quickFeedback"
+  | "dismiss"
+  | "thanksShort"
+  | "feedbackMatters"
+  | "notLikely"
+  | "veryLikely"
+  | "npsReason"
+  | "submitLabel"
+  | "otherLabel"
+  | "otherPlaceholder"
+  | "shareThoughts"
+  | "ratingOfFive"
+>;
+
 export interface PulsePopupOptions {
   campaign: PulseCampaignData;
   onSubmit: (campaignId: string, answer: Record<string, unknown>) => void;
   onDismiss: (campaignId: string) => void;
+  /** Localized UI strings (falls back to English when omitted). */
+  strings?: PulseStrings;
 }
 
 const SHAPES = ["sticky", "holo", "envelope", "notebook", "ticket", "polaroid"] as const;
@@ -103,7 +123,10 @@ export class PulsePopup {
     const el = document.createElement("div");
     el.className = `pulse-popup pulse-pos-${this.position}`;
     el.setAttribute("role", "dialog");
-    el.setAttribute("aria-label", "Quick feedback");
+    el.setAttribute(
+      "aria-label",
+      this.options.strings?.quickFeedback || "Quick feedback"
+    );
 
     const accentColor =
       this.options.campaign.styling.accent_color || "#6366f1";
@@ -119,14 +142,14 @@ export class PulsePopup {
 
     el.innerHTML = `
       <div class="pulse-popup-shape pulse-shape-${this.shape}" style="--pulse-accent: ${accentColor}; ${SHAPE_STYLES[this.shape] || ""}">
-        <button class="pulse-close" aria-label="Dismiss">&times;</button>
+        <button class="pulse-close" aria-label="${this.escapeHtml(this.options.strings?.dismiss || "Dismiss")}">&times;</button>
         ${avatarHtml}
         <div class="pulse-question">${this.escapeHtml(this.options.campaign.question)}</div>
         <div class="pulse-body">${this.renderBody()}</div>
         <div class="pulse-thank-you" style="display:none;">
           <span class="pulse-check">✓</span>
-          <span>Thanks!</span>
-          <span class="pulse-thank-you-text">Your feedback matters</span>
+          <span>${this.escapeHtml(this.options.strings?.thanksShort || "Thanks!")}</span>
+          <span class="pulse-thank-you-text">${this.escapeHtml(this.options.strings?.feedbackMatters || "Your feedback matters")}</span>
         </div>
       </div>
     `;
@@ -178,12 +201,12 @@ export class PulsePopup {
         ${buttons}
       </div>
       <div class="pulse-nps-labels">
-        <span>Not likely</span>
-        <span>Very likely</span>
+        <span>${this.escapeHtml(this.options.strings?.notLikely || "Not likely")}</span>
+        <span>${this.escapeHtml(this.options.strings?.veryLikely || "Very likely")}</span>
       </div>
       <div class="pulse-nps-followup" style="display:none;">
-        <textarea class="pulse-textarea" placeholder="What's the main reason for your score?" rows="2" maxlength="500"></textarea>
-        <button class="pulse-submit-btn">Submit</button>
+        <textarea class="pulse-textarea" placeholder="${this.escapeHtml(this.options.strings?.npsReason || "What's the main reason for your score?")}" rows="2" maxlength="500"></textarea>
+        <button class="pulse-submit-btn">${this.escapeHtml(this.options.strings?.submitLabel || "Submit")}</button>
       </div>
     `;
   }
@@ -201,15 +224,15 @@ export class PulsePopup {
 
     const otherField = allowOther
       ? `<div class="pulse-poll-other" style="display:none;">
-           <input type="text" class="pulse-other-input" placeholder="Other..." maxlength="200" />
-           <button class="pulse-submit-btn">Submit</button>
+           <input type="text" class="pulse-other-input" placeholder="${this.escapeHtml(this.options.strings?.otherPlaceholder || "Other...")}" maxlength="200" />
+           <button class="pulse-submit-btn">${this.escapeHtml(this.options.strings?.submitLabel || "Submit")}</button>
          </div>`
       : "";
 
     return `
       <div class="pulse-poll-options">
         ${optionBtns}
-        ${allowOther ? '<button class="pulse-poll-option pulse-poll-other-btn" data-option="__other__">Other</button>' : ""}
+        ${allowOther ? `<button class="pulse-poll-option pulse-poll-other-btn" data-option="__other__">${this.escapeHtml(this.options.strings?.otherLabel || "Other")}</button>` : ""}
       </div>
       ${otherField}
     `;
@@ -220,7 +243,7 @@ export class PulsePopup {
       <div class="pulse-sentiment-row">
         ${SENTIMENT_EMOJIS.map(
           (emoji, i) =>
-            `<button class="pulse-emoji-btn" data-emoji="${i + 1}" aria-label="Rating ${i + 1} of 5">${emoji}</button>`
+            `<button class="pulse-emoji-btn" data-emoji="${i + 1}" aria-label="${this.escapeHtml((this.options.strings?.ratingOfFive || "Rating {n} of 5").replace("{n}", String(i + 1)))}">${emoji}</button>`
         ).join("")}
       </div>
     `;
@@ -228,12 +251,14 @@ export class PulsePopup {
 
   private renderFeedback(config: Record<string, unknown>): string {
     const placeholder =
-      (config.placeholder as string) || "Share your thoughts...";
+      (config.placeholder as string) ||
+      this.options.strings?.shareThoughts ||
+      "Share your thoughts...";
     const maxLength = (config.max_length as number) || 500;
 
     return `
       <textarea class="pulse-textarea" placeholder="${this.escapeHtml(placeholder)}" rows="3" maxlength="${maxLength}"></textarea>
-      <button class="pulse-submit-btn">Submit</button>
+      <button class="pulse-submit-btn">${this.escapeHtml(this.options.strings?.submitLabel || "Submit")}</button>
     `;
   }
 

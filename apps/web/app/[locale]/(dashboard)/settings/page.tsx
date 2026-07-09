@@ -71,6 +71,7 @@ export default function SettingsPage() {
   // Form state
   const [name, setName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [languageDefault, setLanguageDefault] = useState("");
 
   // Lead capture state (V1 - kept for backward compatibility)
   const [leadCaptureEnabled, setLeadCaptureEnabled] = useState(false);
@@ -165,6 +166,9 @@ export default function SettingsPage() {
 
       // Load lead capture settings from project.settings
       const settings = currentProject.settings || {};
+      setLanguageDefault(
+        (settings.language as { default?: string } | undefined)?.default || ""
+      );
       setLeadCaptureEnabled(settings.lead_capture_enabled === true);
       setLeadCaptureEmail((settings.lead_capture_email as string) || "");
       setLeadNotificationsEnabled(settings.lead_notifications_enabled !== false);
@@ -390,6 +394,9 @@ export default function SettingsPage() {
         body: JSON.stringify({
           name: name.trim() || t("agentNamePlaceholder"),
           systemPrompt: systemPrompt.trim(),
+          settings: {
+            language: languageDefault ? { default: languageDefault } : {},
+          },
         }),
       });
 
@@ -892,6 +899,22 @@ export default function SettingsPage() {
                 />
                 <p className="text-sm text-muted-foreground mt-1">
                   {t("characterCount", { count: systemPrompt.length, max: 2000 })}
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="language-default">{t("languageLabel")}</Label>
+                <select
+                  id="language-default"
+                  value={languageDefault}
+                  onChange={(e) => setLanguageDefault(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">{t("languageAuto")}</option>
+                  <option value="ar-SA">العربية — السعودية (ar-SA)</option>
+                  <option value="en">English (en)</option>
+                </select>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {t("languageHelp")}
                 </p>
               </div>
               <div className="pt-2">

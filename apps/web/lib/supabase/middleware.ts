@@ -1,6 +1,8 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { authCookieDomainForHost } from "@/lib/region-hosts";
+
 type SetCookie = { name: string; value: string; options: CookieOptions };
 
 export type SessionResult = {
@@ -33,10 +35,15 @@ export async function updateSession(request: NextRequest): Promise<SessionResult
     return { redirect: null, cookiesToSet };
   }
 
+  // Shared `.frontface.app` auth cookie on production hosts (SSO); host-only
+  // elsewhere. Applied to writes and removals alike, so logout clears it too.
+  const domain = authCookieDomainForHost(request.headers.get("host"));
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      ...(domain ? { cookieOptions: { domain } } : {}),
       cookies: {
         getAll() {
           return request.cookies.getAll();

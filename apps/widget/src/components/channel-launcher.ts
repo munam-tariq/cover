@@ -4,6 +4,8 @@ import { isAllowedUrl, isAllowedIconUrl } from "../utils/widget-appearance";
 export interface ChannelLauncherOptions {
   channels: ChannelButton[];
   position: "bottom-right" | "bottom-left";
+  /** Localized aria-label for the channel group. */
+  groupLabel?: string;
 }
 
 const BRAND_ICONS: Record<string, { svg: string; color: string }> = {
@@ -49,7 +51,7 @@ export class ChannelLauncher {
     const container = document.createElement("div");
     container.className = "channel-launcher";
     container.setAttribute("role", "group");
-    container.setAttribute("aria-label", "Contact channels");
+    container.setAttribute("aria-label", this.options.groupLabel || "Contact channels");
 
     for (const channel of this.options.channels) {
       if (!isAllowedUrl(channel.url)) continue;
