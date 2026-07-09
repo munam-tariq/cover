@@ -30,6 +30,7 @@ import {
   getWidgetStrings,
   parseWidgetEmbedConfig,
   resolveWidgetAppearanceDefaults,
+  type WidgetStrings,
   type LeadCaptureConfig,
   type LeadRecoveryConfig,
   type ResolvedWidgetAppearance,
@@ -84,6 +85,7 @@ class ChatbotWidget {
   private bubble: Bubble | null = null;
   private channelLauncher: ChannelLauncher | null = null;
   private chatWindow: ChatWindow | null = null;
+  private widgetStrings: WidgetStrings | null = null;
   private isOpen = false;
   private leadCaptureConfig: LeadCaptureConfig | null = null;
   private proactiveConfig: ProactiveEngagementConfig | null = null;
@@ -159,6 +161,19 @@ class ChatbotWidget {
     wrapper.dataset.theme = this.resolveTheme();
     this.shadowRoot.appendChild(wrapper);
 
+    // Resolve localized strings up front — the launcher and channel group need
+    // them too, so they must exist before those are created.
+    const strings = getWidgetStrings(
+      Array.from(navigator.languages ?? [navigator.language]),
+      this.appearance.localeDefault
+    );
+    this.widgetStrings = strings;
+
+    // Direction: RTL for Arabic (and other RTL locales). Drives text alignment,
+    // input direction, and the `[dir="rtl"]` CSS overrides in widget.css.
+    wrapper.dir = strings.rtl ? "rtl" : "ltr";
+    wrapper.lang = strings.locale;
+
     // Launcher color: the primary color, unless a separate bubble color is configured.
     const launcherColor = this.appearance.usePrimaryForHeader
       ? this.config.primaryColor
@@ -169,6 +184,8 @@ class ChatbotWidget {
       onClick: () => this.toggle(),
       primaryColor: launcherColor,
       iconUrl: this.appearance.launcherIconUrl,
+      openLabel: strings.openChat,
+      closeLabel: strings.closeChat,
     });
     wrapper.appendChild(this.bubble.element);
 
@@ -176,16 +193,14 @@ class ChatbotWidget {
       this.channelLauncher = new ChannelLauncher({
         channels: this.appearance.channels,
         position: this.config.position as "bottom-right" | "bottom-left",
+        groupLabel: strings.contactChannels,
       });
       this.channelLauncher.setExpanded(true);
       wrapper.appendChild(this.channelLauncher.element);
     }
 
     // Create chat window
-    const strings = getWidgetStrings(
-      Array.from(navigator.languages ?? [navigator.language]),
-      this.appearance.localeDefault
-    );
+
     const placeholder =
       this.appearance.placeholder === "Type a message..."
         ? strings.defaultPlaceholder
@@ -496,9 +511,10 @@ class ChatbotWidget {
     if (!overlayConfig?.enabled) return;
 
     this.exitOverlay = new ExitOverlay({
-      headline: overlayConfig.headline || "Before you go...",
-      subtext: overlayConfig.subtext || "Drop your email and we'll follow up",
+      headline: overlayConfig.headline || "",
+      subtext: overlayConfig.subtext || "",
       primaryColor: this.config.primaryColor,
+      strings: this.widgetStrings ?? undefined,
       onSubmit: (email) => this.handleExitOverlayEmail(email),
       onDismiss: () => {
         if (process.env.NODE_ENV === "development") {
@@ -564,6 +580,7 @@ class ChatbotWidget {
       clientKey: this.config.clientKey || undefined,
       parentElement: wrapper,
       isChatOpen: () => this.isOpen,
+      strings: this.widgetStrings ?? undefined,
     });
     this.pulseManager.start();
   }

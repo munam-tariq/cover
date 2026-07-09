@@ -87,6 +87,13 @@ export interface RetrievalOptions {
   useHybridSearch?: boolean;
   /** Maximum total content length in characters */
   maxContentLength?: number;
+  /**
+   * Text used ONLY for the vector (semantic) leg's embedding. Lets callers embed
+   * a query translated into the knowledge base's language for cross-lingual
+   * retrieval, while the full-text leg still uses the original `query`.
+   * Defaults to the original query when empty — no behavior change.
+   */
+  vectorQuery?: string;
 }
 
 /**

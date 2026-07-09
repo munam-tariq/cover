@@ -84,9 +84,9 @@ test("resolveWidgetPreviewScriptUrl uses the local dev bundle unless explicitly 
 
 test("all dashboard embed-code surfaces use the shared generator", () => {
   const files = [
-    "apps/web/app/(dashboard)/embed/page.tsx",
-    "apps/web/app/(dashboard)/projects/[projectId]/components/overview-tab.tsx",
-    "apps/web/app/(dashboard)/projects/[projectId]/components/widget-tab.tsx",
+    "apps/web/app/[locale]/(dashboard)/embed/page.tsx",
+    "apps/web/app/[locale]/(dashboard)/projects/[projectId]/components/overview-tab.tsx",
+    "apps/web/app/[locale]/(dashboard)/projects/[projectId]/components/widget-tab.tsx",
   ];
 
   for (const file of files) {
@@ -97,7 +97,7 @@ test("all dashboard embed-code surfaces use the shared generator", () => {
 });
 
 test("dashboard widget preview iframe does not combine scripts with same-origin sandboxing", () => {
-  const source = readFileSync("apps/web/app/(dashboard)/embed/page.tsx", "utf8");
+  const source = readFileSync("apps/web/app/[locale]/(dashboard)/embed/page.tsx", "utf8");
   const iframeStart = source.indexOf("<iframe");
   const iframeEnd = source.indexOf("/>", iframeStart);
 
@@ -110,7 +110,7 @@ test("dashboard widget preview iframe does not combine scripts with same-origin 
 });
 
 test("dashboard widget preview passes a scoped client key without adding it to public embed code", () => {
-  const source = readFileSync("apps/web/app/(dashboard)/embed/page.tsx", "utf8");
+  const source = readFileSync("apps/web/app/[locale]/(dashboard)/embed/page.tsx", "utf8");
 
   assert.match(source, /previewClientKey/);
   assert.match(source, /\/api\/projects\/\$\{projectId\}\/widget-preview-key/);
@@ -130,7 +130,15 @@ test("dashboard widget preview passes a scoped client key without adding it to p
   assert.match(previewSource, /clientKey:\s*previewClientKey/);
 
   assert.match(source, /previewKeyWarning/);
-  assert.match(source, /A project owner must create the widget preview key\./);
+  assert.match(source, /t\(["']previewKeyOwnerWarning["']\)/);
+
+  const dashboardMessages = JSON.parse(
+    readFileSync("apps/web/messages/en/dashboard.json", "utf8")
+  );
+  assert.match(
+    dashboardMessages.pages.embed.previewKeyOwnerWarning,
+    /A project owner must create the widget preview key\./
+  );
 
   const iframeStart = source.indexOf("<iframe");
   const iframeEnd = source.indexOf("/>", iframeStart);

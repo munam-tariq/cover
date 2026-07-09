@@ -18,6 +18,10 @@ import { logger } from "../lib/logger";
 import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import { rateLimit } from "../middleware/rate-limit";
+import {
+  resolveGreetingLanguage,
+  projectLanguageDefault,
+} from "../services/language";
 
 import { buildLeadCaptureClientConfig } from "./embed";
 
@@ -64,6 +68,8 @@ interface PublicPageConfig {
   cards_enabled: boolean;
   prompt_cards: PromptCard[];
   powered_by_badge: boolean;
+  /** BCP-47 language for the page UI + AI (e.g. "ar-SA"); drives strings + RTL. */
+  locale: string;
 }
 
 interface ProjectRow {
@@ -102,13 +108,29 @@ function buildConfig(project: ProjectRow): {
   // user → keep empty so the URL is the bare /c/<uuid>.
   const slug = project.public_slug ?? slugify(businessName);
 
+  // Localized copy defaults (project default wins). Only fills in when the user
+  // hasn't authored their own headline/subtext/title.
+  const lang = resolveGreetingLanguage(projectLanguageDefault(settings)).base;
+  const defaults =
+    lang === "ar"
+      ? {
+          pageTitle: `${businessName} — المساعدة`,
+          headline: `مرحبًا، أنا مساعد ${businessName}.`,
+          subtext: "اسألني عن خدماتنا — أنا هنا للمساعدة.",
+        }
+      : {
+          pageTitle: `${businessName} — Help`,
+          headline: `Hi, I'm the ${businessName} assistant.`,
+          subtext: "Ask about our services — I'm here to help.",
+        };
+
   const config: PublicPageConfig = {
     enabled: pp.enabled ?? false,
     business_name: businessName,
     logo_url: logoUrl,
-    page_title: pp.page_title || `${businessName} — Help`,
-    headline: pp.headline || `Hi, I'm the ${businessName} assistant.`,
-    subtext: pp.subtext || "Ask about our services — I'm here to help.",
+    page_title: pp.page_title || defaults.pageTitle,
+    headline: pp.headline || defaults.headline,
+    subtext: pp.subtext || defaults.subtext,
     theme: pp.theme || "light",
     accent_color:
       pp.accent_color || (settings.primary_color as string) || ACCENT_COLORS[0],
@@ -119,6 +141,7 @@ function buildConfig(project: ProjectRow): {
     cards_enabled: pp.cards_enabled ?? true,
     prompt_cards: Array.isArray(pp.prompt_cards) ? pp.prompt_cards : [],
     powered_by_badge: pp.powered_by_badge ?? true,
+    locale: projectLanguageDefault(settings) || "en",
   };
 
   return { config, slug };
@@ -140,6 +163,7 @@ function toCamel(config: PublicPageConfig) {
     cardsEnabled: config.cards_enabled,
     promptCards: config.prompt_cards,
     poweredBy: config.powered_by_badge,
+    locale: config.locale,
   };
 }
 

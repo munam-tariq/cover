@@ -3459,3 +3459,31 @@ img.channel-btn__icon {
   border-radius: 50%;
   justify-content: center;
 }
+
+/* ─── RTL (Arabic and other right-to-left locales) ─────────────────────────────
+   Message positioning already flips via flexbox align-self + the wrapper's
+   dir="rtl"; these overrides cover the few places that pin text/left explicitly
+   and swap in an Arabic-capable font stack (system fonts — no bundled webfont). */
+.chatbot-widget[dir="rtl"] {
+  --widget-font: 'Segoe UI', Tahoma, 'Geeza Pro', 'Noto Naskh Arabic',
+    'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+}
+
+.chatbot-widget[dir="rtl"] .chatbot-starter,
+.chatbot-widget[dir="rtl"] .chatbot-human-button-text {
+  text-align: right;
+}
+
+.chatbot-widget[dir="rtl"] .chatbot-message.user .chatbot-message-time {
+  text-align: left;
+}
+
+/* Mirror direction-dependent glyphs: the send paper-plane and the diagonal
+   expand/collapse arrows point along the writing direction, so they flip in RTL.
+   Symmetric or meaning-fixed icons (close ✕, phone, copy, thumbs, and brand
+   channel logos) are deliberately NOT mirrored. */
+.chatbot-widget[dir="rtl"] .chatbot-send svg,
+.chatbot-widget[dir="rtl"] .cb-expand-icon,
+.chatbot-widget[dir="rtl"] .cb-collapse-icon {
+  transform: scaleX(-1);
+}

@@ -151,6 +151,49 @@ export async function getOrCreateConversation(
 }
 
 /**
+ * Read the pinned conversation language (BCP-47) from `metadata.language`.
+ * Returns null when unset or on error — callers fall back to detection/default.
+ */
+export async function getConversationLanguage(
+  conversationId: string
+): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("conversations")
+    .select("metadata")
+    .eq("id", conversationId)
+    .single();
+
+  if (error || !data) return null;
+  const metadata = (data.metadata as Record<string, unknown> | null) || {};
+  const language = metadata.language;
+  return typeof language === "string" && language ? language : null;
+}
+
+/**
+ * Pin the resolved conversation language into `metadata.language`, preserving
+ * any other metadata keys. Called once when a conversation's language is first
+ * resolved so every later turn stays consistent.
+ */
+export async function setConversationLanguage(
+  conversationId: string,
+  language: string
+): Promise<void> {
+  const { data } = await supabaseAdmin
+    .from("conversations")
+    .select("metadata")
+    .eq("id", conversationId)
+    .single();
+
+  const metadata = (data?.metadata as Record<string, unknown> | null) || {};
+  if (metadata.language === language) return;
+
+  await supabaseAdmin
+    .from("conversations")
+    .update({ metadata: { ...metadata, language } })
+    .eq("id", conversationId);
+}
+
+/**
  * Get or create a customer record and update device/location context
  */
 export async function getOrCreateCustomer(

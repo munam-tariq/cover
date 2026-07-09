@@ -10,6 +10,15 @@ export interface ProjectSettings {
   primaryColor?: string;
   widgetPosition?: "bottom-right" | "bottom-left";
 
+  /**
+   * Language & dialect preference. `default` is a BCP-47 tag (e.g. "ar-SA") that
+   * drives the greeting, the AI's dialect, and the UI fallback across every
+   * channel. Supersedes the widget-only `widget_appearance.locale_default`.
+   */
+  language?: {
+    default?: string;
+  };
+
   /** Proactive engagement settings (V3) */
   proactive_engagement?: {
     enabled: boolean;

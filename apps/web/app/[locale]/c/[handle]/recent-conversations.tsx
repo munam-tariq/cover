@@ -1,5 +1,6 @@
 "use client";
 
+import { type UIStrings } from "@chatbot/shared/i18n";
 import { cn } from "@chatbot/ui";
 import { MessageSquare } from "lucide-react";
 
@@ -13,15 +14,17 @@ export function RecentConversations({
   conversations,
   activeId,
   onSelect,
+  strings,
 }: {
   conversations: ConversationSummary[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  strings: UIStrings;
 }) {
   if (conversations.length === 0) {
     return (
       <div className="text-muted-foreground px-4 py-2 text-xs">
-        Your conversations will appear here.
+        {strings.conversationsEmpty}
       </div>
     );
   }
@@ -40,14 +43,14 @@ export function RecentConversations({
           <MessageSquare className="text-muted-foreground mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span className="min-w-0 flex-1">
             <span className="block truncate">
-              {c.snippet || "Conversation"}
+              {c.snippet || strings.conversationTitle}
             </span>
             <span className="text-muted-foreground block text-[10px]">
               {c.lastMessageAt
                 ? new Date(c.lastMessageAt).toLocaleDateString()
                 : ""}
               {c.status === "waiting" || c.status === "agent_active"
-                ? " · with support"
+                ? strings.withSupport
                 : ""}
             </span>
           </span>

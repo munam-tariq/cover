@@ -5,11 +5,11 @@ import test from "node:test";
 
 const loginPath = path.join(
   process.cwd(),
-  "apps/web/app/(auth)/login/page.tsx"
+  "apps/web/app/[locale]/(auth)/login/page.tsx"
 );
 const checkEmailPath = path.join(
   process.cwd(),
-  "apps/web/app/(auth)/login/check-email/page.tsx"
+  "apps/web/app/[locale]/(auth)/login/check-email/page.tsx"
 );
 
 test("login passes returnUrl through to check-email", async () => {

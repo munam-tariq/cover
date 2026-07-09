@@ -3,11 +3,11 @@ import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
 
 const leadsPagePath = new URL(
-  "../../apps/web/app/(dashboard)/leads/page.tsx",
+  "../../apps/web/app/[locale]/(dashboard)/leads/page.tsx",
   import.meta.url
 );
 const leadListItemPath = new URL(
-  "../../apps/web/app/(dashboard)/leads/components/lead-list-item.tsx",
+  "../../apps/web/app/[locale]/(dashboard)/leads/components/lead-list-item.tsx",
   import.meta.url
 );
 

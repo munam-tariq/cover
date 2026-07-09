@@ -13,6 +13,7 @@
 import { PulsePopup, type PulseCampaignData } from "../components/pulse-popup";
 
 import { widgetHeaders } from "./request";
+import type { WidgetStrings } from "./widget-appearance";
 import { getVisitorId } from "./storage";
 import {
   isNumber,
@@ -33,6 +34,8 @@ export interface PulseManagerOptions {
   clientKey?: string;
   parentElement: HTMLElement;
   isChatOpen: () => boolean;
+  /** Localized UI strings forwarded to each survey popup. */
+  strings?: WidgetStrings;
 }
 
 interface PulseStorageState {
@@ -235,6 +238,7 @@ export class PulseManager {
       campaign,
       onSubmit: (campaignId, answer) => this.handleSubmit(campaignId, answer),
       onDismiss: (campaignId) => this.handleDismiss(campaignId),
+      strings: this.options.strings,
     });
 
     this.options.parentElement.appendChild(this.activePopup.element);

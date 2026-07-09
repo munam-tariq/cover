@@ -13,6 +13,9 @@ export interface BubbleOptions {
   primaryColor: string;
   /** Optional custom launcher image (Part B). Replaces the default chat glyph when set. */
   iconUrl?: string | null;
+  /** Localized aria-labels for the launcher's open/close states. */
+  openLabel?: string;
+  closeLabel?: string;
 }
 
 export class Bubble {
@@ -27,7 +30,7 @@ export class Bubble {
   private createElement(): HTMLButtonElement {
     const bubble = document.createElement("button");
     bubble.className = "chatbot-bubble";
-    bubble.setAttribute("aria-label", "Open chat");
+    bubble.setAttribute("aria-label", this.options.openLabel || "Open chat");
     bubble.setAttribute("type", "button");
     bubble.style.backgroundColor = this.options.primaryColor;
 
@@ -113,7 +116,9 @@ export class Bubble {
     this.element.classList.toggle("active", active);
     this.element.setAttribute(
       "aria-label",
-      active ? "Close chat" : "Open chat"
+      active
+        ? this.options.closeLabel || "Close chat"
+        : this.options.openLabel || "Open chat"
     );
     this.element.setAttribute(
       "aria-expanded",

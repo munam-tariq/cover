@@ -2,7 +2,16 @@ import { logger } from "../../../lib/logger";
 import { supabaseAdmin } from "../../../lib/supabase";
 import type { ChannelConnection } from "../../../types/channels";
 import { processChat } from "../../chat-engine";
-import { addMessage, getConversationHistory } from "../../conversation";
+import {
+  addMessage,
+  getConversationHistory,
+  getConversationLanguage,
+} from "../../conversation";
+import {
+  projectLanguageDefault,
+  resolveGreetingLanguage,
+  toResolvedLanguage,
+} from "../../language";
 import { broadcastNewMessage } from "../../realtime";
 import { resolveConnectionConfig } from "../config";
 import { resolveConversation } from "../conversation-resolver";
@@ -16,8 +25,43 @@ import { dispatchToChannel } from "../outbound-dispatcher";
 import type { ParsedInbound } from "./adapter";
 import { checkSenderRateLimit } from "./rate-limit";
 
-const UNSUPPORTED_NOTICE =
-  "I can read text messages right now — please type your question.";
+/**
+ * Notice sent for non-text WhatsApp messages (image/audio/etc.), per base
+ * language. Channel-specific system line, so kept local rather than in the
+ * shared UI-chrome catalog (which is for the widget/public-page). English
+ * fallback for any other language.
+ */
+const UNSUPPORTED_NOTICE: Record<string, string> = {
+  en: "I can read text messages right now — please type your question.",
+  ar: "أقدر أقرأ الرسائل النصية حاليًا — من فضلك اكتب سؤالك.",
+};
+
+function unsupportedNotice(base: string): string {
+  return UNSUPPORTED_NOTICE[base] ?? UNSUPPORTED_NOTICE.en;
+}
+
+/**
+ * Language for a channel notice when there's no incoming text to detect from:
+ * the language pinned by a prior text turn wins, else the project default,
+ * else English. One DB read; the project lookup only happens when unpinned.
+ */
+async function resolveNoticeLanguage(
+  projectId: string,
+  conversationId: string
+): Promise<string> {
+  const stored = await getConversationLanguage(conversationId);
+  if (stored) return toResolvedLanguage(stored).base;
+
+  const { data } = await supabaseAdmin
+    .from("projects")
+    .select("settings")
+    .eq("id", projectId)
+    .maybeSingle();
+  const projectDefault = projectLanguageDefault(
+    data?.settings as Record<string, unknown> | null
+  );
+  return resolveGreetingLanguage(projectDefault).base;
+}
 
 export function shouldSuppressAiReply(
   status: string,
@@ -192,9 +236,13 @@ export async function handleInbound(
     );
 
     if (parsed.type === "unsupported") {
+      const noticeLang = await resolveNoticeLanguage(
+        conn.projectId,
+        conversationId
+      );
       await persistAndDispatchAiMessage(
         conversationId,
-        UNSUPPORTED_NOTICE,
+        unsupportedNotice(noticeLang),
         { source: "whatsapp", unsupported: true },
         logCtx
       );

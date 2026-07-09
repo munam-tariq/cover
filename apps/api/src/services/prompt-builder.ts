@@ -23,6 +23,8 @@ export interface ProjectConfig {
   systemPrompt?: string | null;
   supportEmail?: string;
   supportUrl?: string;
+  /** Project default language (BCP-47, e.g. "ar-SA"); drives greeting + AI dialect. */
+  languageDefault?: string | null;
 }
 
 /**
@@ -33,6 +35,11 @@ export interface PromptBuildOptions {
   knowledgeContext: string;
   hasTools: boolean;
   toolDescriptions?: string;
+  /**
+   * Directive telling the model which language + dialect to answer in
+   * (from `buildLanguageDirective`). Empty string = no language constraint.
+   */
+  languageDirective?: string;
 }
 
 /**
@@ -42,7 +49,13 @@ export interface PromptBuildOptions {
  * This ensures security rules, knowledge grounding, and formatting guidelines are always present.
  */
 export function buildSystemPrompt(options: PromptBuildOptions): string {
-  const { project, knowledgeContext, hasTools, toolDescriptions } = options;
+  const {
+    project,
+    knowledgeContext,
+    hasTools,
+    toolDescriptions,
+    languageDirective,
+  } = options;
 
   // Always use the template — inject custom personality into it
   let prompt = CHAT_SYSTEM_PROMPT_TEMPLATE;
@@ -65,13 +78,19 @@ export function buildSystemPrompt(options: PromptBuildOptions): string {
     ? CHAT_TOOLS_SECTION + (toolDescriptions ? `\n\n${toolDescriptions}` : "")
     : "";
 
+  // Build language section (empty when no directive is supplied)
+  const languageSection = languageDirective?.trim()
+    ? `# Language\n\n${languageDirective.trim()}`
+    : "";
+
   // Replace placeholders
   prompt = prompt
     .replace(/{business_name}/g, project.name || "the business")
     .replace(/{context}/g, knowledgeContext)
     .replace(/{tools_section}/g, toolsSection)
     .replace(/{fallback_contact}/g, fallbackContact)
-    .replace(/{personality}/g, personalitySection);
+    .replace(/{personality}/g, personalitySection)
+    .replace(/{language_section}/g, languageSection);
 
   return prompt;
 }
@@ -212,11 +231,16 @@ export function generateFallbackResponse(
  *
  * Defense layers:
  * 1. Unicode normalization (catch homoglyph attacks)
- * 2. Instruction override patterns
- * 3. Role-play/jailbreak attempts
- * 4. System prompt extraction attempts
+ * 2. Instruction override patterns (English)
+ * 3. Role-play/jailbreak attempts (English)
+ * 4. System prompt extraction attempts (English)
+ * 4b. Arabic-language equivalents of layers 2-4
  * 5. Delimiter injection
  * 6. Length limiting
+ *
+ * Layers 1, 5, 6 are language-agnostic (they act on Unicode/ASCII structure),
+ * so they already protect non-English input; the `<user_message>` delimiter in
+ * buildChatMessages remains the primary backbone regardless of language.
  */
 export function sanitizeUserInput(input: string): string {
   // Step 1: Normalize unicode to catch homoglyph attacks (e.g., Cyrillic 'а' vs Latin 'a')
@@ -246,6 +270,17 @@ export function sanitizeUserInput(input: string): string {
     .replace(/what\s+(is|are)\s+your\s+(system\s+)?(prompt|instructions)/gi, "")
     .replace(/reveal\s+(your\s+)?(system\s+)?(prompt|instructions)/gi, "")
     .replace(/repeat\s+(your\s+)?(system\s+)?(prompt|instructions|everything)/gi, "");
+
+  // Step 4b: Arabic-language injection/extraction phrases (mirrors steps 2-4).
+  // Non-exhaustive — pending native-speaker review (see localization plan).
+  sanitized = sanitized
+    .replace(/تجاهل\s+(كل\s+)?(ما\s+سبق|التعليمات(\s+السابقة)?)/g, "")
+    .replace(/(انسى|انسَ)\s+(كل\s+)?(التعليمات|ما\s+سبق)/g, "")
+    .replace(/تظاهر[ي]?\s+(أن|أنك|انك)/g, "")
+    .replace(/تصرّ?ف\s+(كأنك|وكأنك)/g, "")
+    .replace(/(اعرض|أظهر|اظهر)\s+(لي\s+)?(التعليمات|الأوامر)(\s+النظامية)?/g, "")
+    .replace(/ما\s+(هي\s+)?تعليمات(ك)/g, "")
+    .replace(/وضع\s+المطوّ?ر/g, "");
 
   // Step 5: Remove delimiter injection attempts
   sanitized = sanitized

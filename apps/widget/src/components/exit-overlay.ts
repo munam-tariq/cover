@@ -6,12 +6,25 @@
  * Displays max once per session. Only when chat is NOT open and email NOT captured.
  */
 
+import type { UIStrings } from "@chatbot/shared/i18n";
+
 export interface ExitOverlayOptions {
   headline: string;
   subtext: string;
   primaryColor: string;
   onSubmit: (email: string) => void;
   onDismiss: () => void;
+  /** Localized UI strings (falls back to English when omitted). */
+  strings?: Pick<
+    UIStrings,
+    | "exitTitle"
+    | "exitHeadline"
+    | "exitSubtext"
+    | "exitEmailAria"
+    | "sendLabel"
+    | "noThanks"
+    | "thanksInTouch"
+  >;
 }
 
 export class ExitOverlay {
@@ -26,10 +39,11 @@ export class ExitOverlay {
   }
 
   private createElement(): HTMLDivElement {
+    const s = this.options.strings;
     const overlay = document.createElement("div");
     overlay.className = "chatbot-exit-overlay";
     overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-label", "Before you go");
+    overlay.setAttribute("aria-label", s?.exitTitle || "Before you go");
 
     const card = document.createElement("div");
     card.className = "chatbot-exit-overlay-card";
@@ -37,19 +51,23 @@ export class ExitOverlay {
     // Headline
     const headline = document.createElement("h3");
     headline.className = "chatbot-exit-overlay-headline";
-    headline.textContent = this.options.headline || "Before you go...";
+    headline.textContent =
+      this.options.headline || s?.exitHeadline || "Before you go...";
 
     // Subtext
     const subtext = document.createElement("p");
     subtext.className = "chatbot-exit-overlay-subtext";
-    subtext.textContent = this.options.subtext || "Drop your email and we'll follow up";
+    subtext.textContent =
+      this.options.subtext ||
+      s?.exitSubtext ||
+      "Drop your email and we'll follow up";
 
     // Email input
     const input = document.createElement("input");
     input.type = "email";
     input.className = "chatbot-exit-overlay-input";
     input.placeholder = "you@example.com";
-    input.setAttribute("aria-label", "Your email address");
+    input.setAttribute("aria-label", s?.exitEmailAria || "Your email address");
     input.autocomplete = "email";
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -63,7 +81,7 @@ export class ExitOverlay {
     const submitBtn = document.createElement("button");
     submitBtn.type = "button";
     submitBtn.className = "chatbot-exit-overlay-submit";
-    submitBtn.textContent = "Send";
+    submitBtn.textContent = s?.sendLabel || "Send";
     submitBtn.style.backgroundColor = this.options.primaryColor;
     submitBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -81,7 +99,7 @@ export class ExitOverlay {
     const dismissLink = document.createElement("button");
     dismissLink.type = "button";
     dismissLink.className = "chatbot-exit-overlay-dismiss";
-    dismissLink.textContent = "No thanks";
+    dismissLink.textContent = s?.noThanks || "No thanks";
     dismissLink.addEventListener("click", (e) => {
       e.preventDefault();
       this.hide();
@@ -143,7 +161,9 @@ export class ExitOverlay {
   setSubmitting(loading: boolean): void {
     if (this.submitBtn) {
       this.submitBtn.disabled = loading;
-      this.submitBtn.textContent = loading ? "..." : "Send";
+      this.submitBtn.textContent = loading
+        ? "..."
+        : this.options.strings?.sendLabel || "Send";
       this.submitBtn.style.opacity = loading ? "0.6" : "1";
     }
     if (this.emailInput) {
@@ -160,7 +180,7 @@ export class ExitOverlay {
       card.innerHTML = `
         <div class="chatbot-exit-overlay-success">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          <span>Thanks! We'll be in touch.</span>
+          <span>${this.options.strings?.thanksInTouch || "Thanks! We'll be in touch."}</span>
         </div>
       `;
     }

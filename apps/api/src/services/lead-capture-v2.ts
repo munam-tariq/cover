@@ -201,7 +201,8 @@ export async function leadCaptureV2Interceptor(
   visitorId: string,
   sessionId: string | undefined,
   message: string,
-  conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>
+  conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
+  languageDirective?: string
 ): Promise<InterceptorResult | null> {
   const logCtx: LogContext = { projectId, visitorId, step: "lc_v2_interceptor" };
 
@@ -283,6 +284,7 @@ export async function leadCaptureV2Interceptor(
       retryCount,
       userMessage: message,
       recentMessages: (conversationHistory || []).slice(-6),  // last 3 exchanges for context
+      languageDirective,
     });
 
     // Safety override: if LLM extracted an answer but chose redirect, it contradicted itself —

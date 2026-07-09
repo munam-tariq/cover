@@ -12,3 +12,6 @@ export * from "./observability";
 
 // Types
 export * from "./types";
+
+// Shared UI strings (widget + public page)
+export * from "./i18n";

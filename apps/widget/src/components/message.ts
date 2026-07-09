@@ -25,6 +25,9 @@ export interface MessageOptions {
   copyEnabled?: boolean;
   copyLabel?: string;
   copiedLabel?: string;
+  /** Localized aria-labels/titles for the feedback thumbs. */
+  helpfulLabel?: string;
+  notHelpfulLabel?: string;
 }
 
 // SVG icons for feedback buttons
@@ -54,6 +57,9 @@ export class Message {
     // Message content
     const content = document.createElement("div");
     content.className = "chatbot-message-content";
+    // Per-message direction: mixed Arabic + Latin (brand names, URLs, numbers)
+    // renders correctly when the browser picks direction from the content itself.
+    content.dir = "auto";
     // Parse markdown for assistant messages, escape for user messages
     if (this.options.role === "assistant") {
       content.innerHTML = parseMarkdown(this.options.content);
@@ -139,8 +145,9 @@ export class Message {
     const thumbsUp = document.createElement("button");
     thumbsUp.className = "chatbot-feedback-btn chatbot-feedback-btn--up";
     thumbsUp.innerHTML = THUMBS_UP_ICON;
-    thumbsUp.setAttribute("aria-label", "Helpful");
-    thumbsUp.setAttribute("title", "Helpful");
+    const helpfulLabel = this.options.helpfulLabel || "Helpful";
+    thumbsUp.setAttribute("aria-label", helpfulLabel);
+    thumbsUp.setAttribute("title", helpfulLabel);
     thumbsUp.addEventListener("click", (e) => {
       e.stopPropagation();
       this.handleFeedback("helpful");
@@ -150,8 +157,9 @@ export class Message {
     const thumbsDown = document.createElement("button");
     thumbsDown.className = "chatbot-feedback-btn chatbot-feedback-btn--down";
     thumbsDown.innerHTML = THUMBS_DOWN_ICON;
-    thumbsDown.setAttribute("aria-label", "Not helpful");
-    thumbsDown.setAttribute("title", "Not helpful");
+    const notHelpfulLabel = this.options.notHelpfulLabel || "Not helpful";
+    thumbsDown.setAttribute("aria-label", notHelpfulLabel);
+    thumbsDown.setAttribute("title", notHelpfulLabel);
     thumbsDown.addEventListener("click", (e) => {
       e.stopPropagation();
       this.handleFeedback("unhelpful");

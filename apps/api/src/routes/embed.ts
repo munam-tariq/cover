@@ -4,6 +4,10 @@ import { logger } from "../lib/logger";
 import { supabaseAdmin } from "../lib/supabase";
 import { isSafeChannelUrl, isSafeIconUrl, VALID_CHANNEL_TYPES } from "../lib/url-validation";
 import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
+import {
+  resolveGreetingLanguage,
+  projectLanguageDefault,
+} from "../services/language";
 import { canIssueRealtimeTokens } from "../services/realtime-jwt";
 
 export const embedRouter = Router();
@@ -11,12 +15,14 @@ export const embedRouter = Router();
 const PROJECT_ID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function buildGreeting(
-  agentName?: string | null,
-  companyName?: string | null
-): { full: string; intro: string } {
-  const templates = [
-    (name?: string | null) => ({
+type GreetingTemplate = (name?: string | null) => {
+  intro: string;
+  full: string;
+};
+
+function englishGreetingTemplates(companyName?: string | null): GreetingTemplate[] {
+  return [
+    (name) => ({
       intro:
         name && companyName
           ? `Hi, I'm ${name} from ${companyName} 👋 I'm really glad you reached out.`
@@ -30,8 +36,7 @@ export function buildGreeting(
             ? `Hi, I'm ${name} 👋 I'm really glad you reached out. Take your time and let me know what you're looking for.`
             : `Hi 👋 I'm really glad you reached out. Take your time and let me know what you're looking for.`,
     }),
-
-    (name?: string | null) => ({
+    (name) => ({
       intro:
         name && companyName
           ? `Hello, I'm ${name} from ${companyName}. It's great to have you here.`
@@ -45,8 +50,7 @@ export function buildGreeting(
             ? `Hello, I'm ${name}. It's great to have you here. What would you like to talk about?`
             : `Hello. It's great to have you here. What would you like to talk about?`,
     }),
-
-    (name?: string | null) => ({
+    (name) => ({
       intro:
         name && companyName
           ? `Hey — ${name} here from ${companyName} 👋.`
@@ -60,8 +64,7 @@ export function buildGreeting(
             ? `Hey — ${name} here 👋. What's been on your mind?`
             : `Hey 👋. What's been on your mind?`,
     }),
-
-    (name?: string | null) => ({
+    (name) => ({
       intro:
         name && companyName
           ? `Hi, I'm ${name} from ${companyName}. Thanks for stopping by.`
@@ -75,8 +78,7 @@ export function buildGreeting(
             ? `Hi, I'm ${name}. Thanks for stopping by. How can I make things easier for you today?`
             : `Hi there 👋 Thanks for stopping by. How can I make things easier for you today?`,
     }),
-
-    (name?: string | null) => ({
+    (name) => ({
       intro:
         name && companyName
           ? `Welcome — I'm ${name} from ${companyName}. I'm here with you.`
@@ -91,7 +93,86 @@ export function buildGreeting(
             : `Welcome 👋 I'm here with you. Tell me a little about what you need and we'll figure it out together.`,
     }),
   ];
+}
 
+/**
+ * Saudi-dialect Arabic greetings. NOTE: pending native-speaker sign-off (see plan).
+ */
+function arabicGreetingTemplates(companyName?: string | null): GreetingTemplate[] {
+  return [
+    (name) => ({
+      intro:
+        name && companyName
+          ? `مرحبًا، أنا ${name} من ${companyName} 👋 سعيد إنك تواصلت معنا.`
+          : name
+            ? `مرحبًا، أنا ${name} 👋 سعيد إنك تواصلت معنا.`
+            : `مرحبًا 👋 سعيد إنك تواصلت معنا.`,
+      full:
+        name && companyName
+          ? `مرحبًا، أنا ${name} من ${companyName} 👋 سعيد إنك تواصلت معنا. خذ راحتك وقل لي وش تدوّر عليه.`
+          : name
+            ? `مرحبًا، أنا ${name} 👋 سعيد إنك تواصلت معنا. خذ راحتك وقل لي وش تدوّر عليه.`
+            : `مرحبًا 👋 سعيد إنك تواصلت معنا. خذ راحتك وقل لي وش تدوّر عليه.`,
+    }),
+    (name) => ({
+      intro:
+        name && companyName
+          ? `هلا والله! أنا ${name} من ${companyName}، نوّرت.`
+          : name
+            ? `هلا والله! أنا ${name}، نوّرت.`
+            : `هلا والله! نوّرت.`,
+      full:
+        name && companyName
+          ? `هلا والله! أنا ${name} من ${companyName}، نوّرت. وش تحب نتكلم فيه اليوم؟`
+          : name
+            ? `هلا والله! أنا ${name}، نوّرت. وش تحب نتكلم فيه اليوم؟`
+            : `هلا والله! نوّرت. وش تحب نتكلم فيه اليوم؟`,
+    }),
+    (name) => ({
+      intro:
+        name && companyName
+          ? `أهلين، ${name} من ${companyName} معك 👋`
+          : name
+            ? `أهلين، ${name} معك 👋`
+            : `أهلين وسهلين 👋`,
+      full:
+        name && companyName
+          ? `أهلين، ${name} من ${companyName} معك 👋 وش اللي في بالك؟`
+          : name
+            ? `أهلين، ${name} معك 👋 وش اللي في بالك؟`
+            : `أهلين وسهلين 👋 وش اللي في بالك؟`,
+    }),
+    (name) => ({
+      intro:
+        name && companyName
+          ? `حيّاك الله، أنا ${name} من ${companyName}. شكرًا لزيارتك.`
+          : name
+            ? `حيّاك الله، أنا ${name}. شكرًا لزيارتك.`
+            : `حيّاك الله 👋 شكرًا لزيارتك.`,
+      full:
+        name && companyName
+          ? `حيّاك الله، أنا ${name} من ${companyName}. شكرًا لزيارتك. كيف أقدر أساعدك اليوم؟`
+          : name
+            ? `حيّاك الله، أنا ${name}. شكرًا لزيارتك. كيف أقدر أساعدك اليوم؟`
+            : `حيّاك الله 👋 شكرًا لزيارتك. كيف أقدر أساعدك اليوم؟`,
+    }),
+  ];
+}
+
+/**
+ * Build a warm greeting in the requested language (base tag, e.g. "ar" or "en").
+ * Defaults to English for any non-Arabic language.
+ */
+export function buildGreeting(
+  agentName?: string | null,
+  companyName?: string | null,
+  lang: string = "en"
+): { full: string; intro: string } {
+  const base = (lang || "en").toLowerCase().split("-")[0];
+  const templates =
+    base === "ar"
+      ? arabicGreetingTemplates(companyName)
+      : englishGreetingTemplates(companyName);
   const selected = templates[Math.floor(Math.random() * templates.length)];
   return selected(agentName);
 }
@@ -177,7 +258,10 @@ export function buildWidgetAppearanceConfig(settings: Record<string, unknown>) {
     starters,
     notice,
     footer,
-    localeDefault: str(wa.locale_default, "en") as string,
+    // Project language default drives the widget UI locale; the legacy
+    // widget_appearance.locale_default is kept only as a fallback.
+    localeDefault: (projectLanguageDefault(settings) ||
+      str(wa.locale_default, "en")) as string,
     ...(channels.length > 0 ? { channels } : {}),
   };
 }
@@ -269,8 +353,16 @@ embedRouter.get(
         ? proactiveSettings
         : { enabled: false };
 
-      // Build greeting once so both parts share the same randomly-selected template
-      const greeting = buildGreeting(project?.name, project?.company_name);
+      // Build greeting once so both parts share the same randomly-selected template.
+      // Greeting language = the project default (Arabic wins even from an English browser).
+      const greetingLang = resolveGreetingLanguage(
+        projectLanguageDefault(settings)
+      ).base;
+      const greeting = buildGreeting(
+        project?.name,
+        project?.company_name,
+        greetingLang
+      );
 
       // Return widget config including enabled status
       res.json({

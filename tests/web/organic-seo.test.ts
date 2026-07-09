@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
-import { blogPosts } from "../../apps/web/app/(marketing)/blog/blog-data.ts";
+import { blogPosts } from "../../apps/web/app/[locale]/(marketing)/blog/blog-data.ts";
 
 test("sitemap includes the organic tools cluster", () => {
   const source = readFileSync(
@@ -51,7 +51,7 @@ test("the first free tool has a shareable OG image asset", () => {
 
 test("blog renderer supports AEO comparison tables", () => {
   const source = readFileSync(
-    path.join(process.cwd(), "apps/web/app/(marketing)/blog/[slug]/page.tsx"),
+    path.join(process.cwd(), "apps/web/app/[locale]/(marketing)/blog/[slug]/page.tsx"),
     "utf8",
   );
 
@@ -86,7 +86,7 @@ test("llms file exposes the organic growth assets", () => {
 
 test("Microsoft Clarity is configured behind analytics consent", () => {
   const layout = readFileSync(
-    path.join(process.cwd(), "apps/web/app/layout.tsx"),
+    path.join(process.cwd(), "apps/web/app/[locale]/layout.tsx"),
     "utf8",
   );
   const consent = readFileSync(

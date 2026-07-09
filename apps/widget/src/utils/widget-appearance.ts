@@ -1,8 +1,10 @@
 /**
- * Widget appearance config — pure, self-contained (no relative imports) so it is unit-testable
- * under Node's test runner. Parses/normalizes the display + appearance config the widget receives
- * from the embed `/config` endpoint (Part B — widget customization).
+ * Widget appearance config — parses/normalizes the display + appearance config the widget receives
+ * from the embed `/config` endpoint (Part B — widget customization). Its only import is the
+ * dependency-free shared UI-strings module, so it stays unit-testable under Node's test runner.
  */
+
+import { getUIStrings, isRtlLocale, type UIStrings } from "@chatbot/shared/i18n";
 
 // Local, dependency-free type guards (kept here to avoid a relative import).
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -128,25 +130,25 @@ export interface ResolvedWidgetAppearance {
   channels: ChannelButton[];
 }
 
-export interface WidgetStrings {
+export interface WidgetStrings extends UIStrings {
   locale: string;
-  defaultPlaceholder: string;
-  sendMessage: string;
-  copyMessage: string;
-  copied: string;
-  dismissNotice: string;
-  poweredBy: string;
+  rtl: boolean;
 }
 
-const WIDGET_STRINGS: Record<string, Omit<WidgetStrings, "locale">> = {
-  en: {
-    defaultPlaceholder: "Type a message...",
-    sendMessage: "Send message",
-    copyMessage: "Copy message",
-    copied: "Copied",
-    dismissNotice: "Dismiss notice",
-    poweredBy: "Powered by FrontFace",
-  },
+/** Original six keys the widget localized before the shared en/ar table existed. */
+type LegacyStringKey =
+  | "defaultPlaceholder"
+  | "sendMessage"
+  | "copyMessage"
+  | "copied"
+  | "dismissNotice"
+  | "poweredBy";
+
+/**
+ * Legacy micro-locale overlays. Full localization is en/ar (via @chatbot/shared);
+ * es/fr/de retain their original handful of control labels layered over English.
+ */
+const LEGACY_WIDGET_STRINGS: Record<string, Pick<UIStrings, LegacyStringKey>> = {
   es: {
     defaultPlaceholder: "Escribe un mensaje...",
     sendMessage: "Enviar mensaje",
@@ -172,6 +174,9 @@ const WIDGET_STRINGS: Record<string, Omit<WidgetStrings, "locale">> = {
     poweredBy: "Bereitgestellt von FrontFace",
   },
 };
+
+/** Locales the widget can present (full: en/ar; legacy micro: es/fr/de). */
+const WIDGET_LOCALES = ["en", "ar", "es", "fr", "de"];
 
 /** Parse the `config` object from the embed endpoint, keeping only well-typed fields. */
 export function parseDisplayConfig(
@@ -267,19 +272,35 @@ export function pickLocale(
   return fallback;
 }
 
+/**
+ * Choose the widget UI locale. An explicit non-English project default wins —
+ * so a Saudi (ar-SA) project shows Arabic chrome to match the AI's language —
+ * otherwise fall back to browser-language detection (preserving auto-detect for
+ * es/fr/de and English projects).
+ */
+function resolveWidgetLocale(
+  navigatorLanguages: string[],
+  localeDefault: string
+): string {
+  const base = (localeDefault || "en").toLowerCase().split("-")[0];
+  if (base !== "en" && WIDGET_LOCALES.includes(base)) return base;
+  const fallback = WIDGET_LOCALES.includes(base) ? base : "en";
+  return pickLocale(navigatorLanguages, WIDGET_LOCALES, fallback);
+}
+
 export function getWidgetStrings(
   navigatorLanguages: string[],
   localeDefault: string
 ): WidgetStrings {
-  const available = Object.keys(WIDGET_STRINGS);
-  const normalizedFallback = available.includes(localeDefault.toLowerCase())
-    ? localeDefault.toLowerCase()
-    : "en";
-  const locale = pickLocale(navigatorLanguages, available, normalizedFallback);
+  const locale = resolveWidgetLocale(navigatorLanguages, localeDefault);
+  const base = getUIStrings(locale); // full en/ar; unknown locales → English
+  const legacy = LEGACY_WIDGET_STRINGS[locale];
 
   return {
+    ...base,
+    ...(legacy ?? {}),
     locale,
-    ...WIDGET_STRINGS[locale],
+    rtl: isRtlLocale(locale),
   };
 }
 

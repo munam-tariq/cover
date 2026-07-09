@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
-import { blogPosts } from "../../apps/web/app/(marketing)/blog/blog-data.ts";
+import { blogPosts } from "../../apps/web/app/[locale]/(marketing)/blog/blog-data.ts";
 
 const require = createRequire(import.meta.url);
 
@@ -42,16 +42,16 @@ test("blog posts define varied visual cover directions", () => {
 });
 
 test("blog filter cards are visible immediately after category changes", () => {
-  const source = readFileSync(path.join(process.cwd(), "apps/web/app/(marketing)/blog/blog-index.tsx"), "utf8");
+  const source = readFileSync(path.join(process.cwd(), "apps/web/app/[locale]/(marketing)/blog/blog-index.tsx"), "utf8");
 
   assert.match(source, /className=\{"reveal in d" \+ \(\(i % 3\) \+ 1\)\}/);
   assert.match(source, /aria-pressed=\{on\}/);
 });
 
 test("marketing third-party scripts wait for consent or user intent", () => {
-  const rootLayout = readFileSync(path.join(process.cwd(), "apps/web/app/layout.tsx"), "utf8");
-  const marketingLayout = readFileSync(path.join(process.cwd(), "apps/web/app/(marketing)/layout.tsx"), "utf8");
-  const widgetLauncher = readFileSync(path.join(process.cwd(), "apps/web/app/(marketing)/components/marketing-widget-launcher.tsx"), "utf8");
+  const rootLayout = readFileSync(path.join(process.cwd(), "apps/web/app/[locale]/layout.tsx"), "utf8");
+  const marketingLayout = readFileSync(path.join(process.cwd(), "apps/web/app/[locale]/(marketing)/layout.tsx"), "utf8");
+  const widgetLauncher = readFileSync(path.join(process.cwd(), "apps/web/app/[locale]/(marketing)/components/marketing-widget-launcher.tsx"), "utf8");
   const analyticsConsent = readFileSync(path.join(process.cwd(), "apps/web/components/analytics-consent.tsx"), "utf8");
 
   assert.doesNotMatch(rootLayout, /googletagmanager\.com\/gtag\/js/);
@@ -65,8 +65,8 @@ test("marketing third-party scripts wait for consent or user intent", () => {
 });
 
 test("homepage LCP hero renders static headline server-side", () => {
-  const heroSection = readFileSync(path.join(process.cwd(), "apps/web/app/(marketing)/components/hero-section.tsx"), "utf8");
-  const heroDemoSlot = readFileSync(path.join(process.cwd(), "apps/web/app/(marketing)/components/hero-demo-slot.tsx"), "utf8");
+  const heroSection = readFileSync(path.join(process.cwd(), "apps/web/app/[locale]/(marketing)/components/hero-section.tsx"), "utf8");
+  const heroDemoSlot = readFileSync(path.join(process.cwd(), "apps/web/app/[locale]/(marketing)/components/hero-demo-slot.tsx"), "utf8");
 
   assert.doesNotMatch(heroSection, /^"use client";/);
   assert.match(heroSection, /HeroDemoSlot/);
@@ -96,7 +96,7 @@ test("comparison post does not overstate coming-soon channel support", () => {
 
 test("public SEO and LLM files use the current support-resolution positioning", () => {
   const checkedFiles = [
-    "apps/web/app/layout.tsx",
+    "apps/web/app/[locale]/layout.tsx",
     "apps/web/public/manifest.json",
     "apps/web/public/llms.txt",
   ];

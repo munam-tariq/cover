@@ -5,7 +5,11 @@ import test from "node:test";
 
 const callbackPath = path.join(
   process.cwd(),
-  "apps/web/app/(auth)/auth/callback/page.tsx"
+  "apps/web/app/[locale]/(auth)/auth/callback/page.tsx"
+);
+const authMessagesPath = path.join(
+  process.cwd(),
+  "apps/web/messages/en/auth.json"
 );
 
 test("callback uses the shared post-auth helper (logic no longer inlined)", async () => {
@@ -28,7 +32,12 @@ test("verifier failures trigger the relay instead of the error screen", async ()
 
 test("relay screen shows the display code and where to enter it", async () => {
   const src = await readFile(callbackPath, "utf8");
-  assert.match(src, /Use verification code to continue/);
-  assert.match(src, /where you first tried to sign in/);
-  assert.match(src, /expires in 5 minutes/i);
+  assert.match(src, /t\(["']verificationTitle["']\)/);
+  assert.match(src, /t\(["']verificationSub["']\)/);
+  assert.match(src, /t\(["']verificationExpiry["']\)/);
+
+  const messages = JSON.parse(await readFile(authMessagesPath, "utf8"));
+  assert.match(messages.callback.verificationTitle, /Use verification code to continue/);
+  assert.match(messages.callback.verificationSub, /where you first tried to sign in/);
+  assert.match(messages.callback.verificationExpiry, /expires in 5 minutes/i);
 });

@@ -45,6 +45,7 @@ export class HybridRetriever {
       vectorWeight: options?.vectorWeight ?? RAGConfig.retrieval.defaultVectorWeight,
       useHybridSearch: options?.useHybridSearch ?? true,
       maxContentLength: options?.maxContentLength ?? RAGConfig.retrieval.maxContentLength,
+      vectorQuery: options?.vectorQuery ?? "",
     };
   }
 
@@ -67,9 +68,10 @@ export class HybridRetriever {
       avgScore: 0,
     };
 
-    // Generate query embedding
+    // Generate query embedding. The vector (semantic) leg may embed a translated
+    // query for cross-lingual retrieval; the full-text leg always uses `query`.
     const embedder = createEmbedder();
-    const queryEmbedding = await embedder.embedQuery(query);
+    const queryEmbedding = await embedder.embedQuery(opts.vectorQuery || query);
 
     let chunks: RetrievedChunk[];
     let searchType: "hybrid" | "vector" | "fts";
@@ -377,7 +379,7 @@ export async function retrieve(
   query: string,
   options?: RetrievalOptions
 ): Promise<RAGResult> {
-  return createRetriever(options).retrieve(projectId, query);
+  return createRetriever(options).retrieve(projectId, query, options);
 }
 
 /**

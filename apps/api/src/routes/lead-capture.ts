@@ -20,6 +20,10 @@ import { requirePublicWidgetAccess } from "../middleware/public-widget-gate";
 import { chatRateLimiter } from "../middleware/rate-limit";
 import type { ChatSource } from "../services/chat-engine";
 import { getOrCreateConversation } from "../services/conversation";
+import {
+  resolveGreetingLanguage,
+  projectLanguageDefault,
+} from "../services/language";
 import { isValidEmail } from "../services/lead-capture";
 import {
   submitLeadForm,
@@ -134,11 +138,18 @@ leadCaptureRouter.post(
       // Build the assembled greeting for DOM display only (not persisted to DB).
       const { data: project } = await supabaseAdmin
         .from("projects")
-        .select("name, company_name")
+        .select("name, company_name, settings")
         .eq("id", projectId)
         .maybeSingle();
 
-      const greeting = buildGreeting(project?.name, project?.company_name);
+      const greetingLang = resolveGreetingLanguage(
+        projectLanguageDefault(project?.settings as Record<string, unknown>)
+      ).base;
+      const greeting = buildGreeting(
+        project?.name,
+        project?.company_name,
+        greetingLang
+      );
       let assembledGreeting: string;
 
       if (

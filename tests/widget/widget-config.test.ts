@@ -149,6 +149,22 @@ test("getWidgetStrings: falls back to English for an unsupported localeDefault",
   assert.equal(strings.defaultPlaceholder, "Type a message...");
 });
 
+test("getWidgetStrings: an explicit ar-SA project default wins over the browser", () => {
+  const strings = getWidgetStrings(["en-US"], "ar-SA");
+
+  assert.equal(strings.locale, "ar");
+  assert.equal(strings.rtl, true);
+  assert.equal(strings.defaultPlaceholder, "اكتب رسالة...");
+  assert.equal(strings.talkToHuman, "التحدث مع موظف");
+});
+
+test("getWidgetStrings: English default still lets the browser language win", () => {
+  const strings = getWidgetStrings(["ar-SA"], "en");
+
+  assert.equal(strings.locale, "ar");
+  assert.equal(strings.rtl, true);
+});
+
 // ─── mergeConfigWithDataAttributes ────────────────────────────────────────────
 test("mergeConfigWithDataAttributes: data attributes override config", () => {
   const out = mergeConfigWithDataAttributes(
