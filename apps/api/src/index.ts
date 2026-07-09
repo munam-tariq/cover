@@ -50,15 +50,31 @@ app.use(errorReporterMiddleware);
 
 // CORS Configuration
 // Dashboard endpoints: Restricted to specific origins (web app + local widget testing)
-const allowedOrigins = [
-  process.env.CORS_ORIGIN || "http://localhost:3000",
-  "http://localhost:7001", // Local widget testing
-];
+// CORS_ORIGIN may be a comma-separated list, e.g. "https://frontface.app,https://ksa.frontface.app"
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+  .concat("http://localhost:7001"); // Local widget testing
+
+// Trust the whole frontface.app apex + its subdomains (e.g. region hosts like
+// ksa.frontface.app) so new subdomains don't need a CORS_ORIGIN env update —
+// mirrors the cookie-sharing trust boundary in apps/web/lib/region-hosts.ts.
+const PROD_APEX = "frontface.app";
+function isTrustedProdOrigin(origin: string): boolean {
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    return host === PROD_APEX || host.endsWith(`.${PROD_APEX}`);
+  } catch {
+    return false;
+  }
+}
+
 const dashboardCors = cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin) || isTrustedProdOrigin(origin)) {
       callback(null, true);
     } else {
       callback(null, false);
