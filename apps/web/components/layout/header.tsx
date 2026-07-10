@@ -1,10 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { Link, useRouter } from "@/i18n/navigation";
+import { clearStaleAuthCookies } from "@/lib/supabase/clear-stale-cookies";
 import { createClient } from "@/lib/supabase/client";
 
 import { AgentStatusDropdown } from "./agent-status-dropdown";
@@ -24,7 +25,7 @@ export function Header() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   // Get current user
   useEffect(() => {
@@ -55,14 +56,21 @@ export function Header() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      await supabase.auth.signOut();
-      router.push("/login");
-      router.refresh();
+      const { error } = await supabase.auth.signOut();
+      if (error) console.error("Logout error:", error);
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
+      // signOut() only clears local session state once the server-side
+      // revocation call succeeds — a transient failure (e.g. a 503) leaves
+      // the session cookie fully intact while the UI moves on as if signed
+      // out. Clear it locally regardless, so sign-out is never silently a
+      // no-op.
+      clearStaleAuthCookies();
       setIsLoggingOut(false);
     }
+    router.push("/login");
+    router.refresh();
   };
 
   // Get user initials for avatar

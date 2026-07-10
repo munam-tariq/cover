@@ -9,7 +9,7 @@ import {
 } from "@chatbot/ui";
 import { Trash2, Plus, FileText, File, AlertCircle, RefreshCw, Eye, Globe } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 import { useProject } from "@/contexts/project-context";
 import { apiClient } from "@/lib/api-client";
@@ -59,7 +59,7 @@ export function KnowledgeList() {
   const [viewingSourceId, setViewingSourceId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [recrawling, setRecrawling] = useState<string | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const handleView = (sourceId: string) => {
     setViewingSourceId(sourceId);

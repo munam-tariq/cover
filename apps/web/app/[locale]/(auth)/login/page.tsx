@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import posthog from "posthog-js";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useMemo } from "react";
 
 import { WindowMark } from "@/components/window-mark";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -18,7 +18,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const errorParam = searchParams?.get("error");
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

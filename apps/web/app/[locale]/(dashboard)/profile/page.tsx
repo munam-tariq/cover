@@ -3,7 +3,7 @@
 import { Button, Card, CardContent, Skeleton } from "@chatbot/ui";
 import { User, Mail, Check, AlertCircle, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
@@ -18,7 +18,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     const fetchUser = async () => {

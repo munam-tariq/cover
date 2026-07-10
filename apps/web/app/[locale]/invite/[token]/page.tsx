@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
+import { clearStaleAuthCookies } from "@/lib/supabase/clear-stale-cookies";
 import { createClient } from "@/lib/supabase/client";
 
 
@@ -35,7 +36,7 @@ export default function InvitePage() {
   const params = useParams();
   const router = useRouter();
   const token = String(params?.token ?? "");
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -302,6 +303,10 @@ export default function InvitePage() {
                   className="w-full"
                   onClick={async () => {
                     await supabase.auth.signOut();
+                    // Guarantee local sign-out even if the server call
+                    // failed (e.g. a transient 503) — signOut() only clears
+                    // local session state once that call succeeds.
+                    clearStaleAuthCookies();
                     setUser(null);
                   }}
                 >

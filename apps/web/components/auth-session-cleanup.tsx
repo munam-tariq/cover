@@ -3,17 +3,12 @@
 import { useEffect } from "react";
 
 import { createClient } from "@/lib/supabase/client";
+import { clearStaleAuthCookies } from "@/lib/supabase/clear-stale-cookies";
 
 /**
- * Sessions created before the `.frontface.app` cross-subdomain cookie scoping
- * shipped are host-only (no Domain attribute). @supabase/ssr always removes
- * the session cookie scoped to the configured domain, which never matches a
- * host-only cookie (cookie deletion requires an exact Domain+Path match to
- * how it was set) — so those leftovers can never be cleared by the library
- * itself. Once such a session dies server-side, every getSession()/getUser()
- * call across the app keeps retrying the same dead refresh token forever,
- * since cleanup silently no-ops. This strips the host-only leftover whenever
- * GoTrue signals the session is gone.
+ * See clearStaleAuthCookies for why the library's own cleanup can leave a
+ * session cookie behind forever. This strips it whenever GoTrue signals the
+ * session is gone (fires unconditionally, even when its own removal no-ops).
  */
 export function AuthSessionCleanup() {
   useEffect(() => {
@@ -21,15 +16,7 @@ export function AuthSessionCleanup() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
-      if (event !== "SIGNED_OUT") return;
-
-      document.cookie
-        .split("; ")
-        .map((c) => c.split("=")[0])
-        .filter((name) => /^sb-.*-auth-token$/.test(name))
-        .forEach((name) => {
-          document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-        });
+      if (event === "SIGNED_OUT") clearStaleAuthCookies();
     });
 
     return () => subscription.unsubscribe();

@@ -34,7 +34,6 @@ function AuthCallbackContent() {
   const [displayCode, setDisplayCode] = useState<string | null>(null);
 
   useEffect(() => {
-    console.count("[debug] auth/callback effect ran");
     const handleCallback = async () => {
       const supabase = createClient();
       const next = searchParams?.get("next") ?? "/dashboard";
@@ -65,7 +64,6 @@ function AuthCallbackContent() {
 
       // First, check if we already have a session
       // (createBrowserClient with detectSessionInUrl: true may have already handled the code)
-      console.count("[debug] getSession call #1 (existing check)");
       const {
         data: { session: existingSession },
       } = await supabase.auth.getSession();
@@ -84,7 +82,6 @@ function AuthCallbackContent() {
       }
 
       try {
-        console.count("[debug] exchangeCodeForSession call");
         const { data, error: exchangeError } =
           await supabase.auth.exchangeCodeForSession(code);
 

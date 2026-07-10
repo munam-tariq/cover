@@ -11,7 +11,7 @@
  * Provides real-time updates without page refresh.
  */
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -57,7 +57,7 @@ export function useInboxRealtime(
   projectId: string | null,
   handlers: InboxRealtimeHandlers
 ) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const queueChannelRef = useRef<RealtimeChannel | null>(null);
   const handlersRef = useRef(handlers);
 
@@ -200,7 +200,7 @@ export function useConversationRealtime(
   conversationId: string | null,
   handlers: ConversationRealtimeHandlers
 ) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const handlersRef = useRef(handlers);
 
