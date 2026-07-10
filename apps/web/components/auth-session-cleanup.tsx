@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 
-import { createClient } from "@/lib/supabase/client";
 import { clearStaleAuthCookies } from "@/lib/supabase/clear-stale-cookies";
+import { createClient } from "@/lib/supabase/client";
 
 /**
  * See clearStaleAuthCookies for why the library's own cleanup can leave a

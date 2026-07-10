@@ -11,9 +11,10 @@
  * Provides real-time updates without page refresh.
  */
 
-import { useEffect, useRef, useCallback, useMemo } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import { useEffect, useRef, useCallback, useMemo } from "react";
+
+import { createClient } from "@/lib/supabase/client";
 
 // ============================================================================
 // Types
