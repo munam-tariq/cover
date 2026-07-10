@@ -5,6 +5,7 @@ import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { AnalyticsConsent } from "@/components/analytics-consent";
+import { AuthSessionCleanup } from "@/components/auth-session-cleanup";
 import { routing, type Locale } from "@/i18n/routing";
 import { ogLocale } from "@/lib/seo";
 
@@ -223,6 +224,7 @@ export default async function LocaleLayout({
       </head>
       <body className={`${inter.className} ${jetbrainsMono.variable} ${plexArabic.variable}`} suppressHydrationWarning>
         <NextIntlClientProvider>
+          <AuthSessionCleanup />
           {children}
           {hasAnalyticsConsent && <AnalyticsConsent />}
         </NextIntlClientProvider>
