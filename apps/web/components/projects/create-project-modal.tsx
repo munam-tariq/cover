@@ -1,5 +1,6 @@
 "use client";
 
+import { PROJECT_CONFIG } from "@chatbot/shared";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +28,7 @@ interface CreateProjectModalProps {
  *
  * Fields:
  * - Name (required, 1-50 characters)
- * - System Prompt (optional, max 2000 characters)
+ * - System Prompt (optional, max PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH characters)
  */
 export function CreateProjectModal({ open, onOpenChange, onSuccess }: CreateProjectModalProps) {
   const { createProject } = useProject();
@@ -38,7 +39,7 @@ export function CreateProjectModal({ open, onOpenChange, onSuccess }: CreateProj
 
   // Validation
   const isNameValid = name.trim().length >= 1 && name.trim().length <= 50;
-  const isSystemPromptValid = systemPrompt.length <= 2000;
+  const isSystemPromptValid = systemPrompt.length <= PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH;
   const canSubmit = isNameValid && isSystemPromptValid && !isLoading;
 
   /**
@@ -127,11 +128,11 @@ export function CreateProjectModal({ open, onOpenChange, onSuccess }: CreateProj
                 onChange={(e) => setSystemPrompt(e.target.value)}
                 placeholder="You are a helpful assistant for..."
                 className="min-h-[100px]"
-                maxLength={2000}
+                maxLength={PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH}
               />
               <p className="text-xs text-muted-foreground">
                 Instructions for how your chatbot should behave. You can change this later in
-                Settings. ({systemPrompt.length}/2000)
+                Settings. ({systemPrompt.length}/{PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH})
               </p>
             </div>
 

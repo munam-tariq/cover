@@ -14,22 +14,24 @@
  *
  * The API key provides account-level access to all projects.
  */
-import { Router, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
+
+import { PROJECT_CONFIG } from "@chatbot/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
+import { Router, Request, Response } from "express";
 import { z } from "zod";
 
 import { supabaseAdmin } from "../lib/supabase";
-import { encryptAuthConfig } from "../services/encryption";
 import { clearDomainCache } from "../middleware/domain-whitelist";
+import { verifyApiKey, isValidApiKeyFormat } from "../services/api-key";
+import { processChat } from "../services/chat-engine";
+import { encryptAuthConfig } from "../services/encryption";
 import {
   createProcessingPipeline,
   type DocumentMetadata,
 } from "../services/rag";
-import { processChat } from "../services/chat-engine";
-import { verifyApiKey, isValidApiKeyFormat } from "../services/api-key";
 
 export const mcpRouter = Router();
 
@@ -266,7 +268,7 @@ function createMcpServer(userId: string): McpServer {
         .describe("New name for the chatbot project"),
       system_prompt: z
         .string()
-        .max(2000)
+        .max(PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH)
         .optional()
         .describe(
           "Custom system prompt that defines how the chatbot behaves and responds"
@@ -447,7 +449,7 @@ function createMcpServer(userId: string): McpServer {
         .describe("Name for the new project (e.g., 'Sales Bot', 'Support Bot')"),
       system_prompt: z
         .string()
-        .max(2000)
+        .max(PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH)
         .optional()
         .describe(
           "Custom system prompt that defines how this chatbot behaves and responds"

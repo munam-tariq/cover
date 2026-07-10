@@ -1,5 +1,6 @@
 "use client";
 
+import { PROJECT_CONFIG } from "@chatbot/shared";
 import {
   Button,
   Card,
@@ -103,11 +104,12 @@ export function OverviewTab({ project }: OverviewTabProps) {
             onChange={(e) => handleSystemPromptChange(e.target.value)}
             placeholder={t("systemPromptPlaceholder")}
             rows={6}
+            maxLength={PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH}
             className="resize-none"
           />
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
-              {t("characterCount", { count: systemPrompt.length })}
+              {t("characterCount", { count: systemPrompt.length, max: PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH })}
             </p>
             <Button
               onClick={handleSave}

@@ -46,6 +46,11 @@ export const LLM_CONFIG = {
   TEMPERATURE: 0.7,
 } as const;
 
+// Project Configuration
+export const PROJECT_CONFIG = {
+  MAX_SYSTEM_PROMPT_LENGTH: 7000,
+} as const;
+
 // Widget Configuration
 export const WIDGET_CONFIG = {
   DEFAULT_POSITION: "bottom-right",

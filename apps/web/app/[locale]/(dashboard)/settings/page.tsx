@@ -1,5 +1,6 @@
 "use client";
 
+import { PROJECT_CONFIG } from "@chatbot/shared";
 import { Button, Card, CardContent, Skeleton, Switch, Label, Badge, Input } from "@chatbot/ui";
 import { Copy, Check, AlertCircle, Loader2, Sparkles, Mail, Key, RefreshCw, Trash2, Eye, EyeOff, Users, ChevronRight, Shield, ShieldCheck, ShieldAlert, Plus, X, ChevronDown, MessageSquare, Zap, MousePointerClick, ScrollText, Timer, RotateCcw } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -894,11 +895,11 @@ export default function SettingsPage() {
                   value={systemPrompt}
                   onChange={(e) => setSystemPrompt(e.target.value)}
                   placeholder={t("agentDescriptionPlaceholder")}
-                  maxLength={2000}
+                  maxLength={PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH}
                   className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                 />
                 <p className="text-sm text-muted-foreground mt-1">
-                  {t("characterCount", { count: systemPrompt.length, max: 2000 })}
+                  {t("characterCount", { count: systemPrompt.length, max: PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH })}
                 </p>
               </div>
               <div>

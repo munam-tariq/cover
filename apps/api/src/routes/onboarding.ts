@@ -8,13 +8,14 @@
  * 4. POST /api/onboarding/complete - Import crawled pages and complete onboarding
  */
 
+import { PROJECT_CONFIG } from "@chatbot/shared";
 import { Router, Response } from "express";
 import { z } from "zod";
 
 import { supabaseAdmin } from "../lib/supabase";
+import { resolveAndValidateUrl } from "../lib/url-guard";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import { validateCrawlUrl } from "../services/firecrawl";
-import { resolveAndValidateUrl } from "../lib/url-guard";
 import { hasCompletedOnboarding } from "../services/onboarding-completion";
 import { runSelfTest } from "../services/onboarding-self-test";
 import {
@@ -70,7 +71,7 @@ function getBrandfetchLogoUrl(domain: string): string {
 const startSchema = z.object({
   agentName: z.string().min(1, "Agent name is required").max(50, "Agent name too long"),
   companyName: z.string().min(1, "Company name is required").max(100, "Company name too long"),
-  systemPrompt: z.string().max(2000, "System prompt too long").optional(),
+  systemPrompt: z.string().max(PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH, "System prompt too long").optional(),
   // New onboarding signals (persisted + used to tailor the agent's behavior)
   hear: z.string().max(50).optional(),
   size: z.string().max(50).optional(),

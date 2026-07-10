@@ -511,7 +511,7 @@
         "systemPrompt": "تعليمات النظام",
         "systemPromptDescription": "حدد كيف يتصرف وكيل الذكاء الاصطناعي ويرد على الزوار",
         "systemPromptPlaceholder": "أنت مساعد مفيد لشركة [Company Name]. تساعد الزوار في الأسئلة المتعلقة بمنتجاتنا وخدماتنا. كن ودودًا ومهنيًا ومفيدًا. إذا لم تعرف الإجابة، فاعرض ربطهم بفريقنا.",
-        "characterCount": "{count} / 2000 حرف",
+        "characterCount": "{count} / {max} حرف",
         "saveChanges": "حفظ التغييرات",
         "saving": "جارٍ الحفظ...",
         "quickActions": "إجراءات سريعة",

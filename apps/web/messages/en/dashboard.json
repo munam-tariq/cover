@@ -511,7 +511,7 @@
         "systemPrompt": "System Prompt",
         "systemPromptDescription": "Define how your AI agent should behave and respond to visitors",
         "systemPromptPlaceholder": "You are a helpful assistant for [Company Name]. You help visitors with questions about our products and services. Be friendly, professional, and helpful. If you do not know the answer, offer to connect them with our team.",
-        "characterCount": "{count} / 2000 characters",
+        "characterCount": "{count} / {max} characters",
         "saveChanges": "Save Changes",
         "saving": "Saving...",
         "quickActions": "Quick Actions",

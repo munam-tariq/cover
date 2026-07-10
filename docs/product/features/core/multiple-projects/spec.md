@@ -65,7 +65,7 @@ Enable users to create and manage multiple chatbot projects within a single acco
 |----|-------------|----------|
 | MP-017 | Create project modal with: name (required), system prompt (optional) | Must Have |
 | MP-018 | Project name: 1-50 characters, required | Must Have |
-| MP-019 | System prompt: optional, max 2000 characters | Must Have |
+| MP-019 | System prompt: optional, max 7000 characters | Must Have |
 | MP-020 | On success: create project, auto-switch to it, redirect to dashboard | Must Have |
 | MP-021 | Show loading state during creation | Must Have |
 | MP-022 | Show error toast if creation fails | Must Have |
@@ -212,7 +212,7 @@ WHERE deleted_at IS NULL;
 - Response: `{ project: Project }`
 - Validation:
   - Name required, 1-50 characters
-  - System prompt optional, max 2000 characters
+  - System prompt optional, max 7000 characters
 
 #### DELETE /api/projects/:id (update existing)
 - Soft delete: `UPDATE projects SET deleted_at = NOW() WHERE id = $1`

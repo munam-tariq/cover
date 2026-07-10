@@ -12,6 +12,7 @@
  * - PUT /api/projects/:id/allowed-domains - Update allowed domains for widget embedding
  */
 
+import { PROJECT_CONFIG } from "@chatbot/shared";
 import { createClient } from "@supabase/supabase-js";
 import { Router, Request, Response } from "express";
 
@@ -292,9 +293,9 @@ router.post("/", authMiddleware, async (req: Request, res: Response) => {
       });
     }
 
-    if (systemPrompt && systemPrompt.length > 2000) {
+    if (systemPrompt && systemPrompt.length > PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH) {
       return res.status(400).json({
-        error: { code: "INVALID_INPUT", message: "System prompt must be less than 2000 characters" }
+        error: { code: "INVALID_INPUT", message: `System prompt must be less than ${PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH} characters` }
       });
     }
 
@@ -377,9 +378,9 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
       });
     }
 
-    if (systemPrompt && systemPrompt.length > 2000) {
+    if (systemPrompt && systemPrompt.length > PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH) {
       return res.status(400).json({
-        error: { code: "INVALID_INPUT", message: "System prompt must be less than 2000 characters" }
+        error: { code: "INVALID_INPUT", message: `System prompt must be less than ${PROJECT_CONFIG.MAX_SYSTEM_PROMPT_LENGTH} characters` }
       });
     }
 
