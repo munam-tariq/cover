@@ -184,14 +184,14 @@ export const GOAL_OPTIONS: [string, string][] = [
   ["all", "spark"],
 ];
 
-/* Testimonials + logos use only the HofMigration brands.
+/* Testimonials + logos use only the Nourish Co brand.
  * Company/person names are proper nouns and stay untranslated; quote/role
  * come from `onboarding.testimonials`. */
 export const TESTIMONIALS = [
-  { id: "hofmigration", co: "HofMigration", who: "Waleed" },
+  { id: "nourishco", co: "The Nourish Co", who: "Waleed" },
 ];
 
-export const LOGOS = ["HofMigration"];
+export const LOGOS = ["The Nourish Co"];
 
 /** [id, icon] — id doubles as the icon key; title/desc come from `onboarding.features`. */
 export const FEATURES: [string, string][] = [

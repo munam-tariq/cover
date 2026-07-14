@@ -7,25 +7,25 @@ export const LANDING_EN: LandingData = {
   /* rotating demo businesses for the hero answer-engine */
   demos: [
     {
-      name: "HofMigration",
-      domain: "hofmigration.com",
-      mono: "HM",
-      tag: "Migration support",
+      name: "The Nourish Co",
+      domain: "nourishco.com",
+      mono: "NC",
+      tag: "Meal subscription support",
       pages: [
-        "/services",
-        "/visa-types",
-        "/process",
+        "/menu",
+        "/subscriptions",
+        "/nutrition",
         "/pricing",
         "/faq",
         "/contact",
       ],
       greeting:
-        "Hi! I'm the HofMigration assistant — ask me anything about your move.",
-      q: "What visa options do you support for skilled workers?",
-      cites: ["/visa-types", "/process"],
-      a: "HofMigration supports skilled-worker visas, family reunification, student permits, and permanent residency applications — with end-to-end case management and document review.",
-      q2: "Can someone guide our team of 12 through the relocation process?",
-      a2: "Absolutely — I'll connect you with a relocation specialist for a tailored plan. What's the best email to reach you?",
+        "Hi! I'm the Nourish Co assistant — ask me anything about your plan.",
+      q: "Do you have low-carb meal plans for a 5-day work week?",
+      cites: ["/nutrition", "/menu"],
+      a: "Yes — our low-carb plan covers Mon–Fri with 466±40 cal/meal, high protein, and easy swaps for allergies or dislikes. Delivery is free across Riyadh, Jeddah, and Dammam.",
+      q2: "Can you set up a corporate plan for our office of 40 people?",
+      a2: "Absolutely — I'll connect you with our corporate team for a tailored quote. What's the best email to reach you?",
     },
   ],
 
