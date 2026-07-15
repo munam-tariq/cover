@@ -69,9 +69,10 @@ import {
 } from "./rag";
 import { broadcastNewMessage } from "./realtime";
 import {
-  getToolsForProject,
-  executeToolById,
+  getProjectTools,
+  executeToolByName,
   formatToolResultForLLM,
+  type ApiEndpoint,
 } from "./tool-executor";
 
 /**
@@ -498,7 +499,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     const knowledgeContext = formatAsContext(retrievedChunks);
 
     // 5. Get available tools (API endpoints)
-    const tools = await getToolsForProject(input.projectId);
+    const { endpoints, tools } = await getProjectTools(input.projectId);
 
     // 6. Build system prompt
     const systemPrompt = buildSystemPrompt({
@@ -532,7 +533,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     const { response, tokensUsed } = await callLLMWithTools(
       messages,
       tools,
-      input.projectId,
+      endpoints,
       toolCallsInfo
     );
     metrics.llmTime = Date.now() - llmStart;
@@ -816,7 +817,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
 async function callLLMWithTools(
   messages: ChatCompletionMessageParam[],
   tools: ChatCompletionTool[],
-  projectId: string,
+  endpoints: ApiEndpoint[],
   toolCallsInfo: ToolCallInfo[]
 ): Promise<{
   response: string;
@@ -869,8 +870,8 @@ async function callLLMWithTools(
         }
 
         // Execute the tool
-        const result = await executeToolById(
-          projectId,
+        const result = await executeToolByName(
+          endpoints,
           toolCall.function.name,
           args as Record<string, string>
         );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Progress } from "@chatbot/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription, Progress } from "@chatbot/ui";
 import {
   MessageSquare,
   UserPlus,
@@ -11,11 +11,13 @@ import {
   Target,
   XCircle,
   TrendingUp,
+  HelpCircle,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { LeadStatsCard } from "@/components/analytics/lead-stats-card";
+import { useTourContext } from "@/components/onboarding";
 import { useProject } from "@/contexts/project-context";
 import { Link } from "@/i18n/navigation";
 import { apiClient } from "@/lib/api-client";
@@ -57,6 +59,7 @@ interface OnboardingData {
 
 export default function DashboardPage() {
   const t = useTranslations("dashboard.pages.home");
+  const tourContext = useTourContext();
   const { currentProject, isLoading: projectLoading } = useProject();
   const generalHref = currentProject ? `/projects/${currentProject.id}?tab=general` : "/projects";
   const [leadsSummary, setLeadsSummary] = useState<LeadsSummary | null>(null);
@@ -116,15 +119,28 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div id="onboarding-welcome">
-        <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <p className="text-muted-foreground">
-          {currentProject ? (
-            t("welcomeWithProject", { projectName: currentProject.name })
-          ) : (
-            t("welcomeGeneric")
-          )}
-        </p>
+      <div id="onboarding-welcome" className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground">
+            {currentProject ? (
+              t("welcomeWithProject", { projectName: currentProject.name })
+            ) : (
+              t("welcomeGeneric")
+            )}
+          </p>
+        </div>
+        {tourContext && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={tourContext.restartTour}
+            className="flex-shrink-0 text-muted-foreground"
+          >
+            <HelpCircle className="h-4 w-4 me-2" />
+            {t("replayTour")}
+          </Button>
+        )}
       </div>
 
       {/* Setup Progress Card */}

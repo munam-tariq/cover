@@ -129,7 +129,8 @@
           "label": "التضمين في الموقع",
           "description": "أضف أداة الدردشة إلى موقعك"
         }
-      }
+      },
+      "replayTour": "إعادة الجولة"
     },
     "analytics": {
       "title": "التحليلات",
@@ -1026,6 +1027,10 @@
         "url": "رابط URL",
         "urlHelp": "استخدم '{param}' للقيم التي سيستخرجها الذكاء الاصطناعي من المحادثة.",
         "method": "الطريقة",
+        "bodyTemplate": "نص الطلب",
+        "bodyTemplateHelp": "JSON الذي يُرسل كنص للطلب. استخدم '{param}' للقيم التي سيستخرجها الذكاء الاصطناعي من المحادثة.",
+        "bodyTemplateInvalid": "يجب أن يكون نص الطلب بصيغة JSON صالحة",
+        "bodyTemplateNotObject": "يجب أن يكون نص الطلب كائن JSON",
         "authentication": "المصادقة",
         "none": "لا شيء",
         "apiKey": "مفتاح API",

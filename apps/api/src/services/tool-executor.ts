@@ -6,7 +6,16 @@
  */
 
 import { isUrlSafeForFetch } from "../lib/url-guard";
-import { getProjectEndpoints, extractUrlParams } from "../routes/endpoints";
+import { getProjectEndpoints } from "../routes/endpoints";
+
+import {
+  buildEndpointRequest,
+  extractEndpointParams,
+  findMissingParams,
+  substituteUrlParams,
+  type JsonValue,
+} from "./endpoint-request";
+import { toolNameForEndpoint, findEndpointByToolName } from "./tool-naming";
 
 /**
  * OpenAI Tool Definition
@@ -33,7 +42,7 @@ interface OpenAITool {
 /**
  * API Endpoint (with decrypted auth)
  */
-interface ApiEndpoint {
+export interface ApiEndpoint {
   id: string;
   name: string;
   description: string;
@@ -41,6 +50,7 @@ interface ApiEndpoint {
   method: string;
   authType: string;
   authConfig: Record<string, unknown> | null;
+  bodyTemplate: JsonValue | null;
 }
 
 /**
@@ -54,12 +64,11 @@ interface ToolExecutionResult {
 
 /**
  * Convert an API endpoint to an OpenAI-compatible tool definition
- * The tool name is the endpoint ID to ensure uniqueness
  */
 export function endpointToOpenAITool(endpoint: ApiEndpoint): OpenAITool {
-  const params = extractUrlParams(endpoint.url);
+  const params = extractEndpointParams(endpoint);
 
-  // Create properties for each URL parameter
+  // Create properties for each parameter the URL or body template needs
   const properties: Record<string, { type: string; description: string }> = {};
 
   params.forEach((param) => {
@@ -74,25 +83,30 @@ export function endpointToOpenAITool(endpoint: ApiEndpoint): OpenAITool {
   return {
     type: "function",
     function: {
-      name: endpoint.id,
+      name: toolNameForEndpoint(endpoint),
       description: endpoint.description,
       parameters: {
         type: "object",
         properties,
-        required: params, // All URL params are required
+        required: params, // Every param the URL or body template needs
       },
     },
   };
 }
 
 /**
- * Get all API endpoints as OpenAI tools for a project
+ * Load a project's endpoints once, with the tool definitions they produce.
+ *
+ * The endpoints come back alongside the tools so a chat turn can resolve its
+ * tool calls against this same snapshot, rather than re-reading and
+ * re-decrypting every endpoint on each call.
  */
-export async function getToolsForProject(
-  projectId: string
-): Promise<OpenAITool[]> {
+export async function getProjectTools(projectId: string): Promise<{
+  endpoints: ApiEndpoint[];
+  tools: OpenAITool[];
+}> {
   const endpoints = await getProjectEndpoints(projectId);
-  return endpoints.map(endpointToOpenAITool);
+  return { endpoints, tools: endpoints.map(endpointToOpenAITool) };
 }
 
 /**
@@ -104,20 +118,15 @@ export async function executeToolCall(
   endpoint: ApiEndpoint,
   args: Record<string, string>
 ): Promise<ToolExecutionResult> {
-  // Build the URL by replacing placeholders with actual values
-  let url = endpoint.url;
-  const params = extractUrlParams(endpoint.url);
-
-  for (const param of params) {
-    const value = args[param];
-    if (!value) {
-      return {
-        success: false,
-        error: `Missing required parameter: ${param}`,
-      };
-    }
-    url = url.replace(`{${param}}`, encodeURIComponent(value));
+  const missing = findMissingParams(extractEndpointParams(endpoint), args);
+  if (missing.length > 0) {
+    return {
+      success: false,
+      error: `Missing required parameter: ${missing.join(", ")}`,
+    };
   }
+
+  const url = substituteUrlParams(endpoint.url, args);
 
   // SSRF guard: block private/loopback/link-local/metadata hosts and non-HTTP(S) schemes.
   const urlSafety = isUrlSafeForFetch(url);
@@ -128,30 +137,7 @@ export async function executeToolCall(
     };
   }
 
-  // Build headers
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "User-Agent": "ChatbotPlatform/1.0",
-  };
-
-  // Add auth headers
-  if (endpoint.authType !== "none" && endpoint.authConfig) {
-    switch (endpoint.authType) {
-      case "api_key":
-        if (endpoint.authConfig.apiKey) {
-          const headerName =
-            (endpoint.authConfig.apiKeyHeader as string) || "X-API-Key";
-          headers[headerName] = endpoint.authConfig.apiKey as string;
-        }
-        break;
-      case "bearer":
-        if (endpoint.authConfig.bearerToken) {
-          headers["Authorization"] =
-            `Bearer ${endpoint.authConfig.bearerToken}`;
-        }
-        break;
-    }
-  }
+  const { headers, body } = buildEndpointRequest(endpoint, args);
 
   try {
     const controller = new AbortController();
@@ -160,6 +146,7 @@ export async function executeToolCall(
     const response = await fetch(url, {
       method: endpoint.method,
       headers,
+      body,
       signal: controller.signal,
     });
 
@@ -207,21 +194,24 @@ export async function executeToolCall(
 }
 
 /**
- * Execute a tool call by endpoint ID
- * This is the main entry point for the chat engine
+ * Execute a tool call against the endpoints offered for this chat turn.
+ * This is the main entry point for the chat engine.
+ *
+ * Resolving against the caller's snapshot keeps the endpoint that runs the
+ * same one that was advertised to the model, and confines the tool to the
+ * project those endpoints were loaded for.
  */
-export async function executeToolById(
-  projectId: string,
-  endpointId: string,
+export async function executeToolByName(
+  endpoints: ApiEndpoint[],
+  toolName: string,
   args: Record<string, string>
 ): Promise<ToolExecutionResult> {
-  const endpoints = await getProjectEndpoints(projectId);
-  const endpoint = endpoints.find((e) => e.id === endpointId);
+  const endpoint = findEndpointByToolName(endpoints, toolName);
 
   if (!endpoint) {
     return {
       success: false,
-      error: `Tool not found: ${endpointId}`,
+      error: `Tool not found: ${toolName}`,
     };
   }
 

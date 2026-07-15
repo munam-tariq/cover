@@ -368,7 +368,6 @@ export function GeneralTab({ project }: GeneralTabProps) {
                 </div>
               ) : (
                 <Button
-                  id="onboarding-generate-btn"
                   onClick={handleGenerateApiKey}
                   disabled={generatingKey}
                 >

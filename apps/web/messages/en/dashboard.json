@@ -129,7 +129,8 @@
           "label": "Embed on website",
           "description": "Add the chat widget to your site"
         }
-      }
+      },
+      "replayTour": "Replay tour"
     },
     "analytics": {
       "title": "Analytics",
@@ -1026,6 +1027,10 @@
         "url": "URL",
         "urlHelp": "Use '{param}' for values the AI will extract from the conversation.",
         "method": "Method",
+        "bodyTemplate": "Request Body",
+        "bodyTemplateHelp": "JSON sent as the request body. Use '{param}' for values the AI will extract from the conversation.",
+        "bodyTemplateInvalid": "Request body must be valid JSON",
+        "bodyTemplateNotObject": "Request body must be a JSON object",
         "authentication": "Authentication",
         "none": "None",
         "apiKey": "API Key",

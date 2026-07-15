@@ -5,4 +5,4 @@ export {
   hasCompletedOnboarding
 } from "./tour-provider";
 export { TourCard } from "./tour-card";
-export { buildOnboardingTours } from "./tour-steps";
+export { useOnboardingTours } from "./tour-steps";

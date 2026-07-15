@@ -1,4 +1,10 @@
+"use client";
+
+import { useLocale, useTranslations } from "next-intl";
 import type { Step } from "onborda";
+
+import { getPathname } from "@/i18n/navigation";
+import type { Locale } from "@/i18n/routing";
 
 // Tour interface (not exported from onborda but used internally)
 interface Tour {
@@ -6,10 +12,19 @@ interface Tour {
   steps: Step[];
 }
 
-export function buildOnboardingTours(projectId: string | null): Tour[] {
+export function useOnboardingTours(projectId: string | null): Tour[] {
+  const t = useTranslations("onboarding.tour");
+  const locale = useLocale() as Locale;
+
+  // Routes must carry the active locale: Onborda pushes them through the
+  // plain router, which would otherwise drop /ar and bounce to English.
   const generalTabRoute = projectId
-    ? `/projects/${projectId}?tab=general`
-    : "/projects";
+    ? getPathname({
+        href: { pathname: `/projects/${projectId}`, query: { tab: "general" } },
+        locale,
+      })
+    : getPathname({ href: "/projects", locale });
+  const dashboardRoute = getPathname({ href: "/dashboard", locale });
 
   return [
     {
@@ -17,13 +32,8 @@ export function buildOnboardingTours(projectId: string | null): Tour[] {
       steps: [
         {
           icon: <>&#128075;</>,
-          title: "One-Time Setup",
-          content: (
-            <>
-              Welcome to FrontFace! After this quick 2-minute setup, you can
-              manage your chatbot entirely from your IDE.
-            </>
-          ),
+          title: t("welcomeTitle"),
+          content: <>{t("welcomeBody")}</>,
           selector: "#onboarding-welcome",
           side: "bottom",
           showControls: true,
@@ -33,45 +43,22 @@ export function buildOnboardingTours(projectId: string | null): Tour[] {
         },
         {
           icon: <>&#128273;</>,
-          title: "Generate Your API Key",
-          content: (
-            <>
-              Create an API key to connect AI tools like Cursor or Claude Code.
-              This is the <strong>only manual step</strong> - everything else
-              happens in your IDE.
-            </>
-          ),
+          title: t("apiKeyTitle"),
+          content: <>{t("apiKeyBody")}</>,
+          // Anchored to the card rather than the generate button: that button
+          // only renders while no key exists, so it disappears the moment one
+          // is created and leaves the step with nothing to point at.
           selector: "#onboarding-api-key",
           side: "bottom",
           showControls: true,
           pointerPadding: 15,
           pointerRadius: 10,
-          prevRoute: "/dashboard",
-        },
-        {
-          icon: <>&#10024;</>,
-          title: "Click to Generate",
-          content: (
-            <>
-              Click this button to create your API key. Keep it safe - you&apos;ll
-              only need to do this once!
-            </>
-          ),
-          selector: "#onboarding-generate-btn",
-          side: "bottom",
-          showControls: true,
-          pointerPadding: 10,
-          pointerRadius: 10,
+          prevRoute: dashboardRoute,
         },
         {
           icon: <>&#128203;</>,
-          title: "Copy MCP Config",
-          content: (
-            <>
-              This configuration tells your AI tool how to connect to FrontFace.
-              Copy it - you&apos;ll paste it into your IDE settings next.
-            </>
-          ),
+          title: t("mcpConfigTitle"),
+          content: <>{t("mcpConfigBody")}</>,
           selector: "#onboarding-mcp-config",
           side: "top",
           showControls: true,
@@ -80,12 +67,10 @@ export function buildOnboardingTours(projectId: string | null): Tour[] {
         },
         {
           icon: <>&#127881;</>,
-          title: "You're All Set!",
+          title: t("doneTitle"),
           content: (
             <>
-              Paste this config into your IDE&apos;s MCP settings. From now on, just
-              ask your AI:{" "}
-              <em>&quot;Add FAQ about shipping to my chatbot&quot;</em>
+              {t("doneBody")} <em>{t("doneExample")}</em>
             </>
           ),
           selector: "#onboarding-mcp-config",

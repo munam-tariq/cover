@@ -2,6 +2,7 @@
 
 import { Button } from "@chatbot/ui";
 import { X, ArrowLeft, ArrowRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { CardComponentProps } from "onborda";
 import { useOnborda } from "onborda";
 
@@ -15,6 +16,7 @@ export function TourCard({
   prevStep,
   arrow,
 }: CardComponentProps) {
+  const t = useTranslations("onboarding.tour");
   const tourContext = useTourContext();
   const { closeOnborda } = useOnborda();
   const isFirstStep = currentStep === 0;
@@ -43,7 +45,7 @@ export function TourCard({
         <button
           onClick={handleClose}
           className="text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Close tour"
+          aria-label={t("close")}
         >
           <X className="h-4 w-4" />
         </button>
@@ -83,8 +85,8 @@ export function TourCard({
               onClick={prevStep}
               className="h-8 px-2"
             >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Back
+              <ArrowLeft className="h-4 w-4 me-1 rtl:-scale-x-100" />
+              {t("back")}
             </Button>
           )}
           <Button
@@ -93,11 +95,11 @@ export function TourCard({
             className="h-8"
           >
             {isLastStep ? (
-              "Done"
+              t("done")
             ) : (
               <>
-                Next
-                <ArrowRight className="h-4 w-4 ml-1" />
+                {t("next")}
+                <ArrowRight className="h-4 w-4 ms-1 rtl:-scale-x-100" />
               </>
             )}
           </Button>

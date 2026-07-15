@@ -1,19 +1,21 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { OnbordaProvider, Onborda, useOnborda } from "onborda";
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
 
 import { useProject } from "@/contexts/project-context";
+import { usePathname } from "@/i18n/navigation";
 
 import { TourCard } from "./tour-card";
-import { buildOnboardingTours } from "./tour-steps";
+import { useOnboardingTours } from "./tour-steps";
 
 const STORAGE_KEY = "supportbase-onboarding-completed";
+const TOUR_NAME = "mcp-setup";
 
-// Context for tour completion - must be at the top level to be accessible from Portal
+// Context for tour completion - must wrap <Onborda> so the Portal can access it
 interface TourContextType {
   completeTour: () => void;
+  restartTour: () => void;
 }
 
 const TourContext = createContext<TourContextType | null>(null);
@@ -26,11 +28,32 @@ interface TourProviderProps {
   children: React.ReactNode;
 }
 
-// Inner component that handles tour start logic
-function TourStarter({ children }: { children: React.ReactNode }) {
+// Lives inside OnbordaProvider so it can drive the tour directly, and wraps
+// <Onborda> so the portalled TourCard still reads TourContext.
+function TourController({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const { startOnborda, isOnbordaVisible } = useOnborda();
+  const autoStartedRef = useRef(false);
+
+  const startTour = useCallback(() => {
+    startOnborda(TOUR_NAME);
+    // Dispatch resize events after starting to fix Onborda positioning
+    const dispatchResize = () => window.dispatchEvent(new Event("resize"));
+    setTimeout(dispatchResize, 100);
+    setTimeout(dispatchResize, 300);
+    setTimeout(dispatchResize, 500);
+  }, [startOnborda]);
+
+  const completeTour = useCallback(() => {
+    localStorage.setItem(STORAGE_KEY, "true");
+  }, []);
+
+  const restartTour = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    autoStartedRef.current = true;
+    startTour();
+  }, [startTour]);
 
   useEffect(() => {
     setMounted(true);
@@ -39,31 +62,26 @@ function TourStarter({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!mounted) return;
 
-    // Check if user has completed onboarding
-    const hasCompleted = localStorage.getItem(STORAGE_KEY);
+    // usePathname is locale-aware, so this matches /dashboard and /ar/dashboard.
+    if (pathname !== "/dashboard") return;
 
-    // Only show tour on dashboard page and if not completed
-    if (!hasCompleted && pathname === "/dashboard") {
-      // Wait for DOM to be fully ready
-      const startTour = () => {
-        startOnborda("mcp-setup");
-        // Dispatch resize events after starting to fix Onborda positioning
-        const dispatchResize = () => window.dispatchEvent(new Event("resize"));
-        setTimeout(dispatchResize, 100);
-        setTimeout(dispatchResize, 300);
-        setTimeout(dispatchResize, 500);
-      };
+    // Auto-start at most once per mount. The tour navigates away to the General
+    // tab by design, so without this guard coming back to the dashboard would
+    // restart it from step 1 and make it impossible to finish.
+    if (autoStartedRef.current) return;
+    if (localStorage.getItem(STORAGE_KEY)) return;
 
-      // Use requestAnimationFrame + timeout to ensure DOM is ready
-      const timer = setTimeout(() => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(startTour);
-        });
-      }, 1000);
+    autoStartedRef.current = true;
 
-      return () => clearTimeout(timer);
-    }
-  }, [pathname, mounted, startOnborda]);
+    // Use requestAnimationFrame + timeout to ensure DOM is ready
+    const timer = setTimeout(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(startTour);
+      });
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [pathname, mounted, startTour]);
 
   // Dispatch resize events when tour becomes visible to fix Onborda rendering bug
   // Multiple staggered events ensure the positioning calculation happens after render
@@ -80,21 +98,21 @@ function TourStarter({ children }: { children: React.ReactNode }) {
     }
   }, [isOnbordaVisible]);
 
-  return <>{children}</>;
+  const value = useMemo(
+    () => ({ completeTour, restartTour }),
+    [completeTour, restartTour]
+  );
+
+  return <TourContext.Provider value={value}>{children}</TourContext.Provider>;
 }
 
 export function TourProvider({ children }: TourProviderProps) {
   const { currentProject } = useProject();
-  const steps = buildOnboardingTours(currentProject?.id ?? null);
-
-  const completeTour = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, "true");
-  }, []);
+  const steps = useOnboardingTours(currentProject?.id ?? null);
 
   return (
-    // TourContext must wrap OnbordaProvider so the Portal can access it
-    <TourContext.Provider value={{ completeTour }}>
-      <OnbordaProvider>
+    <OnbordaProvider>
+      <TourController>
         <Onborda
           steps={steps}
           shadowRgb="0, 0, 0"
@@ -102,10 +120,10 @@ export function TourProvider({ children }: TourProviderProps) {
           cardComponent={TourCard}
           cardTransition={{ duration: 0.3, type: "spring" }}
         >
-          <TourStarter>{children}</TourStarter>
+          {children}
         </Onborda>
-      </OnbordaProvider>
-    </TourContext.Provider>
+      </TourController>
+    </OnbordaProvider>
   );
 }
 

@@ -167,9 +167,18 @@
   },
   "train": {
     "tiles": {
-      "file": { "label": "File", "hint": "PDF or TXT" },
-      "text": { "label": "Paste text", "hint": "Notes, policies, FAQs" },
-      "qa": { "label": "Q&A pair", "hint": "Question + answer" }
+      "file": {
+        "label": "File",
+        "hint": "PDF or TXT"
+      },
+      "text": {
+        "label": "Paste text",
+        "hint": "Notes, policies, FAQs"
+      },
+      "qa": {
+        "label": "Q&A pair",
+        "hint": "Question + answer"
+      }
     },
     "drawerTitle": {
       "file": "Add file",
@@ -222,5 +231,20 @@
       "title": "Live in minutes",
       "desc": "Point it at your website and it's ready to answer."
     }
+  },
+  "tour": {
+    "welcomeTitle": "One-Time Setup",
+    "welcomeBody": "Welcome to FrontFace! After this quick 2-minute setup, you can manage your chatbot entirely from your IDE.",
+    "apiKeyTitle": "Generate Your API Key",
+    "apiKeyBody": "Create an API key to connect AI tools like Cursor or Claude Code. This is the only manual step — everything else happens in your IDE.",
+    "mcpConfigTitle": "Copy MCP Config",
+    "mcpConfigBody": "This configuration tells your AI tool how to connect to FrontFace. Copy it — you'll paste it into your IDE settings next.",
+    "doneTitle": "You're All Set!",
+    "doneBody": "Paste this config into your IDE's MCP settings. From now on, just ask your AI:",
+    "doneExample": "“Add FAQ about shipping to my chatbot”",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "close": "Close tour"
   }
 }

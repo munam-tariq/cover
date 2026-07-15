@@ -34,6 +34,11 @@ interface ApiEndpoint {
   url: string;
   method: "GET" | "POST";
   authType: "none" | "api_key" | "bearer";
+  // Header name only; the credentials never leave the API
+  authConfig?: {
+    apiKeyHeader?: string;
+  };
+  bodyTemplate?: Record<string, unknown> | null;
   createdAt: string;
 }
 

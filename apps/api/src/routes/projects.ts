@@ -554,6 +554,10 @@ router.delete("/:id", authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
+// Sources that prove the chatbot is reachable by real end customers: the
+// embedded widget, the hosted chat page, and the mobile SDK.
+const LIVE_DEPLOYMENT_SOURCES = ["widget", "public", "mobile"];
+
 /**
  * GET /api/projects/:id/onboarding
  * Get the onboarding progress for a specific project
@@ -590,15 +594,15 @@ router.get("/:id/onboarding", authMiddleware, async (req: Request, res: Response
         .eq("project_id", project.id)
         .eq("status", "ready"),
       supabase
-        .from("chat_sessions")
+        .from("conversations")
         .select("id", { count: "exact", head: true })
         .eq("project_id", project.id)
         .eq("source", "playground"),
       supabase
-        .from("chat_sessions")
+        .from("conversations")
         .select("id", { count: "exact", head: true })
         .eq("project_id", project.id)
-        .eq("source", "widget"),
+        .in("source", LIVE_DEPLOYMENT_SOURCES),
     ]);
 
     const steps = {

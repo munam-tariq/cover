@@ -9,10 +9,17 @@ import {
   AuthenticatedRequest,
 } from "../middleware/auth";
 import { encryptAuthConfig, decryptAuthConfig } from "../services/encryption";
+import {
+  buildEndpointRequest,
+  extractEndpointParams,
+  substituteUrlParams,
+  type JsonValue,
+} from "../services/endpoint-request";
 
 export const endpointsRouter = Router();
 
 const MAX_ENDPOINTS_PER_PROJECT = 10;
+const MAX_BODY_TEMPLATE_LENGTH = 10000;
 
 // Validation schemas
 const authTypeSchema = z.enum(["none", "api_key", "bearer"]);
@@ -33,6 +40,15 @@ const createEndpointSchema = z.object({
       bearerToken: z.string().optional(),
     })
     .optional(),
+  bodyTemplate: z
+    .record(z.unknown())
+    .nullable()
+    .optional()
+    .refine(
+      (value) =>
+        value == null || JSON.stringify(value).length <= MAX_BODY_TEMPLATE_LENGTH,
+      `Body template too large (max ${MAX_BODY_TEMPLATE_LENGTH} characters)`
+    ),
 });
 
 const updateEndpointSchema = createEndpointSchema.partial();
@@ -42,6 +58,31 @@ endpointsRouter.use(authMiddleware);
 endpointsRouter.use(projectAuthMiddleware);
 
 /**
+ * The non-secret part of an endpoint's auth config, safe to return to the
+ * dashboard. Credentials themselves never leave the API.
+ *
+ * The dashboard needs the header name to show it and to send it back on save,
+ * so withholding it here means the edit form falls back to the default and
+ * overwrites whatever was stored.
+ */
+function readPublicAuthConfig(
+  authType: string,
+  encryptedConfig: unknown
+): { apiKeyHeader?: string } | undefined {
+  if (authType !== "api_key" || !encryptedConfig) {
+    return undefined;
+  }
+
+  try {
+    const decrypted = decryptAuthConfig(encryptedConfig as string);
+    return { apiKeyHeader: decrypted.apiKeyHeader as string | undefined };
+  } catch {
+    console.error("Failed to decrypt auth config for endpoint");
+    return undefined;
+  }
+}
+
+/**
  * GET /api/endpoints
  * List all API endpoints for the authenticated user's project
  */
@@ -49,7 +90,9 @@ endpointsRouter.get("/", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { data: endpoints, error } = await supabaseAdmin
       .from("api_endpoints")
-      .select("id, name, description, url, method, auth_type, created_at")
+      .select(
+        "id, name, description, url, method, auth_type, auth_config, request_body_template, created_at"
+      )
       .eq("project_id", req.projectId)
       .order("created_at", { ascending: false });
 
@@ -68,6 +111,8 @@ endpointsRouter.get("/", async (req: AuthenticatedRequest, res: Response) => {
         url: e.url,
         method: e.method,
         authType: e.auth_type,
+        authConfig: readPublicAuthConfig(e.auth_type, e.auth_config),
+        bodyTemplate: e.request_body_template,
         createdAt: e.created_at,
       })),
     });
@@ -111,15 +156,12 @@ endpointsRouter.get(
           url: endpoint.url,
           method: endpoint.method,
           authType: endpoint.auth_type,
-          // Only return header name for API key auth, not the actual credentials
-          authConfig:
-            endpoint.auth_type === "api_key" && endpoint.auth_config
-              ? {
-                  apiKeyHeader: decryptAuthConfig(
-                    endpoint.auth_config as string
-                  ).apiKeyHeader,
-                }
-              : undefined,
+          // Only the header name, never the credentials themselves
+          authConfig: readPublicAuthConfig(
+            endpoint.auth_type,
+            endpoint.auth_config
+          ),
+          bodyTemplate: endpoint.request_body_template,
           createdAt: endpoint.created_at,
           updatedAt: endpoint.updated_at,
         },
@@ -166,8 +208,18 @@ endpointsRouter.post("/", async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    const { name, description, url, method, authType, authConfig } =
+    const { name, description, url, method, authType, authConfig, bodyTemplate } =
       validation.data;
+
+    // A request body is only meaningful on POST
+    if (bodyTemplate != null && method !== "POST") {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Body template is only supported for POST endpoints",
+        },
+      });
+    }
 
     // Validate auth config based on auth type
     if (
@@ -211,6 +263,7 @@ endpointsRouter.post("/", async (req: AuthenticatedRequest, res: Response) => {
         method,
         auth_type: authType,
         auth_config: encryptedAuthConfig,
+        request_body_template: bodyTemplate ?? null,
       })
       .select()
       .single();
@@ -230,6 +283,7 @@ endpointsRouter.post("/", async (req: AuthenticatedRequest, res: Response) => {
         url: endpoint.url,
         method: endpoint.method,
         authType: endpoint.auth_type,
+        bodyTemplate: endpoint.request_body_template,
         createdAt: endpoint.created_at,
       },
     });
@@ -254,7 +308,7 @@ endpointsRouter.put(
       // Check if endpoint exists and belongs to user's project
       const { data: existingEndpoint, error: checkError } = await supabaseAdmin
         .from("api_endpoints")
-        .select("id, auth_type, auth_config")
+        .select("id, auth_type, auth_config, method")
         .eq("id", id)
         .eq("project_id", req.projectId)
         .single();
@@ -277,8 +331,27 @@ endpointsRouter.put(
         });
       }
 
-      const { name, description, url, method, authType, authConfig } =
-        validation.data;
+      const {
+        name,
+        description,
+        url,
+        method,
+        authType,
+        authConfig,
+        bodyTemplate,
+      } = validation.data;
+
+      // A request body is only meaningful on POST, against the method the
+      // endpoint will have once this update lands.
+      const effectiveMethod = method ?? existingEndpoint.method;
+      if (bodyTemplate != null && effectiveMethod !== "POST") {
+        return res.status(400).json({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Body template is only supported for POST endpoints",
+          },
+        });
+      }
 
       // Build update object
       const updateData: Record<string, unknown> = {};
@@ -288,47 +361,70 @@ endpointsRouter.put(
       if (url !== undefined) updateData.url = url;
       if (method !== undefined) updateData.method = method;
 
+      if (bodyTemplate !== undefined) {
+        updateData.request_body_template = bodyTemplate;
+      }
+
+      // Switching away from POST leaves no request to attach a body to
+      if (effectiveMethod !== "POST") {
+        updateData.request_body_template = null;
+      }
+
       // Handle auth type and config changes
-      if (authType !== undefined) {
-        updateData.auth_type = authType;
+      const targetAuthType = authType ?? existingEndpoint.auth_type;
 
-        // If auth type changed to 'none', clear auth config
-        if (authType === "none") {
+      if (targetAuthType === "none") {
+        if (authType !== undefined) {
+          updateData.auth_type = authType;
           updateData.auth_config = null;
-        } else if (authConfig) {
-          // Validate auth config based on auth type
-          if (
-            authType === "api_key" &&
-            (!authConfig.apiKey || authConfig.apiKey.trim() === "")
-          ) {
-            return res.status(400).json({
-              error: {
-                code: "VALIDATION_ERROR",
-                message: "API key is required for API Key authentication",
-              },
-            });
-          }
-
-          if (
-            authType === "bearer" &&
-            (!authConfig.bearerToken || authConfig.bearerToken.trim() === "")
-          ) {
-            return res.status(400).json({
-              error: {
-                code: "VALIDATION_ERROR",
-                message: "Token is required for Bearer authentication",
-              },
-            });
-          }
-
-          updateData.auth_config = encryptAuthConfig(authConfig);
         }
-      } else if (authConfig) {
-        // Auth config provided but auth type not changed - merge with existing type
-        const currentAuthType = existingEndpoint.auth_type;
-        if (currentAuthType !== "none") {
-          updateData.auth_config = encryptAuthConfig(authConfig);
+      } else if (authType !== undefined || authConfig) {
+        updateData.auth_type = targetAuthType;
+
+        // Carry the stored credentials forward when the auth type is unchanged,
+        // so a non-secret field like the API key header can be edited without
+        // re-entering the secret. A changed auth type starts clean instead, to
+        // avoid leaving the previous type's credentials behind.
+        let mergedAuthConfig: Record<string, unknown> = {};
+        if (
+          existingEndpoint.auth_config &&
+          existingEndpoint.auth_type === targetAuthType
+        ) {
+          try {
+            mergedAuthConfig = decryptAuthConfig(
+              existingEndpoint.auth_config as string
+            );
+          } catch {
+            console.error("Failed to decrypt auth config for endpoint:", id);
+          }
         }
+
+        for (const [key, value] of Object.entries(authConfig ?? {})) {
+          if (value !== undefined && value.trim() !== "") {
+            mergedAuthConfig[key] = value.trim();
+          }
+        }
+
+        // Validate the credentials the endpoint will end up with
+        if (targetAuthType === "api_key" && !mergedAuthConfig.apiKey) {
+          return res.status(400).json({
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "API key is required for API Key authentication",
+            },
+          });
+        }
+
+        if (targetAuthType === "bearer" && !mergedAuthConfig.bearerToken) {
+          return res.status(400).json({
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "Token is required for Bearer authentication",
+            },
+          });
+        }
+
+        updateData.auth_config = encryptAuthConfig(mergedAuthConfig);
       }
 
       updateData.updated_at = new Date().toISOString();
@@ -356,6 +452,7 @@ endpointsRouter.put(
           url: endpoint.url,
           method: endpoint.method,
           authType: endpoint.auth_type,
+          bodyTemplate: endpoint.request_body_template,
           createdAt: endpoint.created_at,
           updatedAt: endpoint.updated_at,
         },
@@ -461,6 +558,7 @@ async function executeEndpointTest(endpoint: {
   method: string;
   auth_type: string;
   auth_config: string | null;
+  request_body_template: JsonValue | null;
 }): Promise<{
   success: boolean;
   status?: number;
@@ -468,8 +566,19 @@ async function executeEndpointTest(endpoint: {
   responseTime: number;
   error?: string;
 }> {
-  // Replace URL placeholders with test values
-  const testUrl = endpoint.url.replace(/\{(\w+)\}/g, "test_value");
+  const config = {
+    url: endpoint.url,
+    method: endpoint.method,
+    authType: endpoint.auth_type,
+    bodyTemplate: endpoint.request_body_template,
+  };
+
+  // Stand in for the values the AI would extract from a real conversation
+  const testArgs = Object.fromEntries(
+    extractEndpointParams(config).map((param) => [param, "test_value"])
+  );
+
+  const testUrl = substituteUrlParams(endpoint.url, testArgs);
 
   // SSRF guard: block private/loopback/link-local/metadata hosts and non-HTTP(S) schemes.
   const urlSafety = isUrlSafeForFetch(testUrl);
@@ -481,31 +590,10 @@ async function executeEndpointTest(endpoint: {
     };
   }
 
-  // Build headers
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "User-Agent": "ChatbotPlatform/1.0",
-  };
-
-  // Add auth headers based on auth type
+  let authConfig: Record<string, unknown> | null = null;
   if (endpoint.auth_type !== "none" && endpoint.auth_config) {
     try {
-      const authConfig = decryptAuthConfig(endpoint.auth_config);
-
-      switch (endpoint.auth_type) {
-        case "api_key":
-          if (authConfig.apiKey) {
-            const headerName =
-              (authConfig.apiKeyHeader as string) || "X-API-Key";
-            headers[headerName] = authConfig.apiKey as string;
-          }
-          break;
-        case "bearer":
-          if (authConfig.bearerToken) {
-            headers["Authorization"] = `Bearer ${authConfig.bearerToken}`;
-          }
-          break;
-      }
+      authConfig = decryptAuthConfig(endpoint.auth_config);
     } catch (decryptError) {
       console.error("Failed to decrypt auth config:", decryptError);
       return {
@@ -516,6 +604,12 @@ async function executeEndpointTest(endpoint: {
     }
   }
 
+  // Build the same request the tool executor would send at chat time
+  const { headers, body } = buildEndpointRequest(
+    { ...config, authConfig },
+    testArgs
+  );
+
   const startTime = Date.now();
 
   try {
@@ -525,6 +619,7 @@ async function executeEndpointTest(endpoint: {
     const response = await fetch(testUrl, {
       method: endpoint.method,
       headers,
+      body,
       signal: controller.signal,
     });
 
@@ -607,62 +702,6 @@ async function executeEndpointTest(endpoint: {
 }
 
 /**
- * Extract URL parameters from a URL template
- * Used by chat-engine for tool conversion
- */
-export function extractUrlParams(url: string): string[] {
-  const matches = url.match(/\{(\w+)\}/g) || [];
-  return matches.map((m) => m.slice(1, -1));
-}
-
-/**
- * Get endpoint with decrypted auth config (for internal use by chat-engine)
- * This should only be called from the backend, never exposed via API
- */
-export async function getEndpointWithAuth(
-  projectId: string,
-  endpointId: string
-): Promise<{
-  id: string;
-  name: string;
-  description: string;
-  url: string;
-  method: string;
-  authType: string;
-  authConfig: Record<string, unknown> | null;
-} | null> {
-  const { data: endpoint, error } = await supabaseAdmin
-    .from("api_endpoints")
-    .select("*")
-    .eq("id", endpointId)
-    .eq("project_id", projectId)
-    .single();
-
-  if (error || !endpoint) {
-    return null;
-  }
-
-  let authConfig: Record<string, unknown> | null = null;
-  if (endpoint.auth_config && endpoint.auth_type !== "none") {
-    try {
-      authConfig = decryptAuthConfig(endpoint.auth_config as string);
-    } catch {
-      console.error("Failed to decrypt auth config for endpoint:", endpointId);
-    }
-  }
-
-  return {
-    id: endpoint.id,
-    name: endpoint.name,
-    description: endpoint.description,
-    url: endpoint.url,
-    method: endpoint.method,
-    authType: endpoint.auth_type,
-    authConfig,
-  };
-}
-
-/**
  * Get all endpoints for a project (for internal use by chat-engine)
  */
 export async function getProjectEndpoints(projectId: string) {
@@ -696,6 +735,7 @@ export async function getProjectEndpoints(projectId: string) {
       method: endpoint.method,
       authType: endpoint.auth_type,
       authConfig,
+      bodyTemplate: (endpoint.request_body_template as JsonValue) ?? null,
     };
   });
 }

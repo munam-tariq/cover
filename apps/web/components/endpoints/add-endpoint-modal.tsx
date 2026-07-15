@@ -33,6 +33,7 @@ interface ApiEndpoint {
   authConfig?: {
     apiKeyHeader?: string;
   };
+  bodyTemplate?: Record<string, unknown> | null;
 }
 
 interface AddEndpointModalProps {
@@ -53,6 +54,7 @@ interface TestResult {
 
 const MAX_NAME_LENGTH = 100;
 const MAX_DESCRIPTION_LENGTH = 500;
+const BODY_TEMPLATE_PLACEHOLDER = '{\n  "order_id": "{order_id}"\n}';
 
 export function AddEndpointModal({
   open,
@@ -71,6 +73,7 @@ export function AddEndpointModal({
   const [apiKey, setApiKey] = useState("");
   const [apiKeyHeader, setApiKeyHeader] = useState("X-API-Key");
   const [bearerToken, setBearerToken] = useState("");
+  const [bodyTemplate, setBodyTemplate] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
@@ -85,6 +88,11 @@ export function AddEndpointModal({
       setUrl(editEndpoint.url);
       setMethod(editEndpoint.method);
       setAuthType(editEndpoint.authType);
+      setBodyTemplate(
+        editEndpoint.bodyTemplate
+          ? JSON.stringify(editEndpoint.bodyTemplate, null, 2)
+          : ""
+      );
       // Note: We don't populate credentials when editing for security
       // Users need to re-enter them if they want to change auth
       if (editEndpoint.authConfig?.apiKeyHeader) {
@@ -102,6 +110,7 @@ export function AddEndpointModal({
     setApiKey("");
     setApiKeyHeader("X-API-Key");
     setBearerToken("");
+    setBodyTemplate("");
     setError(null);
     setTestResult(null);
   };
@@ -177,13 +186,35 @@ export function AddEndpointModal({
       return;
     }
 
-    // Validate auth credentials
-    if (authType === "api_key" && !apiKey.trim() && !isEditing) {
+    // Validate the request body template
+    let parsedBodyTemplate: Record<string, unknown> | null = null;
+    if (method === "POST" && bodyTemplate.trim()) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(bodyTemplate);
+      } catch {
+        setError(modalT("bodyTemplateInvalid"));
+        return;
+      }
+
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        setError(modalT("bodyTemplateNotObject"));
+        return;
+      }
+
+      parsedBodyTemplate = parsed as Record<string, unknown>;
+    }
+
+    // Existing credentials are kept when editing, so they are only required for
+    // a new endpoint or when switching to a different auth type.
+    const credentialsRequired = !isEditing || editEndpoint.authType !== authType;
+
+    if (authType === "api_key" && !apiKey.trim() && credentialsRequired) {
       setError(modalT("apiKeyRequired"));
       return;
     }
 
-    if (authType === "bearer" && !bearerToken.trim() && !isEditing) {
+    if (authType === "bearer" && !bearerToken.trim() && credentialsRequired) {
       setError(modalT("bearerRequired"));
       return;
     }
@@ -197,13 +228,15 @@ export function AddEndpointModal({
         url: url.trim(),
         method,
         authType,
+        bodyTemplate: method === "POST" ? parsedBodyTemplate : null,
       };
 
-      // Only include auth config if credentials are provided
-      if (authType === "api_key" && apiKey.trim()) {
+      // The header name is sent even without a key so it can be changed on its
+      // own; the API keeps the stored key when no new one is supplied.
+      if (authType === "api_key") {
         payload.authConfig = {
-          apiKey: apiKey.trim(),
           apiKeyHeader: apiKeyHeader.trim() || "X-API-Key",
+          ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
         };
       } else if (authType === "bearer" && bearerToken.trim()) {
         payload.authConfig = {
@@ -330,6 +363,24 @@ export function AddEndpointModal({
               </Select>
             </div>
           </div>
+
+          {method === "POST" && (
+            <div className="space-y-2">
+              <Label htmlFor="bodyTemplate">{modalT("bodyTemplate")}</Label>
+              <Textarea
+                id="bodyTemplate"
+                value={bodyTemplate}
+                onChange={(e) => setBodyTemplate(e.target.value)}
+                placeholder={BODY_TEMPLATE_PLACEHOLDER}
+                disabled={loading}
+                className="min-h-[100px] font-mono text-xs"
+                dir="ltr"
+              />
+              <p className="text-xs text-muted-foreground">
+                {modalT("bodyTemplateHelp")}
+              </p>
+            </div>
+          )}
 
           {authType === "api_key" && (
             <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
