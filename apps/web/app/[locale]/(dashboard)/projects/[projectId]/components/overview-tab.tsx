@@ -17,6 +17,7 @@ import {
   CheckCheck,
   Save,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -45,11 +46,18 @@ interface ProjectUpdateResponse {
 
 export function OverviewTab({ project }: OverviewTabProps) {
   const t = useTranslations("dashboard.pages.projectDetail.overview");
+  const settingsT = useTranslations("dashboard.pages.settings");
   const { refreshProjects } = useProject();
   const [systemPrompt, setSystemPrompt] = useState(project.systemPrompt || "");
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [embedCopied, setEmbedCopied] = useState(false);
+  const [showPresets, setShowPresets] = useState(false);
+  const systemPromptPresets = [
+    { name: settingsT("presetsList.support"), prompt: settingsT("presetsList.supportPrompt") },
+    { name: settingsT("presetsList.sales"), prompt: settingsT("presetsList.salesPrompt") },
+    { name: settingsT("presetsList.shopping"), prompt: settingsT("presetsList.shoppingPrompt") },
+  ];
 
   const handleSystemPromptChange = (value: string) => {
     setSystemPrompt(value);
@@ -93,10 +101,39 @@ export function OverviewTab({ project }: OverviewTabProps) {
       {/* System Prompt */}
       <Card className="lg:col-span-2">
         <CardHeader>
-          <CardTitle>{t("systemPrompt")}</CardTitle>
-          <CardDescription>
-            {t("systemPromptDescription")}
-          </CardDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <CardTitle>{t("systemPrompt")}</CardTitle>
+              <CardDescription>{t("systemPromptDescription")}</CardDescription>
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowPresets(!showPresets)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground bg-background border border-input rounded-md hover:bg-muted transition-colors"
+              >
+                {settingsT("presets")}
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              {showPresets && (
+                <div className="absolute top-full end-0 mt-1 w-48 bg-background border border-input rounded-md shadow-lg z-10">
+                  {systemPromptPresets.map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => {
+                        handleSystemPromptChange(preset.prompt);
+                        setShowPresets(false);
+                      }}
+                      className="block w-full px-4 py-2 text-start text-sm hover:bg-muted first:rounded-t-md last:rounded-b-md"
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea

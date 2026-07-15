@@ -58,6 +58,7 @@ interface OnboardingData {
 export default function DashboardPage() {
   const t = useTranslations("dashboard.pages.home");
   const { currentProject, isLoading: projectLoading } = useProject();
+  const generalHref = currentProject ? `/projects/${currentProject.id}?tab=general` : "/projects";
   const [leadsSummary, setLeadsSummary] = useState<LeadsSummary | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,7 +90,7 @@ export default function DashboardPage() {
   }, [currentProject?.id]);
 
   const stepLinks: Record<string, string> = {
-    accountCreated: "/settings",
+    accountCreated: generalHref,
     knowledgeAdded: "/knowledge",
     playgroundTested: "/playground",
     widgetEmbedded: "/embed",
@@ -258,7 +259,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/settings">
+        <Link href={generalHref}>
           <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
             <CardHeader>
               <CardTitle className="text-lg">{t("quickActions.settingsTitle")}</CardTitle>

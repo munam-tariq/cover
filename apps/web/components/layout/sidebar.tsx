@@ -24,12 +24,11 @@ const allNavItems = [
   { href: "/leads", labelKey: "leads", icon: "user-plus", roles: "owner" as const },
   { href: "/analytics", labelKey: "analytics", icon: "bar-chart", roles: "owner" as const },
   { href: "/feedback", labelKey: "feedback", icon: "thumbs-up", roles: "owner" as const },
-  { href: "/pulse", labelKey: "pulse", icon: "activity", roles: "owner" as const },
+  // { href: "/pulse", labelKey: "pulse", icon: "activity", roles: "owner" as const }, // disabled for now
   { href: "/playground", labelKey: "playground", icon: "sparkles", roles: "owner_admin" as const },
   { href: "/knowledge", labelKey: "knowledge", icon: "book", roles: "owner_admin" as const },
   { href: "/api-endpoints", labelKey: "apiEndpoints", icon: "code", roles: "owner" as const },
   { href: "/embed", labelKey: "embed", icon: "code-2", roles: "owner" as const },
-  { href: "/settings", labelKey: "settings", icon: "settings", roles: "owner_admin" as const },
 ];
 
 const icons: Record<string, React.FC<{ className?: string }>> = {

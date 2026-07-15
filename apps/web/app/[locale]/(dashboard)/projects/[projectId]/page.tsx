@@ -1,18 +1,19 @@
 "use client";
 
 import { Button, Tabs, TabsList, TabsTrigger, TabsContent, Skeleton } from "@chatbot/ui";
-import { ArrowLeft, Settings, Database, Code, MessageSquare, Puzzle, Users, Globe, Radio } from "lucide-react";
-import { useParams } from "next/navigation";
+import { ArrowLeft, Settings, Database, Code, MessageSquare, Puzzle, Users, Globe, Radio, SlidersHorizontal } from "lucide-react";
+import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { MobileTabSelect } from "@/components/mobile-tab-select";
 import { useProject } from "@/contexts/project-context";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 
 import { AgentHeader } from "./components/agent-header";
 import { ChannelsTab } from "./components/channels-tab";
 import { EndpointsTab } from "./components/endpoints-tab";
+import { GeneralTab } from "./components/general-tab";
 import { HandoffTab } from "./components/handoff-tab";
 import { KnowledgeTab } from "./components/knowledge-tab";
 import { LeadCaptureTab } from "./components/lead-capture-tab";
@@ -31,7 +32,25 @@ export default function AgentStudioPage() {
   const params = useParams();
   const router = useRouter();
   const { projects, currentProject, switchProject, isLoading } = useProject();
-  const [activeTab, setActiveTab] = useState("overview");
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const tabParam = searchParams?.get("tab");
+  const [activeTab, setActiveTab] = useState(tabParam || "overview");
+
+  // Keep active tab in sync when the URL ?tab= changes (e.g. tour deep-link)
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    const nextParams = new URLSearchParams(searchParams?.toString());
+    nextParams.set("tab", value);
+    router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+  };
 
   const projectId = String(params?.projectId ?? "");
 
@@ -59,6 +78,7 @@ export default function AgentStudioPage() {
     { value: "handoff", label: t("tabs.handoff"), icon: <Users className="h-4 w-4" /> },
     { value: "public", label: t("tabs.publicPage"), icon: <Globe className="h-4 w-4" /> },
     { value: "channels", label: t("tabs.channels"), icon: <Radio className="h-4 w-4" /> },
+    { value: "general", label: t("tabs.general"), icon: <SlidersHorizontal className="h-4 w-4" /> },
   ];
 
   // Loading state
@@ -108,11 +128,11 @@ export default function AgentStudioPage() {
       <AgentHeader project={project} />
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         {/* Mobile: dropdown select (Tabs primitive stays the source of truth for content) */}
         <MobileTabSelect
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={handleTabChange}
           options={tabOptions}
           className="md:hidden"
         />
@@ -157,6 +177,10 @@ export default function AgentStudioPage() {
 
         <TabsContent value="channels" className="mt-6">
           <ChannelsTab projectId={project.id} />
+        </TabsContent>
+
+        <TabsContent value="general" className="mt-6">
+          <GeneralTab project={project} />
         </TabsContent>
       </Tabs>
     </div>

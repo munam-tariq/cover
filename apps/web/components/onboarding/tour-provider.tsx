@@ -4,8 +4,10 @@ import { usePathname } from "next/navigation";
 import { OnbordaProvider, Onborda, useOnborda } from "onborda";
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 
+import { useProject } from "@/contexts/project-context";
+
 import { TourCard } from "./tour-card";
-import { onboardingTours } from "./tour-steps";
+import { buildOnboardingTours } from "./tour-steps";
 
 const STORAGE_KEY = "supportbase-onboarding-completed";
 
@@ -82,6 +84,9 @@ function TourStarter({ children }: { children: React.ReactNode }) {
 }
 
 export function TourProvider({ children }: TourProviderProps) {
+  const { currentProject } = useProject();
+  const steps = buildOnboardingTours(currentProject?.id ?? null);
+
   const completeTour = useCallback(() => {
     localStorage.setItem(STORAGE_KEY, "true");
   }, []);
@@ -91,7 +96,7 @@ export function TourProvider({ children }: TourProviderProps) {
     <TourContext.Provider value={{ completeTour }}>
       <OnbordaProvider>
         <Onborda
-          steps={onboardingTours}
+          steps={steps}
           shadowRgb="0, 0, 0"
           shadowOpacity="0.6"
           cardComponent={TourCard}

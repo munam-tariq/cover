@@ -13,8 +13,7 @@
         "playground": "ساحة التجربة",
         "knowledge": "قاعدة المعرفة",
         "apiEndpoints": "نقاط API",
-        "embed": "التضمين",
-        "settings": "الإعدادات"
+        "embed": "التضمين"
       },
       "agentStatus": "حالة الوكيل"
     },
@@ -505,7 +504,8 @@
         "handoff": "التحويل البشري",
         "channels": "القنوات",
         "endpoints": "نقاط النهاية",
-        "publicPage": "الصفحة العامة"
+        "publicPage": "الصفحة العامة",
+        "general": "عام"
       },
       "overview": {
         "systemPrompt": "تعليمات النظام",

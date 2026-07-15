@@ -13,8 +13,7 @@
         "playground": "Playground",
         "knowledge": "Knowledge Base",
         "apiEndpoints": "API Endpoints",
-        "embed": "Embed",
-        "settings": "Settings"
+        "embed": "Embed"
       },
       "agentStatus": "Agent Status"
     },
@@ -505,7 +504,8 @@
         "handoff": "Handoff",
         "channels": "Channels",
         "endpoints": "Endpoints",
-        "publicPage": "Public Page"
+        "publicPage": "Public Page",
+        "general": "General"
       },
       "overview": {
         "systemPrompt": "System Prompt",
