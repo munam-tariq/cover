@@ -49,7 +49,7 @@ export async function getOrCreateConversation(
   if (existingConversationId) {
     const { data: existing } = await supabaseAdmin
       .from("conversations")
-      .select("id, status")
+      .select("id")
       .eq("id", existingConversationId)
       .eq("project_id", projectId)
       .eq("visitor_id", visitorId)
@@ -277,6 +277,16 @@ export async function addMessage(
   metadata?: Record<string, unknown>,
   senderId?: string
 ): Promise<string> {
+  if (senderType === "customer") {
+    const message = await appendCustomerMessage(
+      conversationId,
+      content,
+      metadata,
+      senderId
+    );
+    return message.id;
+  }
+
   const { data: message, error } = await supabaseAdmin
     .from("messages")
     .insert({
@@ -298,6 +308,49 @@ export async function addMessage(
 }
 
 /**
+ * Append a live customer reply through the database transition that serializes against auto-close.
+ * This is the only customer-message writer for normal chat, handoff, and channel ingress. A reply
+ * on a terminal conversation reopens it and invalidates its stale insight in the same transaction.
+ */
+export async function appendCustomerMessage(
+  conversationId: string,
+  content: string,
+  metadata?: Record<string, unknown>,
+  senderId?: string
+): Promise<{ id: string; createdAt: string; reopened: boolean }> {
+  const { data, error } = await supabaseAdmin.rpc(
+    "append_customer_message",
+    {
+      p_conversation_id: conversationId,
+      p_content: content,
+      p_metadata: metadata ?? {},
+      p_sender_id: senderId ?? null,
+    }
+  );
+
+  const row = (data?.[0] ?? null) as
+    | {
+        message_id: string;
+        message_created_at: string;
+        reopened: boolean;
+      }
+    | null;
+
+  if (error || !row) {
+    console.error("[Conversation] Failed to append customer message:", error);
+    throw new Error(
+      `Failed to append customer message${error?.message ? `: ${error.message}` : ""}`
+    );
+  }
+
+  return {
+    id: row.message_id,
+    createdAt: row.message_created_at,
+    reopened: row.reopened,
+  };
+}
+
+/**
  * Add user and assistant messages to a conversation (for chat logging)
  */
 export async function logConversationMessages(
@@ -311,38 +364,21 @@ export async function logConversationMessages(
   },
   context?: MessageContext
 ): Promise<void> {
-  try {
-    // Build customer message metadata with context
-    const customerMetadata: Record<string, unknown> = {};
-    if (context) {
-      if (context.pageUrl) customerMetadata.pageUrl = context.pageUrl;
-      if (context.pageTitle) customerMetadata.pageTitle = context.pageTitle;
-      if (context.browser) customerMetadata.browser = context.browser;
-      if (context.os) customerMetadata.os = context.os;
-      if (context.device) customerMetadata.device = context.device;
-      if (context.country) customerMetadata.country = context.country;
-      if (context.city) customerMetadata.city = context.city;
-      if (context.timezone) customerMetadata.timezone = context.timezone;
-    }
-
-    // Add user message with context metadata
-    await supabaseAdmin.from("messages").insert({
-      conversation_id: conversationId,
-      sender_type: "customer",
-      content: userMessage,
-      metadata: customerMetadata,
-    });
-
-    // Add assistant message with metadata
-    await supabaseAdmin.from("messages").insert({
-      conversation_id: conversationId,
-      sender_type: "ai",
-      content: assistantResponse,
-      metadata: metadata || {},
-    });
-  } catch (error) {
-    console.error("[Conversation] Failed to log messages:", error);
+  // Build customer message metadata with context
+  const customerMetadata: Record<string, unknown> = {};
+  if (context) {
+    if (context.pageUrl) customerMetadata.pageUrl = context.pageUrl;
+    if (context.pageTitle) customerMetadata.pageTitle = context.pageTitle;
+    if (context.browser) customerMetadata.browser = context.browser;
+    if (context.os) customerMetadata.os = context.os;
+    if (context.device) customerMetadata.device = context.device;
+    if (context.country) customerMetadata.country = context.country;
+    if (context.city) customerMetadata.city = context.city;
+    if (context.timezone) customerMetadata.timezone = context.timezone;
   }
+
+  await appendCustomerMessage(conversationId, userMessage, customerMetadata);
+  await addMessage(conversationId, "ai", assistantResponse, metadata);
 }
 
 /**
@@ -500,41 +536,5 @@ export async function getConversationHistory(
     }));
 }
 
-/**
- * Update lead capture state on conversation
- */
-export async function updateLeadCaptureState(
-  conversationId: string,
-  state: {
-    awaitingEmail?: boolean;
-    pendingQuestion?: string | null;
-    emailAsked?: boolean;
-    customerEmail?: string;
-    customerName?: string;
-  }
-): Promise<void> {
-  const updateData: Record<string, unknown> = {};
-
-  if (state.awaitingEmail !== undefined) {
-    updateData.awaiting_email = state.awaitingEmail;
-  }
-  if (state.pendingQuestion !== undefined) {
-    updateData.pending_question = state.pendingQuestion;
-  }
-  if (state.emailAsked !== undefined) {
-    updateData.email_asked = state.emailAsked;
-  }
-  if (state.customerEmail) {
-    updateData.customer_email = state.customerEmail;
-  }
-  if (state.customerName) {
-    updateData.customer_name = state.customerName;
-  }
-
-  if (Object.keys(updateData).length > 0) {
-    await supabaseAdmin
-      .from("conversations")
-      .update(updateData)
-      .eq("id", conversationId);
-  }
-}
+// The unused v1 lead-capture state mutator was removed. Its retired storage is dropped by the
+// post-deploy cleanup migration after this code ships.

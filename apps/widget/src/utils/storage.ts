@@ -23,6 +23,8 @@ export interface StoredMessage {
   isError?: boolean;
   feedback?: "helpful" | "unhelpful" | null;
   agentName?: string;
+  metadata?: Record<string, unknown>;
+  csat?: number | null;
 }
 
 function isStoredMessage(value: unknown): value is StoredMessage {
@@ -42,7 +44,9 @@ function isStoredMessage(value: unknown): value is StoredMessage {
       value.feedback === null ||
       value.feedback === "helpful" ||
       value.feedback === "unhelpful") &&
-    (value.agentName === undefined || isString(value.agentName))
+    (value.agentName === undefined || isString(value.agentName)) &&
+    (value.metadata === undefined || isRecord(value.metadata)) &&
+    (value.csat === undefined || value.csat === null || isNumber(value.csat))
   );
 }
 

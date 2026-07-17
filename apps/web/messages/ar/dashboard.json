@@ -280,9 +280,10 @@
     },
     "inbox": {
       "title": "صندوق المحادثات",
-      "subtitle": "{count} محادثات نشطة",
+      "ownerSubtitle": "{count} محادثات مفتوحة",
+      "memberSubtitle": "{count} محادثات مسندة إليك",
       "updatedAt": "تم التحديث {time}",
-      "live": "مباشر",
+      "reconnecting": "جارٍ إعادة الاتصال…",
       "noProjectSelected": "لم يتم تحديد مشروع",
       "offlineWarning": "أنت غير متصل حاليًا. انتقل إلى حالة متصل لاستقبال محادثات جديدة.",
       "loadError": "تعذر تحميل المحادثات",
@@ -291,12 +292,20 @@
       "claiming": "جارٍ الاستلام...",
       "voiceCall": "مكالمة صوتية",
       "noMessagesYet": "لا توجد رسائل بعد",
+      "preview": {
+        "ai": "الذكاء الاصطناعي: ",
+        "agent": "الوكيل: ",
+        "system": ""
+      },
       "assignedTo": "مسندة إلى:",
       "waitingSummary": "ينتظر منذ {minutes} د • {count} رسائل",
       "stats": {
-        "activeChats": "المحادثات النشطة",
-        "inQueue": "في قائمة الانتظار",
-        "resolvedToday": "تم حلها اليوم"
+        "openConversations": "المحادثات المفتوحة",
+        "myActiveChats": "محادثاتي النشطة",
+        "waitingInQueue": "بانتظار الرد",
+        "availableToClaim": "متاحة للاستلام",
+        "resolvedToday": "تم حلها اليوم",
+        "resolvedByYouToday": "قمت بحلها اليوم"
       },
       "queue": {
         "title": "قائمة الانتظار",
@@ -305,8 +314,6 @@
       },
       "tabs": {
         "mine": "محادثاتي",
-        "active": "نشطة",
-        "waiting": "بانتظار الرد",
         "all": "الكل"
       },
       "sources": {
@@ -315,23 +322,102 @@
         "whatsapp": "WhatsApp",
         "public": "الصفحة العامة",
         "voice": "الصوت",
-        "mobile": "الجوال"
+        "mobile": "الجوال",
+        "playground": "ساحة التجربة",
+        "api": "واجهة API",
+        "mcp": "بروتوكول MCP",
+        "chat": "الدردشة"
+      },
+      "metadata": {
+        "voiceUsed": "تم استخدام الصوت",
+        "flagged": "عميل مميّز"
       },
       "empty": {
         "title": "لا توجد محادثات",
-        "showAll": "عرض كل المحادثات"
+        "waitingTitle": "لا توجد محادثات في الانتظار",
+        "waitingHint": "قائمة انتظار المشروع فارغة حاليًا.",
+        "filteredTitle": "لا توجد محادثات تطابق هذه الفلاتر",
+        "clearFilters": "مسح الفلاتر",
+        "showAll": "عرض كل المحادثات",
+        "unassignedScopeTitle": "لا توجد محادثات مُسندة إليك تطابق هذا الفلتر",
+        "unassignedScopeHint": "المحادثات التي يتولاها الذكاء الاصطناعي — بما فيها المغلقة تلقائيًا بسبب عدم النشاط — غير مُسندة إلى أحد."
       },
       "status": {
-        "ai_active": "الذكاء الاصطناعي",
-        "waiting": "بانتظار الرد",
-        "agent_active": "نشطة",
-        "resolved": "تم حلها",
-        "closed": "مغلقة"
+        "ai_active": "الذكاء الاصطناعي يتولى المحادثة",
+        "waiting": "في انتظار وكيل",
+        "agent_active": "مع وكيل",
+        "agent_active_named": "مع {name}",
+        "resolved": "تم الحل بواسطة وكيل",
+        "closed": "مغلقة",
+        "closed_inactivity": "مغلقة – بسبب عدم النشاط"
+      },
+      "filters": {
+        "activeChats": "المحادثات النشطة",
+        "allOpen": "كل المفتوحة",
+        "allClosed": "كل المحادثات المغلقة",
+        "label": "الحالة",
+        "trigger": "الفلاتر ({count})",
+        "panelLabel": "فلاتر المحادثات",
+        "needsReply": "تحتاج إلى رد",
+        "needsMyReply": "تحتاج إلى ردي",
+        "needsAgentReply": "تحتاج إلى رد وكيل",
+        "voiceUsed": "تم استخدام الصوت",
+        "assignedAgent": "الوكيل المسند إليه",
+        "assignedValue": "مسندة إلى: {name}",
+        "anyone": "أي وكيل",
+        "unassigned": "غير مسندة",
+        "me": "أنا",
+        "handoffReason": "سبب التحويل",
+        "anyHandoffReason": "أي سبب",
+        "activityPeriod": "فترة النشاط",
+        "flaggedOnly": "العملاء المميّزون فقط",
+        "appliedLabel": "عدد الفلاتر المطبقة: {count}",
+        "clearAll": "مسح الكل",
+        "remove": "إزالة {label}",
+        "loadFailed": "تعذر تحميل عرض المحادثات هذا.",
+        "retry": "إعادة المحاولة",
+        "handoff": {
+          "lowConfidence": "ثقة منخفضة",
+          "keyword": "كلمة مفتاحية",
+          "buttonClick": "زر التحدث إلى موظف",
+          "offlineForm": "نموذج خارج ساعات العمل"
+        },
+        "activity": {
+          "anyTime": "أي وقت",
+          "last24Hours": "آخر 24 ساعة",
+          "last7Days": "آخر 7 أيام",
+          "last30Days": "آخر 30 يومًا"
+        }
+      },
+      "sort": {
+        "trigger": "الترتيب: {label}",
+        "explanationLabel": "شرح ترتيب المحادثات",
+        "attention": {
+          "label": "تحتاج إلى اهتمام",
+          "description": "يعطي الأولوية لردود العملاء التي تنتظر وكيلاً، ثم للمحادثات النشطة الأخرى. في قائمة الانتظار، تظهر المحادثات الأطول انتظارًا أولاً.",
+          "terminalDisabled": "متاح للمحادثات النشطة وقائمة الانتظار فقط."
+        },
+        "recent": {
+          "label": "أحدث نشاط",
+          "description": "يعرض أحدث نشاط للعميل أو الذكاء الاصطناعي أو الوكيل أو الصوت أولاً. لا تؤثر أحداث النظام الآلية في هذا الترتيب."
+        }
+      },
+      "time": {
+        "lessThanMinute": "أقل من دقيقة",
+        "waitingFor": "في الانتظار منذ {duration}",
+        "customerReplied": "ردّ العميل {relative}",
+        "yesterdayAt": "أمس، {time}",
+        "fullLabel": "وقت النشاط الكامل"
+      },
+      "pagination": {
+        "summary": "الصفحة {page} من {totalPages} · {total} محادثة",
+        "previous": "السابق",
+        "next": "التالي"
       },
       "detail": {
         "backToLeads": "العودة إلى العملاء",
         "backToInbox": "العودة إلى الصندوق",
-        "customer": "العميل",
+        "contact": "جهة الاتصال",
         "leadProfile": "ملف العميل المحتمل",
         "email": "البريد الإلكتروني",
         "qualifyingQuestions": "أسئلة التأهيل",
@@ -345,6 +431,19 @@
         "thisConversation": "هذه المحادثة",
         "started": "بدأت",
         "handoffReason": "سبب التحويل",
+        "handoffReasons": {
+          "lowConfidence": "انخفاض ثقة الذكاء الاصطناعي",
+          "keyword": "كلمة مفتاحية للتحويل",
+          "customerRequest": "طلب العميل التحدث إلى وكيل",
+          "buttonClick": "زر التحدث إلى موظف",
+          "offlineForm": "نموذج خارج ساعات العمل",
+          "other": "سبب آخر"
+        },
+        "closedAt": "أُغلقت {time}",
+        "voiceCalls": "المكالمات الصوتية",
+        "totalTalkTime": "إجمالي وقت التحدث",
+        "customerSatisfaction": "رضا العميل",
+        "ratingOutOfFive": "التقييم {rating} من 5",
         "previous": "السابقة ({count})",
         "customerLabel": "العميل",
         "aiAssistant": "مساعد الذكاء الاصطناعي",
@@ -356,7 +455,7 @@
         "transferError": "تعذر نقل المحادثة",
         "returnToAiError": "تعذر إرجاع المحادثة إلى الذكاء الاصطناعي",
         "conversationNotFound": "المحادثة غير موجودة",
-        "live": "مباشر",
+        "reconnecting": "جارٍ إعادة الاتصال…",
         "online": "متصل",
         "away": "بعيد",
         "offline": "غير متصل",
@@ -374,7 +473,10 @@
         "windowClosedShort": "انتهت نافذة 24 ساعة — قوالب إعادة التواصل ستتوفر قريبًا.",
         "openCustomerInfo": "فتح معلومات العميل",
         "closeCustomerInfo": "إغلاق معلومات العميل",
-        "customerInfoDescription": "تفاصيل العميل وملف العميل المحتمل وسجل المحادثة"
+        "customerInfoDescription": "تفاصيل العميل وملف العميل المحتمل وسجل المحادثة",
+        "flagCustomer": "تمييز العميل",
+        "unflagCustomer": "إلغاء التمييز",
+        "flagError": "تعذّر تحديث التمييز"
       }
     },
     "leads": {

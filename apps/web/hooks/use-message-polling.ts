@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from "react";
+
 import { apiClient } from "@/lib/api-client";
 
 // ============================================================================
@@ -100,6 +101,9 @@ export function useMessagePolling(
       // Add after parameter to only get new messages
       if (lastMessageTimeRef.current) {
         url += `&after=${encodeURIComponent(lastMessageTimeRef.current)}`;
+        if (lastMessageIdRef.current) {
+          url += `&afterId=${encodeURIComponent(lastMessageIdRef.current)}`;
+        }
       }
 
       const response = await apiClient<{ messages: Message[] }>(url);
@@ -108,7 +112,9 @@ export function useMessagePolling(
       const messages = response.messages || [];
 
       if (lastMessageIdRef.current) {
-        const lastIndex = messages.findIndex((m) => m.id === lastMessageIdRef.current);
+        const lastIndex = messages.findIndex(
+          (m) => m.id === lastMessageIdRef.current
+        );
         if (lastIndex >= 0) {
           return messages.slice(lastIndex + 1);
         }
@@ -116,7 +122,8 @@ export function useMessagePolling(
 
       return messages;
     } catch (err) {
-      const error = err instanceof Error ? err : new Error("Failed to fetch messages");
+      const error =
+        err instanceof Error ? err : new Error("Failed to fetch messages");
       console.error("[useMessagePolling] Fetch error:", error);
       throw error;
     }
@@ -146,7 +153,9 @@ export function useMessagePolling(
         onNewMessagesRef.current?.(newMessages);
 
         if (process.env.NODE_ENV === "development") {
-          console.log(`[useMessagePolling] Found ${newMessages.length} new messages`);
+          console.log(
+            `[useMessagePolling] Found ${newMessages.length} new messages`
+          );
         }
       }
     } catch (err) {
@@ -179,7 +188,9 @@ export function useMessagePolling(
     intervalRef.current = setInterval(poll, interval);
 
     if (process.env.NODE_ENV === "development") {
-      console.log(`[useMessagePolling] Started polling every ${interval / 1000}s`);
+      console.log(
+        `[useMessagePolling] Started polling every ${interval / 1000}s`
+      );
     }
   }, [poll, interval]);
 

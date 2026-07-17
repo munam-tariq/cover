@@ -22,9 +22,6 @@ export type {
   ApiEndpoint,
   ApiEndpointInsert,
   ApiEndpointUpdate,
-  ChatSession,
-  ChatSessionInsert,
-  ChatSessionUpdate,
   ApiKey,
   ApiKeyInsert,
   ApiKeyUpdate,
@@ -42,4 +39,3 @@ export type {
 export * from "./queries/projects";
 export * from "./queries/knowledge";
 export * from "./queries/endpoints";
-export * from "./queries/chat";

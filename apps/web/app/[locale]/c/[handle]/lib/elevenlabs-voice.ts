@@ -46,7 +46,7 @@ interface ElevenLabsVoiceConfig {
   /** Base language for the agent (STT/TTS) + spoken system lines, e.g. "ar". */
   language?: Language;
   /** Verified on the LLM callback (passed back via ElevenLabs extra_body). */
-  voiceSessionToken?: string;
+  voiceSessionToken: string;
 }
 
 export class ElevenLabsVoiceManager {
@@ -54,6 +54,7 @@ export class ElevenLabsVoiceManager {
     ReturnType<typeof Conversation.startSession>
   > | null = null;
   private state: ElevenLabsVoiceState = "idle";
+  private voiceSessionToken: string | null = null;
 
   // Inactivity detection — auto-end call after prolonged silence
   private inactivityTimer: ReturnType<typeof setTimeout> | null = null;
@@ -70,13 +71,20 @@ export class ElevenLabsVoiceManager {
     this.setState("connecting");
 
     const config = await this.fetchConfig();
-    if (!config || !config.voiceEnabled || !config.signedUrl) {
+    if (
+      !config ||
+      !config.voiceEnabled ||
+      !config.signedUrl ||
+      !config.voiceSessionToken
+    ) {
       this.setState("error");
       this.options.onError(
         new Error("Failed to fetch voice config or voice not enabled")
       );
       return;
     }
+
+    this.voiceSessionToken = config.voiceSessionToken;
 
     try {
       this.conversation = await Conversation.startSession({
@@ -161,6 +169,10 @@ export class ElevenLabsVoiceManager {
 
   getState(): ElevenLabsVoiceState {
     return this.state;
+  }
+
+  getSessionToken(): string | null {
+    return this.voiceSessionToken;
   }
 
   // ---------------------------------------------------------------------------

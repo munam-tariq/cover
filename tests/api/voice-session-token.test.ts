@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  assertVoiceConversationOwnership,
+  assertVoiceSessionBinding,
   issueVoiceSessionToken,
   signVoiceSessionToken,
   verifyVoiceSessionToken,
@@ -62,6 +64,79 @@ test("sessionId is optional (voice can start before a conversation exists)", () 
   };
   const token = signVoiceSessionToken(claims, SECRET);
   assert.deepEqual(verifyVoiceSessionToken(token, SECRET), claims);
+});
+
+test("accepts only an exact project, visitor, and session binding", () => {
+  const claims = baseClaims();
+
+  assert.doesNotThrow(() =>
+    assertVoiceSessionBinding(claims, {
+      projectId: "project-1",
+      visitorId: "visitor-1",
+      sessionId: "conversation-1",
+    })
+  );
+
+  for (const request of [
+    { projectId: "other-project", visitorId: "visitor-1", sessionId: "conversation-1" },
+    { projectId: "project-1", visitorId: "other-visitor", sessionId: "conversation-1" },
+    { projectId: "project-1", visitorId: "visitor-1", sessionId: "other-conversation" },
+    { projectId: "project-1", visitorId: "visitor-1" },
+  ]) {
+    assert.throws(
+      () => assertVoiceSessionBinding(claims, request),
+      /voice session (project|visitor|conversation) mismatch/
+    );
+  }
+});
+
+test("a token without a conversation is valid only while the request also has none", () => {
+  const claims = {
+    projectId: "project-1",
+    visitorId: "visitor-1",
+    exp: Math.floor(Date.now() / 1000) + 600,
+  };
+
+  assert.doesNotThrow(() =>
+    assertVoiceSessionBinding(claims, {
+      projectId: "project-1",
+      visitorId: "visitor-1",
+    })
+  );
+  assert.throws(
+    () =>
+      assertVoiceSessionBinding(claims, {
+        projectId: "project-1",
+        visitorId: "visitor-1",
+        sessionId: "conversation-1",
+      }),
+    /voice session conversation mismatch/
+  );
+});
+
+test("conversation ownership requires the exact id, project, and visitor", () => {
+  const conversation = {
+    id: "conversation-1",
+    project_id: "project-1",
+    visitor_id: "visitor-1",
+  };
+
+  assert.doesNotThrow(() =>
+    assertVoiceConversationOwnership(conversation, {
+      projectId: "project-1",
+      visitorId: "visitor-1",
+      sessionId: "conversation-1",
+    })
+  );
+  assert.throws(
+    () =>
+      assertVoiceConversationOwnership(conversation, {
+        projectId: "project-1",
+        visitorId: "visitor-2",
+        sessionId: "conversation-1",
+      }),
+    /Conversation does not belong to this voice session/
+  );
 });
 
 test("issueVoiceSessionToken mints a verifiable token and never throws without a secret", () => {

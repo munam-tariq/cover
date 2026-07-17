@@ -133,6 +133,34 @@ export function verifyWidgetSessionToken(
   return claims;
 }
 
+export type WidgetSessionGateDecision =
+  | { allow: true }
+  | { allow: false; denyCode: WidgetSessionDenyReason };
+
+/**
+ * Does this token authorize acting on this conversation? Pure decision, separate from how a route
+ * chooses to respond to it (monitor vs fail-closed) — same split as
+ * evaluatePublicWidgetAccess/requirePublicWidgetAccess.
+ */
+export function evaluateWidgetSessionGate(input: {
+  conversationId: string;
+  token?: string;
+  secret?: string;
+}): WidgetSessionGateDecision {
+  let claims: WidgetSessionClaims;
+  try {
+    claims = verifyWidgetSessionToken(input.token, input.secret);
+  } catch {
+    return { allow: false, denyCode: "SESSION_INVALID" };
+  }
+
+  if (claims.conversationId !== input.conversationId) {
+    return { allow: false, denyCode: "SESSION_CONVERSATION_MISMATCH" };
+  }
+
+  return { allow: true };
+}
+
 export function authorizeWidgetMessageContinuation(input: {
   projectId: string;
   visitorId: string;

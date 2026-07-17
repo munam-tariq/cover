@@ -36,6 +36,7 @@ export interface PublicHandoffState {
   agentTyping: boolean;
   availability: HandoffAvailability | null;
   offlineMessage: string | null;
+  satisfactionRating: number | null;
 }
 
 interface UsePublicHandoffArgs {
@@ -71,6 +72,9 @@ export function usePublicHandoff({
     null
   );
   const [offlineMessage, setOfflineMessage] = useState<string | null>(null);
+  const [satisfactionRating, setSatisfactionRating] = useState<number | null>(
+    null
+  );
   const [requestingHuman, setRequestingHuman] = useState(false);
 
   const isInHandoff = status !== null && IN_HANDOFF.includes(status);
@@ -136,6 +140,7 @@ export function usePublicHandoff({
       setAgentName(null);
       setAgentTyping(false);
       setOfflineMessage(null);
+      setSatisfactionRating(null);
       onStaleSessionRef.current?.(id);
       void refreshAvailability();
     },
@@ -199,6 +204,7 @@ export function usePublicHandoff({
         }
         const s = statusResult.data;
         if (s) {
+          setSatisfactionRating(s.satisfactionRating);
           if (typeof s.queuePosition === "number")
             setQueuePosition(s.queuePosition);
           if (s.assignedAgent?.name) setAgentName(s.assignedAgent.name);
@@ -260,6 +266,7 @@ export function usePublicHandoff({
     let cancelled = false;
 
     (async () => {
+      setSatisfactionRating(null);
       if (sessionId) {
         const sessionToken = getStoredSessionToken(sessionId);
         if (sessionToken) {
@@ -283,7 +290,10 @@ export function usePublicHandoff({
             });
             return;
           }
-          if (s) setStatus(s.status);
+          if (s) {
+            setStatus(s.status);
+            setSatisfactionRating(s.satisfactionRating);
+          }
         }
       }
       void refreshAvailability();
@@ -423,6 +433,7 @@ export function usePublicHandoff({
     setAgentName(null);
     setAgentTyping(false);
     setOfflineMessage(null);
+    setSatisfactionRating(null);
     void refreshAvailability();
   }, [refreshAvailability, stopPolling]);
 
@@ -434,6 +445,7 @@ export function usePublicHandoff({
     agentTyping,
     availability,
     offlineMessage,
+    satisfactionRating,
   };
 
   return {

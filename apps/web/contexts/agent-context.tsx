@@ -102,87 +102,91 @@ export function AgentProvider({ children }: AgentProviderProps) {
   /**
    * Fetch agent info and role
    */
-  const fetchAgentInfo = useCallback(async () => {
-    if (!currentProject) {
-      setAgent(null);
-      setRole(null);
-      setAvailability(null);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Get current user's agent info
-      const response = await apiClient<{
-        agent: AgentInfo;
-        summary: {
-          ownedProjects: number;
-          agentMemberships: number;
-          totalOnline: number;
-          totalActiveChats: number;
-        };
-        projects: Array<{
-          project_id: string;
-          status: AgentStatus;
-          current_chat_count: number;
-          max_concurrent_chats: number;
-          last_seen_at: string | null;
-        }>;
-      }>("/api/agent/me");
-
-      setAgent(response.agent);
-
-      // Find availability for current project
-      const projectAvailability = response.projects.find(
-        (p) => p.project_id === currentProject.id
-      );
-
-      if (projectAvailability) {
-        setAvailability({
-          projectId: currentProject.id,
-          status: projectAvailability.status,
-          maxConcurrentChats: projectAvailability.max_concurrent_chats,
-          currentChatCount: projectAvailability.current_chat_count,
-          lastSeenAt: projectAvailability.last_seen_at,
-        });
-      } else {
-        // No availability record yet - user hasn't set status
-        setAvailability({
-          projectId: currentProject.id,
-          status: "offline",
-          maxConcurrentChats: 5,
-          currentChatCount: 0,
-          lastSeenAt: null,
-        });
+  const fetchAgentInfo = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (!currentProject) {
+        setAgent(null);
+        setRole(null);
+        setAvailability(null);
+        setIsLoading(false);
+        return;
       }
 
-      // Determine role - check if owner or team member
-      // We need to fetch project to check ownership
-      const projectResponse = await apiClient<{
-        project: { user_id: string };
-        role?: "owner" | "admin" | "agent";
-      }>(`/api/projects/${currentProject.id}`);
+      if (!background) setIsLoading(true);
+      setError(null);
 
-      const isOwner = response.agent.id === projectResponse.project.user_id;
-      const projectRole = projectResponse.role || (isOwner ? "owner" : "agent");
+      try {
+        // Get current user's agent info
+        const response = await apiClient<{
+          agent: AgentInfo;
+          summary: {
+            ownedProjects: number;
+            agentMemberships: number;
+            totalOnline: number;
+            totalActiveChats: number;
+          };
+          projects: Array<{
+            project_id: string;
+            status: AgentStatus;
+            current_chat_count: number;
+            max_concurrent_chats: number;
+            last_seen_at: string | null;
+          }>;
+        }>("/api/agent/me");
 
-      setRole({
-        role: projectRole,
-        isOwner,
-        isAgent: projectRole === "agent" || projectRole === "admin" || isOwner,
-      });
-    } catch (err) {
-      console.error("Failed to fetch agent info:", err);
-      setError("Failed to load agent info");
-      // Set defaults
-      setRole({ role: "owner", isOwner: true, isAgent: true });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentProject]);
+        setAgent(response.agent);
+
+        // Find availability for current project
+        const projectAvailability = response.projects.find(
+          (p) => p.project_id === currentProject.id
+        );
+
+        if (projectAvailability) {
+          setAvailability({
+            projectId: currentProject.id,
+            status: projectAvailability.status,
+            maxConcurrentChats: projectAvailability.max_concurrent_chats,
+            currentChatCount: projectAvailability.current_chat_count,
+            lastSeenAt: projectAvailability.last_seen_at,
+          });
+        } else {
+          // No availability record yet - user hasn't set status
+          setAvailability({
+            projectId: currentProject.id,
+            status: "offline",
+            maxConcurrentChats: 5,
+            currentChatCount: 0,
+            lastSeenAt: null,
+          });
+        }
+
+        // Determine role - check if owner or team member
+        // We need to fetch project to check ownership
+        const projectResponse = await apiClient<{
+          project: { user_id: string };
+          role?: "owner" | "admin" | "agent";
+        }>(`/api/projects/${currentProject.id}`);
+
+        const isOwner = response.agent.id === projectResponse.project.user_id;
+        const projectRole = projectResponse.role || (isOwner ? "owner" : "agent");
+
+        setRole({
+          role: projectRole,
+          isOwner,
+          isAgent:
+            projectRole === "agent" || projectRole === "admin" || isOwner,
+        });
+      } catch (err) {
+        console.error("Failed to fetch agent info:", err);
+        setError("Failed to load agent info");
+        // Set defaults
+        setRole({ role: "owner", isOwner: true, isAgent: true });
+      } finally {
+        if (!background) setIsLoading(false);
+      }
+    },
+    [currentProject]
+  );
 
   /**
    * Update agent status
@@ -236,7 +240,7 @@ export function AgentProvider({ children }: AgentProviderProps) {
    * Refresh availability
    */
   const refreshAvailability = useCallback(async () => {
-    await fetchAgentInfo();
+    await fetchAgentInfo({ background: true });
   }, [fetchAgentInfo]);
 
   /**

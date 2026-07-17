@@ -638,13 +638,13 @@ analyticsRouter.get("/leads-summary", async (req: Request, res: Response) => {
     }
 
     const periodDays = period === "24h" ? 1 : period === "7d" ? 7 : 30;
-    const currentPeriodStart = new Date();
+    const currentPeriodEnd = new Date();
+    const currentPeriodStart = new Date(currentPeriodEnd);
     currentPeriodStart.setDate(currentPeriodStart.getDate() - periodDays);
 
-    const previousPeriodStart = new Date();
-    previousPeriodStart.setDate(previousPeriodStart.getDate() - periodDays * 2);
-    const previousPeriodEnd = new Date();
-    previousPeriodEnd.setDate(previousPeriodEnd.getDate() - periodDays);
+    const previousPeriodEnd = new Date(currentPeriodStart);
+    const previousPeriodStart = new Date(previousPeriodEnd);
+    previousPeriodStart.setDate(previousPeriodStart.getDate() - periodDays);
 
     // When a source filter is active, scope leads to that source by inner-joining their
     // conversation and filtering on the conversation's `source` — NOT on the conversation's
@@ -707,15 +707,36 @@ analyticsRouter.get("/leads-summary", async (req: Request, res: Response) => {
     if (source) prevConvQuery = prevConvQuery.eq("source", source);
     const { count: previousConversations } = await prevConvQuery;
 
-    // Voice call count
-    let voiceCallQuery = supabaseAdmin
-      .from("conversations")
-      .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId)
-      .eq("is_voice_call", true)
-      .gte("created_at", currentPeriodStart.toISOString());
-    if (source) voiceCallQuery = voiceCallQuery.eq("source", source);
-    const { count: voiceCallCount } = await voiceCallQuery;
+    // Voice calls, counted from the per-call summary messages session-end writes.
+    //
+    // Not from conversations: a conversation is hybrid text+voice and multi-call is the norm, not an
+    // edge case (staging has single conversations with 27, 19 and 11 calls), so counting
+    // conversations reports 19 where the truth is 79 — a 4x undercount. The retired boolean flag
+    // was never written by the live application, so it could not serve as an analytics source.
+    //
+    // The summary message's created_at is when the call ended, which is also the period the call
+    // belongs to — the conversation's created_at would misattribute today's call to the week the
+    // thread started. Aggregate in Postgres: fetching rows to sum in JS is subject to the Data API
+    // row cap and eventually undercounts successful projects.
+    type VoiceMetricsRow = {
+      voice_call_count: number | string | null;
+      voice_talk_seconds: number | string | null;
+    };
+    const { data: voiceMetricsData, error: voiceError } = await supabaseAdmin
+      .rpc("get_voice_metrics", {
+        p_project_id: projectId,
+        p_start: currentPeriodStart.toISOString(),
+        p_end: currentPeriodEnd.toISOString(),
+        p_source: source,
+        p_conversation_id: null,
+      })
+      .single();
+    // A silent read failure here would show a zero, which is exactly how the old metric hid.
+    if (voiceError) throw voiceError;
+
+    const voiceMetrics = voiceMetricsData as VoiceMetricsRow | null;
+    const voiceCallCount = Number(voiceMetrics?.voice_call_count ?? 0);
+    const voiceTalkSeconds = Number(voiceMetrics?.voice_talk_seconds ?? 0);
 
     // Calculate current metrics
     const totalLeads = currentLeads?.length || 0;
@@ -776,10 +797,11 @@ analyticsRouter.get("/leads-summary", async (req: Request, res: Response) => {
       completionRate,
       qualificationRate,
       disqualificationRate,
-      voiceCallCount: voiceCallCount || 0,
+      voiceCallCount,
+      voiceTalkSeconds,
       period,
       periodStart: currentPeriodStart.toISOString(),
-      periodEnd: new Date().toISOString(),
+      periodEnd: currentPeriodEnd.toISOString(),
       trends: {
         conversationsChange,
         leadsChange,

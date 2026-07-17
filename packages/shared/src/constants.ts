@@ -38,6 +38,43 @@ export const CHAT_CONFIG = {
   CHUNK_OVERLAP_TOKENS: 50,
 } as const;
 
+// Inbox pagination must remain inside PostgreSQL's `integer` argument range. Shared by the URL
+// parser and API schema so an invalid bookmark is normalized before it reaches the database.
+export const INBOX_CONFIG = {
+  DEFAULT_PAGE_SIZE: 25,
+  MAX_PAGE_SIZE: 100,
+  MAX_PAGE: 2_147_483_647,
+  STATUS_VALUES: [
+    "active",
+    "ai_active",
+    "agent_active",
+    "waiting",
+    "resolved",
+    "closed",
+    "auto_closed",
+  ],
+  SORT_VALUES: ["attention", "recent"],
+  ACTIVITY_PERIOD_VALUES: ["24h", "7d", "30d"],
+  // customer_request deliberately excluded: no client has ever sent it as a trigger reason (the
+  // "talk to a human" button hardcodes button_click), so it could never be written and the filter
+  // option was always empty.
+  HANDOFF_REASON_VALUES: [
+    "low_confidence",
+    "keyword",
+    "button_click",
+    "offline_form",
+  ],
+  SOURCE_VALUES: [
+    "widget",
+    "playground",
+    "mcp",
+    "api",
+    "public",
+    "mobile",
+    "whatsapp",
+  ],
+} as const;
+
 // LLM Configuration
 export const LLM_CONFIG = {
   MODEL: "gpt-4o-mini",

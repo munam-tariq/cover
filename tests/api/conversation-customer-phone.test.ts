@@ -15,10 +15,13 @@ describe("conversation customer phone API", () => {
   it("includes customers.phone in conversation list responses", async () => {
     const src = await readFile(conversationsPath, "utf-8");
     const listSection = src.slice(
-      src.indexOf(".select(\"*, customers"),
-      src.indexOf("// Get assigned agent names")
+      src.indexOf('router.get("/"'),
+      src.indexOf('router.get("/:id"')
     );
-    const responseSection = src.slice(src.indexOf("const conversationsResponse"));
+    const responseSection = src.slice(
+      src.indexOf("function formatInboxConversation"),
+      src.indexOf("async function getMessageCursor")
+    );
 
     assert.match(
       listSection,
@@ -27,17 +30,17 @@ describe("conversation customer phone API", () => {
     );
     assert.match(
       responseSection,
-      /customerEmail:\s*conv\.customers\??\.email\s*\?\?\s*conv\.customer_email/,
+      /customerEmail:\s*customer\??\.email\s*\?\?\s*conv\.customer_email/,
       "Conversation list response should expose customer email at the top level"
     );
     assert.match(
       responseSection,
-      /customerName:\s*conv\.customers\??\.name\s*\?\?\s*conv\.customer_name/,
+      /customerName:\s*customer\??\.name\s*\?\?\s*conv\.customer_name/,
       "Conversation list response should expose customer name at the top level"
     );
     assert.match(
       responseSection,
-      /customerPhone:\s*conv\.customers\??\.phone/,
+      /customerPhone:\s*customer\??\.phone/,
       "Conversation list response should expose customers.phone as customerPhone"
     );
   });

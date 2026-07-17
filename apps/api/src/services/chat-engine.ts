@@ -22,6 +22,7 @@ import { supabaseAdmin } from "../lib/supabase";
 
 // RAG v2 - Hybrid Search with Contextual Embeddings
 import {
+  appendCustomerMessage,
   getOrCreateConversation,
   getConversationHistory,
   logConversationMessages,
@@ -29,26 +30,20 @@ import {
   setConversationLanguage,
 } from "./conversation";
 import {
+  checkHandoffTrigger,
+  checkLowConfidenceHandoff,
+} from "./handoff-trigger";
+import {
   resolveConversationLanguage,
   buildLanguageDirective,
   projectLanguageDefault,
   detectBaseLanguage,
   detectDominantLanguage,
 } from "./language";
-import { translateQueryForKb } from "./rag/query-preprocess";
-import {
-  checkHandoffTrigger,
-  checkLowConfidenceHandoff,
-} from "./handoff-trigger";
-import {
-  handleLeadCaptureFlow,
-  detectNoAnswer,
-  getLeadCaptureSettings,
-  type LeadCaptureResult,
-} from "./lead-capture";
 import {
   leadCaptureV2Interceptor,
   getLeadCaptureV2Settings,
+  detectNoAnswer,
   maskEmail,
   type LeadCaptureState,
 } from "./lead-capture-v2";
@@ -67,6 +62,7 @@ import {
   extractSources,
   type RetrievedChunk,
 } from "./rag";
+import { translateQueryForKb } from "./rag/query-preprocess";
 import { broadcastNewMessage } from "./realtime";
 import {
   getProjectTools,
@@ -161,10 +157,6 @@ export interface ChatOutput {
     completion: number;
     total: number;
   };
-  leadCapture?: {
-    type: LeadCaptureResult["type"];
-    emailCaptured?: string;
-  };
   handoff?: {
     triggered: boolean;
     reason?: string;
@@ -232,7 +224,11 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     // even if the customer is mid-qualifying-questions flow
     // Skipped for voice calls — handoff is not supported in voice mode
     if (input.sessionId && input.source !== "voice") {
-      const handoffState = await checkConversationHandoffState(input.sessionId, input.projectId, input.visitorId);
+      const handoffState = await checkConversationHandoffState(
+        input.sessionId,
+        input.projectId,
+        input.visitorId
+      );
       if (handoffState.isInHandoff) {
         if (!input.skipMessageWrites) {
           await storeCustomerMessageOnly(input.sessionId, sanitizedMessage);
@@ -294,7 +290,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       );
 
       if (!input.skipMessageWrites && input.source !== "voice") {
-        logConversation(
+        await logConversation(
           input.projectId,
           sessionId,
           sanitizedMessage,
@@ -363,7 +359,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       }
 
       if (!input.skipMessageWrites) {
-        logConversation(
+        await logConversation(
           input.projectId,
           sessionId,
           sanitizedMessage,
@@ -465,7 +461,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       }
 
       if (!input.skipMessageWrites) {
-        logConversation(
+        await logConversation(
           input.projectId,
           sessionId,
           sanitizedMessage,
@@ -559,14 +555,9 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
     // Email appending is skipped for voice calls — no forms or email prompts in voice
     // (Qualifying questions V2 still run via the interceptor above)
     let finalResponse = response;
-    let leadCaptureResult: LeadCaptureResult | undefined;
 
     if (input.source !== "voice")
       try {
-        // Get lead capture settings
-        const leadSettings = await getLeadCaptureSettings(input.projectId);
-
-        // Check if V2 is enabled (takes precedence over V1)
         const v2Settings = await getLeadCaptureV2Settings(input.projectId);
 
         if (v2Settings) {
@@ -713,33 +704,8 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
               }
             }
           }
-        } else if (leadSettings.lead_capture_enabled) {
-          // V1 flow (unchanged)
-          const hasRelevantContext =
-            retrievedChunks.length > 0 &&
-            retrievedChunks.some((c) => c.combinedScore > 0.3);
-          const responseIndicatesNoAnswer = detectNoAnswer(response);
-          const foundAnswer = hasRelevantContext && !responseIndicatesNoAnswer;
-
-          leadCaptureResult = await handleLeadCaptureFlow(
-            sessionId,
-            input.projectId,
-            sanitizedMessage,
-            foundAnswer,
-            leadSettings
-          );
-
-          if (
-            leadCaptureResult.shouldAppendToResponse &&
-            leadCaptureResult.responseAppendix
-          ) {
-            if (leadCaptureResult.type === "email_captured") {
-              finalResponse = leadCaptureResult.responseAppendix;
-            } else {
-              finalResponse = response + leadCaptureResult.responseAppendix;
-            }
-          }
         }
+        // The unused v1 lead-capture branch was removed; the active v2 flow owns capture state.
       } catch (leadError) {
         // Log but don't fail the chat if lead capture has issues
         logger.error("Lead capture error", leadError, {
@@ -750,7 +716,7 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
 
     // 12. Log conversation asynchronously (skip for voice — transcripts are batch-saved at session end)
     if (!input.skipMessageWrites && input.source !== "voice") {
-      logConversation(
+      await logConversation(
         input.projectId,
         sessionId,
         sanitizedMessage,
@@ -780,12 +746,6 @@ export async function processChat(input: ChatInput): Promise<ChatOutput> {
       processingTime: Date.now() - metrics.startTime,
       requestId,
       tokensUsed,
-      leadCapture: leadCaptureResult
-        ? {
-            type: leadCaptureResult.type,
-            emailCaptured: leadCaptureResult.email,
-          }
-        : undefined,
     };
   } catch (error) {
     logger.error("Chat processing error", error, {
@@ -1163,50 +1123,23 @@ async function storeCustomerMessageOnly(
   message: string
 ): Promise<void> {
   try {
-    // Insert customer message into messages table and get the inserted record
-    const { data: insertedMessage, error: insertError } = await supabaseAdmin
-      .from("messages")
-      .insert({
-        conversation_id: conversationId,
-        sender_type: "customer",
-        content: message,
-      })
-      .select("id, created_at")
-      .single();
-
-    if (insertError) {
-      logger.error("Error inserting message", insertError, {
-        conversationId,
-        step: "store_customer_message",
-      });
-      throw insertError;
-    }
+    const insertedMessage = await appendCustomerMessage(
+      conversationId,
+      message
+    );
 
     // Broadcast message to real-time channel so agent sees it instantly (fire-and-forget)
-    if (insertedMessage) {
-      broadcastNewMessage(conversationId, {
-        id: insertedMessage.id,
-        senderType: "customer",
-        content: message,
-        createdAt: insertedMessage.created_at,
-      }).catch((err) =>
-        logger.error("Realtime broadcast error", err, {
-          conversationId,
-          step: "realtime_broadcast",
-        })
-      );
-    }
-
-    // Touch customer presence only. message_count and last_message_at are maintained by the
-    // `update_message_count_on_insert` DB trigger on the messages insert above — incrementing
-    // them here too would double-count (e.g. message_count=8 for 7 messages).
-    await supabaseAdmin
-      .from("conversations")
-      .update({
-        customer_last_seen_at: new Date().toISOString(),
-        customer_presence: "online",
+    broadcastNewMessage(conversationId, {
+      id: insertedMessage.id,
+      senderType: "customer",
+      content: message,
+      createdAt: insertedMessage.createdAt,
+    }).catch((err) =>
+      logger.error("Realtime broadcast error", err, {
+        conversationId,
+        step: "realtime_broadcast",
       })
-      .eq("id", conversationId);
+    );
   } catch (error) {
     logger.error("Error storing customer message", error, {
       conversationId,

@@ -1,7 +1,7 @@
-
+import { logger, type LogContext } from "../lib/logger";
 import { openai } from "../lib/openai";
 import { supabaseAdmin } from "../lib/supabase";
-import { logger, type LogContext } from "../lib/logger";
+
 import {
   getProcessQualifyingMessagePrompt,
   type ProcessQualifyingMessageResult,
@@ -19,10 +19,10 @@ export interface LeadCaptureV2Settings {
   qualifying_questions: Array<{
     question: string;
     enabled: boolean;
-    mandatory?: boolean;           // required for lead to be "qualified"
-    qualified_response?: string;   // what counts as a passing answer
-    followup_questions?: string;   // prompts when answer is unclear
-    probe_question?: string;       // alternative question if user truly can't answer
+    mandatory?: boolean; // required for lead to be "qualified"
+    qualified_response?: string; // what counts as a passing answer
+    followup_questions?: string; // prompts when answer is unclear
+    probe_question?: string; // alternative question if user truly can't answer
   }>;
   notification_email?: string;
   notifications_enabled?: boolean;
@@ -43,21 +43,34 @@ export interface QualifyingAnswer {
   question: string;
   answer: string;
   raw_response: string;
-  qualified?: boolean;   // did answer meet qualified_response criteria?
-  mandatory?: boolean;   // was this question mandatory?
-  actual_question?: string;  // set when an alternate question was used to elicit the answer
-  answer_reasoning?: string;  // LLM reasoning for this answer
+  qualified?: boolean; // did answer meet qualified_response criteria?
+  mandatory?: boolean; // was this question mandatory?
+  actual_question?: string; // set when an alternate question was used to elicit the answer
+  answer_reasoning?: string; // LLM reasoning for this answer
 }
 
 export interface LeadCaptureState {
-  lead_capture_status: "pending" | "form_shown" | "form_completed" | "qualifying" | "qualified" | "not_qualified" | "skipped" | "deferred";
+  lead_capture_status:
+    | "pending"
+    | "form_shown"
+    | "form_completed"
+    | "qualifying"
+    | "qualified"
+    | "not_qualified"
+    | "skipped"
+    | "deferred";
   form_data: FormData;
   qualifying_status: "pending" | "in_progress" | "completed" | "skipped";
   qualifying_answers: QualifyingAnswer[];
   current_qualifying_index: number;
   first_message: string;
   // V3 cascade tracking fields
-  capture_source?: "inline_email" | "form" | "conversational" | "exit_overlay" | "summary_hook";
+  capture_source?:
+    | "inline_email"
+    | "form"
+    | "conversational"
+    | "exit_overlay"
+    | "summary_hook";
   ask_count?: number;
   messages_since_last_ask?: number;
   visit_count?: number;
@@ -65,8 +78,8 @@ export interface LeadCaptureState {
   deferred_at?: string;
   inline_email_shown?: boolean;
   inline_email_skipped?: boolean;
-  question_retry_count?: number;    // Track re-asks on current question (off-topic or non-qualifying answer)
-  qualification_reasoning?: string;  // Why the lead was marked qualified/not_qualified
+  question_retry_count?: number; // Track re-asks on current question (off-topic or non-qualifying answer)
+  qualification_reasoning?: string; // Why the lead was marked qualified/not_qualified
 }
 
 export interface LeadFormSubmitResult {
@@ -97,7 +110,10 @@ interface InterceptorResult {
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
-const v2SettingsCache = new Map<string, { data: LeadCaptureV2Settings | null; timestamp: number }>();
+const v2SettingsCache = new Map<
+  string,
+  { data: LeadCaptureV2Settings | null; timestamp: number }
+>();
 const V2_CACHE_TTL = 60000; // 1 minute
 
 /**
@@ -204,7 +220,11 @@ export async function leadCaptureV2Interceptor(
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   languageDirective?: string
 ): Promise<InterceptorResult | null> {
-  const logCtx: LogContext = { projectId, visitorId, step: "lc_v2_interceptor" };
+  const logCtx: LogContext = {
+    projectId,
+    visitorId,
+    step: "lc_v2_interceptor",
+  };
 
   try {
     // 1. Check if V2 is enabled
@@ -247,23 +267,34 @@ export async function leadCaptureV2Interceptor(
     ];
 
     const lowerMessage = message.toLowerCase();
-    const hasHumanIntent = humanIntentKeywords.some(keyword => lowerMessage.includes(keyword));
+    const hasHumanIntent = humanIntentKeywords.some((keyword) =>
+      lowerMessage.includes(keyword)
+    );
 
     if (hasHumanIntent) {
-      logger.info("Human intent detected during qualifying, passing to handoff trigger", {
-        ...logCtx,
-        message: message.substring(0, 50),
-      });
+      logger.info(
+        "Human intent detected during qualifying, passing to handoff trigger",
+        {
+          ...logCtx,
+          message: message.substring(0, 50),
+        }
+      );
       return null; // Let handoff trigger handle this
     }
 
     // 5. We're in qualifying flow - process the answer
-    const enabledQuestions = v2Settings.qualifying_questions.filter(q => q.enabled && q.question.trim());
+    const enabledQuestions = v2Settings.qualifying_questions.filter(
+      (q) => q.enabled && q.question.trim()
+    );
     const currentIndex = state.current_qualifying_index;
 
     if (currentIndex >= enabledQuestions.length) {
       // All questions answered - shouldn't happen, but handle gracefully
-      await finalizeQualification(customer.id, projectId, state.qualifying_answers);
+      await finalizeQualification(
+        customer.id,
+        projectId,
+        state.qualifying_answers
+      );
       return null;
     }
 
@@ -277,23 +308,26 @@ export async function leadCaptureV2Interceptor(
     const result = await processQualifyingMessage({
       question: currentQuestion.question,
       criteria: currentQuestion.qualified_response,
-      alternateQuestion1: currentQuestion.followup_questions,  // DB key stays as followup_questions
-      alternateQuestion2: currentQuestion.probe_question,      // DB key stays as probe_question
+      alternateQuestion1: currentQuestion.followup_questions, // DB key stays as followup_questions
+      alternateQuestion2: currentQuestion.probe_question, // DB key stays as probe_question
       nextQuestion: nextQuestion?.question ?? null,
       isLastQuestion,
       retryCount,
       userMessage: message,
-      recentMessages: (conversationHistory || []).slice(-6),  // last 3 exchanges for context
+      recentMessages: (conversationHistory || []).slice(-6), // last 3 exchanges for context
       languageDirective,
     });
 
     // Safety override: if LLM extracted an answer but chose redirect, it contradicted itself —
     // the user clearly answered something, so force accept and fix the response.
     if (result.action === "redirect" && result.extracted_answer) {
-      logger.info("Overriding redirect→accept: LLM extracted answer but chose redirect", {
-        ...logCtx,
-        extracted_answer: result.extracted_answer,
-      });
+      logger.info(
+        "Overriding redirect→accept: LLM extracted answer but chose redirect",
+        {
+          ...logCtx,
+          extracted_answer: result.extracted_answer,
+        }
+      );
       result.action = "accept";
       result.intent = "answer";
       // Replace the redirect response with a proper accept/transition response
@@ -343,12 +377,19 @@ export async function leadCaptureV2Interceptor(
 
     const thisAnswer: QualifyingAnswer = {
       question: currentQuestion.question,
-      answer: result.action === "skip" ? "[skipped]" : (result.extracted_answer || "N/A"),
+      answer:
+        result.action === "skip"
+          ? "[skipped]"
+          : result.extracted_answer || "N/A",
       raw_response: message,
       qualified: result.qualified ?? undefined,
       mandatory: currentQuestion.mandatory,
-      ...(lastAskedQuestion !== currentQuestion.question ? { actual_question: lastAskedQuestion } : {}),
-      ...(result.answer_reasoning ? { answer_reasoning: result.answer_reasoning } : {}),
+      ...(lastAskedQuestion !== currentQuestion.question
+        ? { actual_question: lastAskedQuestion }
+        : {}),
+      ...(result.answer_reasoning
+        ? { answer_reasoning: result.answer_reasoning }
+        : {}),
     };
 
     await saveQualifyingAnswer(customer.id, projectId, state, thisAnswer);
@@ -401,7 +442,11 @@ export async function submitLeadForm(
   formData: FormData,
   firstMessage: string
 ): Promise<LeadFormSubmitResult> {
-  const logCtx: LogContext = { projectId, visitorId, step: "lc_v2_submit_form" };
+  const logCtx: LogContext = {
+    projectId,
+    visitorId,
+    step: "lc_v2_submit_form",
+  };
 
   try {
     const v2Settings = await getLeadCaptureV2Settings(projectId);
@@ -428,11 +473,15 @@ export async function submitLeadForm(
     }
 
     // Determine if qualifying questions are configured
-    const enabledQuestions = v2Settings.qualifying_questions.filter(q => q.enabled && q.question.trim());
+    const enabledQuestions = v2Settings.qualifying_questions.filter(
+      (q) => q.enabled && q.question.trim()
+    );
     const hasQualifyingQuestions = enabledQuestions.length > 0;
 
     // Determine initial status
-    const qualificationStatus = hasQualifyingQuestions ? "form_completed" : "qualified";
+    const qualificationStatus = hasQualifyingQuestions
+      ? "form_completed"
+      : "qualified";
 
     // Preserve capture source from existing state (e.g. inline_email)
     const existingState = customer.lead_capture_state;
@@ -446,7 +495,9 @@ export async function submitLeadForm(
       current_qualifying_index: 0,
       first_message: firstMessage,
       // Preserve capture source from inline email if it was set
-      ...(existingState?.capture_source ? { capture_source: existingState.capture_source } : {}),
+      ...(existingState?.capture_source
+        ? { capture_source: existingState.capture_source }
+        : {}),
     };
 
     // Save state to customer
@@ -477,7 +528,9 @@ export async function submitLeadForm(
           qualification_status: qualificationStatus,
           first_message: firstMessage || undefined,
           form_submitted_at: new Date().toISOString(),
-          qualification_completed_at: hasQualifyingQuestions ? null : new Date().toISOString(),
+          qualification_completed_at: hasQualifyingQuestions
+            ? null
+            : new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq("id", existingLead.id);
@@ -495,7 +548,9 @@ export async function submitLeadForm(
           form_data: formData,
           qualification_status: qualificationStatus,
           first_message: firstMessage,
-          qualification_completed_at: hasQualifyingQuestions ? null : new Date().toISOString(),
+          qualification_completed_at: hasQualifyingQuestions
+            ? null
+            : new Date().toISOString(),
         })
         .select("id")
         .single();
@@ -553,7 +608,9 @@ export async function getLeadCaptureStatus(
   const state = customer.lead_capture_state;
 
   return {
-    hasCompletedForm: ["form_completed", "qualifying", "qualified"].includes(state.lead_capture_status),
+    hasCompletedForm: ["form_completed", "qualifying", "qualified"].includes(
+      state.lead_capture_status
+    ),
     hasCompletedQualifying: state.qualifying_status === "completed",
     leadCaptureState: state,
     // V3 recovery fields
@@ -633,7 +690,11 @@ export async function submitInlineEmail(
   email: string,
   captureSource: string = "inline_email"
 ): Promise<LeadFormSubmitResult> {
-  const logCtx: LogContext = { projectId, visitorId, step: "lc_v3_inline_email" };
+  const logCtx: LogContext = {
+    projectId,
+    visitorId,
+    step: "lc_v3_inline_email",
+  };
 
   try {
     const v2Settings = await getLeadCaptureV2Settings(projectId);
@@ -651,11 +712,15 @@ export async function submitInlineEmail(
       .eq("id", customer.id);
 
     // Determine if qualifying questions are configured
-    const enabledQuestions = v2Settings.qualifying_questions.filter(q => q.enabled && q.question.trim());
+    const enabledQuestions = v2Settings.qualifying_questions.filter(
+      (q) => q.enabled && q.question.trim()
+    );
     const hasQualifyingQuestions = enabledQuestions.length > 0;
 
     // Check if custom form fields exist (for progressive profiling)
-    const hasCustomFields = (v2Settings.form_fields.field_2?.enabled) || (v2Settings.form_fields.field_3?.enabled);
+    const hasCustomFields =
+      v2Settings.form_fields.field_2?.enabled ||
+      v2Settings.form_fields.field_3?.enabled;
 
     // Determine the correct state based on what's left to collect.
     // If custom fields exist, the progressive profiling form must show first
@@ -663,19 +728,24 @@ export async function submitInlineEmail(
     // Only start qualifying immediately when there are NO custom fields.
     const startQualifyingNow = hasQualifyingQuestions && !hasCustomFields;
 
-    const qualificationStatus = (!hasCustomFields && !hasQualifyingQuestions)
-      ? "qualified"
-      : "form_completed";
+    const qualificationStatus =
+      !hasCustomFields && !hasQualifyingQuestions
+        ? "qualified"
+        : "form_completed";
 
     // Build lead capture state
     const lcState: LeadCaptureState = {
       lead_capture_status: hasCustomFields
-        ? "form_shown"                             // progressive profiling form pending
-        : (hasQualifyingQuestions ? "qualifying" : "qualified"),
+        ? "form_shown" // progressive profiling form pending
+        : hasQualifyingQuestions
+          ? "qualifying"
+          : "qualified",
       form_data: { email },
       qualifying_status: startQualifyingNow
-        ? "in_progress"   // no form needed → qualifying starts now
-        : (hasQualifyingQuestions ? "pending" : "completed"),
+        ? "in_progress" // no form needed → qualifying starts now
+        : hasQualifyingQuestions
+          ? "pending"
+          : "completed",
       qualifying_answers: [],
       current_qualifying_index: 0,
       first_message: "",
@@ -699,7 +769,8 @@ export async function submitInlineEmail(
         form_data: { email },
         qualification_status: qualificationStatus,
         first_message: "",
-        qualification_completed_at: qualificationStatus === "qualified" ? new Date().toISOString() : null,
+        qualification_completed_at:
+          qualificationStatus === "qualified" ? new Date().toISOString() : null,
       })
       .select("id")
       .single();
@@ -839,7 +910,9 @@ async function processQualifyingMessage(
     if (!result.action || !result.response) return fallback;
     return result;
   } catch (err) {
-    logger.error("Failed to process qualifying message", err, { step: "process_qualifying" });
+    logger.error("Failed to process qualifying message", err, {
+      step: "process_qualifying",
+    });
     return fallback;
   }
 }
@@ -864,14 +937,18 @@ export async function saveQualifyingAnswer(
     .single();
 
   if (lead) {
-    const currentAnswers = (lead.qualifying_answers as QualifyingAnswer[]) || [];
+    const currentAnswers =
+      (lead.qualifying_answers as QualifyingAnswer[]) || [];
     // Upsert by question: replace an existing answer for the same question rather than
     // appending. This prevents duplicate entries when Deepgram sends rapid successive
     // LLM calls for partial ASR transcripts of the same user utterance.
-    const existingIndex = currentAnswers.findIndex(a => a.question === answer.question);
-    const updatedAnswers = existingIndex !== -1
-      ? currentAnswers.map((a, i) => i === existingIndex ? answer : a)
-      : [...currentAnswers, answer];
+    const existingIndex = currentAnswers.findIndex(
+      (a) => a.question === answer.question
+    );
+    const updatedAnswers =
+      existingIndex !== -1
+        ? currentAnswers.map((a, i) => (i === existingIndex ? answer : a))
+        : [...currentAnswers, answer];
     await supabaseAdmin
       .from("qualified_leads")
       .update({
@@ -893,21 +970,27 @@ export async function finalizeQualification(
   allAnswers: QualifyingAnswer[]
 ): Promise<void> {
   const mandatoryFailures = allAnswers.filter(
-    a => a.mandatory === true && (a.qualified === false || a.answer === "[skipped]")
+    (a) =>
+      a.mandatory === true &&
+      (a.qualified === false || a.answer === "[skipped]")
   );
   const mandatoryPassed = allAnswers.filter(
-    a => a.mandatory === true && a.qualified !== false && a.answer !== "[skipped]"
+    (a) =>
+      a.mandatory === true && a.qualified !== false && a.answer !== "[skipped]"
   );
 
   const finalStatus: LeadCaptureState["lead_capture_status"] =
     mandatoryFailures.length > 0 ? "not_qualified" : "qualified";
 
-  const questionSummaries = allAnswers.map((a, i) => {
-    const status = a.qualified === true ? "✓" : a.qualified === false ? "✗" : "–";
-    const mandatoryNote = a.mandatory ? " [mandatory]" : "";
-    const reasoning = a.answer_reasoning ? ` — ${a.answer_reasoning}` : "";
-    return `${i + 1}. ${a.question.substring(0, 60)}${mandatoryNote}: "${a.answer}"${reasoning} ${status}`;
-  }).join("\n");
+  const questionSummaries = allAnswers
+    .map((a, i) => {
+      const status =
+        a.qualified === true ? "✓" : a.qualified === false ? "✗" : "–";
+      const mandatoryNote = a.mandatory ? " [mandatory]" : "";
+      const reasoning = a.answer_reasoning ? ` — ${a.answer_reasoning}` : "";
+      return `${i + 1}. ${a.question.substring(0, 60)}${mandatoryNote}: "${a.answer}"${reasoning} ${status}`;
+    })
+    .join("\n");
 
   const reasoning =
     mandatoryFailures.length > 0
@@ -963,4 +1046,34 @@ export function maskEmail(email: string): string {
   return `${local[0]}***@${domain}`;
 }
 
+// ─── Shared helpers (moved from the retired v1 lead-capture service) ──────────
 
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email);
+}
+
+/**
+ * Did the AI fail to answer? Drives the "offer to take their details instead" branch.
+ *
+ * Lives here rather than in the v1 service because the v2 flow calls it too — the v1 module is
+ * being removed and this would have gone with it.
+ */
+export function detectNoAnswer(response: string): boolean {
+  const noAnswerPatterns = [
+    /i don'?t have (specific |that )?information/i,
+    /i'?m not sure/i,
+    /i couldn'?t find/i,
+    /i don'?t know/i,
+    /i'?m unable to (help|answer|find)/i,
+    /not in my knowledge base/i,
+    /no relevant information/i,
+    /i'?m sorry,? (but )?i (can'?t|don'?t)/i,
+    /please contact (our |the )?support/i,
+    /please reach out to/i,
+    /i apologize,? (but )?i (can'?t|don'?t)/i,
+    /unfortunately,? i (can'?t|don'?t)/i,
+  ];
+
+  return noAnswerPatterns.some((pattern) => pattern.test(response));
+}

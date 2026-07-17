@@ -10,6 +10,7 @@
 
 import { Router, Request, Response } from "express";
 import { z } from "zod";
+
 import { supabaseAdmin } from "../lib/supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 
@@ -34,7 +35,8 @@ const IdentifyCustomerSchema = z.object({
 // Helpers
 // ============================================================================
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isValidUUID(id: string): boolean {
   return UUID_REGEX.test(id);
@@ -54,6 +56,7 @@ function serializeCustomer(c: {
   first_seen_at: string;
   last_seen_at: string;
   total_conversations?: number | null;
+  is_flagged?: boolean | null;
 }) {
   return {
     id: c.id,
@@ -64,6 +67,7 @@ function serializeCustomer(c: {
     firstSeenAt: c.first_seen_at,
     lastSeenAt: c.last_seen_at,
     conversationCount: c.total_conversations ?? 0,
+    isFlagged: c.is_flagged ?? false,
   };
 }
 
@@ -305,14 +309,19 @@ router.get(
 
       if (!isValidUUID(id)) {
         return res.status(400).json({
-          error: { code: "INVALID_ID", message: "Invalid conversation ID format" },
+          error: {
+            code: "INVALID_ID",
+            message: "Invalid conversation ID format",
+          },
         });
       }
 
       // Get conversation
       const { data: conversation, error: convError } = await supabaseAdmin
         .from("conversations")
-        .select("*")
+        .select(
+          "id, project_id, customer_id, visitor_id, customer_email, customer_name"
+        )
         .eq("id", id)
         .single();
 
@@ -353,7 +362,9 @@ router.get(
       if (conversation.customer_id) {
         const { data: customerData } = await supabaseAdmin
           .from("customers")
-          .select("*")
+          .select(
+            "id, visitor_id, email, name, phone, first_seen_at, last_seen_at, total_conversations, is_flagged"
+          )
           .eq("id", conversation.customer_id)
           .single();
 
@@ -362,7 +373,9 @@ router.get(
         // Try to find by visitor ID
         const { data: customerData } = await supabaseAdmin
           .from("customers")
-          .select("*")
+          .select(
+            "id, visitor_id, email, name, phone, first_seen_at, last_seen_at, total_conversations, is_flagged"
+          )
           .eq("project_id", conversation.project_id)
           .eq("visitor_id", conversation.visitor_id)
           .single();
@@ -389,7 +402,9 @@ router.get(
       // Get previous conversations for this customer/visitor
       const prevConversationsQuery = supabaseAdmin
         .from("conversations")
-        .select("id, status, created_at, resolved_at, message_count")
+        .select(
+          "id, status, created_at, resolved_at, message_count, metadata, assigned_agent_id"
+        )
         .eq("project_id", conversation.project_id)
         .neq("id", id)
         .order("created_at", { ascending: false })
@@ -402,6 +417,25 @@ router.get(
       }
 
       const { data: previousConversations } = await prevConversationsQuery;
+      const previousAgentIds = [
+        ...new Set(
+          (previousConversations ?? [])
+            .map((previous) => previous.assigned_agent_id)
+            .filter((agentId): agentId is string => Boolean(agentId))
+        ),
+      ];
+      const previousAgentNames = new Map<string, string>();
+      if (previousAgentIds.length > 0) {
+        const { data: members, error: memberError } = await supabaseAdmin
+          .from("project_members")
+          .select("user_id, name")
+          .eq("project_id", conversation.project_id)
+          .in("user_id", previousAgentIds);
+        if (memberError) throw memberError;
+        for (const member of members ?? []) {
+          previousAgentNames.set(member.user_id, member.name || "Agent");
+        }
+      }
 
       // Fetch project settings to get configured qualifying questions
       const { data: projectData } = await supabaseAdmin
@@ -411,15 +445,23 @@ router.get(
         .single();
 
       const leadCaptureSettings = projectData?.settings?.lead_capture_v2;
-      const configuredQuestions = leadCaptureSettings?.qualifying_questions?.filter(
-        (q: { enabled: boolean; question: string }) => q.enabled && q.question?.trim()
-      ) || [];
+      // Only surface the "here's what to ask" prompt while lead capture is actually enabled. The
+      // historical leadData below is returned regardless, so a project that has since turned lead
+      // capture off still shows what earlier conversations captured — it just stops prompting.
+      const configuredQuestions = leadCaptureSettings?.enabled
+        ? leadCaptureSettings.qualifying_questions?.filter(
+            (q: { enabled: boolean; question: string }) =>
+              q.enabled && q.question?.trim()
+          ) || []
+        : [];
 
       // Fetch lead capture data for this conversation/customer
       let leadData = null;
       const leadQuery = supabaseAdmin
         .from("qualified_leads")
-        .select("id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, qualification_reasoning, first_message, form_submitted_at")
+        .select(
+          "id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, qualification_reasoning, first_message, form_submitted_at"
+        )
         .eq("project_id", conversation.project_id);
 
       // Try to find by conversation_id first, then by customer_id, then by visitor_id
@@ -438,7 +480,9 @@ router.get(
       if (!leadData && customer?.id) {
         const { data: leadByCustomer } = await supabaseAdmin
           .from("qualified_leads")
-          .select("id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, qualification_reasoning, first_message, form_submitted_at")
+          .select(
+            "id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, qualification_reasoning, first_message, form_submitted_at"
+          )
           .eq("project_id", conversation.project_id)
           .eq("customer_id", customer.id)
           .order("created_at", { ascending: false })
@@ -453,7 +497,9 @@ router.get(
       if (!leadData && conversation.visitor_id) {
         const { data: leadByVisitor } = await supabaseAdmin
           .from("qualified_leads")
-          .select("id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, qualification_reasoning, first_message, form_submitted_at")
+          .select(
+            "id, email, form_data, qualifying_answers, late_qualifying_answers, qualification_status, qualification_reasoning, first_message, form_submitted_at"
+          )
           .eq("project_id", conversation.project_id)
           .eq("visitor_id", conversation.visitor_id)
           .order("created_at", { ascending: false })
@@ -480,6 +526,15 @@ router.get(
           createdAt: c.created_at,
           resolvedAt: c.resolved_at,
           messageCount: c.message_count,
+          closeReason:
+            (c.metadata as Record<string, unknown> | null)?.close_reason ??
+            null,
+          assignedAgent: c.assigned_agent_id
+            ? {
+                id: c.assigned_agent_id,
+                name: previousAgentNames.get(c.assigned_agent_id) ?? "Agent",
+              }
+            : null,
         })),
         leadData: leadData
           ? {
@@ -490,13 +545,14 @@ router.get(
               lateQualifyingAnswers: leadData.late_qualifying_answers || [],
               qualificationStatus: leadData.qualification_status,
               qualificationReasoning: leadData.qualification_reasoning || null,
-              captureSource: null,
               firstMessage: leadData.first_message,
               formSubmittedAt: leadData.form_submitted_at,
             }
           : null,
         // Include configured qualifying questions so agents can see what to ask
-        configuredQuestions: configuredQuestions.map((q: { question: string }) => q.question),
+        configuredQuestions: configuredQuestions.map(
+          (q: { question: string }) => q.question
+        ),
       });
     } catch (error) {
       console.error("Error in GET /conversations/:id/customer:", error);
@@ -591,7 +647,7 @@ router.get(
           total: count || 0,
           limit,
           offset,
-          hasMore: (offset + limit) < (count || 0),
+          hasMore: offset + limit < (count || 0),
         },
       });
     } catch (error) {
@@ -660,7 +716,9 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
     // Get recent conversations
     const { data: conversations } = await supabaseAdmin
       .from("conversations")
-      .select("id, status, created_at, resolved_at, message_count, assigned_agent_id")
+      .select(
+        "id, status, created_at, resolved_at, message_count, assigned_agent_id"
+      )
       .eq("customer_id", id)
       .order("created_at", { ascending: false })
       .limit(20);
@@ -704,6 +762,7 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
     const UpdateSchema = z.object({
       name: z.string().max(100).optional(),
       email: z.string().email().optional(),
+      isFlagged: z.boolean().optional(),
     });
 
     const validation = UpdateSchema.safeParse(req.body);
@@ -761,7 +820,13 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
     };
 
     if (validation.data.name !== undefined) updates.name = validation.data.name;
-    if (validation.data.email !== undefined) updates.email = validation.data.email;
+    if (validation.data.email !== undefined)
+      updates.email = validation.data.email;
+    if (validation.data.isFlagged !== undefined) {
+      updates.is_flagged = validation.data.isFlagged;
+      // Record who flagged (for the audit FK); clear it when unflagging.
+      updates.flagged_by = validation.data.isFlagged ? userId : null;
+    }
 
     const { data: updated, error: updateError } = await supabaseAdmin
       .from("customers")

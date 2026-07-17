@@ -270,6 +270,7 @@ router.get("/:id/members", authMiddleware, async (req: Request, res: Response) =
     // Prefer stored name from project_members, fall back to user metadata name
     const membersResponse = (members || []).map((member) => ({
       id: member.id,
+      userId: member.user_id,
       email: member.email,
       name: member.name || (member.user_id ? userDetails[member.user_id]?.name : null),
       role: member.role,
@@ -294,6 +295,7 @@ router.get("/:id/members", authMiddleware, async (req: Request, res: Response) =
       members: [
         {
           id: project.user_id,
+          userId: project.user_id,
           email: ownerUser?.user?.email || "",
           name: ownerUser?.user?.user_metadata?.name || null,
           role: "owner",

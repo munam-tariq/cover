@@ -17,6 +17,15 @@ const realtimeTokenRoutePath = new URL(
 const JWT_SECRET = "test-supabase-jwt-secret-0123456789abcdef";
 const SESSION_SECRET = "test-session-secret-0123456789";
 
+async function readRealtimeTokenRoute(): Promise<string> {
+  const source = await readFile(realtimeTokenRoutePath, "utf8");
+  const start = source.indexOf('"/:id/realtime-token"');
+  assert.notEqual(start, -1, "expected realtime-token route");
+  const end = source.indexOf("Typing Indicator Endpoints", start);
+  assert.notEqual(end, -1, "expected marker after realtime-token route");
+  return source.slice(start, end);
+}
+
 // ---------------------------------------------------------------------------
 // Feature flag: isRealtimePrivateEnabled
 // ---------------------------------------------------------------------------
@@ -69,7 +78,10 @@ test("buildRealtimeTokenResponse returns token and expiresAt for valid input", (
   assert.ok(result, "expected a result");
   assert.ok(result.token, "expected a token");
   assert.ok(typeof result.expiresAt === "number", "expected numeric expiresAt");
-  assert.ok(result.expiresAt > Math.floor(Date.now() / 1000), "expiresAt should be in the future");
+  assert.ok(
+    result.expiresAt > Math.floor(Date.now() / 1000),
+    "expiresAt should be in the future"
+  );
 });
 
 test("buildRealtimeTokenResponse includes correct conversation_id in minted JWT", () => {
@@ -111,7 +123,7 @@ test("buildRealtimeTokenResponse returns undefined when JWT secret is missing", 
       conversationId: "conv-1",
       projectId: "proj-1",
       visitorId: "vis-1",
-    },
+    }
     // no secret passed, and env var not set
   );
   // Since the function catches internally, depends on env — test explicit undefined
@@ -134,11 +146,7 @@ test("buildRealtimeTokenResponse returns undefined when JWT secret is missing", 
 // ---------------------------------------------------------------------------
 
 test("realtime-token route verifies session visitor and project match the conversation", async () => {
-  const source = await readFile(realtimeTokenRoutePath, "utf8");
-  const start = source.indexOf('"/:id/realtime-token"');
-  assert.notEqual(start, -1, "expected realtime-token route");
-
-  const routeSource = source.slice(start, start + 2000);
+  const routeSource = await readRealtimeTokenRoute();
 
   assert.ok(
     routeSource.includes("verifyWidgetSessionToken"),
@@ -159,11 +167,7 @@ test("realtime-token route verifies session visitor and project match the conver
 });
 
 test("realtime-token route verifies the session before querying the conversation", async () => {
-  const source = await readFile(realtimeTokenRoutePath, "utf8");
-  const start = source.indexOf('"/:id/realtime-token"');
-  assert.notEqual(start, -1, "expected realtime-token route");
-
-  const routeSource = source.slice(start, start + 2600);
+  const routeSource = await readRealtimeTokenRoute();
   const verifyIndex = routeSource.indexOf("verifyWidgetSessionToken");
   const queryIndex = routeSource.indexOf('.from("conversations")');
 
@@ -176,11 +180,7 @@ test("realtime-token route verifies the session before querying the conversation
 });
 
 test("realtime-token route scopes the conversation lookup to session claims", async () => {
-  const source = await readFile(realtimeTokenRoutePath, "utf8");
-  const start = source.indexOf('"/:id/realtime-token"');
-  assert.notEqual(start, -1, "expected realtime-token route");
-
-  const routeSource = source.slice(start, start + 2800);
+  const routeSource = await readRealtimeTokenRoute();
 
   assert.ok(
     routeSource.includes('.eq("project_id", sessionClaims.projectId)'),

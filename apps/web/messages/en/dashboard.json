@@ -280,9 +280,10 @@
     },
     "inbox": {
       "title": "Inbox",
-      "subtitle": "{count} active {count, plural, one {conversation} other {conversations}}",
+      "ownerSubtitle": "{count} open {count, plural, one {conversation} other {conversations}}",
+      "memberSubtitle": "{count} {count, plural, one {chat} other {chats}} assigned to you",
       "updatedAt": "Updated {time}",
-      "live": "Live",
+      "reconnecting": "Reconnecting…",
       "noProjectSelected": "No project selected",
       "offlineWarning": "You are currently offline. Go online to receive new conversations.",
       "loadError": "Failed to load conversations",
@@ -291,12 +292,20 @@
       "claiming": "Claiming...",
       "voiceCall": "Voice call",
       "noMessagesYet": "No messages yet",
+      "preview": {
+        "ai": "AI: ",
+        "agent": "Agent: ",
+        "system": ""
+      },
       "assignedTo": "Assigned to:",
       "waitingSummary": "Waiting {minutes}m • {count} {count, plural, one {message} other {messages}}",
       "stats": {
-        "activeChats": "Active Chats",
-        "inQueue": "In Queue",
-        "resolvedToday": "Resolved Today"
+        "openConversations": "Open Conversations",
+        "myActiveChats": "My Active Chats",
+        "waitingInQueue": "Waiting in Queue",
+        "availableToClaim": "Available to Claim",
+        "resolvedToday": "Resolved Today",
+        "resolvedByYouToday": "Resolved by You Today"
       },
       "queue": {
         "title": "Queue",
@@ -305,8 +314,6 @@
       },
       "tabs": {
         "mine": "My Chats",
-        "active": "Active",
-        "waiting": "Waiting",
         "all": "All"
       },
       "sources": {
@@ -315,23 +322,102 @@
         "whatsapp": "WhatsApp",
         "public": "Public Page",
         "voice": "Voice",
-        "mobile": "Mobile"
+        "mobile": "Mobile",
+        "playground": "Playground",
+        "api": "API",
+        "mcp": "MCP",
+        "chat": "Chat"
+      },
+      "metadata": {
+        "voiceUsed": "Voice used",
+        "flagged": "Flagged customer"
       },
       "empty": {
         "title": "No conversations",
-        "showAll": "Show all conversations"
+        "waitingTitle": "No conversations are waiting",
+        "waitingHint": "The project queue is clear right now.",
+        "filteredTitle": "No conversations match these filters",
+        "clearFilters": "Clear filters",
+        "showAll": "Show all conversations",
+        "unassignedScopeTitle": "No chats assigned to you match this filter",
+        "unassignedScopeHint": "Chats handled by AI — including ones auto-closed for inactivity — aren't assigned to anyone."
       },
       "status": {
-        "ai_active": "AI",
-        "waiting": "Waiting",
-        "agent_active": "Active",
-        "resolved": "Resolved",
-        "closed": "Closed"
+        "ai_active": "AI handling",
+        "waiting": "Waiting for agent",
+        "agent_active": "With agent",
+        "agent_active_named": "With {name}",
+        "resolved": "Resolved by agent",
+        "closed": "Closed",
+        "closed_inactivity": "Closed – inactive"
+      },
+      "filters": {
+        "activeChats": "Active chats",
+        "allOpen": "All open",
+        "allClosed": "All closed",
+        "label": "Status",
+        "trigger": "Filters ({count})",
+        "panelLabel": "Conversation filters",
+        "needsReply": "Needs reply",
+        "needsMyReply": "Needs my reply",
+        "needsAgentReply": "Needs an agent reply",
+        "voiceUsed": "Voice used",
+        "assignedAgent": "Assigned agent",
+        "assignedValue": "Assigned: {name}",
+        "anyone": "Anyone",
+        "unassigned": "Unassigned",
+        "me": "Me",
+        "handoffReason": "Handoff reason",
+        "anyHandoffReason": "Any reason",
+        "activityPeriod": "Activity period",
+        "flaggedOnly": "Flagged customers only",
+        "appliedLabel": "{count} applied {count, plural, one {filter} other {filters}}",
+        "clearAll": "Clear all",
+        "remove": "Remove {label}",
+        "loadFailed": "This conversation view could not be loaded.",
+        "retry": "Retry",
+        "handoff": {
+          "lowConfidence": "Low confidence",
+          "keyword": "Keyword",
+          "buttonClick": "Talk to human button",
+          "offlineForm": "Offline form"
+        },
+        "activity": {
+          "anyTime": "Any time",
+          "last24Hours": "Last 24 hours",
+          "last7Days": "Last 7 days",
+          "last30Days": "Last 30 days"
+        }
+      },
+      "sort": {
+        "trigger": "Sort: {label}",
+        "explanationLabel": "Explain conversation sorting",
+        "attention": {
+          "label": "Needs attention",
+          "description": "Prioritizes customer replies waiting for an agent, then other active chats. In Waiting, the longest-waiting chats come first.",
+          "terminalDisabled": "Available only for active chats and Waiting."
+        },
+        "recent": {
+          "label": "Recent activity",
+          "description": "Shows the latest customer, AI, agent, or voice activity first. Automated system events do not affect this order."
+        }
+      },
+      "time": {
+        "lessThanMinute": "less than a minute",
+        "waitingFor": "Waiting {duration}",
+        "customerReplied": "Customer replied {relative}",
+        "yesterdayAt": "Yesterday, {time}",
+        "fullLabel": "Full activity time"
+      },
+      "pagination": {
+        "summary": "Page {page} of {totalPages} · {total} conversations",
+        "previous": "Previous",
+        "next": "Next"
       },
       "detail": {
         "backToLeads": "Back to Leads",
         "backToInbox": "Back to Inbox",
-        "customer": "Customer",
+        "contact": "Contact",
         "leadProfile": "Lead Profile",
         "email": "Email",
         "qualifyingQuestions": "Qualifying Questions",
@@ -345,6 +431,19 @@
         "thisConversation": "This Conversation",
         "started": "Started",
         "handoffReason": "Handoff Reason",
+        "handoffReasons": {
+          "lowConfidence": "Low AI confidence",
+          "keyword": "Handoff keyword",
+          "customerRequest": "Customer requested an agent",
+          "buttonClick": "Talk to human button",
+          "offlineForm": "Offline form",
+          "other": "Other"
+        },
+        "closedAt": "Closed {time}",
+        "voiceCalls": "Voice calls",
+        "totalTalkTime": "Total talk time",
+        "customerSatisfaction": "Customer satisfaction",
+        "ratingOutOfFive": "Rated {rating} out of 5",
         "previous": "Previous ({count})",
         "customerLabel": "Customer",
         "aiAssistant": "AI Assistant",
@@ -356,7 +455,7 @@
         "transferError": "Failed to transfer conversation",
         "returnToAiError": "Failed to return to AI",
         "conversationNotFound": "Conversation not found",
-        "live": "Live",
+        "reconnecting": "Reconnecting…",
         "online": "Online",
         "away": "Away",
         "offline": "Offline",
@@ -374,7 +473,10 @@
         "windowClosedShort": "24h window closed — re-engagement templates coming soon.",
         "openCustomerInfo": "Open customer info",
         "closeCustomerInfo": "Close customer info",
-        "customerInfoDescription": "Customer details, lead profile, and conversation history"
+        "customerInfoDescription": "Customer details, lead profile, and conversation history",
+        "flagCustomer": "Flag customer",
+        "unflagCustomer": "Unflag",
+        "flagError": "Failed to update flag"
       }
     },
     "leads": {

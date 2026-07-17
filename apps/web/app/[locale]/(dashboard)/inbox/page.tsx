@@ -1,36 +1,68 @@
 "use client";
 
-import { Button, Card, CardContent, Skeleton, Badge } from "@chatbot/ui";
+import { INBOX_CONFIG } from "@chatbot/shared/constants";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Skeleton,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@chatbot/ui";
 import {
   AlertCircle,
-  Code,
-  Globe,
   Inbox,
   Clock,
-  MessageCircle,
   MessageSquare,
   Phone,
-  Play,
   RefreshCw,
   CheckCircle2,
-  Smartphone,
-  Terminal,
+  Flag,
+  SlidersHorizontal,
   User,
-  Wifi,
   WifiOff,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { type ComponentType, type CSSProperties, useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
+import {
+  ChannelChip,
+  ConversationMetadataChip,
+} from "@/components/inbox/conversation-metadata-chip";
+import { InboxFilterChips } from "@/components/inbox/inbox-filter-chips";
+import { InboxFiltersPanel } from "@/components/inbox/inbox-filters-panel";
+import { InboxSortMenu } from "@/components/inbox/inbox-sort-menu";
 import { useAgent } from "@/contexts/agent-context";
 import { useInboxPolling } from "@/contexts/inbox-polling-context";
 import { useProject } from "@/contexts/project-context";
-import { useInboxRealtime, QueueUpdate, ConversationUpdate } from "@/hooks/use-inbox-realtime";
-import { Link } from "@/i18n/navigation";
+import { useInboxRealtime } from "@/hooks/use-inbox-realtime";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { apiClient } from "@/lib/api-client";
-import { getChannelMeta } from "@/lib/channels";
+import { getChannelMeta, getChannelOptions } from "@/lib/channels";
 import { getConversationDisplayName } from "@/lib/conversation-identity";
-
+import {
+  getConversationStatusMeta,
+  getStatusFilterOption,
+  getStatusFilterOptions,
+} from "@/lib/conversation-status";
+import {
+  buildInboxApiParams,
+  clearSecondaryInboxFilters,
+  getActiveInboxFilters,
+  isTerminalInboxStatus,
+  normalizeInboxQuery,
+  parseInboxQuery,
+  serializeInboxQuery,
+  type InboxAssignableMember,
+  type InboxQueryState,
+  type InboxSort,
+  type InboxStatus,
+} from "@/lib/inbox-query";
+import { formatInboxTime } from "@/lib/inbox-time";
 
 // ============================================================================
 // Types
@@ -51,13 +83,21 @@ interface Conversation {
   queueEnteredAt: string | null;
   resolvedAt: string | null;
   source?: string;
-  isVoiceCall?: boolean;
-  voiceDurationSeconds?: number;
+  /** A conversation can be both text and voice, so this is "has had a call", not "is a call". */
+  hasVoiceActivity?: boolean;
+  closeReason?: string | null;
+  customer?: {
+    isFlagged: boolean;
+  } | null;
+  needsReply: boolean;
+  meaningfulActivityAt: string;
+  priorityReason: "waiting" | "customer_reply" | "activity";
+  priorityAt: string;
   lastMessage?: {
     content: string;
     senderType: string;
     createdAt: string;
-  };
+  } | null;
 }
 
 interface QueueItem {
@@ -71,104 +111,123 @@ interface QueueItem {
 }
 
 // Helper to safely format dates
-function formatTime(dateStr: string | null | undefined): string {
+function formatHeaderTime(dateStr: string | null | undefined): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return "";
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-// Helper to check if a date is today
-function isToday(dateStr: string | null | undefined): boolean {
-  if (!dateStr) return false;
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return false;
-  const today = new Date();
-  return (
-    date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate()
-  );
-}
-
-// ============================================================================
-// Channel Icon Helper
-// ============================================================================
-
-const CHANNEL_ICONS: Record<string, ComponentType<{ className?: string; style?: CSSProperties }>> = {
-  MessageCircle,
-  MessageSquare,
-  Globe,
-  Phone,
-  Smartphone,
-  Play,
-  Code,
-  Terminal,
-};
-
-function ChannelIcon({ source, className }: { source: string; className?: string }) {
-  const meta = getChannelMeta(source);
-  const IconComponent = CHANNEL_ICONS[meta.icon] || MessageSquare;
-  return <IconComponent className={className} style={{ color: meta.color }} />;
+/**
+ * Attributes a list preview to its author. Customer messages get no prefix — they are the default
+ * voice of the list. Only sender_type is denormalized, so an agent message cannot name the agent.
+ */
+function messagePreviewPrefix(
+  senderType: string,
+  t: (key: string) => string
+): string {
+  if (senderType === "customer") return "";
+  return t(`preview.${senderType}`);
 }
 
 // ============================================================================
 // Conversation List Item
 // ============================================================================
 
-function ConversationListItem({ conversation, showAgent }: { conversation: Conversation; showAgent?: boolean }) {
+function ConversationListItem({
+  conversation,
+  sort,
+}: {
+  conversation: Conversation;
+  sort: InboxSort;
+}) {
   const t = useTranslations("dashboard.pages.inbox");
-  const statusConfig = {
-    ai_active: { color: "bg-blue-500", textColor: "text-blue-600" },
-    waiting: { color: "bg-yellow-500", textColor: "text-yellow-600" },
-    agent_active: { color: "bg-green-500", textColor: "text-green-600" },
-    resolved: { color: "bg-gray-400", textColor: "text-gray-600" },
-    closed: { color: "bg-gray-400", textColor: "text-gray-600" },
-  };
-
-  const config = statusConfig[conversation.status];
+  const locale = useLocale();
+  // Shared with the detail header and previous-conversations, so a status reads the same everywhere.
+  const status = getConversationStatusMeta(conversation.status, {
+    agentName: conversation.assignedAgent?.name,
+    closeReason: conversation.closeReason,
+  });
   const displayName = getConversationDisplayName(conversation);
-  const agentName = conversation.assignedAgent?.name;
+  const activityTime = formatInboxTime({
+    sort,
+    priorityReason: conversation.priorityReason,
+    priorityAt: conversation.priorityAt,
+    meaningfulActivityAt: conversation.meaningfulActivityAt,
+    locale,
+    labels: {
+      lessThanMinute: t("time.lessThanMinute"),
+      waitingFor: (values) => t("time.waitingFor", values),
+      customerReplied: (values) => t("time.customerReplied", values),
+      yesterdayAt: (values) => t("time.yesterdayAt", values),
+    },
+  });
+  const displayedAt =
+    sort === "attention" && conversation.priorityReason !== "activity"
+      ? conversation.priorityAt
+      : conversation.meaningfulActivityAt;
 
   return (
     <Link
       href={`/inbox/${conversation.id}`}
-      className="block p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+      className="hover:bg-muted/50 block rounded-lg border p-4 transition-colors"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 shrink-0 rounded-full bg-muted flex items-center justify-center">
-            <User className="h-5 w-5 text-muted-foreground" />
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
+            <User className="text-muted-foreground h-5 w-5" />
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-medium truncate">{displayName}</span>
-              {conversation.isVoiceCall && (
-                <Phone className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="min-w-0 max-w-full truncate font-medium">
+                {displayName}
+              </span>
+              {conversation.source && (
+                <ChannelChip
+                  source={conversation.source}
+                  label={t(getChannelMeta(conversation.source).labelKey)}
+                />
               )}
-              {!conversation.isVoiceCall && conversation.source && conversation.source !== "widget" && (
-                <ChannelIcon source={conversation.source} className="h-3.5 w-3.5 shrink-0" />
+              {conversation.hasVoiceActivity && (
+                <ConversationMetadataChip
+                  icon={Phone}
+                  label={t("metadata.voiceUsed")}
+                />
               )}
-              <span className={`w-2 h-2 rounded-full ${config.color}`} />
+              {conversation.customer?.isFlagged && (
+                <ConversationMetadataChip
+                  icon={Flag}
+                  label={t("metadata.flagged")}
+                />
+              )}
             </div>
-            <p className="text-sm text-muted-foreground truncate max-w-xs">
-              {conversation.isVoiceCall
-                ? `${t("voiceCall")}${conversation.voiceDurationSeconds ? ` · ${Math.floor(conversation.voiceDurationSeconds / 60)}:${String(conversation.voiceDurationSeconds % 60).padStart(2, "0")}` : ""}`
-                : conversation.lastMessage?.content || t("noMessagesYet")}
+            <p className="text-muted-foreground max-w-xs truncate text-sm">
+              {conversation.lastMessage
+                ? `${messagePreviewPrefix(conversation.lastMessage.senderType, t)}${conversation.lastMessage.content}`
+                : t("noMessagesYet")}
             </p>
-            {showAgent && agentName && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("assignedTo")} <span className="font-medium text-foreground">{agentName}</span>
-              </p>
-            )}
+            {/* The assigned agent used to get its own "Assigned to: X" line; the status badge now
+                says "With X", so a second line would just repeat it. */}
           </div>
         </div>
-        <div className="text-end shrink-0">
-          <p className="text-xs text-muted-foreground">
-            {formatTime(conversation.lastMessageAt) || formatTime(conversation.updatedAt) || formatTime(conversation.createdAt)}
-          </p>
-          <Badge variant="secondary" className={`text-xs mt-1 ${config.textColor}`}>
-            {t(`status.${conversation.status}`)}
+        <div className="shrink-0 text-end">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <time
+                dateTime={displayedAt}
+                aria-label={`${t("time.fullLabel")}: ${activityTime.full}`}
+                className="text-muted-foreground me-2 text-xs"
+              >
+                {activityTime.text}
+              </time>
+            </TooltipTrigger>
+            <TooltipContent>{activityTime.full}</TooltipContent>
+          </Tooltip>
+          <Badge
+            variant={status.badgeVariant}
+            className={`mt-1 text-xs ${status.textColor}`}
+          >
+            {t(status.labelKey, status.labelValues)}
           </Badge>
         </div>
       </div>
@@ -190,27 +249,73 @@ function QueueListItem({
   claiming: boolean;
 }) {
   const t = useTranslations("dashboard.pages.inbox");
-  const displayName = item.customerName || item.customerEmail || `Visitor ${item.visitorId.slice(0, 8)}`;
-  const waitingSince = item.waitingSince ? new Date(item.waitingSince).getTime() : Date.now();
-  const waitTime = isNaN(waitingSince) ? 0 : Math.floor((Date.now() - waitingSince) / 60000);
+  const displayName =
+    item.customerName ||
+    item.customerEmail ||
+    `Visitor ${item.visitorId.slice(0, 8)}`;
+  const waitingSince = item.waitingSince
+    ? new Date(item.waitingSince).getTime()
+    : Date.now();
+  const waitTime = isNaN(waitingSince)
+    ? 0
+    : Math.floor((Date.now() - waitingSince) / 60000);
 
   return (
-    <div className="flex items-center justify-between gap-3 p-4 border rounded-lg bg-yellow-500/5 border-yellow-500/20">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="w-8 h-8 shrink-0 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-600 font-medium text-sm">
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-yellow-500/20 text-sm font-medium text-yellow-600">
           #{item.position}
         </div>
         <div className="min-w-0">
-          <p className="font-medium truncate">{displayName}</p>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <p className="truncate font-medium">{displayName}</p>
+          <p className="text-muted-foreground flex items-center gap-1 text-xs">
             <Clock className="h-3 w-3" />
-            {t("waitingSummary", { minutes: waitTime, count: item.messageCount })}
+            {t("waitingSummary", {
+              minutes: waitTime,
+              count: item.messageCount,
+            })}
           </p>
         </div>
       </div>
-      <Button size="sm" onClick={() => onClaim(item.id)} disabled={claiming} className="shrink-0">
+      <Button
+        size="sm"
+        onClick={() => onClaim(item.id)}
+        disabled={claiming}
+        className="shrink-0"
+      >
         {claiming ? t("claiming") : t("claim")}
       </Button>
+    </div>
+  );
+}
+
+function ConversationListSkeleton({ label }: { label: string }) {
+  return (
+    <div
+      className="space-y-3"
+      role="status"
+      aria-label={label}
+      aria-busy="true"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <div
+          key={index}
+          className="flex items-start justify-between gap-3 rounded-lg border p-4"
+          aria-hidden="true"
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-4 w-40 max-w-full" />
+              <Skeleton className="h-3 w-64 max-w-full" />
+            </div>
+          </div>
+          <div className="shrink-0 space-y-2">
+            <Skeleton className="ms-auto h-3 w-12" />
+            <Skeleton className="h-5 w-20" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -221,88 +326,347 @@ function QueueListItem({
 
 // Polling interval: 30 seconds (fallback for realtime)
 const POLL_INTERVAL_MS = 30 * 1000;
+const PAGE_SIZE = INBOX_CONFIG.DEFAULT_PAGE_SIZE;
+
+interface InboxPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+interface InboxResponse {
+  conversations: Conversation[];
+  pagination: InboxPagination;
+}
+
+interface InboxSummary {
+  isOwner: boolean;
+  openCount: number;
+  queueCount: number;
+  assignedCount: number;
+  resolvedTodayCount: number;
+  totalPending: number;
+  timestamp: string;
+}
+
+interface TeamMemberResponse {
+  userId: string | null;
+  email: string;
+  name?: string | null;
+  status: "pending" | "active" | "suspended" | "removed";
+}
+
+const EMPTY_INBOX_SUMMARY: InboxSummary = {
+  isOwner: false,
+  openCount: 0,
+  queueCount: 0,
+  assignedCount: 0,
+  resolvedTodayCount: 0,
+  totalPending: 0,
+  timestamp: "",
+};
 
 export default function InboxPage() {
   const t = useTranslations("dashboard.pages.inbox");
   const actionsT = useTranslations("dashboard.actions");
+  const statesT = useTranslations("dashboard.states");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { currentProject, isLoading: projectLoading } = useProject();
-  const { availability, agent } = useAgent();
+  const {
+    availability,
+    refreshAvailability,
+    role,
+    isLoading: agentLoading,
+  } = useAgent();
   const { markAsSeen, pausePolling, resumePolling } = useInboxPolling();
+
+  const supportedChannels = useMemo(
+    () => getChannelOptions().map(({ source }) => source),
+    []
+  );
+  const searchString = searchParams?.toString() ?? "";
+  const isOwner = role?.isOwner ?? false;
+  const knownOwnerRole = role?.isOwner;
+  const inboxQuery = useMemo(
+    () =>
+      parseInboxQuery(
+        new URLSearchParams(searchString),
+        isOwner,
+        supportedChannels
+      ),
+    [isOwner, searchString, supportedChannels]
+  );
+  const canonicalQueryString = useMemo(
+    () => serializeInboxQuery(inboxQuery).toString(),
+    [inboxQuery]
+  );
+  const inboxQueryRef = useRef(inboxQuery);
+  inboxQueryRef.current = inboxQuery;
+
+  const replaceInboxQuery = useCallback(
+    (next: InboxQueryState) => {
+      const nextSearch = serializeInboxQuery(next).toString();
+      router.replace(nextSearch ? `${pathname}?${nextSearch}` : pathname, {
+        scroll: false,
+      });
+    },
+    [pathname, router]
+  );
+
+  const updateInboxQuery = useCallback(
+    (
+      next: InboxQueryState,
+      { preservePage = false }: { preservePage?: boolean } = {}
+    ) => {
+      replaceInboxQuery(
+        normalizeInboxQuery(
+          { ...next, page: preservePage ? next.page : 1 },
+          isOwner
+        )
+      );
+    },
+    [isOwner, replaceInboxQuery]
+  );
+
+  // Wait for the current-project role before canonicalizing. Otherwise an owner's bookmarked All
+  // view would briefly be treated as a member view and destructively rewritten to Mine.
+  useEffect(() => {
+    if (!currentProject || agentLoading || !role) return;
+    if (canonicalQueryString === searchString) return;
+
+    router.replace(
+      canonicalQueryString ? `${pathname}?${canonicalQueryString}` : pathname,
+      { scroll: false }
+    );
+  }, [
+    agentLoading,
+    canonicalQueryString,
+    currentProject,
+    pathname,
+    role,
+    router,
+    searchString,
+  ]);
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [assignableMembers, setAssignableMembers] = useState<
+    InboxAssignableMember[]
+  >([]);
+  const latestListRequestIdRef = useRef(0);
+  const latestOverviewRequestIdRef = useRef(0);
+  const latestMembersRequestIdRef = useRef(0);
+  const listReadyProjectIdRef = useRef<string | null>(null);
+  const overviewReadyProjectIdRef = useRef<string | null>(null);
+  const [listReadyProjectId, setListReadyProjectId] = useState<string | null>(
+    null
+  );
+  const [overviewReadyProjectId, setOverviewReadyProjectId] = useState<
+    string | null
+  >(null);
+  const [listLoading, setListLoading] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"active" | "waiting" | "mine" | "all">("mine");
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
-  const [isOwner, setIsOwner] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [summary, setSummary] = useState<InboxSummary>(EMPTY_INBOX_SUMMARY);
   const [lastPolled, setLastPolled] = useState<Date | null>(null);
+  const [pagination, setPagination] = useState<InboxPagination>({
+    page: 1,
+    limit: PAGE_SIZE,
+    total: 0,
+    totalPages: 0,
+  });
 
-  // Fetch conversations
-  const fetchConversations = useCallback(async () => {
-    if (!currentProject) return;
+  const conversationsUrl = useMemo(() => {
+    if (!currentProject || knownOwnerRole === undefined) return null;
+    const params = buildInboxApiParams(
+      inboxQuery,
+      currentProject.id,
+      PAGE_SIZE
+    );
+    return `/api/conversations?${params.toString()}`;
+  }, [currentProject, inboxQuery, knownOwnerRole]);
 
-    setLoading(true);
-    setError(null);
+  const fetchConversationPage = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (!currentProject || !conversationsUrl) return;
 
-    try {
-      // Fetch conversations
-      const response = await apiClient<{ conversations: Conversation[]; pagination: unknown; isOwner: boolean }>(
-        `/api/conversations?projectId=${currentProject.id}&limit=50`
-      );
-      setConversations(response.conversations || []);
-      setIsOwner(response.isOwner || false);
+      const projectId = currentProject.id;
+      const requestId = ++latestListRequestIdRef.current;
 
-      // Fetch queue
-      const queueResponse = await apiClient<{ queue: QueueItem[]; count: number }>(
-        `/api/projects/${currentProject.id}/queue`
-      );
-      setQueue(queueResponse.queue || []);
-    } catch (err) {
-      console.error("Failed to fetch conversations:", err);
-      setError(t("loadError"));
-    } finally {
-      setLoading(false);
+      if (!background) {
+        setListLoading(true);
+        setListError(null);
+        if (listReadyProjectIdRef.current !== projectId) setConversations([]);
+      }
+
+      try {
+        const response = await apiClient<InboxResponse>(conversationsUrl);
+        if (requestId !== latestListRequestIdRef.current) return;
+
+        const { pagination: responsePagination } = response;
+        if (
+          response.conversations.length === 0 &&
+          responsePagination.total > 0 &&
+          inboxQueryRef.current.page > responsePagination.totalPages &&
+          responsePagination.totalPages > 0
+        ) {
+          setConversations([]);
+          setPagination(responsePagination);
+          updateInboxQuery(
+            {
+              ...inboxQueryRef.current,
+              page: response.pagination.totalPages,
+            },
+            { preservePage: true }
+          );
+          return;
+        }
+
+        setConversations(response.conversations || []);
+        setPagination(responsePagination);
+      } catch (err) {
+        if (requestId !== latestListRequestIdRef.current) return;
+        if (background) {
+          console.error("Background inbox list refresh failed:", err);
+        } else {
+          console.error("Failed to fetch inbox conversations:", err);
+          setConversations([]);
+          setListError(t("filters.loadFailed"));
+        }
+      } finally {
+        if (requestId === latestListRequestIdRef.current) {
+          listReadyProjectIdRef.current = projectId;
+          setListReadyProjectId(projectId);
+          setListLoading(false);
+        }
+      }
+    },
+    [conversationsUrl, currentProject, t, updateInboxQuery]
+  );
+
+  const fetchInboxOverview = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (!currentProject) return;
+
+      const projectId = currentProject.id;
+      const requestId = ++latestOverviewRequestIdRef.current;
+      if (!background) {
+        setOverviewError(null);
+        if (overviewReadyProjectIdRef.current !== projectId) {
+          setQueue([]);
+          setSummary(EMPTY_INBOX_SUMMARY);
+        }
+      }
+
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const resolvedSince = today.toISOString();
+        const [queueResponse, summaryResponse] = await Promise.all([
+          apiClient<{ queue: QueueItem[]; count: number }>(
+            `/api/projects/${projectId}/queue`
+          ),
+          apiClient<InboxSummary>(
+            `/api/projects/${projectId}/inbox-summary?resolvedSince=${encodeURIComponent(resolvedSince)}`
+          ),
+          refreshAvailability(),
+        ]);
+
+        if (requestId !== latestOverviewRequestIdRef.current) return;
+        setQueue(queueResponse.queue || []);
+        setSummary(summaryResponse);
+        setLastPolled(new Date());
+        markAsSeen();
+      } catch (err) {
+        if (requestId !== latestOverviewRequestIdRef.current) return;
+        if (background) {
+          console.error("Background inbox overview refresh failed:", err);
+        } else {
+          console.error("Failed to fetch inbox overview:", err);
+          setOverviewError(t("loadError"));
+        }
+      } finally {
+        if (requestId === latestOverviewRequestIdRef.current) {
+          overviewReadyProjectIdRef.current = projectId;
+          setOverviewReadyProjectId(projectId);
+        }
+      }
+    },
+    [currentProject, markAsSeen, refreshAvailability, t]
+  );
+
+  const fetchAssignableMembers = useCallback(async () => {
+    if (!currentProject || !role?.isOwner) {
+      setAssignableMembers([]);
+      return;
     }
-  }, [currentProject, t]);
 
-  // Realtime event handlers (memoized to prevent re-subscriptions)
+    const requestId = ++latestMembersRequestIdRef.current;
+    try {
+      const response = await apiClient<{ members: TeamMemberResponse[] }>(
+        `/api/projects/${currentProject.id}/members`
+      );
+      if (requestId !== latestMembersRequestIdRef.current) return;
+
+      const uniqueMembers = new Map<string, InboxAssignableMember>();
+      for (const member of response.members) {
+        if (member.status !== "active" || !member.userId) continue;
+        uniqueMembers.set(member.userId, {
+          userId: member.userId,
+          name: member.name?.trim() || member.email,
+        });
+      }
+      setAssignableMembers([...uniqueMembers.values()]);
+    } catch (err) {
+      if (requestId !== latestMembersRequestIdRef.current) return;
+      console.error("Failed to fetch assignable inbox members:", err);
+      setAssignableMembers([]);
+    }
+  }, [currentProject, role?.isOwner]);
+
+  const refreshInbox = useCallback(async () => {
+    await Promise.all([
+      fetchConversationPage(),
+      fetchInboxOverview(),
+      ...(isOwner ? [fetchAssignableMembers()] : []),
+    ]);
+  }, [
+    fetchAssignableMembers,
+    fetchConversationPage,
+    fetchInboxOverview,
+    isOwner,
+  ]);
+
+  const refreshInboxQuietly = useCallback(async () => {
+    await Promise.all([
+      fetchConversationPage({ background: true }),
+      fetchInboxOverview({ background: true }),
+    ]);
+  }, [fetchConversationPage, fetchInboxOverview]);
+
   const realtimeHandlers = useMemo(
     () => ({
-      onQueueUpdate: (update: QueueUpdate) => {
-        console.log("[Inbox] Queue update received:", update);
-
-        if (update.type === "added") {
-          // New item in queue - refresh to get full data
-          fetchConversations();
-        } else if (update.type === "claimed") {
-          // Item claimed - remove from queue
-          setQueue((prev) => prev.filter((item) => item.id !== update.conversationId));
-        } else if (update.type === "removed") {
-          // Item removed - remove from queue
-          setQueue((prev) => prev.filter((item) => item.id !== update.conversationId));
+      onQueueUpdate: (update: { type: string }) => {
+        // Added/position events also emit onRefreshNeeded; the remaining events need their own
+        // server refresh. Never guess a new filtered position from a partial realtime payload.
+        if (update.type === "claimed" || update.type === "removed") {
+          void refreshInboxQuietly();
         }
       },
-      onConversationUpdate: (update: ConversationUpdate) => {
-        console.log("[Inbox] Conversation update received:", update);
-
-        if (update.type === "status_changed" && update.data?.status) {
-          // Update conversation status in list
-          setConversations((prev) =>
-            prev.map((conv) =>
-              conv.id === update.conversationId
-                ? { ...conv, status: update.data!.status as Conversation["status"] }
-                : conv
-            )
-          );
-        }
+      onConversationUpdate: () => {
+        void fetchConversationPage({ background: true });
       },
       onRefreshNeeded: () => {
-        console.log("[Inbox] Refresh triggered by realtime");
-        fetchConversations();
+        void refreshInboxQuietly();
       },
     }),
-    [fetchConversations]
+    [fetchConversationPage, refreshInboxQuietly]
   );
 
   // Setup realtime subscriptions
@@ -311,47 +675,31 @@ export default function InboxPage() {
     realtimeHandlers
   );
 
-  // Initial fetch when project changes
+  // URL changes (scope/status/channel/sort/filter/page) only refresh the result page.
   useEffect(() => {
-    if (currentProject) {
-      fetchConversations();
-    }
-  }, [currentProject, fetchConversations]);
+    if (conversationsUrl) void fetchConversationPage();
+  }, [conversationsUrl, fetchConversationPage]);
+
+  useEffect(() => {
+    if (currentProject) void fetchInboxOverview();
+  }, [currentProject, fetchInboxOverview]);
+
+  useEffect(() => {
+    if (!currentProject || knownOwnerRole === undefined) return;
+    if (knownOwnerRole) void fetchAssignableMembers();
+    else setAssignableMembers([]);
+  }, [currentProject, fetchAssignableMembers, knownOwnerRole]);
 
   // Poll for updates every 30 seconds as fallback for realtime
   useEffect(() => {
     if (!currentProject) return;
 
-    const silentFetch = async () => {
-      try {
-        const response = await apiClient<{ conversations: Conversation[]; pagination: unknown; isOwner: boolean }>(
-          `/api/conversations?projectId=${currentProject.id}&limit=50`
-        );
-        setConversations(response.conversations || []);
-        setIsOwner(response.isOwner || false);
-
-        const queueResponse = await apiClient<{ queue: QueueItem[]; count: number }>(
-          `/api/projects/${currentProject.id}/queue`
-        );
-        setQueue(queueResponse.queue || []);
-        setLastPolled(new Date());
-
-        // Mark items as seen in global context since we're viewing inbox
-        markAsSeen();
-
-        if (process.env.NODE_ENV === "development") {
-          console.log("[Inbox] Background poll completed");
-        }
-      } catch (err) {
-        // Silent fail - don't show error for background polling
-        console.error("[Inbox] Background poll failed:", err);
-      }
-    };
+    const silentFetch = () => refreshInboxQuietly();
 
     const pollInterval = setInterval(silentFetch, POLL_INTERVAL_MS);
 
     return () => clearInterval(pollInterval);
-  }, [currentProject, markAsSeen]);
+  }, [currentProject, refreshInboxQuietly]);
 
   // Pause global polling while on inbox page (we handle our own refresh)
   useEffect(() => {
@@ -365,57 +713,52 @@ export default function InboxPage() {
     if (!currentProject) return;
 
     setClaiming(conversationId);
+    setActionError(null);
 
     try {
       await apiClient(`/api/conversations/${conversationId}/claim`, {
         method: "POST",
       });
-      // Refresh data
-      fetchConversations();
+      await Promise.all([fetchConversationPage(), fetchInboxOverview()]);
     } catch (err) {
       console.error("Failed to claim conversation:", err);
-      setError(t("claimError"));
+      setActionError(t("claimError"));
     } finally {
       setClaiming(null);
     }
   };
 
-  // Filter and sort conversations by recency
-  const filteredConversations = conversations
-    .filter((conv) => {
-      switch (filter) {
-        case "active":
-          return conv.status === "agent_active";
-        case "waiting":
-          return conv.status === "waiting";
-        case "mine":
-          // For "My Chats", show only conversations assigned to current user
-          return conv.assignedAgent?.id === agent?.id;
-        case "all":
-        default:
-          return true;
-      }
-    })
-    .filter((conv) => sourceFilter === "all" || conv.source === sourceFilter)
-    .sort((a, b) => {
-      const dateA = new Date(a.lastMessageAt || a.updatedAt || a.createdAt).getTime() || 0;
-      const dateB = new Date(b.lastMessageAt || b.updatedAt || b.createdAt).getTime() || 0;
-      return dateB - dateA; // Most recent first
-    });
+  const scopeExcludesSelectedStatus =
+    inboxQuery.scope === "mine" &&
+    getStatusFilterOption(inboxQuery.status)?.unassigned === true;
+  const attentionSortDisabled = isTerminalInboxStatus(inboxQuery.status);
+  const activeFilterCount = getActiveInboxFilters(inboxQuery).length;
+  const primaryCount = isOwner ? summary.openCount : summary.assignedCount;
+  const primaryLabel = isOwner
+    ? "stats.openConversations"
+    : "stats.myActiveChats";
+  const queueLabel = isOwner
+    ? "stats.waitingInQueue"
+    : "stats.availableToClaim";
+  const resolvedLabel = isOwner
+    ? "stats.resolvedToday"
+    : "stats.resolvedByYouToday";
 
-  // Stats - count MY active chats
-  const myActiveCount = conversations.filter(
-    (c) => c.status === "agent_active" && c.assignedAgent?.id === agent?.id
-  ).length;
+  const isInitialLoading =
+    projectLoading ||
+    agentLoading ||
+    (currentProject !== null &&
+      (role === null ||
+        listReadyProjectId !== currentProject.id ||
+        overviewReadyProjectId !== currentProject.id));
 
-  // Loading state
-  if (projectLoading || loading) {
+  if (isInitialLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <Skeleton className="h-8 w-32" />
-            <Skeleton className="h-4 w-48 mt-2" />
+            <Skeleton className="mt-2 h-4 w-48" />
           </div>
         </div>
         <div className="grid grid-cols-3 gap-4">
@@ -424,7 +767,7 @@ export default function InboxPage() {
           ))}
         </div>
         <Card>
-          <CardContent className="p-6 space-y-4">
+          <CardContent className="space-y-4 p-6">
             {[1, 2, 3, 4, 5].map((i) => (
               <Skeleton key={i} className="h-20 w-full" />
             ))}
@@ -451,198 +794,401 @@ export default function InboxPage() {
   const isOnline = availability?.status === "online";
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Inbox className="h-6 w-6" />
-            {t("title")}
-            {isSubscribed ? (
-              <span className="text-xs font-normal text-green-600 flex items-center gap-1">
-                <Wifi className="h-3 w-3" />
-                {t("live")}
-              </span>
-            ) : (
-              <span className="text-xs font-normal text-muted-foreground flex items-center gap-1">
-                <WifiOff className="h-3 w-3" />
-              </span>
-            )}
-          </h1>
-          <p className="text-muted-foreground">
-            {t("subtitle", { count: myActiveCount })}
-            {lastPolled && (
-              <span className="text-xs ms-2">
-                · {t("updatedAt", { time: formatTime(lastPolled.toISOString()) })}
-              </span>
-            )}
-          </p>
+    <TooltipProvider delayDuration={300}>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-bold">
+              <Inbox className="h-6 w-6" />
+              {t("title")}
+              {/* Websocket health, not conversation state — "Live" next to the Inbox title read as
+                "these chats are live". Silence now means connected; only a problem speaks. */}
+              {!isSubscribed && (
+                <span className="flex items-center gap-1 text-xs font-normal text-amber-600">
+                  <WifiOff className="h-3 w-3" />
+                  {t("reconnecting")}
+                </span>
+              )}
+            </h1>
+            <p className="text-muted-foreground">
+              {t(isOwner ? "ownerSubtitle" : "memberSubtitle", {
+                count: primaryCount,
+              })}
+              {lastPolled && (
+                <span className="ms-2 text-xs">
+                  ·{" "}
+                  {t("updatedAt", {
+                    time: formatHeaderTime(lastPolled.toISOString()),
+                  })}
+                </span>
+              )}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setActionError(null);
+              void refreshInbox();
+            }}
+          >
+            <RefreshCw className="me-2 h-4 w-4" />
+            {actionsT("refresh")}
+          </Button>
         </div>
-        <Button variant="outline" onClick={fetchConversations}>
-          <RefreshCw className="h-4 w-4 me-2" />
-          {actionsT("refresh")}
-        </Button>
-      </div>
 
-      {/* Offline Warning */}
-      {!isOnline && (
-        <div className="flex items-center gap-2 p-4 rounded-md bg-yellow-500/10 text-yellow-600">
-          <AlertCircle className="h-4 w-4" />
-          <p>{t("offlineWarning")}</p>
-        </div>
-      )}
+        {/* Offline Warning */}
+        {!isOnline && (
+          <div className="flex items-center gap-2 rounded-md bg-yellow-500/10 p-4 text-yellow-600">
+            <AlertCircle className="h-4 w-4" />
+            <p>{t("offlineWarning")}</p>
+          </div>
+        )}
 
-      {/* Error */}
-      {error && (
-        <div className="flex items-center gap-2 p-4 rounded-md bg-destructive/10 text-destructive">
-          <AlertCircle className="h-4 w-4" />
-          <p>{error}</p>
-        </div>
-      )}
+        {/* Overview/action errors do not replace the independently healthy conversation list. */}
+        {(actionError || overviewError) && (
+          <div className="bg-destructive/10 text-destructive flex items-center gap-2 rounded-md p-4">
+            <AlertCircle className="h-4 w-4" />
+            <p>{actionError || overviewError}</p>
+          </div>
+        )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 rounded-lg bg-green-500/10 shrink-0">
-                <MessageSquare className="h-5 w-5 text-green-600" />
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="shrink-0 rounded-lg bg-green-500/10 p-2">
+                  <MessageSquare className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-2xl font-bold">{primaryCount}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {t(primaryLabel)}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-bold">{myActiveCount}</p>
-                <p className="text-xs text-muted-foreground">{t("stats.activeChats")}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 rounded-lg bg-yellow-500/10 shrink-0">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="shrink-0 rounded-lg bg-yellow-500/10 p-2">
+                  <Clock className="h-5 w-5 text-yellow-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-2xl font-bold">{summary.queueCount}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {t(queueLabel)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="shrink-0 rounded-lg bg-blue-500/10 p-2">
+                  <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-2xl font-bold">
+                    {summary.resolvedTodayCount}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {t(resolvedLabel)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Queue Section */}
+        {queue.length > 0 && isOnline && (
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="mb-4 flex items-center gap-2 font-semibold">
                 <Clock className="h-5 w-5 text-yellow-600" />
+                {t("queue.title")} (
+                {t("queue.waiting", { count: summary.queueCount })})
+              </h2>
+              <div className="space-y-3">
+                {queue.slice(0, 5).map((item) => (
+                  <QueueListItem
+                    key={item.id}
+                    item={item}
+                    onClaim={handleClaim}
+                    claiming={claiming === item.id}
+                  />
+                ))}
+                {summary.queueCount > queue.length && (
+                  <p className="text-muted-foreground text-center text-sm">
+                    {t("queue.more", {
+                      count: summary.queueCount - queue.length,
+                    })}
+                  </p>
+                )}
               </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-bold">{queue.length}</p>
-                <p className="text-xs text-muted-foreground">{t("stats.inQueue")}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
-                <CheckCircle2 className="h-5 w-5 text-blue-600" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-bold">
-                  {conversations.filter((c) => c.status === "resolved" && isToday(c.resolvedAt)).length}
-                </p>
-                <p className="text-xs text-muted-foreground">{t("stats.resolvedToday")}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Queue Section */}
-      {queue.length > 0 && isOnline && (
+        {/* Conversations List */}
         <Card>
           <CardContent className="p-6">
-            <h2 className="font-semibold mb-4 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-yellow-600" />
-              {t("queue.title")} ({t("queue.waiting", { count: queue.length })})
-            </h2>
-            <div className="space-y-3">
-              {queue.slice(0, 5).map((item) => (
-                <QueueListItem
-                  key={item.id}
-                  item={item}
-                  onClaim={handleClaim}
-                  claiming={claiming === item.id}
+            <div className="mb-4 space-y-3 border-b pb-4">
+              <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
+                {inboxQuery.status !== "waiting" && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[
+                      { key: "mine", labelKey: "mine" },
+                      ...(isOwner ? [{ key: "all", labelKey: "all" }] : []),
+                    ].map((tab) => (
+                      <button
+                        key={tab.key}
+                        onClick={() =>
+                          updateInboxQuery({
+                            ...inboxQuery,
+                            scope: tab.key as InboxQueryState["scope"],
+                          })
+                        }
+                        className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+                          inboxQuery.scope === tab.key
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {t(`tabs.${tab.labelKey}`)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2 xl:ms-auto">
+                  <select
+                    id="inbox-status"
+                    name="inbox-status"
+                    value={inboxQuery.status}
+                    onChange={(event) => {
+                      const status = event.target.value as InboxStatus;
+                      updateInboxQuery({
+                        ...inboxQuery,
+                        status,
+                        needsReply:
+                          status === "agent_active"
+                            ? inboxQuery.needsReply
+                            : false,
+                      });
+                    }}
+                    aria-label={t("filters.label")}
+                    className="bg-background h-9 min-w-36 flex-1 rounded-md border px-2 text-sm sm:flex-none"
+                  >
+                    {getStatusFilterOptions(isOwner).map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {t(option.labelKey)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    id="inbox-source"
+                    name="inbox-source"
+                    value={inboxQuery.source ?? "all"}
+                    onChange={(event) =>
+                      updateInboxQuery({
+                        ...inboxQuery,
+                        source:
+                          event.target.value === "all"
+                            ? null
+                            : event.target.value,
+                      })
+                    }
+                    aria-label={t("sources.all")}
+                    className="bg-background h-9 min-w-36 flex-1 rounded-md border px-2 text-sm sm:flex-none"
+                  >
+                    <option value="all">{t("sources.all")}</option>
+                    {getChannelOptions().map((channel) => (
+                      <option key={channel.source} value={channel.source}>
+                        {t(channel.labelKey)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <InboxSortMenu
+                    value={inboxQuery.sort}
+                    attentionDisabled={attentionSortDisabled}
+                    onChange={(sort) =>
+                      updateInboxQuery({ ...inboxQuery, sort })
+                    }
+                  />
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    aria-expanded={filtersOpen}
+                    aria-controls="inbox-filters-panel"
+                    onClick={() => setFiltersOpen((open) => !open)}
+                  >
+                    <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
+                    {t("filters.trigger", { count: activeFilterCount })}
+                  </Button>
+                </div>
+              </div>
+
+              {filtersOpen && (
+                <InboxFiltersPanel
+                  value={inboxQuery}
+                  isOwner={isOwner}
+                  members={assignableMembers}
+                  onChange={updateInboxQuery}
                 />
-              ))}
-              {queue.length > 5 && (
-                <p className="text-sm text-muted-foreground text-center">
-                  {t("queue.more", { count: queue.length - 5 })}
-                </p>
               )}
+
+              <InboxFilterChips
+                value={inboxQuery}
+                isOwner={isOwner}
+                members={assignableMembers}
+                onChange={updateInboxQuery}
+              />
             </div>
+
+            {/* Conversation results */}
+            {listError ? (
+              <div className="py-8 text-center" role="alert" aria-live="polite">
+                <AlertCircle className="text-destructive mx-auto mb-3 h-8 w-8" />
+                <p className="text-muted-foreground">{listError}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => void fetchConversationPage()}
+                >
+                  {t("filters.retry")}
+                </Button>
+              </div>
+            ) : listLoading ? (
+              <ConversationListSkeleton label={statesT("loading")} />
+            ) : (
+              <>
+                {conversations.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <Inbox className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
+                    {scopeExcludesSelectedStatus ? (
+                      <>
+                        <p className="text-muted-foreground">
+                          {t("empty.unassignedScopeTitle")}
+                        </p>
+                        <p className="text-muted-foreground mt-1 text-sm">
+                          {t("empty.unassignedScopeHint")}
+                        </p>
+                      </>
+                    ) : inboxQuery.status === "waiting" ? (
+                      <>
+                        <p className="text-muted-foreground">
+                          {t("empty.waitingTitle")}
+                        </p>
+                        <p className="text-muted-foreground mt-1 text-sm">
+                          {t("empty.waitingHint")}
+                        </p>
+                      </>
+                    ) : activeFilterCount > 0 ? (
+                      <p className="text-muted-foreground">
+                        {t("empty.filteredTitle")}
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground">
+                        {t("empty.title")}
+                      </p>
+                    )}
+                    {activeFilterCount > 0 ? (
+                      <Button
+                        variant="link"
+                        onClick={() =>
+                          updateInboxQuery(
+                            clearSecondaryInboxFilters(inboxQuery)
+                          )
+                        }
+                        className="mt-2"
+                      >
+                        {t("empty.clearFilters")}
+                      </Button>
+                    ) : (
+                      isOwner &&
+                      inboxQuery.scope === "mine" &&
+                      inboxQuery.status !== "waiting" && (
+                        <Button
+                          variant="link"
+                          onClick={() =>
+                            updateInboxQuery({ ...inboxQuery, scope: "all" })
+                          }
+                          className="mt-2"
+                        >
+                          {t("empty.showAll")}
+                        </Button>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {conversations.map((conversation) => (
+                      <ConversationListItem
+                        key={conversation.id}
+                        conversation={conversation}
+                        sort={inboxQuery.sort}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {pagination.totalPages > 1 && (
+                  <div className="mt-5 flex items-center justify-between gap-3 border-t pt-4">
+                    <p className="text-muted-foreground text-sm">
+                      {t("pagination.summary", {
+                        page: pagination.page,
+                        totalPages: pagination.totalPages,
+                        total: pagination.total,
+                      })}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={inboxQuery.page <= 1}
+                        onClick={() =>
+                          updateInboxQuery(
+                            { ...inboxQuery, page: inboxQuery.page - 1 },
+                            { preservePage: true }
+                          )
+                        }
+                      >
+                        {t("pagination.previous")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={inboxQuery.page >= pagination.totalPages}
+                        onClick={() =>
+                          updateInboxQuery(
+                            { ...inboxQuery, page: inboxQuery.page + 1 },
+                            { preservePage: true }
+                          )
+                        }
+                      >
+                        {t("pagination.next")}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
-      )}
-
-      {/* Conversations List */}
-      <Card>
-        <CardContent className="p-6">
-          {/* Filter Tabs */}
-          <div className="flex flex-col gap-2 mb-4 border-b pb-4 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2 flex-wrap">
-              {[
-                { key: "mine", labelKey: "mine" },
-                { key: "active", labelKey: "active" },
-                { key: "waiting", labelKey: "waiting" },
-                // Only show "All" tab for owners
-                ...(isOwner ? [{ key: "all", labelKey: "all" }] : []),
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setFilter(tab.key as typeof filter)}
-                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                    filter === tab.key
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  {t(`tabs.${tab.labelKey}`)}
-                </button>
-              ))}
-            </div>
-            {/* Source filter */}
-            <select
-              value={sourceFilter}
-              onChange={(e) => setSourceFilter(e.target.value)}
-              className="w-full sm:w-auto sm:ms-auto px-2 py-1.5 text-sm border rounded-md bg-background"
-            >
-              <option value="all">{t("sources.all")}</option>
-              <option value="widget">{t("sources.widget")}</option>
-              <option value="whatsapp">{t("sources.whatsapp")}</option>
-              <option value="public">{t("sources.public")}</option>
-              <option value="voice">{t("sources.voice")}</option>
-              <option value="mobile">{t("sources.mobile")}</option>
-            </select>
-          </div>
-
-          {/* Conversation List */}
-          {filteredConversations.length === 0 ? (
-            <div className="text-center py-8">
-              <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">{t("empty.title")}</p>
-              {filter !== "all" && (
-                <Button
-                  variant="link"
-                  onClick={() => setFilter("all")}
-                  className="mt-2"
-                >
-                  {t("empty.showAll")}
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredConversations.map((conversation) => (
-                <ConversationListItem
-                  key={conversation.id}
-                  conversation={conversation}
-                  showAgent={isOwner && filter === "all"}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

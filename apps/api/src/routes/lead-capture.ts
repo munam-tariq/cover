@@ -24,7 +24,7 @@ import {
   resolveGreetingLanguage,
   projectLanguageDefault,
 } from "../services/language";
-import { isValidEmail } from "../services/lead-capture";
+import { isValidEmail } from "../services/lead-capture-v2";
 import {
   submitLeadForm,
   submitInlineEmail,

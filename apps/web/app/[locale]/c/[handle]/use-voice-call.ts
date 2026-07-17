@@ -102,16 +102,18 @@ export function useVoiceCall({
         setCallState(state);
         if (state === "ended" || state === "error") {
           stopTimer();
+          const voiceSessionToken = managerRef.current?.getSessionToken();
           managerRef.current = null;
           const duration = Math.round(
             (Date.now() - startedAtRef.current) / 1000
           );
           const convId = sessionIdRef.current;
-          const persist = convId
+          const persist = convId && voiceSessionToken
             ? endVoiceSession({
                 projectId,
                 visitorId,
                 sessionId: convId,
+                voiceSessionToken,
                 durationSeconds: duration,
                 transcript: transcriptRef.current,
               })

@@ -21,6 +21,8 @@ import {
   resolveGreetingLanguage,
 } from "../services/language";
 import {
+  assertVoiceConversationOwnership,
+  assertVoiceSessionBinding,
   issueVoiceSessionToken,
   verifyVoiceSessionToken,
 } from "../services/voice-session-token";
@@ -220,6 +222,12 @@ router.get(
   }),
   async (req: Request, res: Response) => {
   const { projectId } = req.params;
+  const visitorId =
+    typeof req.query.visitorId === "string" ? req.query.visitorId.trim() : "";
+  const sessionId =
+    typeof req.query.sessionId === "string" && req.query.sessionId.trim()
+      ? req.query.sessionId.trim()
+      : undefined;
 
   // Validate UUID format
   const uuidRegex =
@@ -227,6 +235,16 @@ router.get(
   if (!uuidRegex.test(projectId)) {
     return res.status(400).json({
       error: { code: "INVALID_ID", message: "Invalid project ID format" },
+    });
+  }
+  if (!visitorId) {
+    return res.status(400).json({
+      error: { code: "INVALID_VISITOR", message: "visitorId is required" },
+    });
+  }
+  if (sessionId && !uuidRegex.test(sessionId)) {
+    return res.status(400).json({
+      error: { code: "INVALID_SESSION", message: "Invalid session ID format" },
     });
   }
 
@@ -253,6 +271,42 @@ router.get(
       return res.json({ voiceEnabled: false });
     }
 
+    if (sessionId) {
+      const { data: conversation, error: conversationError } =
+        await supabaseAdmin
+          .from("conversations")
+          .select("id, project_id, visitor_id")
+          .eq("id", sessionId)
+          .maybeSingle();
+
+      if (conversationError) {
+        logger.error(
+          "[Voice Config] Conversation lookup failed",
+          conversationError,
+          { projectId, visitorId, sessionId }
+        );
+        return res.status(500).json({
+          error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+        });
+      }
+      if (!conversation) {
+        return res.status(404).json({
+          error: { code: "NOT_FOUND", message: "Conversation not found" },
+        });
+      }
+      try {
+        assertVoiceConversationOwnership(conversation, {
+          projectId,
+          visitorId,
+          sessionId,
+        });
+      } catch {
+        return res.status(403).json({
+          error: { code: "FORBIDDEN", message: "Conversation access denied" },
+        });
+      }
+    }
+
     // Check ElevenLabs credentials are configured
     if (!process.env.ELEVENLABS_API_KEY || !process.env.ELEVENLABS_AGENT_ID) {
       logger.error(
@@ -274,6 +328,20 @@ router.get(
     const voiceGreeting =
       project.voice_greeting || voiceStrings(greetingLang.base).greeting;
 
+    const voiceSessionToken = issueVoiceSessionToken({
+      projectId,
+      visitorId,
+      sessionId,
+    });
+    if (!voiceSessionToken) {
+      logger.error("[Voice Config] Voice session token secret is not configured", {}, {
+        projectId,
+      });
+      return res.status(500).json({
+        error: { code: "CONFIG_ERROR", message: "Voice not configured" },
+      });
+    }
+
     // Get a signed URL for the ElevenLabs WebSocket connection
     const signedUrl = await getElevenLabsSignedUrl(
       process.env.ELEVENLABS_API_KEY,
@@ -282,8 +350,8 @@ router.get(
 
     logger.info("[Voice Config] Voice config served", {
       projectId,
-      visitorId: req.query.visitorId as string | undefined,
-      sessionId: req.query.sessionId as string | undefined,
+      visitorId,
+      sessionId,
     });
 
     return res.json({
@@ -294,11 +362,7 @@ router.get(
       // system lines the widget echoes back via extra_body.
       language: greetingLang.base,
       // The widget passes this back via ElevenLabs extra_body; the LLM callback verifies it.
-      voiceSessionToken: issueVoiceSessionToken({
-        projectId,
-        visitorId: (req.query.visitorId as string) || "",
-        sessionId: req.query.sessionId as string | undefined,
-      }),
+      voiceSessionToken,
     });
   } catch (error) {
     logger.error(
@@ -353,31 +417,29 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
   }
 
   const visitorId =
-    extraBody?.visitorId ||
-    (req.headers["x-visitor-id"] as string) ||
-    `voice_anon_${Date.now()}`;
+    extraBody?.visitorId || (req.headers["x-visitor-id"] as string) || undefined;
   const sessionId =
     extraBody?.sessionId ||
     (req.headers["x-session-id"] as string) ||
     undefined;
 
-  // Verify the voice session token issued by /config (passed back via ElevenLabs extra_body).
-  // This is the only thing standing between the open LLM callback and being driven for an
-  // arbitrary project. Monitor mode logs and allows so a widget that predates the token keeps
-  // working; WIDGET_GATE_ENFORCE=true fails closed.
+  if (!visitorId) {
+    return res
+      .status(400)
+      .json({ error: "visitorId is required in elevenlabs_extra_body" });
+  }
+
+  // The ElevenLabs callback is intentionally public, so the short-lived token is the complete
+  // authorization boundary. It must bind every caller-controlled identifier exactly.
   try {
     const claims = verifyVoiceSessionToken(extraBody?.voiceSessionToken);
-    if (claims.projectId !== projectId) {
-      throw new Error("voice session project mismatch");
-    }
-  } catch (err) {
-    if (process.env.WIDGET_GATE_ENFORCE === "true") {
-      return res.status(403).json({ error: "Invalid voice session" });
-    }
-    logger.warn("[Voice LLM:monitor] would-deny voice callback", {
+    assertVoiceSessionBinding(claims, {
       projectId,
-      reason: (err as Error).message,
+      visitorId,
+      sessionId,
     });
+  } catch {
+    return res.status(403).json({ error: "Invalid voice session" });
   }
 
   const { messages } = req.body as {
@@ -438,6 +500,32 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
   // Non-silence message — reset counter
   if (sessionId) silenceCounters.delete(sessionId);
 
+  // A real utterance is customer activity. Nothing else records it: voice turns are excluded from
+  // message writes (chat-engine.ts:296/752) and the transcript only lands at session-end, so
+  // without this the auto-close cron would warn and close a customer who is mid-sentence on a call.
+  //
+  // Placement matters — this sits AFTER the silence interceptor above, which returns early for
+  // ElevenLabs' synthetic "..." turns. Touching activity before it would record silence as
+  // activity and make an idle or crashed call immortal, which is the bug class this whole change
+  // exists to remove.
+  //
+  // Awaited, not fire-and-forget: the cron ticks every 5 minutes and the model call below can take
+  // seconds, so a deferred touch can lose the race with a close and let this turn answer into a
+  // conversation the cron just closed.
+  if (sessionId) {
+    const { error: touchError } = await supabaseAdmin.rpc(
+      "touch_voice_activity",
+      { p_conversation_id: sessionId }
+    );
+    if (touchError) {
+      // Non-fatal: a failed touch must never break a live call. Worst case the call is treated as
+      // idle and closes, which the customer can revive by speaking or typing again.
+      logger.error("[Voice LLM] Failed to touch voice activity", touchError, {
+        sessionId,
+      });
+    }
+  }
+
   logger.info("[Voice LLM] processChat called", {
     projectId,
     visitorId,
@@ -463,7 +551,6 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
       visitorId,
       sessionId,
       response: plainText,
-      leadCapture: chatOutput.leadCapture ?? null,
     });
 
     // Return as OpenAI SSE stream
@@ -488,11 +575,19 @@ router.post("/llm/chat/completions", async (req: Request, res: Response) => {
  * Widget calls this when a voice call ends to update the conversation record.
  */
 router.post("/session-end", async (req: Request, res: Response) => {
-  const { projectId, visitorId, sessionId, durationSeconds, transcript } =
+  const {
+    projectId,
+    visitorId,
+    sessionId,
+    voiceSessionToken,
+    durationSeconds,
+    transcript,
+  } =
     req.body as {
       projectId?: string;
       visitorId?: string;
       sessionId?: string;
+      voiceSessionToken?: string;
       durationSeconds?: number;
       transcript?: Array<{ role: "user" | "assistant"; content: string }>;
     };
@@ -501,6 +596,13 @@ router.post("/session-end", async (req: Request, res: Response) => {
     return res
       .status(400)
       .json({ error: "projectId, visitorId and sessionId are required" });
+  }
+
+  try {
+    const claims = verifyVoiceSessionToken(voiceSessionToken);
+    assertVoiceSessionBinding(claims, { projectId, visitorId, sessionId });
+  } catch {
+    return res.status(403).json({ error: "Invalid voice session" });
   }
 
   // Clean up silence tracking for this session
@@ -527,10 +629,13 @@ router.post("/session-end", async (req: Request, res: Response) => {
     if (!conversation) {
       return res.status(404).json({ error: "Conversation not found" });
     }
-    if (
-      conversation.project_id !== projectId ||
-      conversation.visitor_id !== visitorId
-    ) {
+    try {
+      assertVoiceConversationOwnership(conversation, {
+        projectId,
+        visitorId,
+        sessionId,
+      });
+    } catch {
       return res
         .status(403)
         .json({ error: "Conversation does not belong to this visitor" });
@@ -612,7 +717,18 @@ router.post("/session-end", async (req: Request, res: Response) => {
         conversation_id: sessionId,
         sender_type: "ai",
         content: `Voice call ended (${formatVoiceDuration(durationSeconds)}). Continue chatting below.`,
-        metadata: { voice_summary: true },
+        // durationSeconds is what analytics sums for total talk time, and one summary row per call
+        // is what it counts (a conversation can hold many calls — staging has 27 in one). Without
+        // it here the duration would exist only inside the prose above, recoverable only by regex,
+        // and every call from now on would be a hole the backfill cannot reach.
+        // Rounded to match both voice_duration_seconds above and the integers the backfill parsed.
+        metadata: {
+          voice_summary: true,
+          durationSeconds:
+            typeof durationSeconds === "number"
+              ? Math.round(durationSeconds)
+              : null,
+        },
       });
     if (summaryError) {
       logger.error("[Voice] Failed to insert voice summary", summaryError, {

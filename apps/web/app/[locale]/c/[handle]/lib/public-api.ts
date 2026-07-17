@@ -22,10 +22,7 @@ function readHeaders(sessionToken?: string): HeadersInit | undefined {
   return sessionToken ? { "X-FrontFace-Session": sessionToken } : undefined;
 }
 
-export function isWidgetSessionDenied(
-  status: number,
-  body: unknown
-): boolean {
+export function isWidgetSessionDenied(status: number, body: unknown): boolean {
   if (status !== 403) return false;
   const code =
     body &&
@@ -88,6 +85,7 @@ export interface PublicMessage {
   senderName?: string;
   content: string;
   createdAt: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface ConversationSummary {
@@ -179,7 +177,7 @@ export async function checkHandoffAvailability(
 
 export async function triggerHandoff(
   conversationId: string,
-  options: { reason: "customer_request" | "button_click" },
+  options: { reason: "button_click" },
   sessionToken?: string
 ): Promise<HandoffTriggerResult> {
   try {
@@ -216,6 +214,7 @@ type ConversationStatusPayload = {
   status: ConversationStatus;
   assignedAgent?: { id: string; name: string };
   queuePosition?: number;
+  satisfactionRating: number | null;
 };
 
 export async function getConversationStatusResult(
@@ -244,7 +243,10 @@ export async function getConversationStatus(
   conversationId: string,
   sessionToken?: string
 ): Promise<ConversationStatusPayload | null> {
-  const result = await getConversationStatusResult(conversationId, sessionToken);
+  const result = await getConversationStatusResult(
+    conversationId,
+    sessionToken
+  );
   return result.ok ? result.data : null;
 }
 
@@ -321,6 +323,36 @@ export async function sendPresenceUpdate(
     });
   } catch {
     // Presence updates are best-effort.
+  }
+}
+
+/**
+ * Rate the conversation. The session token is the authorization — without it the route is a BOLA
+ * hole, since a conversation id alone would let anyone write to another visitor's thread.
+ *
+ * Deliberately not treated as customer activity: a rating means "I'm done", not "I'm still here", so
+ * it must never reset the inactivity countdown the warning just started.
+ */
+export async function submitCsat(
+  conversationId: string,
+  rating: number,
+  sessionToken?: string
+): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${API_URL}/api/widget/conversations/${conversationId}/csat`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(sessionToken ? { "X-FrontFace-Session": sessionToken } : {}),
+        },
+        body: JSON.stringify({ rating }),
+      }
+    );
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 
@@ -438,6 +470,7 @@ export async function endVoiceSession(params: {
   projectId: string;
   visitorId: string;
   sessionId: string;
+  voiceSessionToken: string;
   durationSeconds: number;
   transcript: Array<{ role: string; content: string }>;
 }): Promise<void> {

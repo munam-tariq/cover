@@ -1,45 +1,44 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { getChannelMeta } from "../../apps/web/lib/channels.ts";
+import {
+  getChannelMeta,
+  getChannelOptions,
+} from "../../apps/web/lib/channels.ts";
 
-describe("getChannelMeta", () => {
-  it("returns WhatsApp metadata", () => {
-    const meta = getChannelMeta("whatsapp");
-    assert.equal(meta.label, "WhatsApp");
-    assert.equal(meta.icon, "MessageCircle");
-    assert.equal(meta.color, "#25D366");
+describe("channel metadata", () => {
+  it("returns localized metadata for configured sources", () => {
+    assert.deepEqual(getChannelMeta("whatsapp"), {
+      labelKey: "sources.whatsapp",
+      icon: "MessageCircle",
+      color: "#25D366",
+    });
+    assert.equal(getChannelMeta("widget").labelKey, "sources.widget");
+    assert.equal(getChannelMeta("public").labelKey, "sources.public");
+    assert.equal(getChannelMeta("voice").labelKey, "sources.voice");
+    assert.equal(getChannelMeta("mobile").labelKey, "sources.mobile");
   });
 
-  it("returns widget metadata for 'widget' source", () => {
-    const meta = getChannelMeta("widget");
-    assert.equal(meta.label, "Widget");
-    assert.equal(meta.icon, "MessageSquare");
-    assert.equal(meta.color, "currentColor");
+  it("exposes only selectable current channels in display order", () => {
+    assert.deepEqual(
+      getChannelOptions().map(({ source, labelKey }) => ({ source, labelKey })),
+      [
+        { source: "widget", labelKey: "sources.widget" },
+        { source: "whatsapp", labelKey: "sources.whatsapp" },
+        { source: "public", labelKey: "sources.public" },
+        { source: "mobile", labelKey: "sources.mobile" },
+        { source: "playground", labelKey: "sources.playground" },
+        { source: "api", labelKey: "sources.api" },
+        { source: "mcp", labelKey: "sources.mcp" },
+      ]
+    );
   });
 
-  it("returns public page metadata", () => {
-    const meta = getChannelMeta("public");
-    assert.equal(meta.label, "Public Page");
-    assert.equal(meta.icon, "Globe");
-  });
-
-  it("returns voice metadata", () => {
-    const meta = getChannelMeta("voice");
-    assert.equal(meta.label, "Voice");
-    assert.equal(meta.icon, "Phone");
-  });
-
-  it("returns mobile metadata", () => {
-    const meta = getChannelMeta("mobile");
-    assert.equal(meta.label, "Mobile");
-    assert.equal(meta.icon, "Smartphone");
-  });
-
-  it("returns fallback for unknown source", () => {
-    const meta = getChannelMeta("something_new");
-    assert.equal(meta.label, "Chat");
-    assert.equal(meta.icon, "MessageSquare");
-    assert.equal(meta.color, "currentColor");
+  it("uses the localized Chat fallback for unknown legacy sources", () => {
+    assert.deepEqual(getChannelMeta("something_new"), {
+      labelKey: "sources.chat",
+      icon: "MessageSquare",
+      color: "currentColor",
+    });
   });
 });

@@ -117,6 +117,13 @@ export interface UIStrings {
   notHelpful: string;
   contactChannels: string;
 
+  // Conversation rating (CSAT). Rates the conversation as a whole — distinct from the per-message
+  // helpful/notHelpful thumbs, which rate a single AI answer.
+  csatPrompt: string;
+  csatThanks: string;
+  /** `{rating}` is replaced with the 1-5 value. */
+  csatRatingLabel: string;
+
   // Widget inline lead-capture form
   leadIntro: string;
   leadIntroProfiling: string;
@@ -255,6 +262,10 @@ const en: UIStrings = {
   notHelpful: "Not helpful",
   contactChannels: "Contact channels",
 
+  csatPrompt: "How would you rate this conversation?",
+  csatThanks: "Thanks for the feedback",
+  csatRatingLabel: "Rate {rating} out of 5",
+
   leadIntro: "Hey! Quick intro so I know who I'm talking to 😊",
   leadIntroProfiling: "Just a couple quick things to help me help you better!",
   emailFieldLabel: "Email",
@@ -384,6 +395,10 @@ const ar: UIStrings = {
   helpful: "مفيد",
   notHelpful: "غير مفيد",
   contactChannels: "قنوات التواصل",
+
+  csatPrompt: "كيف تقيّم هذه المحادثة؟",
+  csatThanks: "شكرًا لتقييمك",
+  csatRatingLabel: "التقييم {rating} من 5",
 
   leadIntro: "أهلًا! تعريف بسيط عشان أعرف مع مين أتكلم 😊",
   leadIntroProfiling: "معلومتين سريعتين عشان أقدر أخدمك أحسن!",

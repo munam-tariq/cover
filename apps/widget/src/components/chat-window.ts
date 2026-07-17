@@ -24,12 +24,14 @@ import {
   getConversationStatusResult,
   fetchNewMessagesResult,
   sendTypingIndicator,
+  submitCsat,
   submitOfflineMessage,
   PresenceManager,
   HandoffAvailability,
   ConversationStatus,
 } from "../utils/handoff";
 import { generateId } from "../utils/helpers";
+import { toStoredMessage } from "../utils/messages";
 import {
   WidgetRealtimeManager,
   getRealtimeManager,
@@ -148,7 +150,10 @@ export class ChatWindow {
   private voicePermissionPrompt: VoicePermissionPrompt | null = null;
   private voiceManager: ElevenLabsVoiceManager | null = null;
   private isVoiceCallActive = false;
-  private voiceTranscript: Array<{ role: "user" | "assistant"; content: string }> = [];
+  private voiceTranscript: Array<{
+    role: "user" | "assistant";
+    content: string;
+  }> = [];
 
   constructor(private options: ChatWindowOptions) {
     this.visitorId = getVisitorId();
@@ -174,8 +179,13 @@ export class ChatWindow {
       text: this.options.strings.talkToHuman,
     });
     // Insert human button before input container
-    const inputContainer = this.element.querySelector(".chatbot-input-container")!;
-    inputContainer.parentNode?.insertBefore(this.humanButton.element, inputContainer);
+    const inputContainer = this.element.querySelector(
+      ".chatbot-input-container"
+    )!;
+    inputContainer.parentNode?.insertBefore(
+      this.humanButton.element,
+      inputContainer
+    );
 
     // Create input
     this.input = new Input({
@@ -319,10 +329,14 @@ export class ChatWindow {
         }
         // If status check fails but we have session, still check handoff availability below.
         if (process.env.NODE_ENV === "development") {
-          console.log("[Widget] Status check failed, session exists:", this.sessionId);
+          console.log(
+            "[Widget] Status check failed, session exists:",
+            this.sessionId
+          );
         }
       } else {
         this.conversationStatus = status.data.status;
+        this.applyConversationCsat(status.data.satisfactionRating);
         this.updateVoiceButtonState();
 
         // If in handoff state (waiting or agent_active), hide button and start polling
@@ -373,13 +387,8 @@ export class ChatWindow {
 
       if (serverMessages.length > 0) {
         // Convert server messages to stored format
-        const convertedMessages: StoredMessage[] = serverMessages.map((msg) => ({
-          id: msg.id,
-          content: msg.content,
-          role: msg.senderType === "customer" ? "user" as const : "assistant" as const,
-          timestamp: new Date(msg.createdAt).getTime(),
-          ...(msg.senderType === "agent" && msg.senderName ? { agentName: msg.senderName } : {}),
-        }));
+        const convertedMessages: StoredMessage[] =
+          serverMessages.map(toStoredMessage);
 
         // Fetch feedback for this conversation and merge with messages
         await this.fetchAndMergeFeedback(convertedMessages);
@@ -396,7 +405,10 @@ export class ChatWindow {
         this.lastMessageTimestamp = lastMsg.createdAt;
 
         if (process.env.NODE_ENV === "development") {
-          console.log("[Widget] Synced messages from server:", serverMessages.length);
+          console.log(
+            "[Widget] Synced messages from server:",
+            serverMessages.length
+          );
         }
       }
     } catch (error) {
@@ -407,7 +419,9 @@ export class ChatWindow {
   /**
    * Fetch feedback from API and merge into messages
    */
-  private async fetchAndMergeFeedback(messages: StoredMessage[]): Promise<void> {
+  private async fetchAndMergeFeedback(
+    messages: StoredMessage[]
+  ): Promise<void> {
     if (!this.sessionId || !this.options.feedbackEnabled) return;
 
     try {
@@ -448,7 +462,8 @@ export class ChatWindow {
         if (msg.role !== "assistant") continue;
 
         // Try to match by message ID first, then by content
-        const rating = feedbackByMessageId.get(msg.id) || feedbackByContent.get(msg.content);
+        const rating =
+          feedbackByMessageId.get(msg.id) || feedbackByContent.get(msg.content);
         if (rating) {
           msg.feedback = rating as "helpful" | "unhelpful";
         }
@@ -490,13 +505,17 @@ export class ChatWindow {
           </div>
         </div>
         <div class="chatbot-header-actions">
-          ${this.options.voiceConfig?.enabled ? `
+          ${
+            this.options.voiceConfig?.enabled
+              ? `
           <button class="cb-voice-header-btn" aria-label="${this.escapeHtml(this.options.strings.startVoiceCall)}" type="button" title="${this.escapeHtml(this.options.strings.voiceCall)}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
             </svg>
           </button>
-          ` : ""}
+          `
+              : ""
+          }
           <button class="cb-expand-btn" aria-label="${this.escapeHtml(this.options.strings.expandChat)}" type="button" title="${this.escapeHtml(this.options.strings.expandChat)}">
             <svg class="cb-expand-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <polyline points="15 3 21 3 21 9"></polyline>
@@ -600,7 +619,9 @@ export class ChatWindow {
 
     try {
       const url = new URL(value);
-      return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : null;
+      return url.protocol === "http:" || url.protocol === "https:"
+        ? url.toString()
+        : null;
     } catch {
       return null;
     }
@@ -614,13 +635,15 @@ export class ChatWindow {
 
   private renderMessages(): void {
     // Clear existing messages (except typing indicator)
-    const existingMessages = this.messagesContainer.querySelectorAll(".chatbot-message");
+    const existingMessages =
+      this.messagesContainer.querySelectorAll(".chatbot-message");
     existingMessages.forEach((el) => el.remove());
 
     // Add greeting if no messages (suppress when lead capture form is pending)
     if (this.messages.length === 0) {
       const lcConfig = this.options.leadCaptureConfig;
-      const formPending = lcConfig?.enabled && !this.leadCaptureLocalState?.hasCompletedForm;
+      const formPending =
+        lcConfig?.enabled && !this.leadCaptureLocalState?.hasCompletedForm;
 
       if (!formPending) {
         const greeting: StoredMessage = {
@@ -647,6 +670,23 @@ export class ChatWindow {
 
     this.renderStarters();
     this.scrollToBottom();
+  }
+
+  /** Restore the server-owned conversation rating after full message rehydration. */
+  private applyConversationCsat(rating: number | null): void {
+    if (!rating) return;
+
+    let changed = false;
+    for (const message of this.messages) {
+      if (message.metadata?.csat_prompt === true && message.csat !== rating) {
+        message.csat = rating;
+        changed = true;
+      }
+    }
+    if (!changed) return;
+
+    setStoredMessages(this.options.projectId, this.messages);
+    this.renderMessages();
   }
 
   private renderStarters(): void {
@@ -689,12 +729,19 @@ export class ChatWindow {
       copiedLabel: this.options.strings.copied,
       helpfulLabel: this.options.strings.helpful,
       notHelpfulLabel: this.options.strings.notHelpful,
+      // The server decides which message carries the prompt (via metadata.csat_prompt); the widget
+      // just renders it wherever it lands.
+      csatEnabled: true,
+      csatPromptLabel: this.options.strings.csatPrompt,
+      csatThanksLabel: this.options.strings.csatThanks,
+      csatRatingLabel: this.options.strings.csatRatingLabel,
+      onCsat: (messageId, rating) => this.handleCsat(messageId, rating),
       onFeedback:
         this.options.feedbackEnabled &&
         messageData.role === "assistant" &&
         !messageData.isError
-        ? (messageId, rating) => this.handleFeedback(messageId, rating)
-        : undefined,
+          ? (messageId, rating) => this.handleFeedback(messageId, rating)
+          : undefined,
     });
 
     // Check if the previous message has the same role → group them
@@ -716,6 +763,28 @@ export class ChatWindow {
   /**
    * Handle feedback submission for a message
    */
+  /**
+   * Rate the conversation as a whole. Stored against the message that carried the prompt so the
+   * submitted state survives a re-render; the rating itself lands on the conversation.
+   */
+  private async handleCsat(messageId: string, rating: number): Promise<void> {
+    const message = this.messages.find((m) => m.id === messageId);
+    if (message) {
+      message.csat = rating;
+      setStoredMessages(this.options.projectId, this.messages);
+    }
+
+    if (!this.sessionId) return;
+
+    await submitCsat(
+      this.options.apiUrl,
+      this.sessionId,
+      rating,
+      this.sessionToken ?? undefined,
+      this.options.clientKey ?? undefined
+    );
+  }
+
   private async handleFeedback(
     messageId: string,
     rating: "helpful" | "unhelpful"
@@ -858,10 +927,15 @@ export class ChatWindow {
           (response.handoff.reason === "in_queue" ||
             response.handoff.reason === "agent_handling"));
 
-      if (shouldEnterHandoffMode && this.sessionId && !this.isInHandoffState()) {
-        const preferredStatus = response.handoff?.reason === "agent_handling"
-          ? "agent_active"
-          : "waiting";
+      if (
+        shouldEnterHandoffMode &&
+        this.sessionId &&
+        !this.isInHandoffState()
+      ) {
+        const preferredStatus =
+          response.handoff?.reason === "agent_handling"
+            ? "agent_active"
+            : "waiting";
         await this.enterHandoffMode({ preferredStatus, syncMessages: true });
       }
 
@@ -875,7 +949,6 @@ export class ChatWindow {
       if (this.shouldShowSummaryHook()) {
         setTimeout(() => this.showSummaryHook(), 1200);
       }
-
     } catch (error) {
       if (
         error instanceof ChatApiError &&
@@ -1003,7 +1076,10 @@ export class ChatWindow {
     if (this.summaryHookShown) return false;
     if (this.leadCaptureLocalState?.hasCompletedForm) return false;
     if (this.isLeadCaptureActive) return false;
-    if (this.totalUserMessages < (rc.conversation_summary_hook.min_messages || 3)) return false;
+    if (
+      this.totalUserMessages < (rc.conversation_summary_hook.min_messages || 3)
+    )
+      return false;
     return true;
   }
 
@@ -1012,7 +1088,9 @@ export class ChatWindow {
    */
   private showSummaryHook(): void {
     const rc = this.options.leadRecoveryConfig;
-    const prompt = rc?.conversation_summary_hook?.prompt || this.options.strings.emailSummaryPrompt;
+    const prompt =
+      rc?.conversation_summary_hook?.prompt ||
+      this.options.strings.emailSummaryPrompt;
 
     this.summaryHookShown = true;
 
@@ -1049,7 +1127,9 @@ export class ChatWindow {
    */
   private showReturnVisitMessage(): void {
     const rc = this.options.leadRecoveryConfig;
-    const message = rc?.return_visit?.welcome_back_message || this.options.strings.welcomeBackSummary;
+    const message =
+      rc?.return_visit?.welcome_back_message ||
+      this.options.strings.welcomeBackSummary;
 
     const welcomeMsg: StoredMessage = {
       id: generateId(),
@@ -1118,7 +1198,9 @@ export class ChatWindow {
   /**
    * Handle lead capture form submission
    */
-  private async handleLeadCaptureSubmit(formData: LeadCaptureFormData): Promise<void> {
+  private async handleLeadCaptureSubmit(
+    formData: LeadCaptureFormData
+  ): Promise<void> {
     if (!this.leadCaptureForm) return;
 
     try {
@@ -1168,8 +1250,12 @@ export class ChatWindow {
         // If there's a qualifying question, show it as an assistant message.
         // Use the backend-assembled greeting (greetingIntro + transition + question) so
         // the DB and the UI are always in sync.
-        if (result.nextAction === "qualifying_question" && result.qualifyingQuestion) {
-          const combinedContent = result.assembledGreeting || result.qualifyingQuestion;
+        if (
+          result.nextAction === "qualifying_question" &&
+          result.qualifyingQuestion
+        ) {
+          const combinedContent =
+            result.assembledGreeting || result.qualifyingQuestion;
           const qMsg: StoredMessage = {
             id: generateId(),
             content: combinedContent,
@@ -1216,7 +1302,11 @@ export class ChatWindow {
   private initiateVoiceCall(): void {
     if (this.isVoiceCallActive) return;
     if (!this.options.voiceConfig?.enabled) return;
-    if (this.conversationStatus === "waiting" || this.conversationStatus === "agent_active") return;
+    if (
+      this.conversationStatus === "waiting" ||
+      this.conversationStatus === "agent_active"
+    )
+      return;
     this.showVoicePermissionPrompt();
   }
 
@@ -1230,18 +1320,21 @@ export class ChatWindow {
     const lcConfig = this.options.leadCaptureConfig;
     const leadCaptureEnabled = lcConfig?.enabled === true;
     const formCompleted = this.leadCaptureLocalState?.hasCompletedForm === true;
-    const isInHandoff = this.conversationStatus === "waiting" ||
-                         this.conversationStatus === "agent_active";
+    const isInHandoff =
+      this.conversationStatus === "waiting" ||
+      this.conversationStatus === "agent_active";
     const disabled = (leadCaptureEnabled && !formCompleted) || isInHandoff;
 
     const tooltip = isInHandoff
       ? this.options.strings.voiceUnavailableDuringAgent
-      : (leadCaptureEnabled && !formCompleted)
+      : leadCaptureEnabled && !formCompleted
         ? this.options.strings.completeFormForVoice
         : this.options.strings.voiceCall;
 
     // Header voice button
-    const headerBtn = this.element.querySelector(".cb-voice-header-btn") as HTMLButtonElement | null;
+    const headerBtn = this.element.querySelector(
+      ".cb-voice-header-btn"
+    ) as HTMLButtonElement | null;
     if (headerBtn) {
       headerBtn.disabled = disabled;
       headerBtn.classList.toggle("cb-voice-btn-disabled", disabled);
@@ -1255,7 +1348,9 @@ export class ChatWindow {
   private async showVoicePermissionPrompt(): Promise<void> {
     // Check if microphone permission is already granted
     try {
-      const result = await navigator.permissions.query({ name: "microphone" as PermissionName });
+      const result = await navigator.permissions.query({
+        name: "microphone" as PermissionName,
+      });
       if (result.state === "granted") {
         // Already have permission — skip the prompt, start the call directly
         this.startVoiceCall();
@@ -1299,14 +1394,20 @@ export class ChatWindow {
     // Ensure a conversation exists before starting voice call
     if (!this.sessionId) {
       try {
-        const resp = await fetch(`${this.options.apiUrl}/api/chat/ensure-conversation`, {
-          method: "POST",
-          headers: widgetHeaders({
-            visitorId: this.visitorId,
-            clientKey: this.options.clientKey,
-          }),
-          body: JSON.stringify({ projectId: this.options.projectId, visitorId: this.visitorId }),
-        });
+        const resp = await fetch(
+          `${this.options.apiUrl}/api/chat/ensure-conversation`,
+          {
+            method: "POST",
+            headers: widgetHeaders({
+              visitorId: this.visitorId,
+              clientKey: this.options.clientKey,
+            }),
+            body: JSON.stringify({
+              projectId: this.options.projectId,
+              visitorId: this.visitorId,
+            }),
+          }
+        );
         const data = await resp.json();
         if (data.conversationId) {
           this.sessionId = data.conversationId;
@@ -1314,7 +1415,10 @@ export class ChatWindow {
           this.storeSessionToken(data.sessionToken);
         }
       } catch (error) {
-        console.error("[Widget] Failed to ensure conversation before voice call:", error);
+        console.error(
+          "[Widget] Failed to ensure conversation before voice call:",
+          error
+        );
       }
     }
 
@@ -1338,11 +1442,11 @@ export class ChatWindow {
     // State map: ElevenLabs → overlay
     // ElevenLabs Mode only emits "speaking" | "listening" — no separate "thinking" state
     const stateMap: Record<string, VoiceCallState> = {
-      connecting:  "connecting",
-      listening:   "active-listening",
-      speaking:    "active-speaking",
-      ended:       "ended",
-      error:       "error",
+      connecting: "connecting",
+      listening: "active-listening",
+      speaking: "active-speaking",
+      ended: "ended",
+      error: "error",
     };
 
     this.voiceTranscript = [];
@@ -1362,7 +1466,9 @@ export class ChatWindow {
           this.input.setDisabled(false);
           // Send transcript to backend, then sync full conversation from DB into text chat
           this.notifyVoiceSessionEnd()
-            .then(() => new Promise<void>(resolve => setTimeout(resolve, 300)))
+            .then(
+              () => new Promise<void>((resolve) => setTimeout(resolve, 300))
+            )
             .then(() => this.fetchAndSyncMessages())
             .catch(() => this.addVoiceCallSummary()); // fallback if sync fails
           // Refresh lead capture status (qualifying answers may have been recorded during call)
@@ -1375,8 +1481,14 @@ export class ChatWindow {
                 this.options.clientKey
               );
               if (status.hasCompletedQualifying) {
-                this.leadCaptureLocalState = { hasCompletedForm: true, hasCompletedQualifying: true };
-                setLeadCaptureState(this.options.projectId, this.leadCaptureLocalState);
+                this.leadCaptureLocalState = {
+                  hasCompletedForm: true,
+                  hasCompletedQualifying: true,
+                };
+                setLeadCaptureState(
+                  this.options.projectId,
+                  this.leadCaptureLocalState
+                );
               }
             } catch {
               // Non-critical — ignore
@@ -1455,12 +1567,15 @@ export class ChatWindow {
         projectId: this.options.projectId,
         visitorId: this.visitorId,
         sessionId: this.sessionId,
+        voiceSessionToken: this.voiceManager?.getSessionToken(),
         durationSeconds: Math.round(duration),
         transcript: this.voiceTranscript,
       }),
-    }).then(() => {}).catch((err) => {
-      console.error("[Widget] Failed to notify voice session end:", err);
-    });
+    })
+      .then(() => {})
+      .catch((err) => {
+        console.error("[Widget] Failed to notify voice session end:", err);
+      });
   }
 
   /**
@@ -1554,13 +1669,18 @@ export class ChatWindow {
       // Gate: Only show button if form completed OR lead capture disabled
       const lcConfig = this.options.leadCaptureConfig;
       const leadCaptureEnabled = lcConfig?.enabled === true;
-      const formCompleted = this.leadCaptureLocalState?.hasCompletedForm === true;
-      const shouldShowButton = this.handoffAvailability.showButton &&
+      const formCompleted =
+        this.leadCaptureLocalState?.hasCompletedForm === true;
+      const shouldShowButton =
+        this.handoffAvailability.showButton &&
         (!leadCaptureEnabled || formCompleted);
 
       // Update human button visibility
       if (shouldShowButton && this.humanButton) {
-        this.humanButton.setText(this.handoffAvailability.buttonText || this.options.strings.talkToHuman);
+        this.humanButton.setText(
+          this.handoffAvailability.buttonText ||
+            this.options.strings.talkToHuman
+        );
         this.humanButton.show();
       } else if (this.humanButton) {
         this.humanButton.hide();
@@ -1568,11 +1688,15 @@ export class ChatWindow {
 
       // Log for debugging
       if (process.env.NODE_ENV === "development") {
-        console.log("[Widget] Handoff availability:", this.handoffAvailability, {
-          leadCaptureEnabled,
-          formCompleted,
-          shouldShowButton
-        });
+        console.log(
+          "[Widget] Handoff availability:",
+          this.handoffAvailability,
+          {
+            leadCaptureEnabled,
+            formCompleted,
+            shouldShowButton,
+          }
+        );
       }
     } catch (error) {
       console.error("[Widget] Failed to check handoff availability:", error);
@@ -1590,7 +1714,9 @@ export class ChatWindow {
 
     try {
       if (this.sessionId) {
-        const alreadyInHandoff = await this.enterHandoffMode({ syncMessages: true });
+        const alreadyInHandoff = await this.enterHandoffMode({
+          syncMessages: true,
+        });
         if (alreadyInHandoff) {
           this.scrollToBottom();
           return;
@@ -1720,7 +1846,9 @@ export class ChatWindow {
     // Hide chat elements
     this.messagesContainer.style.display = "none";
     this.humanButton?.hide();
-    const inputContainer = this.element.querySelector(".chatbot-input-container") as HTMLElement;
+    const inputContainer = this.element.querySelector(
+      ".chatbot-input-container"
+    ) as HTMLElement;
     if (inputContainer) {
       inputContainer.style.display = "none";
     }
@@ -1739,7 +1867,9 @@ export class ChatWindow {
 
     // Show chat elements
     this.messagesContainer.style.display = "flex";
-    const inputContainer = this.element.querySelector(".chatbot-input-container") as HTMLElement;
+    const inputContainer = this.element.querySelector(
+      ".chatbot-input-container"
+    ) as HTMLElement;
     if (inputContainer) {
       inputContainer.style.display = "block";
     }
@@ -1822,7 +1952,10 @@ export class ChatWindow {
             console.log("[Widget] Agent joined via realtime:", agent);
           }
         },
-        onTyping: (data: { participant: { type: string; name?: string }; isTyping: boolean }) => {
+        onTyping: (data: {
+          participant: { type: string; name?: string };
+          isTyping: boolean;
+        }) => {
           // Handle agent typing indicator
           if (data.participant.type === "agent") {
             if (data.isTyping) {
@@ -1834,12 +1967,17 @@ export class ChatWindow {
         },
         onConnectionChange: (connected: boolean) => {
           if (process.env.NODE_ENV === "development") {
-            console.log("[Widget] Realtime connection:", connected ? "connected" : "disconnected");
+            console.log(
+              "[Widget] Realtime connection:",
+              connected ? "connected" : "disconnected"
+            );
           }
 
           // If disconnected and we're in handoff mode, fallback to polling
           if (!connected && this.isInHandoffState()) {
-            console.warn("[Widget] Realtime disconnected, falling back to polling");
+            console.warn(
+              "[Widget] Realtime disconnected, falling back to polling"
+            );
             this.useRealtime = false;
             this.startPolling();
           }
@@ -1856,7 +1994,10 @@ export class ChatWindow {
         console.log("[Widget] Started realtime connection");
       }
     } catch (error) {
-      console.error("[Widget] Failed to start realtime, falling back to polling:", error);
+      console.error(
+        "[Widget] Failed to start realtime, falling back to polling:",
+        error
+      );
       this.useRealtime = false;
       this.startPolling();
     }
@@ -1872,16 +2013,7 @@ export class ChatWindow {
     // Skip customer messages (we already have those from sending)
     if (message.senderType === "customer") return;
 
-    const storedMsg: StoredMessage = {
-      id: message.id,
-      content: message.content,
-      role: "assistant",
-      timestamp: new Date(message.createdAt).getTime(),
-      // Add agent name for agent messages
-      ...(message.senderType === "agent" && message.senderName
-        ? { agentName: message.senderName }
-        : {}),
-    };
+    const storedMsg = toStoredMessage(message);
 
     this.messages.push(storedMsg);
     this.addMessageToDOM(storedMsg);
@@ -1907,7 +2039,11 @@ export class ChatWindow {
     }
 
     // If resolved or returned to AI, cleanup and show button again
-    if (status.status === "resolved" || status.status === "closed" || status.status === "ai_active") {
+    if (
+      status.status === "resolved" ||
+      status.status === "closed" ||
+      status.status === "ai_active"
+    ) {
       // If was in handoff state and now resolved/ai_active, fetch any system messages
       if (previousStatus === "agent_active" || previousStatus === "waiting") {
         this.fetchAndSyncMessages();
@@ -1926,7 +2062,10 @@ export class ChatWindow {
    * Check if we're in handoff state
    */
   private isInHandoffState(): boolean {
-    return this.conversationStatus === "waiting" || this.conversationStatus === "agent_active";
+    return (
+      this.conversationStatus === "waiting" ||
+      this.conversationStatus === "agent_active"
+    );
   }
 
   /**
@@ -1957,22 +2096,7 @@ export class ChatWindow {
             // Skip if we already have this message
             if (this.messages.some((m) => m.id === msg.id)) continue;
 
-            // Determine role based on sender type
-            let role: "user" | "assistant" = "assistant";
-            if (msg.senderType === "customer") {
-              role = "user";
-            }
-
-            const storedMsg: StoredMessage = {
-              id: msg.id,
-              content: msg.content,
-              role,
-              timestamp: new Date(msg.createdAt).getTime(),
-              // Add agent name for agent messages
-              ...(msg.senderType === "agent" && msg.senderName
-                ? { agentName: msg.senderName }
-                : {}),
-            };
+            const storedMsg = toStoredMessage(msg);
 
             this.messages.push(storedMsg);
             this.addMessageToDOM(storedMsg);
@@ -2005,7 +2129,11 @@ export class ChatWindow {
           this.updateVoiceButtonState();
 
           // If resolved or closed, stop polling and maybe show button again
-          if (status.status === "resolved" || status.status === "closed" || status.status === "ai_active") {
+          if (
+            status.status === "resolved" ||
+            status.status === "closed" ||
+            status.status === "ai_active"
+          ) {
             this.stopMessagePolling();
 
             // Re-check availability to show button if appropriate
@@ -2058,13 +2186,15 @@ export class ChatWindow {
     if (this.focusableElements.length === 0) return;
 
     const firstElement = this.focusableElements[0];
-    const lastElement = this.focusableElements[this.focusableElements.length - 1];
+    const lastElement =
+      this.focusableElements[this.focusableElements.length - 1];
     const activeElement = document.activeElement as HTMLElement;
 
     // Check if active element is within shadow DOM
-    const shadowActiveElement = this.element.getRootNode() instanceof ShadowRoot
-      ? (this.element.getRootNode() as ShadowRoot).activeElement
-      : activeElement;
+    const shadowActiveElement =
+      this.element.getRootNode() instanceof ShadowRoot
+        ? (this.element.getRootNode() as ShadowRoot).activeElement
+        : activeElement;
 
     if (e.shiftKey) {
       // Shift + Tab
@@ -2118,15 +2248,28 @@ export class ChatWindow {
     this.element.classList.toggle("cb-expanded", this.isExpanded);
 
     // Toggle icon visibility
-    const expandIcon = this.element.querySelector(".cb-expand-icon") as HTMLElement;
-    const collapseIcon = this.element.querySelector(".cb-collapse-icon") as HTMLElement;
-    const expandBtn = this.element.querySelector(".cb-expand-btn") as HTMLElement;
+    const expandIcon = this.element.querySelector(
+      ".cb-expand-icon"
+    ) as HTMLElement;
+    const collapseIcon = this.element.querySelector(
+      ".cb-collapse-icon"
+    ) as HTMLElement;
+    const expandBtn = this.element.querySelector(
+      ".cb-expand-btn"
+    ) as HTMLElement;
 
     if (expandIcon && collapseIcon && expandBtn) {
       expandIcon.style.display = this.isExpanded ? "none" : "block";
       collapseIcon.style.display = this.isExpanded ? "block" : "none";
-      expandBtn.setAttribute("aria-label", this.isExpanded ? this.options.strings.collapseChat : this.options.strings.expandChat);
-      expandBtn.title = this.isExpanded ? this.options.strings.collapseChat : this.options.strings.expandChat;
+      expandBtn.setAttribute(
+        "aria-label",
+        this.isExpanded
+          ? this.options.strings.collapseChat
+          : this.options.strings.expandChat
+      );
+      expandBtn.title = this.isExpanded
+        ? this.options.strings.collapseChat
+        : this.options.strings.expandChat;
     }
   }
 

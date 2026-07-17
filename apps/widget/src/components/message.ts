@@ -28,7 +28,19 @@ export interface MessageOptions {
   /** Localized aria-labels/titles for the feedback thumbs. */
   helpfulLabel?: string;
   notHelpfulLabel?: string;
+  /** Server-set message metadata. `csat_prompt` here is what asks for a conversation rating. */
+  metadata?: Record<string, unknown>;
+  // Conversation rating (CSAT) state — rates the whole conversation, not this answer.
+  csat?: number | null;
+  onCsat?: (messageId: string, rating: number) => void;
+  csatEnabled?: boolean;
+  csatPromptLabel?: string;
+  csatThanksLabel?: string;
+  /** Contains `{rating}`. */
+  csatRatingLabel?: string;
 }
+
+const CSAT_SCALE = [1, 2, 3, 4, 5] as const;
 
 // SVG icons for feedback buttons
 const THUMBS_UP_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>`;
@@ -39,6 +51,7 @@ export class Message {
   element: HTMLElement;
   private feedbackContainer: HTMLElement | null = null;
   private actionsContainer: HTMLElement | null = null;
+  private csatContainer: HTMLElement | null = null;
 
   constructor(private options: MessageOptions) {
     this.element = this.createElement();
@@ -79,6 +92,13 @@ export class Message {
 
     message.appendChild(content);
 
+    // Rating prompt, when the server attached one to this message. Sits outside the bubble: it is
+    // about the conversation, not about this answer.
+    if (this.shouldPromptCsat()) {
+      this.csatContainer = this.createCsatControl();
+      message.appendChild(this.csatContainer);
+    }
+
     // Timestamp
     const time = document.createElement("div");
     time.className = "chatbot-message-time";
@@ -87,6 +107,75 @@ export class Message {
     message.appendChild(time);
 
     return message;
+  }
+
+  private shouldPromptCsat(): boolean {
+    return (
+      this.options.csatEnabled === true &&
+      this.options.role === "assistant" &&
+      !this.options.isError &&
+      this.options.metadata?.csat_prompt === true
+    );
+  }
+
+  private createCsatControl(): HTMLElement {
+    const container = document.createElement("div");
+    container.className = "chatbot-csat";
+
+    if (this.options.csat) {
+      container.appendChild(this.createCsatThanks());
+      return container;
+    }
+
+    const prompt = document.createElement("div");
+    prompt.className = "chatbot-csat-prompt";
+    prompt.textContent =
+      this.options.csatPromptLabel || "How would you rate this conversation?";
+    container.appendChild(prompt);
+
+    const scale = document.createElement("div");
+    scale.className = "chatbot-csat-scale";
+    // The scale reads 1→5 in every locale. Left as a logical row it would mirror to 5→1 under RTL,
+    // which silently inverts the meaning of every rating an Arabic customer gives us.
+    scale.dir = "ltr";
+
+    for (const rating of CSAT_SCALE) {
+      const button = document.createElement("button");
+      button.className = "chatbot-csat-btn";
+      button.textContent = String(rating);
+      const label = (this.options.csatRatingLabel || "Rate {rating} out of 5").replace(
+        "{rating}",
+        String(rating)
+      );
+      button.setAttribute("aria-label", label);
+      button.setAttribute("title", label);
+      button.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.handleCsat(rating);
+      });
+      scale.appendChild(button);
+    }
+
+    container.appendChild(scale);
+    return container;
+  }
+
+  private createCsatThanks(): HTMLElement {
+    const submitted = document.createElement("span");
+    submitted.className = "chatbot-csat-submitted";
+    submitted.textContent = this.options.csatThanksLabel || "Thanks for the feedback";
+    return submitted;
+  }
+
+  private handleCsat(rating: number): void {
+    // Optimistic: the rating is a courtesy, and a failed write should not nag the customer.
+    this.options.csat = rating;
+    if (this.csatContainer) {
+      this.csatContainer.innerHTML = "";
+      this.csatContainer.appendChild(this.createCsatThanks());
+    }
+
+    this.options.onCsat?.(this.options.id, rating);
   }
 
   private createMessageActions(): HTMLElement {

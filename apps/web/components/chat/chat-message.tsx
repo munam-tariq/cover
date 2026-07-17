@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+import { type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 
 export interface ChatMessageSource {
@@ -36,6 +37,12 @@ export interface ChatMessageProps {
   accentColor?: string;
   /** Display name for human-agent messages (handoff). */
   senderName?: string;
+  /**
+   * Rendered under the message body, inside the bubble. Lets a surface attach its own controls
+   * (the public page's rating prompt) without this shared component — which the playground also
+   * renders — having to know what they are.
+   */
+  footer?: ReactNode;
 }
 
 export function ChatMessage({
@@ -48,15 +55,21 @@ export function ChatMessage({
   timestamp,
   accentColor,
   senderName,
+  footer,
 }: ChatMessageProps) {
   const isUser = role === "user";
   const isAgent = role === "agent";
 
   // System messages ("Agent joined", "Conversation resolved") render as a muted divider line.
+  // The footer belongs here too: "Conversation resolved" is one of the two messages the rating
+  // prompt attaches to, and returning early without it would drop that prompt entirely.
   if (role === "system") {
     return (
       <div className="text-muted-foreground py-3 text-center text-xs">
         {content}
+        {footer && (
+          <div className="mt-2 flex flex-col items-center">{footer}</div>
+        )}
       </div>
     );
   }
@@ -174,6 +187,8 @@ export function ChatMessage({
             </div>
           </div>
         )}
+
+        {footer}
       </div>
     </div>
   );

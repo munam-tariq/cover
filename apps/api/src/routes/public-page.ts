@@ -379,7 +379,12 @@ publicPageRouter.post(
     try {
       const { error } = await supabaseAdmin
         .from("conversations")
-        .update({ status: "closed" })
+        // resolved_at is the terminal timestamp the inbox renders as "closed at" and the insights
+        // classifier bounds its backlog on; leaving it NULL here is what stranded 5 of 12 closed rows.
+        // No metadata.close_reason: the Data API can only REPLACE jsonb, which would destroy
+        // last_inbound_at / language. Absent close_reason renders as a plain "Closed", which is
+        // correct for a visitor-initiated close.
+        .update({ status: "closed", resolved_at: new Date().toISOString() })
         .eq("id", conversationId)
         .eq("project_id", projectId)
         .eq("visitor_id", visitorId)

@@ -87,7 +87,14 @@ const dashboardCors = cors({
 // Protection comes from rate limiting, not CORS
 const widgetCors = cors({
   origin: "*",
-  methods: ["GET", "POST", "OPTIONS"],
+  // PUT/PATCH are here because `/api/customers` is mounted with widgetCors BEFORE its dashboardCors
+  // mount (the widget's POST /identify and the dashboard's PUT /:id share the prefix, and the widget
+  // mount can't move without breaking identify's open CORS). So this open-CORS policy answers the
+  // preflight for the dashboard's PUT /api/customers/:id — without PUT here the browser blocks it
+  // ("Failed to fetch") before it ever reaches the handler. Safe: the only write handlers under any
+  // widgetCors mount (customers PUT /:id, conversations PATCH /:id) are authMiddleware-gated and use
+  // bearer tokens, not cookies, so CORS is not the security boundary here.
+  methods: ["GET", "POST", "PUT", "PATCH", "OPTIONS"],
   allowedHeaders: [
     "Content-Type",
     "X-Visitor-Id",

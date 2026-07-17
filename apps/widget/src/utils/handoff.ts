@@ -10,6 +10,16 @@
 
 import { widgetHeaders } from "./request";
 
+/** A message as returned by the public messages endpoint. */
+export interface FetchedMessage {
+  id: string;
+  senderType: "customer" | "agent" | "ai" | "system";
+  senderName?: string;
+  content: string;
+  createdAt: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface HandoffAvailability {
   available: boolean;
   showButton: boolean;
@@ -56,10 +66,7 @@ export type SessionAwareResult<T> =
   | { ok: false; staleSession: true }
   | { ok: false; staleSession: false };
 
-export function isWidgetSessionDenied(
-  status: number,
-  body: unknown
-): boolean {
+export function isWidgetSessionDenied(status: number, body: unknown): boolean {
   if (status !== 403) return false;
   const code =
     body &&
@@ -78,9 +85,41 @@ export function isWidgetSessionDenied(
  * conversation create) so the request is authorized for this conversation.
  */
 function widgetReadHeaders(sessionToken?: string): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
   if (sessionToken) headers["X-FrontFace-Session"] = sessionToken;
   return headers;
+}
+
+/**
+ * Submit a rating for the conversation as a whole (CSAT, 1-5).
+ *
+ * The endpoint is fail-closed on the session token, so this is a no-op without one. Rating a
+ * conversation is not activity: it does not stop an inactivity close, by design — the customer is
+ * telling us they're done.
+ */
+export async function submitCsat(
+  apiUrl: string,
+  conversationId: string,
+  rating: number,
+  sessionToken?: string,
+  clientKey?: string
+): Promise<boolean> {
+  try {
+    const response = await fetch(
+      `${apiUrl}/api/widget/conversations/${conversationId}/csat`,
+      {
+        method: "POST",
+        headers: widgetHeaders({ sessionToken, clientKey }),
+        body: JSON.stringify({ rating }),
+      }
+    );
+    return response.ok;
+  } catch (error) {
+    console.error("[Widget] Failed to submit conversation rating:", error);
+    return false;
+  }
 }
 
 /**
@@ -123,7 +162,7 @@ export async function triggerHandoff(
   apiUrl: string,
   conversationId: string,
   options: {
-    reason: "low_confidence" | "keyword" | "customer_request" | "button_click";
+    reason: "low_confidence" | "keyword" | "button_click";
     confidence?: number;
     triggerKeyword?: string;
     customerEmail?: string;
@@ -235,7 +274,9 @@ export function checkForLowConfidenceIndicators(response: string): boolean {
   ];
 
   const lowerResponse = response.toLowerCase();
-  return lowConfidencePatterns.some((pattern) => lowerResponse.includes(pattern));
+  return lowConfidencePatterns.some((pattern) =>
+    lowerResponse.includes(pattern)
+  );
 }
 
 /**
@@ -263,19 +304,20 @@ export function formatAgentJoinedMessage(agentName: string): string {
   return `${agentName} has joined the conversation.`;
 }
 
-/**
- * Get conversation status from API
- */
-export async function getConversationStatus(
-  apiUrl: string,
-  conversationId: string,
-  sessionToken?: string
-): Promise<{
+export interface ConversationStatusPayload {
   id: string;
   status: ConversationStatus;
   assignedAgent?: { id: string; name: string };
   queuePosition?: number;
-} | null> {
+  satisfactionRating: number | null;
+}
+
+/** Get conversation status from API. */
+export async function getConversationStatus(
+  apiUrl: string,
+  conversationId: string,
+  sessionToken?: string
+): Promise<ConversationStatusPayload | null> {
   const result = await getConversationStatusResult(
     apiUrl,
     conversationId,
@@ -288,14 +330,7 @@ export async function getConversationStatusResult(
   apiUrl: string,
   conversationId: string,
   sessionToken?: string
-): Promise<
-  SessionAwareResult<{
-    id: string;
-    status: ConversationStatus;
-    assignedAgent?: { id: string; name: string };
-    queuePosition?: number;
-  }>
-> {
+): Promise<SessionAwareResult<ConversationStatusPayload>> {
   try {
     const response = await fetch(
       `${apiUrl}/api/widget/conversations/${conversationId}/status`,
@@ -328,13 +363,7 @@ export async function fetchNewMessages(
   conversationId: string,
   afterTimestamp?: string,
   sessionToken?: string
-): Promise<Array<{
-  id: string;
-  senderType: "customer" | "agent" | "ai" | "system";
-  senderName?: string;
-  content: string;
-  createdAt: string;
-}>> {
+): Promise<FetchedMessage[]> {
   const result = await fetchNewMessagesResult(
     apiUrl,
     conversationId,
@@ -349,17 +378,7 @@ export async function fetchNewMessagesResult(
   conversationId: string,
   afterTimestamp?: string,
   sessionToken?: string
-): Promise<
-  SessionAwareResult<
-    Array<{
-      id: string;
-      senderType: "customer" | "agent" | "ai" | "system";
-      senderName?: string;
-      content: string;
-      createdAt: string;
-    }>
-  >
-> {
+): Promise<SessionAwareResult<FetchedMessage[]>> {
   try {
     let url = `${apiUrl}/api/widget/conversations/${conversationId}/messages/public`;
     if (afterTimestamp) {
@@ -435,13 +454,16 @@ export async function sendPresenceUpdate(
       return;
     }
 
-    await fetch(`${apiUrl}/api/widget/conversations/${conversationId}/presence`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ status, visitorId }),
-    });
+    await fetch(
+      `${apiUrl}/api/widget/conversations/${conversationId}/presence`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status, visitorId }),
+      }
+    );
   } catch (error) {
     // Silently fail - presence updates are not critical
     if (process.env.NODE_ENV === "development") {
@@ -534,7 +556,12 @@ export class PresenceManager {
 
   private sendStatus(status: "online" | "idle" | "offline"): void {
     if (!this.conversationId) return;
-    sendPresenceUpdate(this.apiUrl, this.conversationId, status, this.visitorId);
+    sendPresenceUpdate(
+      this.apiUrl,
+      this.conversationId,
+      status,
+      this.visitorId
+    );
   }
 
   private startHeartbeat(): void {
@@ -556,9 +583,13 @@ export class PresenceManager {
     const activityEvents = ["mousedown", "keydown", "touchstart", "scroll"];
 
     activityEvents.forEach((event) => {
-      document.addEventListener(event, () => {
-        this.recordActivity();
-      }, { passive: true });
+      document.addEventListener(
+        event,
+        () => {
+          this.recordActivity();
+        },
+        { passive: true }
+      );
     });
 
     // Start idle timeout
@@ -590,7 +621,10 @@ export class PresenceManager {
       if (document.visibilityState === "hidden" && this.conversationId) {
         this.currentStatus = "idle";
         this.sendStatus("idle");
-      } else if (document.visibilityState === "visible" && this.conversationId) {
+      } else if (
+        document.visibilityState === "visible" &&
+        this.conversationId
+      ) {
         this.recordActivity();
       }
     });

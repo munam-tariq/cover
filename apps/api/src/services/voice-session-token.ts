@@ -23,6 +23,18 @@ export interface VoiceSessionClaims {
   exp: number;
 }
 
+export interface VoiceSessionBinding {
+  projectId: string;
+  visitorId: string;
+  sessionId?: string;
+}
+
+interface VoiceConversationOwner {
+  id: string;
+  project_id: string;
+  visitor_id: string;
+}
+
 const DEFAULT_TTL_SECONDS = 10 * 60; // 10 min — a voice call is short-lived
 
 function resolveSecret(provided?: string): string {
@@ -117,4 +129,38 @@ export function verifyVoiceSessionToken(
   }
 
   return claims;
+}
+
+/**
+ * Fail unless the caller is using the exact identity tuple the token was minted for.
+ * An absent conversation id is meaningful: it permits a new voice conversation, but
+ * cannot be upgraded into access to a caller-supplied existing conversation.
+ */
+export function assertVoiceSessionBinding(
+  claims: VoiceSessionClaims,
+  binding: VoiceSessionBinding
+): void {
+  if (claims.projectId !== binding.projectId) {
+    throw new Error("voice session project mismatch");
+  }
+  if (claims.visitorId !== binding.visitorId) {
+    throw new Error("voice session visitor mismatch");
+  }
+  if ((claims.sessionId ?? null) !== (binding.sessionId ?? null)) {
+    throw new Error("voice session conversation mismatch");
+  }
+}
+
+/** Verify a database conversation before its id is embedded in a privileged voice token. */
+export function assertVoiceConversationOwnership(
+  conversation: VoiceConversationOwner,
+  binding: VoiceSessionBinding & { sessionId: string }
+): void {
+  if (
+    conversation.id !== binding.sessionId ||
+    conversation.project_id !== binding.projectId ||
+    conversation.visitor_id !== binding.visitorId
+  ) {
+    throw new Error("Conversation does not belong to this voice session");
+  }
 }

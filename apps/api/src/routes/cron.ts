@@ -75,8 +75,9 @@ cronRouter.post("/agent-presence", verifyCronSecret, async (_req, res) => {
 /**
  * POST /api/cron/conversation-cleanup
  *
- * Close abandoned conversations where customer has been offline for too long.
- * Should be called every hour.
+ * Warn AI-handled conversations that have gone quiet, and close the ones whose grace has elapsed.
+ * Runs every 5 minutes: the timings are per-project (default warn at 10 min, close 5 min later), so
+ * an hourly tick could not resolve them.
  */
 cronRouter.post("/conversation-cleanup", verifyCronSecret, async (_req, res) => {
   try {
@@ -87,11 +88,12 @@ cronRouter.post("/conversation-cleanup", verifyCronSecret, async (_req, res) => 
 
     const duration = Date.now() - startTime;
     console.log(
-      `[Cron] Conversation cleanup complete: closed=${result.closed}, duration=${duration}ms`
+      `[Cron] Conversation cleanup complete: warned=${result.warned}, closed=${result.closed}, duration=${duration}ms`
     );
 
     res.json({
       success: true,
+      warned: result.warned,
       closed: result.closed,
       conversations: result.conversations,
       duration,
@@ -118,6 +120,12 @@ cronRouter.post("/classify-insights", verifyCronSecret, async (_req, res) => {
     const startTime = Date.now();
 
     const result = await classifyAllProjects();
+
+    if (result.errors.length > 0) {
+      throw new Error(
+        `Insights classification failed for ${result.errors.length} project(s): ${result.errors.join("; ")}`
+      );
+    }
 
     const duration = Date.now() - startTime;
     console.log(

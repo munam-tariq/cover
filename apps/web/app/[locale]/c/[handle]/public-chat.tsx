@@ -25,6 +25,7 @@ import {
 
 import { ChatMessage } from "@/components/chat/chat-message";
 
+import { CsatControl } from "./csat-control";
 import { HandoffBanner } from "./handoff-banner";
 import { LeadCaptureCard } from "./lead-capture-card";
 import {
@@ -35,6 +36,7 @@ import {
   getRecentConversations,
   isWidgetSessionDenied,
   recordLeadCaptureVisit,
+  submitCsat,
   submitLeadForm,
   type ConversationSummary,
   type LeadCaptureClientConfig,
@@ -86,6 +88,8 @@ interface Msg {
   role: "user" | "assistant" | "agent" | "system";
   content: string;
   senderName?: string;
+  metadata?: Record<string, unknown> | null;
+  csat?: number | null;
 }
 
 const FALLBACK_CONFIG: PublicConfig = {
@@ -111,24 +115,36 @@ function monogram(name: string): string {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
+const ROLE_BY_SENDER: Record<PublicMessage["senderType"], Msg["role"]> = {
+  customer: "user",
+  ai: "assistant",
+  agent: "agent",
+  system: "system",
+};
+
+/**
+ * The server attaches `csat_prompt` to a message the customer already receives rather than
+ * delivering a separate prompt. Two messages carry it, and they do NOT share a sender_type: the
+ * AI's inactivity warning is `ai`, the agent's resolve notice is `system`. Gating on "assistant"
+ * would silently drop the resolve prompt here — the widget doesn't notice because its mapper
+ * collapses every non-customer sender to "assistant", while this page keeps them distinct.
+ *
+ * So the rule is the widget's actual semantics: any non-customer message carrying the prompt.
+ */
+function shouldPromptCsat(m: Msg): boolean {
+  return m.role !== "user" && m.metadata?.csat_prompt === true;
+}
+
 function mapServerMessage(m: PublicMessage): Msg | null {
-  switch (m.senderType) {
-    case "customer":
-      return { id: m.id, role: "user", content: m.content };
-    case "ai":
-      return { id: m.id, role: "assistant", content: m.content };
-    case "agent":
-      return {
-        id: m.id,
-        role: "agent",
-        content: m.content,
-        senderName: m.senderName,
-      };
-    case "system":
-      return { id: m.id, role: "system", content: m.content };
-    default:
-      return null;
-  }
+  const role = ROLE_BY_SENDER[m.senderType];
+  if (!role) return null;
+  return {
+    id: m.id,
+    role,
+    content: m.content,
+    metadata: m.metadata,
+    ...(role === "agent" ? { senderName: m.senderName } : {}),
+  };
 }
 
 interface SidebarPanelProps {
@@ -495,7 +511,9 @@ export function PublicChat({
       setIsSending(true);
 
       try {
-        const hdrs: Record<string, string> = { "Content-Type": "application/json" };
+        const hdrs: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
         if (sessionId) {
           const st = getStoredSessionToken(sessionId);
           if (st) hdrs["X-FrontFace-Session"] = st;
@@ -578,6 +596,7 @@ export function PublicChat({
       projectId,
       refreshConversations,
       sessionId,
+      strings.sendError,
     ]
   );
 
@@ -626,6 +645,25 @@ export function PublicChat({
       setSessionId(id);
     },
     [projectId, resetHandoff, sessionId]
+  );
+
+  /**
+   * Optimistic: the rating is a courtesy and a failed write must not nag the customer. The local
+   * flag only drives the submitted state — the rating itself lands on the conversation row.
+   */
+  const rateConversation = useCallback(
+    async (messageId: string, rating: number) => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, csat: rating } : m))
+      );
+      if (!sessionId) return;
+      await submitCsat(
+        sessionId,
+        rating,
+        getStoredSessionToken(sessionId) ?? undefined
+      );
+    },
+    [sessionId]
   );
 
   const submitLead = useCallback(
@@ -728,7 +766,9 @@ export function PublicChat({
               onSelect={selectConversation}
               onToggleTheme={() => setThemeOverride(isDark ? "light" : "dark")}
               onDismiss={() => setSidebarOpen(false)}
-              dismissIcon={<PanelLeftClose className="h-4 w-4 rtl:-scale-x-100" />}
+              dismissIcon={
+                <PanelLeftClose className="h-4 w-4 rtl:-scale-x-100" />
+              }
               dismissLabel={strings.collapseSidebar}
               strings={strings}
             />
@@ -822,6 +862,16 @@ export function PublicChat({
                     content={m.content}
                     senderName={m.senderName}
                     accentColor={accent}
+                    footer={
+                      shouldPromptCsat(m) ? (
+                        <CsatControl
+                          accentColor={accent}
+                          strings={strings}
+                          submitted={m.csat ?? handoff.satisfactionRating}
+                          onSubmit={(rating) => rateConversation(m.id, rating)}
+                        />
+                      ) : undefined
+                    }
                   />
                 ))}
                 {isSending && !handoff.isInHandoff && (
@@ -911,7 +961,11 @@ export function PublicChat({
           {/* Input */}
           <div className="border-t p-3">
             <div className="mx-auto max-w-3xl">
-              <HandoffBanner state={handoff} accentColor={accent} strings={strings} />
+              <HandoffBanner
+                state={handoff}
+                accentColor={accent}
+                strings={strings}
+              />
               {handoff.offlineMessage && (
                 <div className="bg-muted/40 text-muted-foreground mx-auto mb-2 max-w-3xl rounded-lg border px-3 py-2 text-xs">
                   {handoff.offlineMessage}
@@ -931,6 +985,8 @@ export function PublicChat({
               )}
               <div className="bg-background flex items-end gap-2 rounded-2xl border px-3 py-2 shadow-sm">
                 <textarea
+                  id="public-chat-message"
+                  name="message"
                   ref={textareaRef}
                   rows={1}
                   value={input}
@@ -1001,7 +1057,9 @@ export function PublicChat({
                 >
                   <Mic className="h-5 w-5" />
                 </div>
-                <h2 className="text-sm font-semibold">{strings.startVoiceCallQuestion}</h2>
+                <h2 className="text-sm font-semibold">
+                  {strings.startVoiceCallQuestion}
+                </h2>
                 <p className="text-muted-foreground mt-1 text-xs">
                   {strings.micPromptBody}
                 </p>

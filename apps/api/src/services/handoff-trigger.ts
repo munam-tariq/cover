@@ -11,6 +11,7 @@
 import { logger } from "../lib/logger";
 import { supabaseAdmin } from "../lib/supabase";
 
+import { claimConversation, isQueueableClaimResult } from "./agent-capacity";
 import type { ChatSource } from "./chat-engine";
 import {
   broadcastNewMessage,
@@ -131,6 +132,10 @@ interface ExecuteHandoffParams {
   visitorId: string;
   sessionId?: string;
   reason: "keyword" | "low_confidence" | "button";
+  /** RAG confidence at the moment a low-confidence handoff fired (recorded for the inbox). */
+  confidence?: number;
+  /** The keyword that matched, for a keyword handoff. */
+  triggerKeyword?: string;
   messages: HandoffMessageTemplates;
   settings: HandoffSettings;
   source: ChatSource;
@@ -148,6 +153,8 @@ async function executeHandoffFlow(
     visitorId,
     sessionId,
     reason,
+    confidence,
+    triggerKeyword,
     messages,
     settings,
     source,
@@ -209,6 +216,32 @@ async function executeHandoffFlow(
       reason,
       message: messages.technicalError,
     };
+  }
+
+  // Record WHY the handoff happened. createHandoffConversation has several write paths (direct
+  // assignment, queue, fresh insert, existing-session update); persisting the reason once here,
+  // keyed on the id every path returns, keeps it out of each of them and — crucially — gives the
+  // inbox "Handoff reason" filter data to match on. The auto-trigger previously wrote none, so
+  // keyword and low_confidence handoffs were silently unfilterable.
+  const { error: reasonError } = await supabaseAdmin
+    .from("conversations")
+    .update({
+      handoff_reason: reason,
+      ...(confidence !== undefined
+        ? { ai_confidence_at_handoff: confidence }
+        : {}),
+      ...(triggerKeyword ? { trigger_keyword: triggerKeyword } : {}),
+    })
+    .eq("id", handoffResult.conversationId);
+  if (reasonError) {
+    // Non-fatal: the handoff itself already committed. Losing the reason only degrades filtering.
+    logger.error("Failed to persist handoff reason", reasonError, {
+      projectId,
+      visitorId,
+      conversationId: handoffResult.conversationId,
+      reason,
+      step: "handoff_persist_reason",
+    });
   }
 
   // Step 4: Format response based on assignment type
@@ -505,6 +538,7 @@ export async function checkLowConfidenceHandoff(
     visitorId,
     sessionId,
     reason: "low_confidence",
+    confidence: maxScore,
     messages: LOW_CONFIDENCE_MESSAGES,
     settings,
     source,
@@ -521,27 +555,45 @@ interface HandoffConversationResult {
   queuePosition?: number;
 }
 
-/**
- * Check if a specific agent is online and has capacity
- */
-async function checkAgentIsAvailable(
+async function queueExistingHandoff(
+  conversationId: string,
   projectId: string,
-  agentId: string
-): Promise<boolean> {
-  const { data: agent } = await supabaseAdmin
-    .from("agent_availability")
-    .select("status, current_chat_count, max_concurrent_chats")
+  visitorId: string,
+  now: string
+): Promise<HandoffConversationResult> {
+  const { error } = await supabaseAdmin
+    .from("conversations")
+    .update({
+      status: "waiting",
+      assigned_agent_id: null,
+      claimed_at: null,
+      resolved_at: null,
+      queue_entered_at: now,
+      handoff_triggered_at: now,
+    })
+    .eq("id", conversationId)
     .eq("project_id", projectId)
-    .eq("user_id", agentId)
-    .eq("status", "online")
-    .single();
+    .eq("visitor_id", visitorId);
 
-  if (!agent) {
-    return false;
-  }
+  if (error) throw error;
 
-  // Check if agent has capacity
-  return agent.current_chat_count < agent.max_concurrent_chats;
+  const { count } = await supabaseAdmin
+    .from("conversations")
+    .select("id", { count: "exact", head: true })
+    .eq("project_id", projectId)
+    .eq("status", "waiting")
+    .lt("queue_entered_at", now);
+  const queuePosition = (count || 0) + 1;
+
+  broadcastConversationStatusChanged(conversationId, projectId, "waiting", {
+    queuePosition,
+  }).catch((err) =>
+    logger.error("Realtime broadcast error", err, {
+      step: "realtime_broadcast",
+    })
+  );
+
+  return { conversationId, directAssignment: false, queuePosition };
 }
 
 /**
@@ -567,16 +619,14 @@ async function createHandoffConversation(
       .single();
 
     if (existing) {
-      // Check if there was a previously assigned agent
       if (existing.assigned_agent_id) {
-        // Check if that agent is still online and has capacity
-        const agentAvailable = await checkAgentIsAvailable(
+        const claimResult = await claimConversation({
+          conversationId: sessionId,
+          userId: existing.assigned_agent_id,
           projectId,
-          existing.assigned_agent_id
-        );
+        });
 
-        if (agentAvailable) {
-          // Assign directly to the same agent (context continuity)
+        if (claimResult === "CLAIMED") {
           logger.info("Handoff re-assigning to previous agent", {
             projectId,
             visitorId,
@@ -584,37 +634,6 @@ async function createHandoffConversation(
             agentId: existing.assigned_agent_id,
             step: "handoff_reassign",
           });
-
-          await supabaseAdmin
-            .from("conversations")
-            .update({
-              status: "agent_active",
-              handoff_requested_at: now,
-              claimed_at: now,
-              queue_entered_at: null,
-            })
-            .eq("id", sessionId)
-            .eq("project_id", projectId)
-            .eq("visitor_id", visitorId);
-
-          // Increment agent's chat count
-          const { data: agentAvail } = await supabaseAdmin
-            .from("agent_availability")
-            .select("current_chat_count")
-            .eq("user_id", existing.assigned_agent_id)
-            .eq("project_id", projectId)
-            .single();
-
-          if (agentAvail) {
-            await supabaseAdmin
-              .from("agent_availability")
-              .update({
-                current_chat_count: (agentAvail.current_chat_count || 0) + 1,
-                last_assigned_at: now,
-              })
-              .eq("user_id", existing.assigned_agent_id)
-              .eq("project_id", projectId);
-          }
 
           // Add system message and broadcast it
           const { data: systemMsg } = await supabaseAdmin
@@ -668,92 +687,22 @@ async function createHandoffConversation(
             directAssignment: true,
             assignedAgentId: existing.assigned_agent_id,
           };
-        } else {
-          // Previous agent not available - clear assignment and put in queue
-          logger.info("Handoff previous agent not available, queueing", {
-            projectId,
-            visitorId,
-            sessionId,
-            previousAgentId: existing.assigned_agent_id,
-            step: "handoff_queue",
-          });
-
-          await supabaseAdmin
-            .from("conversations")
-            .update({
-              status: "waiting",
-              assigned_agent_id: null,
-              claimed_at: null,
-              queue_entered_at: now,
-              handoff_requested_at: now,
-            })
-            .eq("id", sessionId)
-            .eq("project_id", projectId)
-            .eq("visitor_id", visitorId);
-
-          // Calculate queue position
-          const { count } = await supabaseAdmin
-            .from("conversations")
-            .select("*", { count: "exact", head: true })
-            .eq("project_id", projectId)
-            .eq("status", "waiting")
-            .lt("queue_entered_at", now);
-
-          const queuePosition = (count || 0) + 1;
-
-          // Broadcast status change to channels (fire-and-forget)
-          broadcastConversationStatusChanged(sessionId, projectId, "waiting", {
-            queuePosition,
-          }).catch((err) =>
-            logger.error("Realtime broadcast error", err, {
-              step: "realtime_broadcast",
-            })
-          );
-
-          return {
-            conversationId: existing.id,
-            directAssignment: false,
-            queuePosition,
-          };
         }
-      } else {
-        // No previous agent - put in queue normally
-        await supabaseAdmin
-          .from("conversations")
-          .update({
-            status: "waiting",
-            queue_entered_at: now,
-            handoff_requested_at: now,
-          })
-          .eq("id", sessionId)
-          .eq("project_id", projectId)
-          .eq("visitor_id", visitorId);
 
-        // Calculate queue position
-        const { count } = await supabaseAdmin
-          .from("conversations")
-          .select("*", { count: "exact", head: true })
-          .eq("project_id", projectId)
-          .eq("status", "waiting")
-          .lt("queue_entered_at", now);
+        if (!isQueueableClaimResult(claimResult)) {
+          throw new Error(`Previous-agent claim failed: ${claimResult}`);
+        }
 
-        const queuePosition = (count || 0) + 1;
-
-        // Broadcast status change to channels (fire-and-forget)
-        broadcastConversationStatusChanged(sessionId, projectId, "waiting", {
-          queuePosition,
-        }).catch((err) =>
-          logger.error("Realtime broadcast error", err, {
-            step: "realtime_broadcast",
-          })
-        );
-
-        return {
-          conversationId: existing.id,
-          directAssignment: false,
-          queuePosition,
-        };
+        logger.info("Handoff previous agent not available, queueing", {
+          projectId,
+          visitorId,
+          sessionId,
+          previousAgentId: existing.assigned_agent_id,
+          step: "handoff_queue",
+        });
       }
+
+      return queueExistingHandoff(sessionId, projectId, visitorId, now);
     }
   }
 
@@ -768,7 +717,7 @@ async function createHandoffConversation(
     status: "waiting",
     source,
     queue_entered_at: now,
-    handoff_requested_at: now,
+    handoff_triggered_at: now,
   };
 
   // Use the sessionId as the conversation ID if provided
@@ -803,7 +752,7 @@ async function createHandoffConversation(
         .update({
           status: "waiting",
           queue_entered_at: now,
-          handoff_requested_at: now,
+          handoff_triggered_at: now,
         })
         .eq("id", sessionId)
         .eq("project_id", projectId)
@@ -830,7 +779,12 @@ async function createHandoffConversation(
         // conversation without a caller-supplied id.
         logger.warn(
           "Handoff sessionId belongs to another visitor, creating fresh conversation",
-          { projectId, visitorId, sessionId, step: "handoff_discard_foreign_id" }
+          {
+            projectId,
+            visitorId,
+            sessionId,
+            step: "handoff_discard_foreign_id",
+          }
         );
         const { data: freshConv, error: freshError } = await supabaseAdmin
           .from("conversations")
@@ -840,15 +794,21 @@ async function createHandoffConversation(
             status: "waiting",
             source,
             queue_entered_at: now,
-            handoff_requested_at: now,
+            handoff_triggered_at: now,
           })
           .select("id")
           .single();
 
         if (freshError) {
-          logger.error("Failed to create fresh handoff conversation", freshError, {
-            projectId, visitorId, step: "handoff_create_fresh",
-          });
+          logger.error(
+            "Failed to create fresh handoff conversation",
+            freshError,
+            {
+              projectId,
+              visitorId,
+              step: "handoff_create_fresh",
+            }
+          );
           throw freshError;
         }
 
@@ -1000,6 +960,7 @@ export async function checkHandoffTrigger(
     visitorId,
     sessionId,
     reason: "keyword",
+    triggerKeyword: keywordResult.matchedKeyword,
     messages: KEYWORD_MESSAGES,
     settings,
     source,
