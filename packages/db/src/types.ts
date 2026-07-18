@@ -343,6 +343,41 @@ export type Database = {
           },
         ];
       };
+      consumed_identity_jti: {
+        Row: {
+          created_at: string;
+          customer_id: string | null;
+          expires_at: string;
+          jti: string;
+          project_id: string;
+          visitor_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          customer_id?: string | null;
+          expires_at: string;
+          jti: string;
+          project_id: string;
+          visitor_id: string;
+        };
+        Update: {
+          created_at?: string;
+          customer_id?: string | null;
+          expires_at?: string;
+          jti?: string;
+          project_id?: string;
+          visitor_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "consumed_identity_jti_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       conversation_insights: {
         Row: {
           answer_gap_question: string | null;
@@ -474,7 +509,7 @@ export type Database = {
           last_message_preview?: string | null;
           last_message_sender_type?: string | null;
           last_voice_activity_at?: string | null;
-          meaningful_activity_at?: never;
+          meaningful_activity_at?: string;
           message_count?: number;
           metadata?: Json;
           needs_reply?: boolean;
@@ -527,7 +562,7 @@ export type Database = {
           last_message_preview?: string | null;
           last_message_sender_type?: string | null;
           last_voice_activity_at?: string | null;
-          meaningful_activity_at?: never;
+          meaningful_activity_at?: string;
           message_count?: number;
           metadata?: Json;
           needs_reply?: boolean;
@@ -558,6 +593,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "customers";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "conversations_customer_project_fk";
+            columns: ["customer_id", "project_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id", "project_id"];
           },
           {
             foreignKeyName: "conversations_project_id_fkey";
@@ -636,10 +678,72 @@ export type Database = {
           },
         ];
       };
+      customer_identities: {
+        Row: {
+          created_at: string;
+          custom_attributes: Json | null;
+          customer_id: string;
+          external_id: string;
+          project_id: string;
+          updated_at: string;
+          verified_at: string;
+          verified_email: string | null;
+          verified_name: string | null;
+          verified_phone: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          custom_attributes?: Json | null;
+          customer_id: string;
+          external_id: string;
+          project_id: string;
+          updated_at?: string;
+          verified_at: string;
+          verified_email?: string | null;
+          verified_name?: string | null;
+          verified_phone?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          custom_attributes?: Json | null;
+          customer_id?: string;
+          external_id?: string;
+          project_id?: string;
+          updated_at?: string;
+          verified_at?: string;
+          verified_email?: string | null;
+          verified_name?: string | null;
+          verified_phone?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "customer_identities_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: true;
+            referencedRelation: "customers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "customer_identities_customer_id_project_id_fkey";
+            columns: ["customer_id", "project_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id", "project_id"];
+          },
+          {
+            foreignKeyName: "customer_identities_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       customers: {
         Row: {
           created_at: string;
           email: string | null;
+          email_normalized: string | null;
           first_seen_at: string;
           flag_reason: string | null;
           flagged_at: string | null;
@@ -654,6 +758,7 @@ export type Database = {
           last_page_url: string | null;
           last_seen_at: string;
           lead_capture_state: Json | null;
+          merged_into_customer_id: string | null;
           merged_visitor_ids: string[];
           name: string | null;
           phone: string | null;
@@ -665,6 +770,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           email?: string | null;
+          email_normalized?: string | null;
           first_seen_at?: string;
           flag_reason?: string | null;
           flagged_at?: string | null;
@@ -679,6 +785,7 @@ export type Database = {
           last_page_url?: string | null;
           last_seen_at?: string;
           lead_capture_state?: Json | null;
+          merged_into_customer_id?: string | null;
           merged_visitor_ids?: string[];
           name?: string | null;
           phone?: string | null;
@@ -690,6 +797,7 @@ export type Database = {
         Update: {
           created_at?: string;
           email?: string | null;
+          email_normalized?: string | null;
           first_seen_at?: string;
           flag_reason?: string | null;
           flagged_at?: string | null;
@@ -704,6 +812,7 @@ export type Database = {
           last_page_url?: string | null;
           last_seen_at?: string;
           lead_capture_state?: Json | null;
+          merged_into_customer_id?: string | null;
           merged_visitor_ids?: string[];
           name?: string | null;
           phone?: string | null;
@@ -713,6 +822,13 @@ export type Database = {
           visitor_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "customers_merged_into_customer_id_fkey";
+            columns: ["merged_into_customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "customers_project_id_fkey";
             columns: ["project_id"];
@@ -1097,6 +1213,38 @@ export type Database = {
           },
         ];
       };
+      project_identity_secrets: {
+        Row: {
+          created_at: string;
+          id: string;
+          project_id: string;
+          rotated_at: string | null;
+          secret_encrypted: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          project_id: string;
+          rotated_at?: string | null;
+          secret_encrypted: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          project_id?: string;
+          rotated_at?: string | null;
+          secret_encrypted?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_identity_secrets_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       project_members: {
         Row: {
           accepted_at: string | null;
@@ -1429,6 +1577,13 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "qualified_leads_customer_project_fk";
+            columns: ["customer_id", "project_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id", "project_id"];
+          },
+          {
             foreignKeyName: "qualified_leads_project_id_fkey";
             columns: ["project_id"];
             isOneToOne: false;
@@ -1652,6 +1807,22 @@ export type Database = {
           similarity: number;
           source_id: string;
         }[];
+      };
+      merge_customer_identity: {
+        Args: {
+          p_custom_attributes: Json;
+          p_custom_attributes_set: boolean;
+          p_email: string;
+          p_email_set: boolean;
+          p_external_id: string;
+          p_name: string;
+          p_name_set: boolean;
+          p_phone: string;
+          p_phone_set: boolean;
+          p_project_id: string;
+          p_visitor_id: string;
+        };
+        Returns: Json;
       };
       pick_localized_text: {
         Args: { p_fallback: string; p_language: string; p_texts: Json };

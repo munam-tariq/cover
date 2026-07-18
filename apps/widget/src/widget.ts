@@ -17,7 +17,7 @@ import { ChannelLauncher } from "./components/channel-launcher";
 import { ChatWindow } from "./components/chat-window";
 import { ExitOverlay } from "./components/exit-overlay";
 import { TeaserMessage } from "./components/teaser-message";
-import { submitInlineEmail } from "./utils/api";
+import { identifyCustomer, submitInlineEmail } from "./utils/api";
 import {
   EngagementTriggerService,
   type ProactiveEngagementConfig,
@@ -25,7 +25,13 @@ import {
 } from "./utils/engagement-triggers";
 import { PulseManager } from "./utils/pulse-manager";
 import { widgetHeaders } from "./utils/request";
-import { getVisitorId, getLeadCaptureState, setLeadCaptureState } from "./utils/storage";
+import {
+  clearProjectData,
+  getVisitorId,
+  getLeadCaptureState,
+  resetVisitorId,
+  setLeadCaptureState,
+} from "./utils/storage";
 import {
   getWidgetStrings,
   parseWidgetEmbedConfig,
@@ -45,6 +51,10 @@ declare global {
   interface Window {
     __CHATBOT_WIDGET_LOADED__?: boolean;
     ChatbotWidget?: typeof ChatbotWidget;
+    FrontFace?: {
+      identify: (input: { token: string }) => Promise<void>;
+      resetUser: () => void;
+    };
   }
 }
 
@@ -585,6 +595,43 @@ class ChatbotWidget {
     this.pulseManager.start();
   }
 
+  /**
+   * Identity verification: verify a signed identity token (HS256 JWT minted by
+   * the host site's OWN backend with the project's verification secret) and
+   * sync the contact. This REJECTS on failure so a host that `await`s
+   * `window.FrontFace.identify(...)` observes the real outcome and never treats
+   * a failed verification as success. (The declarative `data-identity-token`
+   * path in autoInit swallows the rejection itself, since no caller awaits it.)
+   */
+  async identify(input: { token: string }): Promise<void> {
+    const token = input?.token;
+    if (!this.config || typeof token !== "string" || !token) {
+      throw new Error(
+        "identify requires a { token } signed by your backend"
+      );
+    }
+
+    await identifyCustomer({
+      apiUrl: this.config.apiUrl,
+      projectId: this.config.projectId,
+      visitorId: getVisitorId(),
+      token,
+      clientKey: this.config.clientKey || undefined,
+    });
+  }
+
+  /**
+   * Clear the current user's identity (call on logout): the browser becomes a
+   * brand-new anonymous visitor and the widget rebuilds with a fresh chat.
+   */
+  resetUser(): void {
+    if (!this.config) return;
+    resetVisitorId();
+    clearProjectData(this.config.projectId);
+    this.destroy();
+    void this.init();
+  }
+
   destroy(): void {
     this.triggerService?.destroy();
     this.teaserMessage?.destroy();
@@ -653,8 +700,26 @@ function autoInit(): void {
     }
   });
 
-  // Create widget instance
-  new ChatbotWidget(config);
+  // Create widget instance and expose the host-page identity API
+  const instance = new ChatbotWidget(config);
+  window.FrontFace = {
+    identify: (input) => instance.identify(input),
+    resetUser: () => instance.resetUser(),
+  };
+
+  // Server-rendered pages can identify declaratively via data-identity-token
+  // (loader.ts forwards all data-* attributes). Fire-and-forget WITH a real
+  // catch: identity must never block or break the chat. We strip the attribute
+  // after reading so the bearer JWT does not linger in the live DOM (note: it
+  // can still be present in the delivered HTML source — prefer the programmatic
+  // window.FrontFace.identify() handoff for sensitive deployments).
+  const identityToken = script.getAttribute("data-identity-token");
+  if (identityToken) {
+    script.removeAttribute("data-identity-token");
+    instance.identify({ token: identityToken }).catch((error) => {
+      console.warn("[Chatbot Widget] Identity verification failed:", error);
+    });
+  }
 }
 
 // Export for manual initialization

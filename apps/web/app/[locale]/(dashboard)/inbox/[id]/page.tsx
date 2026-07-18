@@ -4,6 +4,7 @@ import { Button, Card, CardContent, Skeleton, Badge } from "@chatbot/ui";
 import {
   AlertCircle,
   ArrowLeft,
+  BadgeCheck,
   Send,
   User,
   Bot,
@@ -92,11 +93,25 @@ interface Conversation {
   satisfactionFeedback: string | null;
 }
 
-interface Customer {
-  id: string;
+interface VerifiedIdentity {
+  externalId: string;
+  verifiedAt: string;
   email: string | null;
   name: string | null;
   phone: string | null;
+  customAttributes: Record<string, unknown> | null;
+}
+
+interface Customer {
+  id: string;
+  // Mutable, agent-/lead-editable current contact info.
+  email: string | null;
+  name: string | null;
+  phone: string | null;
+  // Service-managed verified assertion (null until identified). The verified
+  // badge derives from `verified`, never from a mutable contact field.
+  verified: boolean;
+  verifiedIdentity: VerifiedIdentity | null;
   conversationCount: number;
   totalMessageCount: number;
   firstSeenAt: string;
@@ -253,6 +268,14 @@ function CustomerContextPanel({
   });
   const phone = conversation.customerPhone || customer?.phone;
   const contactEmail = conversation.customerEmail || customer?.email;
+  // Provenance split: the verified snapshot (service-managed, unforgeable) vs.
+  // the mutable current contact. Only fields the JWT actually asserted get the
+  // verified badge; a mutable contact value is never presented as verified.
+  const verifiedIdentity = customer?.verifiedIdentity ?? null;
+  const verifiedName = verifiedIdentity?.name ?? null;
+  const verifiedEmail = verifiedIdentity?.email ?? null;
+  const primaryName = verifiedName ?? displayName;
+  const showCurrentEmail = !!contactEmail && contactEmail !== verifiedEmail;
   const qualificationStatus =
     leadData?.qualificationStatus === "qualified"
       ? leadStatusT("qualified")
@@ -315,11 +338,33 @@ function CustomerContextPanel({
               <User className="text-muted-foreground h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="truncate font-medium">{displayName}</p>
-              {contactEmail && contactEmail !== displayName && (
+              <p className="flex items-center gap-1.5 truncate font-medium">
+                <span className="truncate">{primaryName}</span>
+                {/* Badge beside the name only when the token asserted a name. */}
+                {verifiedName && (
+                  <span
+                    className="inline-flex shrink-0 items-center gap-0.5 text-xs font-normal text-green-600"
+                    title={t("verifiedHint")}
+                  >
+                    <BadgeCheck className="h-3.5 w-3.5" />
+                    {t("verified")}
+                  </span>
+                )}
+              </p>
+              {/* Verified email (asserted by the signed token). */}
+              {verifiedEmail && (
+                <p className="flex items-center gap-1 text-xs text-green-600">
+                  <Mail className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{verifiedEmail}</span>
+                  <BadgeCheck className="h-3 w-3 shrink-0" />
+                </p>
+              )}
+              {/* Current (mutable, unverified) contact email, when different. */}
+              {showCurrentEmail && contactEmail !== displayName && (
                 <p className="text-muted-foreground flex items-center gap-1 text-xs">
                   <Mail className="h-3 w-3 shrink-0" />
                   <span className="truncate">{contactEmail}</span>
+                  <span className="shrink-0">({t("currentContact")})</span>
                 </p>
               )}
               {phone && phone !== displayName && (
@@ -328,9 +373,47 @@ function CustomerContextPanel({
                   {phone}
                 </p>
               )}
+              {verifiedIdentity?.externalId && (
+                <p className="text-muted-foreground flex items-center gap-1 truncate text-xs">
+                  {/* If the name wasn't verified, surface the badge on the id. */}
+                  {!verifiedName && (
+                    <BadgeCheck className="h-3 w-3 shrink-0 text-green-600" />
+                  )}
+                  <span className="truncate">
+                    {t("userId")}: {verifiedIdentity.externalId}
+                  </span>
+                </p>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Verified custom attributes (from the signed identity token). */}
+        {verifiedIdentity?.customAttributes &&
+          Object.keys(verifiedIdentity.customAttributes).length > 0 && (
+            <div className="border-t pt-4">
+              <h3 className="mb-2 text-sm font-semibold">
+                {t("customAttributes")}
+              </h3>
+              <div className="space-y-2">
+                {Object.entries(verifiedIdentity.customAttributes).map(
+                  ([key, value]) => (
+                    <div key={key} className="flex items-start gap-2">
+                      <Info className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-muted-foreground text-xs">{key}</p>
+                        <p className="break-words text-sm font-medium">
+                          {typeof value === "object" && value !== null
+                            ? JSON.stringify(value)
+                            : String(value)}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          )}
 
         {/* Lead Data */}
         {leadData && (

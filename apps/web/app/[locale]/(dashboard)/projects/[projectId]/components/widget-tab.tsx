@@ -26,6 +26,10 @@ import {
   Smartphone,
   KeyRound,
   Trash2,
+  Eye,
+  EyeOff,
+  Fingerprint,
+  RefreshCw,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
@@ -53,6 +57,32 @@ interface ClientKey {
   revokedAt: string | null;
 }
 
+interface IdentitySecret {
+  secret: string;
+  createdAt: string;
+  rotatedAt: string | null;
+}
+
+const IDENTITY_SIGNING_EXAMPLE = `const crypto = require("crypto");
+
+const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+const now = Math.floor(Date.now() / 1000);
+const header = b64({ alg: "HS256", typ: "JWT" });
+const payload = b64({
+  user_id: user.id,          // required — your stable user id
+  name: user.name,           // required — non-empty
+  email: user.email,         // optional contact fields
+  custom_attributes: { plan: user.plan },
+  iat: now,                  // required
+  exp: now + 600,            // required, lifetime <= 15 min
+  jti: crypto.randomUUID(),  // required — unique, single-use
+});
+const signature = crypto
+  .createHmac("sha256", process.env.FRONTFACE_IDENTITY_SECRET)
+  .update(header + "." + payload)
+  .digest("base64url");
+const token = header + "." + payload + "." + signature;`;
+
 export function WidgetTab({ project }: WidgetTabProps) {
   const t = useTranslations("dashboard.pages.embed");
   const [success, setSuccess] = useState<string | null>(null);
@@ -72,6 +102,15 @@ export function WidgetTab({ project }: WidgetTabProps) {
   const [loadingKeys, setLoadingKeys] = useState(true);
   const [creatingKey, setCreatingKey] = useState(false);
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+
+  // Identity verification secret state. The secret is NOT auto-fetched — it is a
+  // signing secret, so the owner must explicitly reveal it (fetch on click).
+  const [identitySecret, setIdentitySecret] = useState<IdentitySecret | null>(null);
+  const [loadingSecret, setLoadingSecret] = useState(false);
+  const [secretError, setSecretError] = useState<string | null>(null);
+  const [secretCopied, setSecretCopied] = useState(false);
+  const [rotatingSecret, setRotatingSecret] = useState(false);
+  const [showSigningExample, setShowSigningExample] = useState(false);
 
   // Fetch allowed domains when project changes
   useEffect(() => {
@@ -118,6 +157,57 @@ export function WidgetTab({ project }: WidgetTabProps) {
     };
     fetchKeys();
   }, [project]);
+
+  // Fetch the identity verification secret when project changes (lazily
+  // created server-side on first reveal)
+  const handleRevealSecret = async () => {
+    setLoadingSecret(true);
+    setSecretError(null);
+    try {
+      const res = await apiClient<IdentitySecret>(
+        `/api/projects/${project.id}/identity-secret`
+      );
+      setIdentitySecret(res);
+    } catch (err) {
+      console.error("Failed to fetch identity secret:", err);
+      setIdentitySecret(null);
+      setSecretError(t("identitySecretError"));
+    } finally {
+      setLoadingSecret(false);
+    }
+  };
+
+  // Drop the secret from memory when hidden; a later reveal re-fetches it.
+  const handleHideSecret = () => setIdentitySecret(null);
+
+  // Identity verification secret handlers
+  const handleCopySecret = () => {
+    if (!identitySecret) return;
+    navigator.clipboard.writeText(identitySecret.secret);
+    setSecretCopied(true);
+    setTimeout(() => setSecretCopied(false), 2000);
+  };
+
+  const handleRotateSecret = async () => {
+    if (!window.confirm(t("regenerateWarning"))) return;
+    setRotatingSecret(true);
+    setSecretError(null);
+    try {
+      const res = await apiClient<IdentitySecret>(
+        `/api/projects/${project.id}/identity-secret/rotate`,
+        { method: "POST" }
+      );
+      setIdentitySecret(res);
+      setSuccess(t("secretRegenerated"));
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : t("identitySecretError");
+      setSecretError(message);
+    } finally {
+      setRotatingSecret(false);
+    }
+  };
 
   // Mobile SDK key handlers
   const handleCreateKey = async () => {
@@ -441,6 +531,107 @@ export function WidgetTab({ project }: WidgetTabProps) {
                 )}
                 {creatingKey ? t("generating") : t("generateMobileKey")}
               </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Identity verification secret */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Fingerprint className="h-5 w-5" />
+            {t("identityVerification")}
+          </CardTitle>
+          <CardDescription>
+            {t("identityVerificationDescription")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingSecret ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {identitySecret ? (
+                <div className="space-y-2">
+                  <Label>{t("identitySecretLabel")}</Label>
+                  <div className="flex items-center gap-2 rounded-md border p-2">
+                    <KeyRound className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <code className="flex-1 truncate text-xs" dir="ltr">
+                      {identitySecret.secret}
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleHideSecret}
+                      aria-label={t("hideSecret")}
+                    >
+                      <EyeOff className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleCopySecret}
+                      aria-label={t("copySecretLabel")}
+                    >
+                      {secretCopied ? (
+                        <CheckCheck className="h-3 w-3" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="outline" onClick={handleRevealSecret}>
+                  <Eye className="h-4 w-4 me-2" />
+                  {t("revealSecret")}
+                </Button>
+              )}
+
+              {secretError && (
+                <p className="text-sm text-destructive">{secretError}</p>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                {t("identityUsageHint")}
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleRotateSecret}
+                  disabled={rotatingSecret}
+                >
+                  {rotatingSecret ? (
+                    <Loader2 className="h-4 w-4 me-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 me-2" />
+                  )}
+                  {rotatingSecret ? t("regenerating") : t("regenerateSecret")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowSigningExample((v) => !v)}
+                >
+                  <Code className="h-4 w-4 me-2" />
+                  {showSigningExample
+                    ? t("hideSigningExample")
+                    : t("showSigningExample")}
+                </Button>
+              </div>
+
+              {showSigningExample && (
+                <pre
+                  className="bg-muted p-3 rounded-md text-xs overflow-x-auto"
+                  dir="ltr"
+                >
+                  {IDENTITY_SIGNING_EXAMPLE}
+                </pre>
+              )}
             </div>
           )}
         </CardContent>

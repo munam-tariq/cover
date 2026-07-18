@@ -36,6 +36,10 @@ import {
   revokeClientKey,
   type ClientKeyPlatform,
 } from "../services/client-key";
+import {
+  getOrCreateIdentitySecret,
+  rotateIdentitySecret,
+} from "../services/identity-secret";
 import { selectReusableWidgetPreviewKey } from "../services/widget-preview-key";
 import type { WhatsAppCredentials } from "../types/channels";
 
@@ -1010,6 +1014,106 @@ router.delete(
       res.json({ success: true });
     } catch (error) {
       console.error("Error in DELETE /projects/:id/client-keys/:keyId:", error);
+      res
+        .status(500)
+        .json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
+    }
+  }
+);
+
+/**
+ * GET /api/projects/:id/identity-secret
+ * Return the project's identity-verification signing secret. OWNER ONLY — the
+ * secret can mint verified-identity tokens for any visitor, so members must not
+ * read it. Lazily created on first access. Tenants use it to sign HS256 identity
+ * JWTs on their own backend for POST /api/customers/identify.
+ */
+router.get(
+  "/:id/identity-secret",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { id } = req.params;
+
+      if (!CLIENT_KEY_UUID_RE.test(id)) {
+        return res.status(400).json({
+          error: { code: "INVALID_ID", message: "Invalid project ID format" },
+        });
+      }
+
+      const project = await getAccessibleProject(id, userId, false);
+      if (!project) {
+        return res
+          .status(404)
+          .json({ error: { code: "NOT_FOUND", message: "Project not found" } });
+      }
+
+      const record = await getOrCreateIdentitySecret(id);
+      if (!record) {
+        return res.status(500).json({
+          error: {
+            code: "INTERNAL_ERROR",
+            message: "Failed to load identity secret",
+          },
+        });
+      }
+
+      // Never let the signing secret sit in a shared/browser cache.
+      res.setHeader("Cache-Control", "no-store");
+      res.json(record);
+    } catch (error) {
+      console.error("Error in GET /projects/:id/identity-secret:", error);
+      res
+        .status(500)
+        .json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
+    }
+  }
+);
+
+/**
+ * POST /api/projects/:id/identity-secret/rotate
+ * Replace the identity-verification secret (owner only). All identity tokens
+ * signed with the previous secret stop verifying immediately.
+ */
+router.post(
+  "/:id/identity-secret/rotate",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { id } = req.params;
+
+      if (!CLIENT_KEY_UUID_RE.test(id)) {
+        return res.status(400).json({
+          error: { code: "INVALID_ID", message: "Invalid project ID format" },
+        });
+      }
+
+      const project = await getAccessibleProject(id, userId, false);
+      if (!project) {
+        return res.status(404).json({
+          error: {
+            code: "NOT_FOUND",
+            message: "Project not found or you don't have permission",
+          },
+        });
+      }
+
+      const record = await rotateIdentitySecret(id);
+      if (!record) {
+        return res.status(500).json({
+          error: {
+            code: "INTERNAL_ERROR",
+            message: "Failed to rotate identity secret",
+          },
+        });
+      }
+
+      res.setHeader("Cache-Control", "no-store");
+      res.json(record);
+    } catch (error) {
+      console.error("Error in POST /projects/:id/identity-secret/rotate:", error);
       res
         .status(500)
         .json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });

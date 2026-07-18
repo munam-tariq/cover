@@ -14,6 +14,7 @@ import {
 } from "@chatbot/ui";
 import {
   AlertCircle,
+  BadgeCheck,
   Inbox,
   Clock,
   MessageSquare,
@@ -88,6 +89,7 @@ interface Conversation {
   closeReason?: string | null;
   customer?: {
     isFlagged: boolean;
+    verified?: boolean;
   } | null;
   needsReply: boolean;
   meaningfulActivityAt: string;
@@ -192,6 +194,12 @@ function ConversationListItem({
                 <ConversationMetadataChip
                   icon={Phone}
                   label={t("metadata.voiceUsed")}
+                />
+              )}
+              {conversation.customer?.verified && (
+                <ConversationMetadataChip
+                  icon={BadgeCheck}
+                  label={t("metadata.verified")}
                 />
               )}
               {conversation.customer?.isFlagged && (

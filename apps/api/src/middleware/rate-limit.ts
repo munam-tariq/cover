@@ -8,6 +8,7 @@
  */
 
 import type { NextFunction, Request, Response } from "express";
+import type RedisClient from "ioredis";
 
 // ---------------------------------------------------------------------------
 // Store interface
@@ -87,8 +88,8 @@ return {count, ttl}
 `;
 
 class RedisStore implements RateLimitStore {
-  private client: any;
-  private constructor(client: any) { this.client = client; }
+  private client: RedisClient;
+  private constructor(client: RedisClient) { this.client = client; }
 
   static async create(url: string): Promise<RedisStore | null> {
     try {
@@ -105,11 +106,16 @@ class RedisStore implements RateLimitStore {
 
   async increment(key: string, windowMs: number): Promise<CheckResult> {
     const prefixed = `rl:${key}`;
-    const [count, ttl] = await this.client.eval(
+    const result = await this.client.eval(
       REDIS_LUA_INCREMENT, 1, prefixed, windowMs
     );
+    if (!Array.isArray(result) || result.length !== 2) {
+      throw new Error("Unexpected Redis rate-limit response");
+    }
+    const count = Number(result[0]);
+    const ttl = Number(result[1]);
     const resetAt = ttl > 0 ? Date.now() + ttl : Date.now() + windowMs;
-    return { count: Number(count), resetAt };
+    return { count, resetAt };
   }
 
   async peek(key: string, windowMs: number, maxRequests: number) {
@@ -182,6 +188,18 @@ export const CHAT_RATE_LIMITS = {
 // Per-IP ceiling: generous multiplier so NAT/office users aren't penalised,
 // but prevents a single attacker from cycling visitorIds to bypass limits.
 const IP_CEILING_MULTIPLIER = parseInt(process.env.RATE_LIMIT_IP_MULTIPLIER || "5", 10);
+const IDENTIFY_REQUESTS_PER_MINUTE = 10;
+
+export const IDENTIFY_RATE_LIMITS = {
+  perVisitor: {
+    windowMs: 60_000,
+    maxRequests: IDENTIFY_REQUESTS_PER_MINUTE,
+  },
+  perIp: {
+    windowMs: 60_000,
+    maxRequests: IDENTIFY_REQUESTS_PER_MINUTE * IP_CEILING_MULTIPLIER,
+  },
+} as const;
 
 // ---------------------------------------------------------------------------
 // Core check helpers
@@ -256,7 +274,7 @@ const TRUST_PROXY = ["1", "true", "yes"].includes(
   (process.env.TRUST_PROXY || "").toLowerCase()
 );
 
-function extractClientIp(req: Request): string {
+export function extractClientIp(req: Request): string {
   if (TRUST_PROXY) {
     const forwarded = req.headers["x-forwarded-for"];
     if (typeof forwarded === "string") {
@@ -382,6 +400,24 @@ export function rateLimit(options: {
     }
   };
 }
+
+function requestBodyString(req: Request, key: string): string {
+  const value = req.body?.[key];
+  return typeof value === "string" && value.length > 0 ? value : "unknown";
+}
+
+export const identifyRateLimiters = [
+  rateLimit({
+    ...IDENTIFY_RATE_LIMITS.perIp,
+    keyFn: (req) =>
+      `identify:ip:${requestBodyString(req, "projectId")}:${extractClientIp(req)}`,
+  }),
+  rateLimit({
+    ...IDENTIFY_RATE_LIMITS.perVisitor,
+    keyFn: (req) =>
+      `identify:visitor:${requestBodyString(req, "projectId")}:${requestBodyString(req, "visitorId")}`,
+  }),
+] as const;
 
 // ---------------------------------------------------------------------------
 // Public status query (for widget UI)

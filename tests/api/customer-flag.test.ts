@@ -68,7 +68,7 @@ test("the flag round-trips: it is selected and serialized back to the client", a
   // toggle would never reflect a real flag.
   assert.match(
     route,
-    /is_flagged"\s*\)\n\s*\.eq\("id", conversation\.customer_id\)/
+    /is_flagged,\s*\$\{CUSTOMER_IDENTITY_EMBED\}`\s*\)\s*\.eq\("id", conversation\.customer_id\)/
   );
   assert.match(
     route,

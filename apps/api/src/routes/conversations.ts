@@ -207,12 +207,20 @@ async function getAgentNames(
   return names;
 }
 
+interface InboxIdentityRow {
+  external_id: string;
+  verified_at: string;
+  verified_email: string | null;
+  verified_name: string | null;
+}
+
 interface InboxCustomerRow {
   id: string;
   email: string | null;
   name: string | null;
   phone: string | null;
   is_flagged: boolean;
+  customer_identities: InboxIdentityRow | InboxIdentityRow[] | null;
 }
 
 interface InboxConversationRow {
@@ -254,6 +262,10 @@ function formatInboxConversation(
   const customer = Array.isArray(conv.customers)
     ? conv.customers[0]
     : conv.customers;
+  const identityEmbed = customer?.customer_identities;
+  const identity = Array.isArray(identityEmbed)
+    ? (identityEmbed[0] ?? null)
+    : (identityEmbed ?? null);
   const hasLastMessage =
     conv.last_conversation_preview != null &&
     conv.last_conversation_sender_type != null &&
@@ -262,6 +274,7 @@ function formatInboxConversation(
   return {
     id: conv.id,
     visitorId: conv.visitor_id,
+    // Current contact (mutable). Verified display is on `customer.verifiedIdentity`.
     customerEmail: customer?.email ?? conv.customer_email ?? null,
     customerName: customer?.name ?? conv.customer_name ?? null,
     customerPhone: customer?.phone ?? null,
@@ -272,6 +285,15 @@ function formatInboxConversation(
           name: customer.name,
           phone: customer.phone,
           isFlagged: customer.is_flagged,
+          verified: identity != null,
+          verifiedIdentity: identity
+            ? {
+                externalId: identity.external_id,
+                verifiedAt: identity.verified_at,
+                email: identity.verified_email,
+                name: identity.verified_name,
+              }
+            : null,
         }
       : conv.customer_email || conv.customer_name
         ? {
@@ -279,6 +301,8 @@ function formatInboxConversation(
             name: conv.customer_name,
             phone: null,
             isFlagged: false,
+            verified: false,
+            verifiedIdentity: null,
           }
         : null,
     status: conv.status,
@@ -481,7 +505,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
     const { data: conversationData, error: convError } = await supabaseAdmin
       .from("conversations")
       .select(
-        "id, visitor_id, customer_email, customer_name, status, customer_presence, assigned_agent_id, handoff_reason, source, message_count, created_at, updated_at, queue_entered_at, claimed_at, resolved_at, last_conversation_message_at, last_conversation_preview, last_conversation_sender_type, last_voice_activity_at, meaningful_activity_at, needs_reply, metadata, voice_ended_reason, customers(id, email, name, phone, is_flagged)"
+        "id, visitor_id, customer_email, customer_name, status, customer_presence, assigned_agent_id, handoff_reason, source, message_count, created_at, updated_at, queue_entered_at, claimed_at, resolved_at, last_conversation_message_at, last_conversation_preview, last_conversation_sender_type, last_voice_activity_at, meaningful_activity_at, needs_reply, metadata, voice_ended_reason, customers!conversations_customer_id_fkey(id, email, name, phone, is_flagged, customer_identities!customer_identities_customer_id_fkey(external_id, verified_at, verified_email, verified_name))"
       )
       .eq("project_id", projectId)
       .in("id", conversationIds);
@@ -554,7 +578,9 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
     // Get conversation
     const { data: conversation, error: convError } = await supabaseAdmin
       .from("conversations")
-      .select("*, customers(*)")
+      // FK named: conversations has two FKs to customers (single-column + the
+      // composite tenant FK), so a bare customers(*) embed is ambiguous.
+      .select("*, customers!conversations_customer_id_fkey(*)")
       .eq("id", id)
       .single();
 

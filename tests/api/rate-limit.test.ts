@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
   CHAT_RATE_LIMITS,
+  IDENTIFY_RATE_LIMITS,
   chatRateLimiter,
   getRateLimitStatus,
+  identifyRateLimiters,
   resetRateLimits,
   setStore,
   type RateLimitStore,
@@ -78,6 +81,24 @@ function mockRes(): any {
     json(data: any) { res.body = data; },
   };
   return res;
+}
+
+async function runIdentifyRateLimiters(req: any) {
+  const res = mockRes();
+  let allowed = true;
+
+  for (const limiter of identifyRateLimiters) {
+    let continued = false;
+    await limiter(req, res, () => {
+      continued = true;
+    });
+    if (!continued) {
+      allowed = false;
+      break;
+    }
+  }
+
+  return { allowed, res };
 }
 
 // ---------------------------------------------------------------------------
@@ -269,4 +290,73 @@ test("chatRateLimiter namespaces by clientKey so SDK traffic is isolated", async
   let called = false;
   await chatRateLimiter(req, res, () => { called = true; });
   assert.ok(called, "web visitor should be unaffected by SDK limits");
+});
+
+// ---------------------------------------------------------------------------
+// Identify rate limiting
+// ---------------------------------------------------------------------------
+
+test("identify gives different visitors behind one IP separate quotas", async () => {
+  for (let index = 0; index < 11; index += 1) {
+    const { allowed, res } = await runIdentifyRateLimiters(
+      mockReq({
+        body: { projectId: "project-a", visitorId: `visitor-${index}` },
+        ip: "198.51.100.10",
+      })
+    );
+    assert.equal(allowed, true);
+    assert.equal(res.statusCode, 200);
+  }
+});
+
+test("identify blocks one visitor after its per-minute quota", async () => {
+  const req = mockReq({
+    body: { projectId: "project-a", visitorId: "visitor-a" },
+    ip: "198.51.100.11",
+  });
+
+  for (
+    let index = 0;
+    index < IDENTIFY_RATE_LIMITS.perVisitor.maxRequests;
+    index += 1
+  ) {
+    assert.equal((await runIdentifyRateLimiters(req)).allowed, true);
+  }
+
+  const blocked = await runIdentifyRateLimiters(req);
+  assert.equal(blocked.allowed, false);
+  assert.equal(blocked.res.statusCode, 429);
+});
+
+test("identify's IP ceiling blocks visitor-id rotation", async () => {
+  const ip = "198.51.100.12";
+
+  for (
+    let index = 0;
+    index < IDENTIFY_RATE_LIMITS.perIp.maxRequests;
+    index += 1
+  ) {
+    const result = await runIdentifyRateLimiters(
+      mockReq({
+        body: { projectId: "project-a", visitorId: `rotated-${index}` },
+        ip,
+      })
+    );
+    assert.equal(result.allowed, true);
+  }
+
+  const blocked = await runIdentifyRateLimiters(
+    mockReq({
+      body: { projectId: "project-a", visitorId: "rotated-extra" },
+      ip,
+    })
+  );
+  assert.equal(blocked.allowed, false);
+  assert.equal(blocked.res.statusCode, 429);
+});
+
+test("the customer identify route uses the shared dual limiter", async () => {
+  const source = await readFile("apps/api/src/routes/customers.ts", "utf8");
+  assert.match(source, /import \{ identifyRateLimiters \}/);
+  assert.match(source, /\.\.\.identifyRateLimiters/);
 });

@@ -2,6 +2,7 @@ import { logger, type LogContext } from "../lib/logger";
 import { openai } from "../lib/openai";
 import { supabaseAdmin } from "../lib/supabase";
 
+import { resolveCanonicalCustomerId } from "./customer-identity";
 import {
   getProcessQualifyingMessagePrompt,
   type ProcessQualifyingMessageResult,
@@ -464,12 +465,15 @@ export async function submitLeadForm(
       formData = { ...formData, email };
     }
 
-    // Update customer email only if we have one
+    // Update customer email only if we have one. Resolve the canonical row
+    // first so a concurrent identity merge that tombstoned this customer since
+    // findOrCreateCustomer doesn't strand the write on the merged-away row.
     if (email) {
+      const targetId = await resolveCanonicalCustomerId(customer.id);
       await supabaseAdmin
         .from("customers")
         .update({ email })
-        .eq("id", customer.id);
+        .eq("id", targetId);
     }
 
     // Determine if qualifying questions are configured
@@ -705,11 +709,12 @@ export async function submitInlineEmail(
     // Find or create customer
     const customer = await findOrCreateCustomer(projectId, visitorId);
 
-    // Update customer email
+    // Update customer email (canonical-resolved; see submitLeadForm note).
+    const inlineTargetId = await resolveCanonicalCustomerId(customer.id);
     await supabaseAdmin
       .from("customers")
       .update({ email })
-      .eq("id", customer.id);
+      .eq("id", inlineTargetId);
 
     // Determine if qualifying questions are configured
     const enabledQuestions = v2Settings.qualifying_questions.filter(

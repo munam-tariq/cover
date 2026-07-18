@@ -29,7 +29,7 @@ Both come from the FrontFace dashboard (project → **Mobile SDK** section). The
 - ✅ AI chat (`POST /api/chat/message`, `source: "mobile"`)
 - ✅ Live human handoff (Realtime channel `conversation:<id>` + 2s polling fallback)
 - ✅ Lead capture (forms + qualifying questions)
-- ✅ Customer identify
+- ✅ Customer identify — identity verification via a signed JWT minted by the tenant's backend (guide §8); shows a verified contact in the FrontFace inbox
 - ❌ Voice, push notifications, attachments — see "Open questions" in the guide.
 
 ## Generating a Dart client (optional)

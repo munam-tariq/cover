@@ -214,6 +214,42 @@ export async function submitLeadCaptureForm(
   return response.json();
 }
 
+export interface IdentifyResult {
+  contact: { customerId: string; email: string | null; name: string | null };
+  verifiedIdentity: { externalId: string; verifiedAt: string } | null;
+  warnings?: string[];
+}
+
+/**
+ * Verify a signed identity token and sync the contact (identity verification).
+ * The token is an HS256 JWT minted by the host site's own backend with the
+ * project's verification secret — never in the browser. Rejects on failure.
+ */
+export async function identifyCustomer(options: {
+  apiUrl: string;
+  projectId: string;
+  visitorId: string;
+  token: string;
+  clientKey?: string;
+}): Promise<IdentifyResult> {
+  const { apiUrl, projectId, visitorId, token, clientKey } = options;
+  const response = await fetch(`${apiUrl}/api/customers/identify`, {
+    method: "POST",
+    headers: widgetHeaders({ visitorId, clientKey }),
+    body: JSON.stringify({ projectId, visitorId, token }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new ChatApiError(
+      errorData.error?.code || "IDENTIFY_ERROR",
+      errorData.error?.message || "Failed to verify identity"
+    );
+  }
+
+  return response.json() as Promise<IdentifyResult>;
+}
+
 /**
  * Skip lead capture form
  * @param skipType - "permanent" for terminal skip, "deferred" for re-askable skip

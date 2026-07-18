@@ -123,6 +123,24 @@ Dart sketch (already updated): `INTEGRATION_GUIDE.md` §6.4 and §12.
 
 ## 3. `POST /api/customers/identify` — disabled server-side, not fixable client-side
 
+> **UPDATE (2026-07-17): RESOLVED — the endpoint is back, with a new contract.** It is
+> no longer an unauthenticated `{ email, name }` write. The body is now
+> `{ projectId, visitorId, token }`, where `token` is an **HS256 JWT signed by the
+> tenant's own backend** with the project's verification secret (dashboard → Settings
+> → Widget → Identity verification). The old provisional shape below is gone and will
+> never return: sending `{ email, name }` now fails validation. See
+> `INTEGRATION_GUIDE.md` §8 for the full contract, contact-sync semantics
+> (present/omit/null), signing snippet, Dart sample, and the `resetUser` (logout)
+> guidance. The historical explanation below is kept for context.
+>
+> **HARDENING UPDATE:** the JWT now **requires** `exp`, `iat`, and a unique
+> single-use `jti` (lifetime `exp − iat` ≤ 15 min); `TOKEN_REPLAYED` (401) is
+> returned if a `jti` is reused. The 200 response shape changed from
+> `{ customer }` to **`{ contact, verifiedIdentity }`** — `contact.*` is the
+> mutable current contact, `verifiedIdentity.*` is the read-only, service-managed
+> snapshot the token asserted (what the inbox shows verified). Verified fields
+> can no longer be forged or overwritten by agents or unsigned lead capture.
+
 ### What broke
 
 This is the error in the screenshot:
@@ -159,7 +177,7 @@ back yet.
 - [ ] Add `X-FrontFace-Session: <sessionToken>` header to: continued `chat/message`, `ensure-conversation` follow-ups, `handoff`, `status`, `messages/public`, `realtime-token`.
 - [ ] Always overwrite stored `sessionToken` with the latest value from any response that returns one.
 - [ ] Replace the realtime connection: call `/realtime-token` first, use its `token` (not bootstrap `apiKey`) for `setAuth()`, add `private: true` to channel config, add refresh-before-expiry.
-- [ ] Remove/guard the `POST /api/customers/identify` call — treat any response to it as non-JSON and don't block on it.
+- [ ] ~~Remove/guard the `POST /api/customers/identify` call~~ **UPDATED:** implement the new JWT identify contract (INTEGRATION_GUIDE.md §8) — body `{ projectId, visitorId, token }`; never block chat on identify failures.
 - [ ] Re-run the smoke test in `README.md` plus a two-message conversation (to exercise the session-token continuation path) and a handoff (to exercise realtime-token).
 
 ## Verifying the fix

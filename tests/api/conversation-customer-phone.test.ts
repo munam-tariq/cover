@@ -25,8 +25,8 @@ describe("conversation customer phone API", () => {
 
     assert.match(
       listSection,
-      /customers\(id,\s*email,\s*name,\s*phone,\s*is_flagged\)/,
-      "Conversation list query should select customers.phone"
+      /customers!conversations_customer_id_fkey\(id,\s*email,\s*name,\s*phone,\s*is_flagged,/,
+      "Conversation list query should select customers.phone through the qualified FK embed"
     );
     assert.match(
       responseSection,

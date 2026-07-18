@@ -78,6 +78,21 @@ export function getVisitorId(): string {
 }
 
 /**
+ * Replace the visitor ID with a fresh one (resetUser: the person using this
+ * browser is no longer the identified user, so the device becomes a brand-new
+ * anonymous visitor).
+ */
+export function resetVisitorId(): string {
+  const visitorId = generateVisitorId();
+  try {
+    localStorage.setItem(VISITOR_ID_KEY, visitorId);
+  } catch {
+    // localStorage not available
+  }
+  return visitorId;
+}
+
+/**
  * Get session ID for a project (persists across page refreshes)
  * Uses localStorage to maintain conversation across refreshes
  */

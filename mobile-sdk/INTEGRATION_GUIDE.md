@@ -443,28 +443,129 @@ Body: { "projectId", "visitorId", "sessionId": "uuid-or-null", "email": "…", "
 
 ---
 
-## 8. Customer identify (optional)
+## 8. Customer identify — identity verification (optional)
 
-> ⚠️ **Not yet available.** This endpoint is currently disabled server-side (returns
-> `404`). As a public, unauthenticated write it was an abuse vector with no clients,
-> so it has been turned off until the SDK ships. When re-enabled it will require the
-> `X-FrontFace-Key` client key (and likely a signed identity token), so treat the
-> shape below as provisional.
+> ✅ **Available.** The old provisional `{ email, name }` shape is gone. Identity is
+> now proven with a **signed identity token** (HS256 JWT) minted by the **tenant's own
+> backend** using the project's verification secret (dashboard → project → Settings →
+> Widget → Identity verification). Unverified identity claims are impossible: the API
+> rejects anything not signed with the project secret.
 
-If your app already knows who the user is (they're logged in), link that identity to the visitor:
+When the app user is logged in, link their verified identity (and contact profile) to
+the visitor so agents see a verified contact in the FrontFace inbox:
 
 ```
 POST /api/customers/identify
+Headers: X-FrontFace-Key: pk_…, X-Visitor-Id: <visitorId>
 Body: {
-  "visitorId": "mob_…",          // required, ≤100 chars
-  "projectId": "uuid",           // required
-  "email": "user@example.com",   // required, valid email
-  "name": "Jane Doe"             // optional, ≤100 chars
+  "visitorId": "mob_…",   // required, ≤100 chars — same id used for chat
+  "projectId": "uuid",    // required
+  "token": "<JWT>"        // required, ≤4096 chars — signed by the TENANT's backend
 }
-→ 200 { "customer": { "id", "email", "name", … } }
+→ 200 {
+  "contact":         { "customerId", "visitorId", "email", "name", "phone" },   // mutable
+  "verifiedIdentity": { "externalId", "verifiedAt", "email", "name", "phone",   // service-managed
+                        "customAttributes" } | null,
+  "warnings"?: ["EMAIL_CONFLICT"]
+}
 ```
 
-Errors: `400 VALIDATION_ERROR` (with `details`), `404 PROJECT_NOT_FOUND`.
+> **Provenance:** `contact.*` is the current, mutable, agent-editable contact.
+> `verifiedIdentity.*` is the immutable snapshot the signed token asserted — it is
+> what the inbox shows with a "verified" badge. Verified fields are **read-only /
+> service-managed**: nothing but a fresh signed token can change them.
+
+**JWT contract** — HS256, signed with the project verification secret. Payload:
+
+| Claim | Required | Notes |
+|---|---|---|
+| `user_id` (or `sub`) | ✅ | The tenant's stable user id (≤255 chars). If both are present they must be equal |
+| `exp` | ✅ | Unix seconds. Required; expired → `TOKEN_EXPIRED` |
+| `iat` | ✅ | Unix seconds issued-at. Must not be in the future; `exp` must be after `iat`; total lifetime (`exp − iat`) **≤ 15 minutes** |
+| `jti` | ✅ | Unique per token (e.g. `crypto.randomUUID()`). **Single-use**: a replay with a different visitor is rejected; an identical retry from the same visitor returns the original result |
+| `name` | ✅ | ≤200 chars, non-empty. Required so the inbox always shows a name beside the verified badge |
+| `nbf` | — | Unix seconds not-before, honored with ~60s leeway |
+| `visitor_id` | — | If present, must equal the request `visitorId` (extra binding) |
+| `email` | — | ≤255 chars, valid email, or `null` to delete |
+| `phonenumber` | — | ≤50 chars, or `null` to delete |
+| `custom_attributes` | — | object (≤50 keys, ≤8 KB), shallow-merged per key; `null` value deletes a key; `null` wipes all |
+
+**Contact-sync semantics:** claim **present** → upsert; claim **omitted** → stored
+value preserved; claim explicitly **`null`** → deleted.
+
+**Mint a SHORT-LIVED, single-use token per login/session.** Because tokens are
+single-use and ≤15 min lifetime, generate a fresh one (new `jti`) each time the app
+needs to identify — do not cache and reuse.
+
+**Server-side signing (tenant backend — the secret must NEVER ship in the app):**
+
+```js
+// Node, no external deps
+const crypto = require("crypto");
+const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+
+function mintIdentityToken(user, secret) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64({ alg: "HS256", typ: "JWT" });
+  const payload = b64({
+    user_id: user.id,
+    email: user.email,
+    name: user.name,
+    custom_attributes: { plan: user.plan },
+    iat: now,
+    exp: now + 600,            // ≤ 15 minutes
+    jti: crypto.randomUUID(),  // unique, single-use
+  });
+  const sig = crypto.createHmac("sha256", secret)
+    .update(`${header}.${payload}`).digest("base64url");
+  return `${header}.${payload}.${sig}`;
+}
+```
+
+**Dart (SDK side — fetch the token from the tenant backend, then call identify):**
+
+```dart
+Future<void> identify(String token) async {
+  final res = await http.post(
+    Uri.parse('$baseUrl/api/customers/identify'),
+    headers: {
+      'Content-Type': 'application/json',
+      'X-FrontFace-Key': clientKey,
+      'X-Visitor-Id': visitorId,
+    },
+    body: jsonEncode({
+      'projectId': projectId,
+      'visitorId': visitorId,
+      'token': token, // minted by the tenant's backend after THEIR login
+    }),
+  );
+  if (res.statusCode != 200) {
+    final code = (jsonDecode(res.body)['error']?['code']) ?? 'IDENTIFY_ERROR';
+    // TOKEN_INVALID / TOKEN_EXPIRED / TOKEN_REPLAYED → mint a FRESH token (new jti)
+    //   from the host backend and retry. Never reuse a token.
+    // IDENTITY_NOT_CONFIGURED → tenant has not generated a secret; treat as disabled.
+    // Never block or crash chat on identify failures.
+    throw FrontFaceIdentifyException(code);
+  }
+}
+
+/// On logout ("resetUser"): rotate the stored visitor id to a fresh one and drop
+/// the stored session — the device becomes a brand-new anonymous visitor.
+Future<void> resetUser() async {
+  await storage.delete(key: 'frontface_visitor_id');
+  await storage.delete(key: 'frontface_session');
+}
+```
+
+**Ordering:** identify may be called before or after the first chat message — both
+converge, because identity lives on the customer record keyed by `visitorId`.
+Re-identify on each app launch/login with a **fresh** token (tokens are short-lived
+and single-use).
+
+Errors: `400 VALIDATION_ERROR` / `400 TOKEN_CLAIMS_INVALID`, `401 TOKEN_INVALID`,
+`401 TOKEN_EXPIRED`, `401 TOKEN_REPLAYED` (jti already used, or reused by a different
+visitor), `404 PROJECT_NOT_FOUND`, `409 IDENTITY_NOT_CONFIGURED`,
+`429 RATE_LIMITED` (10/min per project+IP).
 
 ---
 
@@ -586,7 +687,7 @@ Timer(Duration(seconds: expiresAt - 60 - DateTime.now().millisecondsSinceEpoch ~
 | GET | `/api/chat/lead-capture/status` | Has this visitor completed the lead form? |
 | POST | `/api/chat/lead-capture/submit-form` | Submit the lead form |
 | POST | `/api/chat/lead-capture/submit-inline` | Inline email-only capture |
-| POST | `/api/customers/identify` | Link a known email/name to the visitor |
+| POST | `/api/customers/identify` | Verify a signed identity token and sync the contact (§8) |
 
 All require `X-FrontFace-Key` + `X-Visitor-Id`. Realtime uses private channel `conversation:<conversationId>` with a token from `/realtime-token`.
 
