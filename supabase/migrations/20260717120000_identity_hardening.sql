@@ -160,7 +160,6 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_now timestamptz := now();
-  v_email_norm text := CASE WHEN p_email_set THEN lower(nullif(btrim(p_email), '')) ELSE NULL END;
   v_lock_email text := CASE WHEN p_email_set AND p_email IS NOT NULL THEN lower(nullif(btrim(p_email), '')) ELSE NULL END;
   v_keys bigint[];
   v_key bigint;

@@ -1,6 +1,12 @@
 -- Capacity is derived from agent_active assignments. Every assignment and release therefore moves
 -- the conversation and its agent_availability counter under one consistent lock order:
 -- agent_availability first, conversations second.
+--
+-- DEPLOYMENT NOTE (2026-07-18): staging records an earlier standalone migration named
+-- `claim_conversation_online_and_handoff_fields`. It was intentionally not replayed in production
+-- because this migration supersedes it with the same online/capacity checks and handoff fields as
+-- part of the atomic transition implementation. The resulting production and staging function
+-- definitions were verified equivalent.
 
 create or replace function public.claim_conversation(
   p_conversation_id uuid,

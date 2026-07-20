@@ -15,6 +15,12 @@
 -- `last_message_at` is deliberately NOT part of the activity signal: it is bumped by EVERY insert,
 -- including the AI's own inactivity warning, which would reset the very countdown the warning
 -- starts. Only customer-originated signals may feed activity.
+--
+-- DEPLOYMENT NOTE (2026-07-18): staging records a later standalone migration named
+-- `add_customer_replied_since_warning`. It was intentionally not replayed in production because
+-- this consolidated migration already adds the same column, default, and trigger behavior.
+-- Production was verified to have the equivalent schema before the standalone migration was
+-- skipped.
 
 -- ============================================================================
 -- 1) Activity + preview columns

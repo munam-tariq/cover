@@ -373,6 +373,11 @@ $function$;
 --
 -- Overlapping runs may both pay OpenAI for one conversation; ON CONFLICT DO NOTHING keeps the data
 -- correct and the duplicate call is cost, not corruption.
+--
+-- DEPLOYMENT NOTE (2026-07-18): staging records this guard separately as
+-- `insert_conversation_insights_generation_guard`. It was intentionally not replayed in production
+-- because this consolidated function already contains the same terminal-generation revalidation
+-- and row-locking behavior. The production and staging definitions were verified equivalent.
 -- ============================================================================
 
 create or replace function public.insert_conversation_insights(p_rows jsonb)
